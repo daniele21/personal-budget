@@ -1,0 +1,29 @@
+import { Transaction, Budget, Account, RecurringExpense } from './types';
+
+export const APP_CONFIG = {
+  name: 'Aura',
+  tagline: 'Financial Intelligence',
+  description: 'The architectural ledger for the modern architect of wealth.',
+  currency: '€',
+  defaultMonthlyBudget: 5000,
+};
+
+export const INITIAL_ACCOUNTS: Account[] = [];
+
+export const INITIAL_CATEGORIES = [
+  'Housing',
+  'Groceries',
+  'Dining',
+  'Transport',
+  'Entertainment',
+  'Health',
+  'Salary',
+  'Utilities',
+  'Shopping'
+];
+
+export const INITIAL_TRANSACTIONS: Transaction[] = [];
+
+export const INITIAL_BUDGETS: Budget[] = [];
+
+export const INITIAL_RECURRING: RecurringExpense[] = [];

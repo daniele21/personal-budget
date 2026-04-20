@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-surface: #f3faff;
+  --color-on-surface: #071e27;
+  --color-on-surface-variant: #424750;
+  --color-primary: #003461;
+  --color-primary-container: #004b87;
+  --color-on-primary: #ffffff;
+  --color-secondary: #1b6d24;
+  --color-secondary-container: #a0f399;
+  --color-on-secondary-container: #217128;
+  --color-tertiary: #6e0009;
+  --color-tertiary-container: #990011;
+  --color-surface-container-low: #e6f6ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #d5ecf8;
+  --color-surface-container-highest: #cfe6f2;
+  --color-outline-variant: #c2c6d1;
+
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+}
+
+@layer base {
+  :root.dark {
+    --color-surface: #0a1921;
+    --color-on-surface: #f3faff;
+    --color-on-surface-variant: #94a3b8;
+    --color-primary: #60a5fa;
+    --color-primary-container: #1e3a8a;
+    --color-on-primary: #0a1921;
+    --color-secondary: #4ade80;
+    --color-secondary-container: #064e3b;
+    --color-on-secondary-container: #dcfce7;
+    --color-tertiary: #f87171;
+    --color-tertiary-container: #7f1d1d;
+    --color-surface-container-low: #11222c;
+    --color-surface-container-lowest: #162a35;
+    --color-surface-container-high: #1c333f;
+    --color-surface-container-highest: #243d4a;
+    --color-outline-variant: #334155;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, #003461 0%, #004b87 100%);
+}
+
+.glass-card {
+  @apply bg-white/70 backdrop-blur-xl;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility safe-area-bottom {
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
