@@ -12,18 +12,25 @@ import { Link } from 'react-router-dom';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
-  const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin } = useApp();
+  const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin, deleteCloudBackup, pushBackupNow } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
   const transactionInputRef = useRef<HTMLInputElement>(null);
   const budgetInputRef = useRef<HTMLInputElement>(null);
-  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showResetLocalDialog, setShowResetLocalDialog] = useState(false);
+  const [showResetAllDialog, setShowResetAllDialog] = useState(false);
 
   const totalIncome = allTimeTotals.income;
   const totalExpenses = allTimeTotals.expenses;
   const netWorth = currentBalance;
 
-  const handleReset = () => {
+  const handleResetLocal = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
+  const handleResetAll = async () => {
+    await deleteCloudBackup();
     localStorage.clear();
     window.location.reload();
   };
@@ -233,6 +240,18 @@ export const ProfilePage = () => {
             <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
           </button>
 
+          <button
+            onClick={async () => {
+              toast('Starting backup...', 'info');
+              const ok = await pushBackupNow();
+              if (ok) toast('Backup pushed to cloud successfully', 'success');
+              else toast('Backup failed or skipped (no local data / offline)', 'error');
+            }}
+            className="mt-3 w-full flex items-center gap-3 p-3 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all text-sm font-bold"
+          >
+            Backup now
+          </button>
+
           <div className="grid grid-cols-2 gap-3">
             <button 
               onClick={() => transactionInputRef.current?.click()}
@@ -336,23 +355,41 @@ export const ProfilePage = () => {
         {/* Danger zone — visually separated */}
         <div className="pt-6 mt-4 border-t border-outline-variant/10">
           <p className="text-[10px] uppercase tracking-widest text-tertiary font-bold mb-3 text-center">Danger Zone</p>
-          <button 
-            onClick={() => setShowResetDialog(true)}
-            className="w-full py-3 text-tertiary/60 font-bold text-[10px] uppercase tracking-widest border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
-          >
-            Reset All Data
-          </button>
+          <div className="space-y-2">
+            <button 
+              onClick={() => setShowResetLocalDialog(true)}
+              className="w-full py-3 text-tertiary/60 font-bold text-[10px] uppercase tracking-widest border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+            >
+              Cancella dati locali
+            </button>
+            <button 
+              onClick={() => setShowResetAllDialog(true)}
+              className="w-full py-3 text-tertiary/60 font-bold text-[10px] uppercase tracking-widest border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+            >
+              Cancella tutto (locale + backup cloud)
+            </button>
+          </div>
         </div>
       </section>
 
       <ConfirmDialog
-        isOpen={showResetDialog}
-        title="⚠️ Permanent Data Deletion"
-        message="This will permanently erase ALL transactions, budgets, recurring bills, and settings from this device. Since all data is stored locally, there is no way to recover it after deletion. Are you absolutely sure?"
-        confirmLabel="Yes, Delete Everything"
+        isOpen={showResetLocalDialog}
+        title="Cancella dati locali"
+        message="Verranno cancellati tutti i dati dal dispositivo (transazioni, budget, ricorrenti, impostazioni). Il backup nel cloud resterà disponibile e ti verrà proposto al prossimo accesso."
+        confirmLabel="Cancella dati locali"
         variant="danger"
-        onConfirm={handleReset}
-        onCancel={() => setShowResetDialog(false)}
+        onConfirm={handleResetLocal}
+        onCancel={() => setShowResetLocalDialog(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={showResetAllDialog}
+        title="⚠️ Cancellazione totale"
+        message="Verranno cancellati TUTTI i dati: dal dispositivo e dal backup nel cloud. Questa azione è irreversibile. Sei assolutamente sicuro?"
+        confirmLabel="Sì, cancella tutto"
+        variant="danger"
+        onConfirm={handleResetAll}
+        onCancel={() => setShowResetAllDialog(false)}
       />
     </motion.div>
   );

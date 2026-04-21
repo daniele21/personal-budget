@@ -13,9 +13,11 @@
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
+import { useCloudBackup } from '../hooks/useCloudBackup';
 import { STORAGE_KEYS } from '../data/storageKeys';
 import { APP_CONFIG, INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING, INITIAL_ACCOUNTS, INITIAL_CATEGORIES } from '../constants';
 import { Transaction, Budget, RecurringExpense, Account, User } from '../types';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import * as Finance from '../domain/finance';
 
 // ─── Context Shape ──────────────────────────────────────────────────
@@ -61,6 +63,9 @@ interface AppState {
   deleteRecurring: (id: string) => void;
   addCategory: (name: string) => void;
   resetAll: () => void;
+  restoreFromCloud: () => Promise<boolean>;
+  deleteCloudBackup: () => Promise<boolean>;
+  pushBackupNow: () => Promise<boolean>;
 
   // Derived (computed from domain layer)
   monthlyTransactions: Transaction[];
@@ -148,6 +153,41 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     window.location.reload();
   }, []);
 
+  // ─── Cloud backup (non-blocking daily sync) ────────────────────
+
+  const getBackupData = useCallback(() => ({
+    transactions, budgets, recurring, accounts, categories, monthlyBudget,
+  }), [transactions, budgets, recurring, accounts, categories, monthlyBudget]);
+
+  const isLocalEmpty = useCallback(
+    () => transactions.length === 0 && budgets.length === 0 && recurring.length === 0,
+    [transactions, budgets, recurring],
+  );
+
+  const applyBackupData = useCallback((data: import('../lib/backup').BackupPayload) => {
+    setTransactions(data.transactions as typeof transactions);
+    setBudgets(data.budgets as typeof budgets);
+    setRecurring(data.recurring as typeof recurring);
+    setAccounts(data.accounts as typeof accounts);
+    setCategories(data.categories);
+    setMonthlyBudget(data.monthlyBudget);
+  }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setMonthlyBudget]);
+
+  const { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow } = useCloudBackup({
+    uid: user?.id ?? null,
+    getData: getBackupData,
+    isLocalEmpty,
+    applyData: applyBackupData,
+  } as any);
+
+  // Expose manual push to UI
+  const pushBackupNow = useCallback(async (): Promise<boolean> => {
+    if (typeof pushNow === 'function') {
+      return await pushNow();
+    }
+    return false;
+  }, [pushNow]);
+
   // ─── Derived values (domain layer) ─────────────────────────────
 
   const monthlyTransactions = useMemo(() => Finance.filterByMonth(transactions), [transactions]);
@@ -195,14 +235,27 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     addTransaction, updateTransaction, deleteTransaction,
     addBudget, deleteBudget,
     addRecurring, updateRecurring, deleteRecurring,
-    addCategory, resetAll,
+  addCategory, resetAll, restoreFromCloud, deleteCloudBackup, pushBackupNow,
     // Derived
     monthlyTransactions, monthlyTotals, allTimeTotals,
     safeToSpend: safeToSpendData, budgetStatuses, categorySpending,
     momChange, recentTransactions, currentBalance,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      <ConfirmDialog
+        isOpen={backupAvailable}
+        title="Backup trovato"
+        message="Non ci sono dati in locale, ma è disponibile un backup dal cloud. Vuoi ripristinarlo?"
+        confirmLabel="Ripristina"
+        cancelLabel="No, ricomincia da zero"
+        onConfirm={() => { restoreFromCloud(); }}
+        onCancel={dismissRestore}
+      />
+    </AppContext.Provider>
+  );
 };
 
 // ─── Hook ───────────────────────────────────────────────────────────
