@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
+    "deploy:hosting": "bash scripts/deploy-hosting.sh",
+    "firebase:login": "firebase login",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

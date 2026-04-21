@@ -1,19 +1,27 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw } from 'lucide-react';
+import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
 import { Transaction, Budget } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { CategoryManagerDialog } from '../components/CategoryManagerDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import {
+  addCategoryName,
+  deleteCategoryName,
+  getCategoryUsageCounts,
+  renameCategoryName,
+  renameCategoryReferences,
+} from '../domain/categories';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
-  const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin, deleteCloudBackup, pushBackupNow } = useApp();
+  const { accounts, transactions, setTransactions, budgets, setBudgets, recurring, setRecurring, categories, setCategories, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin, deleteCloudBackup, pushBackupNow } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -21,10 +29,15 @@ export const ProfilePage = () => {
   const budgetInputRef = useRef<HTMLInputElement>(null);
   const [showResetLocalDialog, setShowResetLocalDialog] = useState(false);
   const [showResetAllDialog, setShowResetAllDialog] = useState(false);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
 
   const totalIncome = allTimeTotals.income;
   const totalExpenses = allTimeTotals.expenses;
   const netWorth = currentBalance;
+  const categoryUsageCounts = useMemo(
+    () => getCategoryUsageCounts({ transactions, budgets, recurring }),
+    [transactions, budgets, recurring],
+  );
 
   const handleResetLocal = () => {
     localStorage.clear();
@@ -45,6 +58,32 @@ export const ProfilePage = () => {
     setIsBackingUp(false);
     if (ok) toast('Backup pushed to cloud successfully', 'success');
     else toast('Backup failed or skipped (no local data / offline)', 'error');
+  };
+
+  const handleAddCategory = (name: string) => {
+    const nextCategories = addCategoryName(categories, name);
+    if (nextCategories === categories) return;
+    setCategories(nextCategories);
+    toast('Categoria aggiunta', 'success');
+  };
+
+  const handleRenameCategory = (oldName: string, newName: string) => {
+    const nextCategories = renameCategoryName(categories, oldName, newName);
+    if (nextCategories === categories) return;
+
+    const nextData = renameCategoryReferences({ transactions, budgets, recurring }, oldName, newName);
+    setCategories(nextCategories);
+    setTransactions(nextData.transactions);
+    setBudgets(nextData.budgets);
+    setRecurring(nextData.recurring);
+    toast('Categoria aggiornata', 'success');
+  };
+
+  const handleDeleteCategory = (name: string) => {
+    const nextCategories = deleteCategoryName(categories, name);
+    if (nextCategories.length === categories.length) return;
+    setCategories(nextCategories);
+    toast('Categoria rimossa dalla lista', 'info');
   };
 
   const handleExport = () => {
@@ -236,6 +275,24 @@ export const ProfilePage = () => {
           <h3 className="text-xl font-headline font-bold text-primary">Data Management</h3>
         </div>
         <div className="grid grid-cols-1 gap-3">
+          <button
+            onClick={() => setShowCategoryDialog(true)}
+            className="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                <Tags className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-sm font-bold text-on-surface">Gestione categorie</p>
+                <p className="text-[10px] text-on-surface-variant font-medium">
+                  Aggiungi, modifica o elimina categorie
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 shrink-0 text-on-surface-variant/40" />
+          </button>
+
           <button 
             onClick={handleExport}
             className="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all"
@@ -421,6 +478,16 @@ export const ProfilePage = () => {
         variant="danger"
         onConfirm={handleResetAll}
         onCancel={() => setShowResetAllDialog(false)}
+      />
+
+      <CategoryManagerDialog
+        isOpen={showCategoryDialog}
+        categories={categories}
+        usageCounts={categoryUsageCounts}
+        onAdd={handleAddCategory}
+        onRename={handleRenameCategory}
+        onDelete={handleDeleteCategory}
+        onClose={() => setShowCategoryDialog(false)}
       />
     </motion.div>
   );
