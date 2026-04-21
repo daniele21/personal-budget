@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aura-finance-v2';
+const CACHE_NAME = 'aura-finance-v3';
 
 // Cache shell resources on install
 self.addEventListener('install', (event) => {

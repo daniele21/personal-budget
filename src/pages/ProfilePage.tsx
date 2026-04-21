@@ -9,12 +9,14 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
+import { cn } from '../lib/utils';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
   const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin, deleteCloudBackup, pushBackupNow } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
+  const [isBackingUp, setIsBackingUp] = useState(false);
   const transactionInputRef = useRef<HTMLInputElement>(null);
   const budgetInputRef = useRef<HTMLInputElement>(null);
   const [showResetLocalDialog, setShowResetLocalDialog] = useState(false);
@@ -33,6 +35,16 @@ export const ProfilePage = () => {
     await deleteCloudBackup();
     localStorage.clear();
     window.location.reload();
+  };
+
+  const handleBackupNow = async () => {
+    if (isBackingUp) return;
+    setIsBackingUp(true);
+    toast('Starting backup...', 'info');
+    const ok = await pushBackupNow();
+    setIsBackingUp(false);
+    if (ok) toast('Backup pushed to cloud successfully', 'success');
+    else toast('Backup failed or skipped (no local data / offline)', 'error');
   };
 
   const handleExport = () => {
@@ -241,15 +253,24 @@ export const ProfilePage = () => {
           </button>
 
           <button
-            onClick={async () => {
-              toast('Starting backup...', 'info');
-              const ok = await pushBackupNow();
-              if (ok) toast('Backup pushed to cloud successfully', 'success');
-              else toast('Backup failed or skipped (no local data / offline)', 'error');
-            }}
-            className="mt-3 w-full flex items-center gap-3 p-3 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all text-sm font-bold"
+            onClick={handleBackupNow}
+            disabled={isBackingUp}
+            className="group w-full min-h-16 flex items-center justify-between gap-3 p-4 bg-primary text-on-primary rounded-2xl shadow-md shadow-primary/15 hover:bg-primary-container active:scale-[0.99] transition-all disabled:pointer-events-none disabled:opacity-70"
           >
-            Backup now
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
+                <RefreshCw className={cn('w-5 h-5', isBackingUp && 'animate-spin')} />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-sm font-headline font-extrabold leading-tight">
+                  {isBackingUp ? 'Backing up...' : 'Backup now'}
+                </p>
+                <p className="text-[10px] text-on-primary/75 font-medium leading-tight">
+                  Encrypted cloud backup
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 shrink-0 text-on-primary/70 transition-transform group-hover:translate-x-0.5" />
           </button>
 
           <div className="grid grid-cols-2 gap-3">
@@ -337,19 +358,29 @@ export const ProfilePage = () => {
         {isAdmin && (
           <Link
             to="/admin"
-            className="w-full py-4 flex items-center justify-center gap-2 text-primary font-bold text-xs uppercase tracking-widest border border-primary/20 rounded-2xl hover:bg-primary/5 transition-colors"
+            className="group w-full min-h-14 px-4 flex items-center justify-between gap-3 text-primary font-bold border border-primary/20 rounded-2xl hover:bg-primary/5 transition-all"
           >
-            <Shield className="w-4 h-4" />
-            Admin Panel
+            <span className="flex items-center gap-3 min-w-0">
+              <span className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                <Shield className="w-4 h-4" />
+              </span>
+              <span className="text-sm font-headline font-extrabold">Admin Panel</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-primary/50 transition-transform group-hover:translate-x-0.5" />
           </Link>
         )}
 
         <button 
           onClick={signOut}
-          className="w-full py-4 flex items-center justify-center gap-2 text-on-surface-variant font-bold text-xs uppercase tracking-widest border border-outline-variant/20 rounded-2xl hover:bg-surface-container-high transition-colors"
+          className="group w-full min-h-14 px-4 flex items-center justify-between gap-3 text-on-surface-variant font-bold border border-outline-variant/20 rounded-2xl hover:bg-surface-container-high transition-all"
         >
-          <LogOut className="w-4 h-4" />
-          Sign Out
+          <span className="flex items-center gap-3 min-w-0">
+            <span className="w-9 h-9 bg-surface-container-low rounded-xl flex items-center justify-center shrink-0">
+              <LogOut className="w-4 h-4" />
+            </span>
+            <span className="text-sm font-headline font-extrabold">Sign Out</span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-on-surface-variant/40 transition-transform group-hover:translate-x-0.5" />
         </button>
 
         {/* Danger zone — visually separated */}
@@ -358,13 +389,13 @@ export const ProfilePage = () => {
           <div className="space-y-2">
             <button 
               onClick={() => setShowResetLocalDialog(true)}
-              className="w-full py-3 text-tertiary/60 font-bold text-[10px] uppercase tracking-widest border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+              className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary/70 font-headline font-extrabold text-xs border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
             >
               Cancella dati locali
             </button>
             <button 
               onClick={() => setShowResetAllDialog(true)}
-              className="w-full py-3 text-tertiary/60 font-bold text-[10px] uppercase tracking-widest border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+              className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary/70 font-headline font-extrabold text-xs border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
             >
               Cancella tutto (locale + backup cloud)
             </button>

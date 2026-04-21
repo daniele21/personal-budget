@@ -1,5 +1,8 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  }
+  "firestore": [
+    {
+      "database": "budget-db",
+      "rules": "firestore.rules"
+    }
+  ]
 }

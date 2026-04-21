@@ -13,19 +13,20 @@ interface ButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  'aria-label'?: string;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-on-primary shadow-md active:scale-95',
+  primary: 'bg-primary text-on-primary shadow-md shadow-primary/15 hover:bg-primary-container',
   secondary: 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest',
-  ghost: 'text-on-surface-variant hover:bg-surface-variant/50',
-  danger: 'bg-tertiary text-on-tertiary shadow-md active:scale-95',
+  ghost: 'text-on-surface-variant hover:bg-surface-container-low',
+  danger: 'bg-tertiary text-on-primary shadow-md shadow-tertiary/15 hover:bg-tertiary-container',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'py-1.5 px-3 text-xs rounded-lg',
-  md: 'py-2.5 px-4 text-sm rounded-xl',
-  lg: 'py-3 px-5 text-sm rounded-xl',
+  sm: 'min-h-9 px-3 text-xs rounded-lg',
+  md: 'min-h-11 px-4 text-sm rounded-xl',
+  lg: 'min-h-12 px-5 text-sm rounded-xl',
 };
 
 /**
@@ -42,7 +43,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'font-bold transition-all',
+        'inline-flex items-center justify-center gap-2 text-center font-headline font-extrabold leading-tight transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-50',
         variantStyles[variant],
         sizeStyles[size],
         fullWidth && 'w-full',
