@@ -9,6 +9,7 @@ const AddTransaction = lazy(() => import('./pages/AddTransaction').then(m => ({ 
 const BudgetsPage = lazy(() => import('./pages/BudgetsPage').then(m => ({ default: m.BudgetsPage })));
 const RecurringPage = lazy(() => import('./pages/RecurringPage').then(m => ({ default: m.RecurringPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 
 // Components
@@ -24,7 +25,7 @@ function PageLoader() {
 }
 
 export default function App() {
-  const { isLoggedIn, authLoading, authError, signInWithGoogle } = useApp();
+  const { isLoggedIn, authLoading, authError, signInWithGoogle, isAdmin } = useApp();
 
   if (authLoading) {
     return (
@@ -58,6 +59,9 @@ export default function App() {
           <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
           <Route path="/recurring" element={<Layout title="Recurring"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
           <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
+          {isAdmin && (
+            <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
+          )}
         </Routes>
       </Suspense>
     </Router>

@@ -33,6 +33,7 @@ interface AppState {
   isDarkMode: boolean;
   authLoading: boolean;
   authError: string | null;
+  isAdmin: boolean;
 
   // Setters
   setTransactions: (txs: Transaction[]) => void;
@@ -79,7 +80,7 @@ const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // Firebase auth
-  const { user, loading: authLoading, error: authError, signInWithGoogle, signOut } = useFirebaseAuth();
+  const { user, loading: authLoading, error: authError, isAdmin, signInWithGoogle, signOut } = useFirebaseAuth();
   const isLoggedIn = user !== null;
 
   // Persisted state
@@ -184,7 +185,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     // Raw
     transactions, budgets, recurring, accounts, categories,
     monthlyBudget, user, isLoggedIn, isDarkMode,
-    authLoading, authError,
+    authLoading, authError, isAdmin,
     // Setters
     setTransactions, setBudgets, setRecurring, setAccounts,
     setCategories, setMonthlyBudget, setUser, setIsLoggedIn, setIsDarkMode,

@@ -14,6 +14,8 @@ export const STORAGE_KEYS = {
   user: 'aura_user',
   loggedIn: 'aura_logged_in',
   darkMode: 'aura_dark_mode',
+  allowedUsersCache: 'aura_allowed_users_cache',
+  allowedUsersCacheTs: 'aura_allowed_users_cache_ts',
 } as const;
 
 export type StorageKey = keyof typeof STORAGE_KEYS;

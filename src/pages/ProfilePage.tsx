@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Plane, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut } from 'lucide-react';
+import { TrendingUp, Plane, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -8,10 +8,11 @@ import { Transaction, Budget } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
+import { Link } from 'react-router-dom';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
-  const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut } = useApp();
+  const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
   const transactionInputRef = useRef<HTMLInputElement>(null);
@@ -296,6 +297,15 @@ export const ProfilePage = () => {
       </section>
 
       <section className="pt-4 space-y-3">
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className="w-full py-4 flex items-center justify-center gap-2 text-primary font-bold text-xs uppercase tracking-widest border border-primary/20 rounded-2xl hover:bg-primary/5 transition-colors"
+          >
+            <Shield className="w-4 h-4" />
+            Admin Panel
+          </Link>
+        )}
         <button 
           onClick={signOut}
           className="w-full py-4 flex items-center justify-center gap-2 text-on-surface-variant font-bold text-xs uppercase tracking-widest border border-outline-variant/20 rounded-2xl hover:bg-surface-container-high transition-colors"

@@ -1,10 +1,11 @@
 /**
  * Firebase initialization.
  * Config values come from environment variables (set in .env).
- * Only Authentication is used — no Firestore, no Storage.
+ * Authentication + Firestore (for access-control allowlist).
  */
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,3 +27,4 @@ console.log('[Firebase] Config loaded:', {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const db = getFirestore(app);

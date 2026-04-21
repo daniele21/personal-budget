@@ -13,12 +13,14 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { isEmailAllowed, isAdmin } from '../lib/allowedUsers';
 import { User } from '../types';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
+  isAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -36,11 +38,43 @@ export function useFirebaseAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [adminFlag, setAdminFlag] = useState(false);
 
   // Listen to auth state changes (persists across page reloads)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      setUser(fbUser ? mapFirebaseUser(fbUser) : null);
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        const email = fbUser.email || '';
+        try {
+          const allowed = await isEmailAllowed(email);
+          if (!allowed) {
+            await firebaseSignOut(auth);
+            setUser(null);
+            setAdminFlag(false);
+            setError('Access denied. Your account is not authorized.');
+            setLoading(false);
+            return;
+          }
+          setUser(mapFirebaseUser(fbUser));
+          setAdminFlag(isAdmin(email));
+        } catch {
+          // If Firestore is unreachable, allow admin through, use cache for others
+          if (isAdmin(email)) {
+            setUser(mapFirebaseUser(fbUser));
+            setAdminFlag(true);
+          } else {
+            // isEmailAllowed already falls back to cache internally,
+            // so if we get here it means even the cache check failed
+            await firebaseSignOut(auth);
+            setUser(null);
+            setAdminFlag(false);
+            setError('Unable to verify access. Please try again later.');
+          }
+        }
+      } else {
+        setUser(null);
+        setAdminFlag(false);
+      }
       setLoading(false);
     });
     return unsubscribe;
@@ -69,5 +103,5 @@ export function useFirebaseAuth(): AuthState {
     }
   }, []);
 
-  return { user, loading, error, signInWithGoogle, signOut };
+  return { user, loading, error, isAdmin: adminFlag, signInWithGoogle, signOut };
 }
