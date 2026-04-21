@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Plane, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield } from 'lucide-react';
+import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -115,30 +115,37 @@ export const ProfilePage = () => {
             <span>Real-time calculation</span>
           </div>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 gap-4">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-container p-5 text-on-primary shadow-xl">
-            <div className="relative z-10 h-full flex flex-col justify-between">
-              <div>
-                <div className="flex justify-between items-start mb-6">
-                  <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase border border-white/10">Major Milestone</span>
-                  <Plane className="w-5 h-5 text-secondary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-1">European Vacation</h3>
-                <p className="text-xs font-medium opacity-80 mb-8">Target: €12,000.00</p>
-              </div>
-              <div>
-                <div className="flex justify-between text-[10px] font-bold mb-2 uppercase tracking-wider">
-                  <span>€8,400.00 saved</span>
-                  <span>70%</span>
-                </div>
-                <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary w-[70%] rounded-full shadow-[0_0_10px_rgba(74,222,128,0.5)]"></div>
-                </div>
-              </div>
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-headline font-bold text-primary">Quick Access</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            to="/budgets"
+            className="flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/5 hover:bg-surface-container-low transition-all"
+          >
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <PieChart className="w-5 h-5 text-primary" />
             </div>
-            <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-          </div>
+            <div>
+              <p className="text-sm font-bold text-on-surface">Budgets</p>
+              <p className="text-[10px] text-on-surface-variant">Manage limits</p>
+            </div>
+          </Link>
+          <Link
+            to="/recurring"
+            className="flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/5 hover:bg-surface-container-low transition-all"
+          >
+            <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center">
+              <RefreshCw className="w-5 h-5 text-secondary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-on-surface">Recurring</p>
+              <p className="text-[10px] text-on-surface-variant">Bills & income</p>
+            </div>
+          </Link>
         </div>
       </section>
 
@@ -296,7 +303,18 @@ export const ProfilePage = () => {
         </div>
       </section>
 
-      <section className="pt-4 space-y-3">
+      <section className="pt-4 space-y-4">
+        {/* Privacy notice */}
+        <div className="bg-secondary-container/10 border border-secondary/20 rounded-2xl p-4 flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-on-surface mb-1">Your data stays on this device</p>
+            <p className="text-[10px] text-on-surface-variant leading-relaxed">
+              All transactions, budgets, and settings are stored locally in your browser. No financial data is sent to any server or third party. You own your data.
+            </p>
+          </div>
+        </div>
+
         {isAdmin && (
           <Link
             to="/admin"
@@ -306,6 +324,7 @@ export const ProfilePage = () => {
             Admin Panel
           </Link>
         )}
+
         <button 
           onClick={signOut}
           className="w-full py-4 flex items-center justify-center gap-2 text-on-surface-variant font-bold text-xs uppercase tracking-widest border border-outline-variant/20 rounded-2xl hover:bg-surface-container-high transition-colors"
@@ -313,19 +332,24 @@ export const ProfilePage = () => {
           <LogOut className="w-4 h-4" />
           Sign Out
         </button>
-        <button 
-          onClick={() => setShowResetDialog(true)}
-          className="w-full py-4 text-tertiary font-bold text-xs uppercase tracking-widest border border-tertiary/20 rounded-2xl hover:bg-tertiary/5 transition-colors"
-        >
-          Reset All Data
-        </button>
+
+        {/* Danger zone — visually separated */}
+        <div className="pt-6 mt-4 border-t border-outline-variant/10">
+          <p className="text-[10px] uppercase tracking-widest text-tertiary font-bold mb-3 text-center">Danger Zone</p>
+          <button 
+            onClick={() => setShowResetDialog(true)}
+            className="w-full py-3 text-tertiary/60 font-bold text-[10px] uppercase tracking-widest border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+          >
+            Reset All Data
+          </button>
+        </div>
       </section>
 
       <ConfirmDialog
         isOpen={showResetDialog}
-        title="Reset All Data"
-        message="Are you sure you want to reset all data? This will permanently delete all transactions, budgets, and settings. This cannot be undone."
-        confirmLabel="Reset Everything"
+        title="⚠️ Permanent Data Deletion"
+        message="This will permanently erase ALL transactions, budgets, recurring bills, and settings from this device. Since all data is stored locally, there is no way to recover it after deletion. Are you absolutely sure?"
+        confirmLabel="Yes, Delete Everything"
         variant="danger"
         onConfirm={handleReset}
         onCancel={() => setShowResetDialog(false)}

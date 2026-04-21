@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, History, PlusCircle, PieChart, User, Plus } from 'lucide-react';
+import { LayoutDashboard, History, PlusCircle, BarChart3, Calendar, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const BottomNav = () => {
@@ -9,8 +9,8 @@ export const BottomNav = () => {
     { path: '/', icon: LayoutDashboard, label: 'Home' },
     { path: '/history', icon: History, label: 'History' },
     { path: '/add', icon: PlusCircle, label: 'Add', isSpecial: true },
-    { path: '/budgets', icon: PieChart, label: 'Budgets' },
-    { path: '/profile', icon: User, label: 'Profile' },
+    { path: '/insights', icon: BarChart3, label: 'Insights' },
+    { path: '/calendar', icon: Calendar, label: 'Calendar' },
   ];
 
   return (

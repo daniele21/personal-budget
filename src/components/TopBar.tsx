@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Menu, Bell, Sun, Moon, Calendar as CalendarIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
 interface TopBarProps {
@@ -44,14 +45,14 @@ export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarPr
           <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-tertiary rounded-full border border-surface" aria-hidden="true"></span>
         </button>
         {showProfile && user && (
-          <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-bold text-xs overflow-hidden border-2 border-surface shadow-sm ml-1">
+          <Link to="/profile" className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-bold text-xs overflow-hidden border-2 border-surface shadow-sm ml-1 hover:ring-2 hover:ring-primary/30 transition-all" aria-label="Profile">
             <img 
               src={user.photoUrl} 
               alt={user.name}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
-          </div>
+          </Link>
         )}
       </div>
     </header>

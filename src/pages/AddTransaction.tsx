@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Pencil, Check, X, Camera, Plus } from 'lucide-react';
+import { Pencil, Check, X, Camera } from 'lucide-react';
 import { get, set, del } from 'idb-keyval';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
 import { Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
@@ -112,18 +113,6 @@ export const AddTransaction = () => {
     }
   };
 
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-
-  const addNewCategory = () => {
-    if (newCategoryName && !categories.includes(newCategoryName)) {
-      setCategories([...categories, newCategoryName]);
-      setCategory(newCategoryName);
-      setNewCategoryName('');
-      setIsAddingCategory(false);
-    }
-  };
-
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
@@ -185,54 +174,12 @@ export const AddTransaction = () => {
         </div>
 
         <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/5">
-          <label className="block text-on-surface-variant text-[10px] mb-4 uppercase tracking-widest font-bold">Select Category</label>
-          <div className="flex flex-wrap gap-2">
-            {categories.map(cat => (
-              <button 
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-full border transition-all active:scale-95 text-xs",
-                  category === cat ? "bg-primary-fixed border-primary-container font-bold text-on-primary-fixed" : "bg-surface-container-low border-transparent text-on-surface-variant"
-                )}
-              >
-                <CategoryIcon category={cat} className="w-3.5 h-3.5" />
-                <span>{cat}</span>
-              </button>
-            ))}
-            {isAddingCategory ? (
-              <div className="flex items-center gap-2 w-full">
-                <input 
-                  autoFocus
-                  className="flex-grow bg-surface-container-high border-none rounded-full px-4 py-2 text-xs focus:ring-2 focus:ring-primary"
-                  placeholder="Category name..."
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addNewCategory()}
-                />
-                <button 
-                  onClick={addNewCategory}
-                  className="p-2 bg-primary text-on-primary rounded-full"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setIsAddingCategory(false)}
-                  className="p-2 bg-surface-container-high text-on-surface-variant rounded-full"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setIsAddingCategory(true)}
-                className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full border border-transparent text-on-surface-variant hover:bg-primary/10 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="text-xs font-bold">Add New</span>
-              </button>
-            )}
-          </div>
+          <CategoryPicker
+            categories={categories}
+            value={category}
+            onChange={setCategory}
+            onAddCategory={(name) => { setCategories([...categories, name]); setCategory(name); }}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

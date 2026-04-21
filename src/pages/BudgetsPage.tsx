@@ -8,11 +8,12 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { formatMonthLabel } from '../domain/finance';
-import { Card, Button, Input, Select } from '../components/ui';
+import { CategoryPicker } from '../components/CategoryPicker';
+import { Card, Button, Input } from '../components/ui';
 
 export const BudgetsPage = () => {
   const { toast } = useToast();
-  const { budgets, setBudgets, categories, monthlyTransactions } = useApp();
+  const { budgets, setBudgets, categories, setCategories, monthlyTransactions } = useApp();
   
   const [isAdding, setIsAdding] = useState(false);
   const [newCategory, setNewCategory] = useState(categories[0]);
@@ -105,11 +106,11 @@ export const BudgetsPage = () => {
             <button onClick={() => setIsAdding(false)}><X className="w-5 h-5 text-on-surface-variant" /></button>
           </div>
           <div className="space-y-3">
-            <Select
-              label="Category"
+            <CategoryPicker
+              categories={categories}
               value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              options={categories.map(cat => ({ value: cat, label: cat }))}
+              onChange={setNewCategory}
+              onAddCategory={(name) => setCategories([...categories, name])}
             />
             <Input
               label="Monthly Limit (€)"

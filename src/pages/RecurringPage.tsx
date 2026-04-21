@@ -9,11 +9,12 @@ import { CategoryIcon } from '../components/CategoryIcon';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { Button, Input, Select } from '../components/ui';
+import { CategoryPicker } from '../components/CategoryPicker';
+import { Button, Input } from '../components/ui';
 
 export const RecurringPage = () => {
   const { toast } = useToast();
-  const { recurring, setRecurring, categories } = useApp();
+  const { recurring, setRecurring, categories, setCategories } = useApp();
   const [isAdding, setIsAdding] = useState(false);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -189,11 +190,11 @@ export const RecurringPage = () => {
                 onChange={(e) => setNewDate(e.target.value)}
               />
             </div>
-            <Select
-              label="Category"
+            <CategoryPicker
+              categories={categories}
               value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              options={categories.map(cat => ({ value: cat, label: cat }))}
+              onChange={setNewCategory}
+              onAddCategory={(name) => setCategories([...categories, name])}
             />
             <Button fullWidth onClick={handleAddRecurring}>
               {editingId ? 'Update Bill' : 'Add Bill'}
