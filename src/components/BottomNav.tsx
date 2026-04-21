@@ -14,14 +14,14 @@ export const BottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-3 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
+    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-3 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path;
         const Icon = item.icon;
 
         if (item.isSpecial) {
           return (
-            <Link key={item.path} to={item.path} className="relative -top-8">
+            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-8">
               <div className={cn(
                 "w-14 h-14 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
                 isActive && "ring-4 ring-primary/20"
@@ -35,7 +35,9 @@ export const BottomNav = () => {
         return (
           <Link 
             key={item.path} 
-            to={item.path} 
+            to={item.path}
+            aria-label={item.label}
+            aria-current={isActive ? 'page' : undefined}
             className={cn(
               "flex flex-col items-center justify-center min-w-[64px] py-1 rounded-2xl transition-all active:scale-90",
               isActive ? "text-primary" : "text-on-surface-variant"

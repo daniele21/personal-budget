@@ -1,0 +1,411 @@
+import { describe, it, expect } from 'vitest';
+import {
+  filterByMonth,
+  filterByType,
+  filterByCategory,
+  sortByDateDesc,
+  calculateTotals,
+  analyzeBudget,
+  analyzeBudgets,
+  monthOverMonthChange,
+  safeToSpend,
+  spendingByCategory,
+  getRecurringDue,
+  formatMonthLabel,
+} from '../finance';
+import { Transaction, Budget, RecurringExpense } from '../../types';
+
+// ─── Test Helpers ───────────────────────────────────────────────────
+
+function tx(overrides: Partial<Transaction> & { amount: number; type: 'income' | 'expense' }): Transaction {
+  return {
+    id: Math.random().toString(36).slice(2, 8),
+    category: 'Food',
+    date: '2026-04-15T00:00:00.000Z',
+    title: 'Test',
+    description: '',
+    paymentMethod: 'Cash',
+    ...overrides,
+  };
+}
+
+function budget(category: string, limit: number): Budget {
+  return { category, limit, spent: 0, currency: '€' };
+}
+
+function recurring(overrides: Partial<RecurringExpense> = {}): RecurringExpense {
+  return {
+    id: 'r1',
+    name: 'Netflix',
+    amount: 12.99,
+    dueDate: '2026-04-05T00:00:00.000Z',
+    category: 'Entertainment',
+    ...overrides,
+  };
+}
+
+// ─── filterByMonth ──────────────────────────────────────────────────
+
+describe('filterByMonth', () => {
+  const april2026 = new Date(2026, 3, 15);
+  const march2026 = new Date(2026, 2, 10);
+
+  const transactions = [
+    tx({ amount: 100, type: 'expense', date: '2026-04-10T00:00:00.000Z' }),
+    tx({ amount: 200, type: 'income', date: '2026-04-25T00:00:00.000Z' }),
+    tx({ amount: 50, type: 'expense', date: '2026-03-15T00:00:00.000Z' }),
+    tx({ amount: 75, type: 'income', date: '2025-04-10T00:00:00.000Z' }), // same month, different year
+  ];
+
+  it('returns only transactions for the given month and year', () => {
+    const result = filterByMonth(transactions, april2026);
+    expect(result).toHaveLength(2);
+    expect(result.every(t => new Date(t.date).getMonth() === 3)).toBe(true);
+    expect(result.every(t => new Date(t.date).getFullYear() === 2026)).toBe(true);
+  });
+
+  it('returns march transactions when filtered for march', () => {
+    expect(filterByMonth(transactions, march2026)).toHaveLength(1);
+  });
+
+  it('returns empty array when no transactions match', () => {
+    expect(filterByMonth(transactions, new Date(2020, 0, 1))).toHaveLength(0);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(filterByMonth([], april2026)).toHaveLength(0);
+  });
+
+  it('defaults to current month when no date provided', () => {
+    const now = new Date();
+    const thisMonthTx = tx({
+      amount: 10,
+      type: 'expense',
+      date: new Date(now.getFullYear(), now.getMonth(), 5).toISOString(),
+    });
+    expect(filterByMonth([thisMonthTx])).toHaveLength(1);
+  });
+});
+
+// ─── filterByType ───────────────────────────────────────────────────
+
+describe('filterByType', () => {
+  const mixed = [
+    tx({ amount: 100, type: 'expense' }),
+    tx({ amount: 200, type: 'income' }),
+    tx({ amount: 50, type: 'expense' }),
+  ];
+
+  it('filters expenses', () => {
+    expect(filterByType(mixed, 'expense')).toHaveLength(2);
+  });
+
+  it('filters income', () => {
+    expect(filterByType(mixed, 'income')).toHaveLength(1);
+  });
+
+  it('returns empty for empty input', () => {
+    expect(filterByType([], 'expense')).toHaveLength(0);
+  });
+});
+
+// ─── filterByCategory ───────────────────────────────────────────────
+
+describe('filterByCategory', () => {
+  const transactions = [
+    tx({ amount: 100, type: 'expense', category: 'Food' }),
+    tx({ amount: 50, type: 'expense', category: 'Transport' }),
+    tx({ amount: 30, type: 'expense', category: 'Food' }),
+  ];
+
+  it('returns only matching category', () => {
+    expect(filterByCategory(transactions, 'Food')).toHaveLength(2);
+  });
+
+  it('returns empty for non-existent category', () => {
+    expect(filterByCategory(transactions, 'Gaming')).toHaveLength(0);
+  });
+});
+
+// ─── sortByDateDesc ─────────────────────────────────────────────────
+
+describe('sortByDateDesc', () => {
+  it('sorts newest first', () => {
+    const transactions = [
+      tx({ amount: 10, type: 'expense', date: '2026-01-01T00:00:00.000Z' }),
+      tx({ amount: 20, type: 'expense', date: '2026-03-01T00:00:00.000Z' }),
+      tx({ amount: 30, type: 'expense', date: '2026-02-01T00:00:00.000Z' }),
+    ];
+    const sorted = sortByDateDesc(transactions);
+    expect(sorted[0].amount).toBe(20);
+    expect(sorted[1].amount).toBe(30);
+    expect(sorted[2].amount).toBe(10);
+  });
+
+  it('does not mutate the original array', () => {
+    const original = [
+      tx({ amount: 10, type: 'expense', date: '2026-01-01T00:00:00.000Z' }),
+      tx({ amount: 20, type: 'expense', date: '2026-03-01T00:00:00.000Z' }),
+    ];
+    const sorted = sortByDateDesc(original);
+    expect(sorted).not.toBe(original);
+  });
+
+  it('handles empty array', () => {
+    expect(sortByDateDesc([])).toEqual([]);
+  });
+});
+
+// ─── calculateTotals ────────────────────────────────────────────────
+
+describe('calculateTotals', () => {
+  it('calculates income, expenses, and net', () => {
+    const transactions = [
+      tx({ amount: 1000, type: 'income' }),
+      tx({ amount: 300, type: 'expense' }),
+      tx({ amount: 200, type: 'expense' }),
+    ];
+    const totals = calculateTotals(transactions);
+    expect(totals.income).toBe(1000);
+    expect(totals.expenses).toBe(500);
+    expect(totals.net).toBe(500);
+  });
+
+  it('returns zeros for empty array', () => {
+    const totals = calculateTotals([]);
+    expect(totals).toEqual({ income: 0, expenses: 0, net: 0 });
+  });
+
+  it('handles income-only', () => {
+    const totals = calculateTotals([tx({ amount: 500, type: 'income' })]);
+    expect(totals.net).toBe(500);
+    expect(totals.expenses).toBe(0);
+  });
+
+  it('handles expense-only (negative net)', () => {
+    const totals = calculateTotals([tx({ amount: 300, type: 'expense' })]);
+    expect(totals.net).toBe(-300);
+    expect(totals.income).toBe(0);
+  });
+});
+
+// ─── analyzeBudget ──────────────────────────────────────────────────
+
+describe('analyzeBudget', () => {
+  const monthlyTxs = [
+    tx({ amount: 150, type: 'expense', category: 'Food' }),
+    tx({ amount: 50, type: 'expense', category: 'Food' }),
+    tx({ amount: 300, type: 'income', category: 'Food' }), // income should be ignored
+    tx({ amount: 100, type: 'expense', category: 'Transport' }), // different category
+  ];
+
+  it('calculates spent from expenses only for matching category', () => {
+    const result = analyzeBudget(budget('Food', 500), monthlyTxs);
+    expect(result.spent).toBe(200);
+    expect(result.remaining).toBe(300);
+  });
+
+  it('returns ok status under 80%', () => {
+    expect(analyzeBudget(budget('Food', 500), monthlyTxs).status).toBe('ok');
+  });
+
+  it('returns warning status at 80-99%', () => {
+    const result = analyzeBudget(budget('Food', 240), monthlyTxs);
+    expect(result.percent).toBeCloseTo(83.33, 1);
+    expect(result.status).toBe('warning');
+  });
+
+  it('returns exceeded status at 100%+', () => {
+    const result = analyzeBudget(budget('Food', 150), monthlyTxs);
+    expect(result.percent).toBeCloseTo(133.33, 1);
+    expect(result.status).toBe('exceeded');
+    expect(result.remaining).toBe(0);
+  });
+
+  it('handles zero limit without division error', () => {
+    const result = analyzeBudget(budget('Food', 0), monthlyTxs);
+    expect(result.percent).toBe(0);
+    expect(result.status).toBe('ok');
+  });
+
+  it('handles no transactions for category', () => {
+    const result = analyzeBudget(budget('Gaming', 100), monthlyTxs);
+    expect(result.spent).toBe(0);
+    expect(result.remaining).toBe(100);
+    expect(result.status).toBe('ok');
+  });
+});
+
+// ─── analyzeBudgets ─────────────────────────────────────────────────
+
+describe('analyzeBudgets', () => {
+  it('maps all budgets to statuses', () => {
+    const budgets = [budget('Food', 500), budget('Transport', 200)];
+    const txs = [tx({ amount: 100, type: 'expense', category: 'Food' })];
+    const results = analyzeBudgets(budgets, txs);
+    expect(results).toHaveLength(2);
+    expect(results[0].category).toBe('Food');
+    expect(results[1].category).toBe('Transport');
+  });
+});
+
+// ─── safeToSpend ────────────────────────────────────────────────────
+
+describe('safeToSpend', () => {
+  it('calculates remaining and used percent', () => {
+    const result = safeToSpend(2000, 800);
+    expect(result.remaining).toBe(1200);
+    expect(result.usedPercent).toBe(40);
+  });
+
+  it('clamps remaining to zero when overspent', () => {
+    const result = safeToSpend(1000, 1500);
+    expect(result.remaining).toBe(0);
+    expect(result.usedPercent).toBe(150);
+  });
+
+  it('handles zero budget', () => {
+    const result = safeToSpend(0, 100);
+    expect(result.remaining).toBe(0);
+    expect(result.usedPercent).toBe(0);
+  });
+
+  it('handles zero expenses', () => {
+    const result = safeToSpend(2000, 0);
+    expect(result.remaining).toBe(2000);
+    expect(result.usedPercent).toBe(0);
+  });
+});
+
+// ─── spendingByCategory ─────────────────────────────────────────────
+
+describe('spendingByCategory', () => {
+  const transactions = [
+    tx({ amount: 200, type: 'expense', category: 'Food' }),
+    tx({ amount: 100, type: 'expense', category: 'Transport' }),
+    tx({ amount: 100, type: 'expense', category: 'Food' }),
+    tx({ amount: 500, type: 'income', category: 'Salary' }), // income ignored
+  ];
+
+  it('groups expenses by category with percentages', () => {
+    const result = spendingByCategory(transactions);
+    expect(result).toHaveLength(2);
+    expect(result[0].category).toBe('Food');
+    expect(result[0].amount).toBe(300);
+    expect(result[0].percentage).toBeCloseTo(0.75);
+    expect(result[1].category).toBe('Transport');
+    expect(result[1].amount).toBe(100);
+    expect(result[1].percentage).toBeCloseTo(0.25);
+  });
+
+  it('sorts by amount descending', () => {
+    const result = spendingByCategory(transactions);
+    expect(result[0].amount).toBeGreaterThanOrEqual(result[1].amount);
+  });
+
+  it('returns empty for no expenses', () => {
+    expect(spendingByCategory([])).toEqual([]);
+  });
+
+  it('returns empty when only income', () => {
+    expect(spendingByCategory([tx({ amount: 500, type: 'income' })])).toEqual([]);
+  });
+});
+
+// ─── monthOverMonthChange ───────────────────────────────────────────
+
+describe('monthOverMonthChange', () => {
+  const now = new Date();
+  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 10).toISOString();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 10).toISOString();
+
+  it('returns positive when spending decreased', () => {
+    const transactions = [
+      tx({ amount: 500, type: 'expense', date: lastMonth }),
+      tx({ amount: 300, type: 'expense', date: thisMonth }),
+    ];
+    const change = monthOverMonthChange(transactions);
+    expect(change).toBeCloseTo(40); // (500-300)/500 * 100
+  });
+
+  it('returns negative when spending increased', () => {
+    const transactions = [
+      tx({ amount: 300, type: 'expense', date: lastMonth }),
+      tx({ amount: 500, type: 'expense', date: thisMonth }),
+    ];
+    const change = monthOverMonthChange(transactions);
+    expect(change).toBeCloseTo(-66.67, 1);
+  });
+
+  it('returns null when no previous month data', () => {
+    const transactions = [
+      tx({ amount: 300, type: 'expense', date: thisMonth }),
+    ];
+    expect(monthOverMonthChange(transactions)).toBeNull();
+  });
+
+  it('returns null when no data at all', () => {
+    expect(monthOverMonthChange([])).toBeNull();
+  });
+});
+
+// ─── getRecurringDue ────────────────────────────────────────────────
+
+describe('getRecurringDue', () => {
+  const today = new Date(2026, 3, 15); // April 15, 2026
+
+  it('generates transaction when bill is due (past due day this month)', () => {
+    const bill = recurring({ dueDate: '2026-04-05T00:00:00.000Z' });
+    const result = getRecurringDue([bill], {}, today);
+    expect(result).toHaveLength(1);
+    expect(result[0].transaction.amount).toBe(12.99);
+    expect(result[0].transaction.category).toBe('Entertainment');
+    expect(result[0].transaction.type).toBe('expense');
+  });
+
+  it('does not generate when already generated this month', () => {
+    const bill = recurring();
+    const alreadyGenerated = { [`r1_2026_3`]: 'some_tx_id' };
+    const result = getRecurringDue([bill], alreadyGenerated, today);
+    expect(result).toHaveLength(0);
+  });
+
+  it('does not generate when due date is in the future this month', () => {
+    const bill = recurring({ dueDate: '2026-04-20T00:00:00.000Z' });
+    const result = getRecurringDue([bill], {}, today);
+    expect(result).toHaveLength(0);
+  });
+
+  it('generates on exact due day', () => {
+    const bill = recurring({ dueDate: '2026-04-15T00:00:00.000Z' });
+    const result = getRecurringDue([bill], {}, today);
+    expect(result).toHaveLength(1);
+  });
+
+  it('handles multiple bills', () => {
+    const bills = [
+      recurring({ id: 'r1', dueDate: '2026-04-01T00:00:00.000Z' }),
+      recurring({ id: 'r2', name: 'Spotify', amount: 9.99, dueDate: '2026-04-10T00:00:00.000Z' }),
+      recurring({ id: 'r3', name: 'Gym', amount: 30, dueDate: '2026-04-25T00:00:00.000Z' }), // future
+    ];
+    const result = getRecurringDue(bills, {}, today);
+    expect(result).toHaveLength(2);
+  });
+
+  it('returns empty when no recurring bills', () => {
+    expect(getRecurringDue([], {}, today)).toHaveLength(0);
+  });
+});
+
+// ─── formatMonthLabel ───────────────────────────────────────────────
+
+describe('formatMonthLabel', () => {
+  it('formats a date as "Month Year"', () => {
+    expect(formatMonthLabel(new Date(2026, 3, 1))).toBe('April 2026');
+  });
+
+  it('defaults to current month', () => {
+    const result = formatMonthLabel();
+    expect(result).toContain(new Date().getFullYear().toString());
+  });
+});

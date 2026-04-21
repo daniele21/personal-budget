@@ -1,46 +1,65 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { User } from './types';
+import { useApp } from './context/AppContext';
 
-// Pages
-import { Dashboard } from './pages/Dashboard';
-import { HistoryPage } from './pages/HistoryPage';
-import { AddTransaction } from './pages/AddTransaction';
-import { BudgetsPage } from './pages/BudgetsPage';
-import { RecurringPage } from './pages/RecurringPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { Login } from './pages/Login';
+// Lazy-loaded pages — each becomes a separate chunk
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const AddTransaction = lazy(() => import('./pages/AddTransaction').then(m => ({ default: m.AddTransaction })));
+const BudgetsPage = lazy(() => import('./pages/BudgetsPage').then(m => ({ default: m.BudgetsPage })));
+const RecurringPage = lazy(() => import('./pages/RecurringPage').then(m => ({ default: m.RecurringPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 
 // Components
 import { Layout } from './components/Layout';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useLocalStorage('aura_logged_in', false);
-  const [user, setUser] = useLocalStorage<User | null>('aura_user', null);
+  const { isLoggedIn, authLoading, authError, signInWithGoogle } = useApp();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-xl">
+            <img src="/logo.png" alt="Aura Finance" className="w-full h-full object-cover" />
+          </div>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
-      <Login 
-        onLogin={(fakeUser) => {
-          setUser(fakeUser);
-          setIsLoggedIn(true);
-        }} 
-      />
+      <Suspense fallback={<PageLoader />}>
+        <Login onSignIn={signInWithGoogle} error={authError} />
+      </Suspense>
     );
   }
 
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Layout title="Dashboard"><Dashboard /></Layout>} />
-        <Route path="/history" element={<Layout title="History"><HistoryPage /></Layout>} />
-        <Route path="/add" element={<Layout title="Add Transaction"><AddTransaction /></Layout>} />
-        <Route path="/edit/:id" element={<Layout title="Edit Transaction"><AddTransaction /></Layout>} />
-        <Route path="/budgets" element={<Layout title="Budgets"><BudgetsPage /></Layout>} />
-        <Route path="/recurring" element={<Layout title="Recurring"><RecurringPage /></Layout>} />
-        <Route path="/profile" element={<Layout title="Profile"><ProfilePage /></Layout>} />
-      </Routes>
+      <Suspense fallback={<Layout title=""><PageLoader /></Layout>}>
+        <Routes>
+          <Route path="/" element={<Layout title="Dashboard"><ErrorBoundary><Dashboard /></ErrorBoundary></Layout>} />
+          <Route path="/history" element={<Layout title="History"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
+          <Route path="/add" element={<Layout title="Add Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
+          <Route path="/edit/:id" element={<Layout title="Edit Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
+          <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
+          <Route path="/recurring" element={<Layout title="Recurring"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
+          <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

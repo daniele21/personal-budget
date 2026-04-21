@@ -3,12 +3,12 @@
   "name": "Aura Finance",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/aura/192/192",
+      "src": "/icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://picsum.photos/seed/aura/512/512",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }

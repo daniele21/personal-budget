@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
 
@@ -23,10 +23,28 @@ export const ConfirmDialog = ({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    cancelRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-message"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -40,7 +58,7 @@ export const ConfirmDialog = ({
                 <AlertTriangle className="w-5 h-5 text-tertiary" />
               </div>
             )}
-            <h3 className="font-headline font-bold text-on-surface text-lg">{title}</h3>
+            <h3 id="confirm-dialog-title" className="font-headline font-bold text-on-surface text-lg">{title}</h3>
           </div>
           <button
             onClick={onCancel}
@@ -51,10 +69,11 @@ export const ConfirmDialog = ({
           </button>
         </div>
 
-        <p className="text-sm text-on-surface-variant leading-relaxed">{message}</p>
+        <p id="confirm-dialog-message" className="text-sm text-on-surface-variant leading-relaxed">{message}</p>
 
         <div className="flex gap-3">
           <button
+            ref={cancelRef}
             onClick={onCancel}
             className="flex-1 py-3 rounded-2xl text-sm font-bold bg-surface-container-high text-on-surface-variant active:scale-95 transition-all"
           >

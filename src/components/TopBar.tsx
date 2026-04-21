@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Menu, Bell, Sun, Moon, Calendar as CalendarIcon } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { User } from '../types';
+import { useApp } from '../context/AppContext';
 
 interface TopBarProps {
   title: string;
@@ -10,8 +9,7 @@ interface TopBarProps {
 }
 
 export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarProps) => {
-  const [isDark, setIsDark] = useLocalStorage('aura_dark_mode', false);
-  const [user] = useLocalStorage<User | null>('aura_user', null);
+  const { isDarkMode: isDark, setIsDarkMode: setIsDark, user } = useApp();
 
   useEffect(() => {
     if (isDark) {
@@ -41,9 +39,9 @@ export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarPr
         >
           {isDark ? <Sun className="w-5 h-5 text-primary" /> : <Moon className="w-5 h-5 text-primary" />}
         </button>
-        <button className="p-2 hover:bg-surface-container-low rounded-full transition-colors relative">
+        <button className="p-2 hover:bg-surface-container-low rounded-full transition-colors relative" aria-label="Notifications">
           <Bell className="w-5 h-5 text-primary" />
-          <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-tertiary rounded-full border border-surface"></span>
+          <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-tertiary rounded-full border border-surface" aria-hidden="true"></span>
         </button>
         {showProfile && user && (
           <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-bold text-xs overflow-hidden border-2 border-surface shadow-sm ml-1">

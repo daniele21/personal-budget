@@ -3,22 +3,21 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Pencil, Check, X, Camera, Plus } from 'lucide-react';
 import { get, set, del } from 'idb-keyval';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { cn } from '../lib/utils';
-import { INITIAL_TRANSACTIONS, INITIAL_CATEGORIES, APP_CONFIG } from '../constants';
+import { APP_CONFIG } from '../constants';
 import { Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { useToast } from '../components/Toast';
+import { useApp } from '../context/AppContext';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
+  const { transactions, setTransactions, categories, setCategories } = useApp();
   const [amount, setAmount] = useState('0.00');
   const [type, setType] = useState<'expense' | 'income'>('expense');
-  const [categories, setCategories] = useLocalStorage<string[]>('aura_categories_list', INITIAL_CATEGORIES);
   const [category, setCategory] = useState(categories[0]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -49,8 +48,20 @@ export const AddTransaction = () => {
   }, [id, transactions]);
 
   const handleSave = async () => {
-    if (!title) {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
       toast('Please enter a title', 'warning');
+      return;
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast('Please enter a valid amount greater than 0', 'warning');
+      return;
+    }
+
+    if (!date) {
+      toast('Please select a date', 'warning');
       return;
     }
     
@@ -58,12 +69,12 @@ export const AddTransaction = () => {
     
     const newTransaction: Transaction = {
       id: transactionId,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       type,
       category,
       date: new Date(date).toISOString(),
-      title,
-      description,
+      title: trimmedTitle,
+      description: description.trim(),
       paymentMethod,
       // We store the flag in LocalStorage, but the actual data in IndexedDB
       attachmentUrl: attachmentUrl ? 'indexeddb' : undefined 

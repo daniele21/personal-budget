@@ -1,29 +1,23 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, X, Trash2 } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
-import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS, INITIAL_CATEGORIES } from '../constants';
-import { Budget, Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
-import { getMonthlyTransactions, formatMonthLabel } from '../utils/transactions';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { useApp } from '../context/AppContext';
+import { formatMonthLabel } from '../domain/finance';
+import { Card, Button, Input, Select } from '../components/ui';
 
 export const BudgetsPage = () => {
   const { toast } = useToast();
-  const [budgets, setBudgets] = useLocalStorage<Budget[]>('aura_budgets', INITIAL_BUDGETS);
-  const [transactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
-  const [categories] = useLocalStorage<string[]>('aura_categories_list', INITIAL_CATEGORIES);
+  const { budgets, setBudgets, categories, monthlyTransactions } = useApp();
   
   const [isAdding, setIsAdding] = useState(false);
   const [newCategory, setNewCategory] = useState(categories[0]);
   const [newLimit, setNewLimit] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-
-  // Monthly filter
-  const monthlyTransactions = getMonthlyTransactions(transactions);
 
   const getSpentForCategory = (category: string) => {
     return monthlyTransactions
@@ -32,7 +26,11 @@ export const BudgetsPage = () => {
   };
 
   const handleAddBudget = () => {
-    if (!newLimit || isNaN(parseFloat(newLimit))) return;
+    const parsedLimit = parseFloat(newLimit);
+    if (!newLimit || isNaN(parsedLimit) || parsedLimit <= 0) {
+      toast('Please enter a valid limit greater than 0', 'warning');
+      return;
+    }
     
     const existingIndex = budgets.findIndex(b => b.category === newCategory);
     if (existingIndex > -1) {
@@ -107,32 +105,22 @@ export const BudgetsPage = () => {
             <button onClick={() => setIsAdding(false)}><X className="w-5 h-5 text-on-surface-variant" /></button>
           </div>
           <div className="space-y-3">
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">Category</label>
-              <select 
-                className="w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-              >
-                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">Monthly Limit (€)</label>
-              <input 
-                type="number"
-                className="w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary"
-                placeholder="e.g. 500"
-                value={newLimit}
-                onChange={(e) => setNewLimit(e.target.value)}
-              />
-            </div>
-            <button 
-              onClick={handleAddBudget}
-              className="w-full bg-primary text-on-primary py-3 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all"
-            >
+            <Select
+              label="Category"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              options={categories.map(cat => ({ value: cat, label: cat }))}
+            />
+            <Input
+              label="Monthly Limit (€)"
+              type="number"
+              placeholder="e.g. 500"
+              value={newLimit}
+              onChange={(e) => setNewLimit(e.target.value)}
+            />
+            <Button fullWidth onClick={handleAddBudget}>
               Save Budget
-            </button>
+            </Button>
           </div>
         </motion.div>
       )}
@@ -143,7 +131,7 @@ export const BudgetsPage = () => {
           const budgetProgress = budget.limit > 0 ? Math.round((spent / budget.limit) * 100) : 0;
           
           return (
-            <div key={budget.category} className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5">
+            <Card key={budget.category}>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center">
@@ -188,7 +176,7 @@ export const BudgetsPage = () => {
               {budgetProgress > 100 && (
                 <p className="text-xs text-tertiary font-bold mt-2">🚨 Budget exceeded!</p>
               )}
-            </div>
+            </Card>
           );
         })}
       </div>

@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, X, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
-import { INITIAL_RECURRING, INITIAL_CATEGORIES, APP_CONFIG } from '../constants';
+import { APP_CONFIG } from '../constants';
 import { RecurringExpense } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { useApp } from '../context/AppContext';
+import { Button, Input, Select } from '../components/ui';
 
 export const RecurringPage = () => {
   const { toast } = useToast();
-  const [recurring, setRecurring] = useLocalStorage<RecurringExpense[]>('aura_recurring', INITIAL_RECURRING);
-  const [categories] = useLocalStorage<string[]>('aura_categories_list', INITIAL_CATEGORIES);
+  const { recurring, setRecurring, categories } = useApp();
   const [isAdding, setIsAdding] = useState(false);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -28,12 +28,25 @@ export const RecurringPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleAddRecurring = () => {
-    if (!newName || !newAmount) return;
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+      toast('Please enter a bill name', 'warning');
+      return;
+    }
+    const parsedAmount = parseFloat(newAmount);
+    if (!newAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast('Please enter a valid amount greater than 0', 'warning');
+      return;
+    }
+    if (!newDate) {
+      toast('Please select a due date', 'warning');
+      return;
+    }
     
     const newBill: RecurringExpense = {
       id: editingId || Math.random().toString(36).substr(2, 9),
-      name: newName,
-      amount: parseFloat(newAmount),
+      name: trimmedName,
+      amount: parsedAmount,
       dueDate: new Date(newDate).toISOString(),
       category: newCategory,
       frequency: 'monthly',
@@ -155,52 +168,36 @@ export const RecurringPage = () => {
             <button onClick={() => { setIsAdding(false); setEditingId(null); }}><X className="w-5 h-5 text-on-surface-variant" /></button>
           </div>
           <div className="space-y-3">
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">Bill Name</label>
-              <input 
-                className="w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary"
-                placeholder="e.g. Netflix"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+            <Input
+              label="Bill Name"
+              placeholder="e.g. Netflix"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label={`Amount (${APP_CONFIG.currency})`}
+                type="number"
+                placeholder="12.99"
+                value={newAmount}
+                onChange={(e) => setNewAmount(e.target.value)}
+              />
+              <Input
+                label="Due Date"
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">Amount ({APP_CONFIG.currency})</label>
-                <input 
-                  type="number"
-                  className="w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary"
-                  placeholder="12.99"
-                  value={newAmount}
-                  onChange={(e) => setNewAmount(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">Due Date</label>
-                <input 
-                  type="date"
-                  className="w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary"
-                  value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">Category</label>
-              <select 
-                className="w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-              >
-                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </div>
-            <button 
-              onClick={handleAddRecurring}
-              className="w-full bg-primary text-on-primary py-3 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all"
-            >
+            <Select
+              label="Category"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              options={categories.map(cat => ({ value: cat, label: cat }))}
+            />
+            <Button fullWidth onClick={handleAddRecurring}>
               {editingId ? 'Update Bill' : 'Add Bill'}
-            </button>
+            </Button>
           </div>
         </motion.div>
       )}

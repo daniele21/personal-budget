@@ -1,33 +1,26 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Plane, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight } from 'lucide-react';
+import { TrendingUp, Plane, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut } from 'lucide-react';
 import Papa from 'papaparse';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { formatCurrency } from '../utils/formatters';
-import { INITIAL_ACCOUNTS, INITIAL_TRANSACTIONS, INITIAL_BUDGETS } from '../constants';
-import { Account, Transaction, Budget } from '../types';
+import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
+import { Transaction, Budget } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { useApp } from '../context/AppContext';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
-  const [accounts] = useLocalStorage<Account[]>('aura_accounts', INITIAL_ACCOUNTS);
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
-  const [budgets, setBudgets] = useLocalStorage<Budget[]>('aura_budgets', INITIAL_BUDGETS);
+  const { accounts, transactions, setTransactions, budgets, setBudgets, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut } = useApp();
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetInput, setBudgetInput] = useState('');
   const transactionInputRef = useRef<HTMLInputElement>(null);
   const budgetInputRef = useRef<HTMLInputElement>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((acc, t) => acc + t.amount, 0);
-    
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc, t) => acc + t.amount, 0);
-
-  const initialBalance = INITIAL_ACCOUNTS.reduce((acc, curr) => acc + curr.balance, 0);
-  const netWorth = initialBalance + totalIncome - totalExpenses;
+  const totalIncome = allTimeTotals.income;
+  const totalExpenses = allTimeTotals.expenses;
+  const netWorth = currentBalance;
 
   const handleReset = () => {
     localStorage.clear();
@@ -149,6 +142,69 @@ export const ProfilePage = () => {
       </section>
 
       <section>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-headline font-bold text-primary">Settings</h3>
+          <Settings className="w-5 h-5 text-on-surface-variant" />
+        </div>
+        <div className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-on-surface">Monthly Budget</p>
+              <p className="text-xs text-on-surface-variant">Used for Safe to Spend calculation</p>
+            </div>
+            {editingBudget ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  autoFocus
+                  className="w-24 bg-surface-container-high border-none rounded-xl p-2 text-sm text-right font-bold focus:ring-2 focus:ring-primary"
+                  placeholder={monthlyBudget.toString()}
+                  value={budgetInput}
+                  onChange={(e) => setBudgetInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = parseFloat(budgetInput);
+                      if (!isNaN(val) && val > 0) {
+                        setMonthlyBudget(val);
+                        toast('Monthly budget updated', 'success');
+                      }
+                      setEditingBudget(false);
+                      setBudgetInput('');
+                    }
+                    if (e.key === 'Escape') {
+                      setEditingBudget(false);
+                      setBudgetInput('');
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const val = parseFloat(budgetInput);
+                    if (!isNaN(val) && val > 0) {
+                      setMonthlyBudget(val);
+                      toast('Monthly budget updated', 'success');
+                    }
+                    setEditingBudget(false);
+                    setBudgetInput('');
+                  }}
+                  className="px-3 py-2 bg-primary text-on-primary rounded-xl text-xs font-bold"
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditingBudget(true); setBudgetInput(monthlyBudget.toString()); }}
+                className="text-primary font-headline font-bold text-lg hover:bg-primary/5 px-3 py-1 rounded-xl transition-colors"
+              >
+                {formatCurrency(monthlyBudget)}
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-headline font-bold text-primary">Data Management</h3>
         </div>
@@ -239,7 +295,14 @@ export const ProfilePage = () => {
         </div>
       </section>
 
-      <section className="pt-4">
+      <section className="pt-4 space-y-3">
+        <button 
+          onClick={signOut}
+          className="w-full py-4 flex items-center justify-center gap-2 text-on-surface-variant font-bold text-xs uppercase tracking-widest border border-outline-variant/20 rounded-2xl hover:bg-surface-container-high transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
         <button 
           onClick={() => setShowResetDialog(true)}
           className="w-full py-4 text-tertiary font-bold text-xs uppercase tracking-widest border border-tertiary/20 rounded-2xl hover:bg-tertiary/5 transition-colors"

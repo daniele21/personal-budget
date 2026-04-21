@@ -1,20 +1,14 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Lightbulb, ArrowRight } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { TrendingUp, TrendingDown, Lightbulb } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
-import { INITIAL_ACCOUNTS, INITIAL_TRANSACTIONS, APP_CONFIG } from '../constants';
-import { Account, Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
-import {
-  getMonthlyTransactions,
-  getTransactionTotals,
-  getMonthOverMonthChange,
-  sortByDateDesc,
-  formatMonthLabel,
-} from '../utils/transactions';
+import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
+import { useRecurringAutoGenerate } from '../hooks/useRecurringAutoGenerate';
+import { formatMonthLabel } from '../domain/finance';
 
 const DONUT_COLORS = [
   'var(--color-primary)',
@@ -26,48 +20,28 @@ const DONUT_COLORS = [
 ];
 
 export const Dashboard = () => {
-  const navigate = useNavigate();
-  const [accounts] = useLocalStorage<Account[]>('aura_accounts', INITIAL_ACCOUNTS);
-  const [transactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
+  const {
+    transactions, setTransactions, budgets, recurring,
+    currentBalance, monthlyTotals, monthlyBudget,
+    safeToSpend, categorySpending, momChange, recentTransactions,
+  } = useApp();
 
-  // All-time totals for balance
-  const allTimeIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-  const allTimeExpenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-  const initialBalance = INITIAL_ACCOUNTS.reduce((acc, curr) => acc + curr.balance, 0);
-  const currentBalance = initialBalance + allTimeIncome - allTimeExpenses;
+  // Side-effect hooks (UI-level orchestration)
+  useRecurringAutoGenerate(recurring, transactions, setTransactions);
+  useBudgetAlerts(budgets, transactions);
 
-  // Monthly filter for everything else
-  const monthlyTransactions = getMonthlyTransactions(transactions);
-  const { income: monthlyIncome, expenses: monthlyExpenses } = getTransactionTotals(monthlyTransactions);
-  const monthlySavings = Math.max(0, monthlyIncome - monthlyExpenses);
-
-  // Month-over-month change (real, not hardcoded)
-  const momChange = getMonthOverMonthChange(transactions);
-
-  // Spending by category (current month only)
-  const monthlyExpenseTransactions = monthlyTransactions.filter(t => t.type === 'expense');
-  const categories = Array.from(new Set(monthlyExpenseTransactions.map(t => t.category)));
-  const spendingByCategory = categories.map(cat => ({
-    label: cat,
-    amount: monthlyExpenseTransactions.filter(t => t.category === cat).reduce((acc, t) => acc + t.amount, 0),
-  })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
-  const totalSpent = spendingByCategory.reduce((acc, c) => acc + c.amount, 0);
+  // Derived from context
+  const { income: monthlyIncome, expenses: monthlyExpenses } = monthlyTotals;
+  const monthlySavings = Math.max(0, monthlyTotals.net);
+  const { remaining: safeAmount, usedPercent } = safeToSpend;
+  const totalSpent = categorySpending.reduce((acc, c) => acc + c.amount, 0);
 
   // Donut segments
-  const donutSegments = spendingByCategory.map((cat, i) => ({
+  const donutSegments = categorySpending.map((cat, i) => ({
     ...cat,
+    label: cat.category,
     color: DONUT_COLORS[i % DONUT_COLORS.length],
-    percentage: totalSpent > 0 ? cat.amount / totalSpent : 0,
   }));
-
-  // Recent transactions sorted by date
-  const recentTransactions = sortByDateDesc(transactions).slice(0, 5);
-
-  // Safe to Spend
-  const safeToSpend = Math.max(0, APP_CONFIG.defaultMonthlyBudget - monthlyExpenses);
-  const usedPercent = APP_CONFIG.defaultMonthlyBudget > 0
-    ? Math.round((monthlyExpenses / APP_CONFIG.defaultMonthlyBudget) * 100)
-    : 0;
 
   // Build donut arcs
   let cumulativeOffset = 0;
@@ -115,9 +89,9 @@ export const Dashboard = () => {
                 "text-3xl font-headline font-bold",
                 usedPercent > 90 ? "text-tertiary" : "text-secondary"
               )}>
-                {formatCurrency(safeToSpend)}
+                {formatCurrency(safeAmount)}
               </p>
-              <p className="text-on-surface-variant text-xs">of {formatCurrency(APP_CONFIG.defaultMonthlyBudget)} monthly budget</p>
+              <p className="text-on-surface-variant text-xs">of {formatCurrency(monthlyBudget)} monthly budget</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -169,7 +143,7 @@ export const Dashboard = () => {
           <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
           <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel()}</span>
         </div>
-        {spendingByCategory.length > 0 ? (
+        {categorySpending.length > 0 ? (
           <div className="flex flex-col gap-6">
             <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -198,11 +172,11 @@ export const Dashboard = () => {
               </div>
             </div>
             <div className="space-y-2.5">
-              {spendingByCategory.slice(0, 6).map((cat, i) => (
-                <div key={cat.label} className="flex items-center justify-between">
+              {categorySpending.slice(0, 6).map((cat, i) => (
+                <div key={cat.category} className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}></div>
-                    <span className="text-xs text-on-surface font-medium">{cat.label}</span>
+                    <span className="text-xs text-on-surface font-medium">{cat.category}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-on-surface-variant">{totalSpent > 0 ? Math.round((cat.amount / totalSpent) * 100) : 0}%</span>

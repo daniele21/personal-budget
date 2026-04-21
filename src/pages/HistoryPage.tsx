@@ -10,25 +10,23 @@ import {
   CartesianGrid, 
   Tooltip
 } from 'recharts';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
-import { INITIAL_TRANSACTIONS } from '../constants';
-import { Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { useApp } from '../context/AppContext';
 
 export const HistoryPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
+  const { transactions, deleteTransaction: ctxDeleteTransaction } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const deleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+    ctxDeleteTransaction(id);
     setDeleteId(null);
     toast('Transaction deleted', 'info');
   };

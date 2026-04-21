@@ -1,22 +1,19 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Landmark } from 'lucide-react';
-import { User } from '../types';
 import { APP_CONFIG } from '../constants';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onSignIn: () => Promise<void>;
+  error: string | null;
 }
 
-export const Login = ({ onLogin }: LoginProps) => {
-  const handleFakeGoogleLogin = () => {
-    const fakeUser: User = {
-      id: 'google_' + Math.random().toString(36).substr(2, 9),
-      name: 'Daniele Moltisanti',
-      email: 'danielemoltisanti@gmail.com',
-      photoUrl: 'https://picsum.photos/seed/daniele/100/100'
-    };
-    onLogin(fakeUser);
+export const Login = ({ onSignIn, error }: LoginProps) => {
+  const [loading, setLoading] = React.useState(false);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    await onSignIn();
+    setLoading(false);
   };
 
   return (
@@ -25,9 +22,9 @@ export const Login = ({ onLogin }: LoginProps) => {
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-24 h-24 bg-primary rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-primary/20"
+          className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-primary/20 overflow-hidden"
         >
-          <Landmark className="w-12 h-12 text-on-primary" />
+          <img src="/logo.png" alt="Aura Finance" className="w-full h-full object-cover" />
         </motion.div>
         <div className="space-y-2">
           <h1 className="text-5xl font-headline font-extrabold text-primary tracking-tighter">{APP_CONFIG.name}</h1>
@@ -40,12 +37,21 @@ export const Login = ({ onLogin }: LoginProps) => {
       
       <div className="w-full max-w-xs space-y-4">
         <button 
-          onClick={handleFakeGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-surface-container-lowest text-on-surface py-4 px-6 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.97] border border-outline-variant/10"
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 bg-surface-container-lowest text-on-surface py-4 px-6 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.97] border border-outline-variant/10 disabled:opacity-60 disabled:pointer-events-none"
         >
-          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-          <span className="font-bold text-sm">Continue with Google</span>
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+          )}
+          <span className="font-bold text-sm">{loading ? 'Signing in...' : 'Continue with Google'}</span>
         </button>
+
+        {error && (
+          <p className="text-xs text-tertiary text-center font-medium">{error}</p>
+        )}
         
         <div className="flex items-center gap-4 py-2">
           <div className="h-px bg-outline-variant/20 flex-1"></div>
