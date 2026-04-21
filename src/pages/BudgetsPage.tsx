@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Trash2 } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS, INITIAL_CATEGORIES } from '../constants';
 import { Budget, Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { getMonthlyTransactions, formatMonthLabel } from '../utils/transactions';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 export const BudgetsPage = () => {
+  const { toast } = useToast();
   const [budgets, setBudgets] = useLocalStorage<Budget[]>('aura_budgets', INITIAL_BUDGETS);
   const [transactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
   const [categories] = useLocalStorage<string[]>('aura_categories_list', INITIAL_CATEGORIES);
@@ -16,9 +20,13 @@ export const BudgetsPage = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [newCategory, setNewCategory] = useState(categories[0]);
   const [newLimit, setNewLimit] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  // Monthly filter
+  const monthlyTransactions = getMonthlyTransactions(transactions);
 
   const getSpentForCategory = (category: string) => {
-    return transactions
+    return monthlyTransactions
       .filter(t => t.category === category && t.type === 'expense')
       .reduce((acc, t) => acc + t.amount, 0);
   };
@@ -31,11 +39,19 @@ export const BudgetsPage = () => {
       const updated = [...budgets];
       updated[existingIndex].limit = parseFloat(newLimit);
       setBudgets(updated);
+      toast('Budget updated', 'success');
     } else {
       setBudgets([...budgets, { category: newCategory, limit: parseFloat(newLimit), spent: 0, currency: '€' }]);
+      toast('Budget added', 'success');
     }
     setIsAdding(false);
     setNewLimit('');
+  };
+
+  const handleDeleteBudget = (category: string) => {
+    setBudgets(budgets.filter(b => b.category !== category));
+    setDeleteTarget(null);
+    toast('Budget removed', 'info');
   };
 
   const totalLimit = budgets.reduce((acc, b) => acc + b.limit, 0);
@@ -53,7 +69,7 @@ export const BudgetsPage = () => {
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-container opacity-20 rounded-full -mr-20 -mt-20 blur-3xl"></div>
         <div className="relative z-10">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-[10px] uppercase tracking-widest opacity-80 font-bold">Monthly Expenditure</p>
+            <p className="text-xs uppercase tracking-widest opacity-80 font-bold">{formatMonthLabel()} Expenditure</p>
             <button 
               onClick={() => setIsAdding(true)}
               className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors"
@@ -135,27 +151,57 @@ export const BudgetsPage = () => {
                   </div>
                   <div>
                     <h4 className="font-headline font-bold text-on-surface">{budget.category}</h4>
-                    <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">{formatCurrency(Math.max(0, budget.limit - spent))} left</p>
+                    <p className="text-xs text-on-surface-variant font-bold uppercase tracking-widest">
+                      {spent > budget.limit
+                        ? <span className="text-tertiary">Over by {formatCurrency(spent - budget.limit)}</span>
+                        : <>{formatCurrency(Math.max(0, budget.limit - spent))} left</>
+                      }
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-extrabold text-on-surface">{formatCurrency(spent)}</p>
-                  <p className="text-[10px] text-on-surface-variant font-medium">of {formatCurrency(budget.limit)}</p>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <p className="text-sm font-extrabold text-on-surface">{formatCurrency(spent)}</p>
+                    <p className="text-xs text-on-surface-variant font-medium">of {formatCurrency(budget.limit)}</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleteTarget(budget.category)}
+                    className="p-2 text-on-surface-variant hover:text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
+                    aria-label={`Delete ${budget.category} budget`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
               <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all duration-1000",
-                    budgetProgress > 90 ? "bg-tertiary" : "bg-primary"
+                    budgetProgress > 100 ? "bg-tertiary" : budgetProgress > 90 ? "bg-amber-500" : "bg-primary"
                   )}
                   style={{ width: `${Math.min(100, budgetProgress)}%` }}
                 ></div>
               </div>
+              {budgetProgress > 90 && budgetProgress <= 100 && (
+                <p className="text-xs text-amber-600 font-bold mt-2">⚠ Approaching limit</p>
+              )}
+              {budgetProgress > 100 && (
+                <p className="text-xs text-tertiary font-bold mt-2">🚨 Budget exceeded!</p>
+              )}
             </div>
           );
         })}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        title="Delete Budget"
+        message={`Remove the budget for "${deleteTarget}"? This won't delete any transactions.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteTarget && handleDeleteBudget(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </motion.div>
   );
 };

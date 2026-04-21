@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, History, PlusCircle, PieChart, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { LayoutDashboard, History, PlusCircle, PieChart, User, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const BottomNav = () => {
@@ -10,7 +10,7 @@ export const BottomNav = () => {
     { path: '/history', icon: History, label: 'History' },
     { path: '/add', icon: PlusCircle, label: 'Add', isSpecial: true },
     { path: '/budgets', icon: PieChart, label: 'Budgets' },
-    { path: '/recurring', icon: CalendarIcon, label: 'Bills' },
+    { path: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (

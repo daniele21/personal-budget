@@ -1,39 +1,77 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, Lightbulb, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Lightbulb, ArrowRight } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, INITIAL_TRANSACTIONS, APP_CONFIG } from '../constants';
 import { Account, Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
+import {
+  getMonthlyTransactions,
+  getTransactionTotals,
+  getMonthOverMonthChange,
+  sortByDateDesc,
+  formatMonthLabel,
+} from '../utils/transactions';
+
+const DONUT_COLORS = [
+  'var(--color-primary)',
+  'var(--color-secondary)',
+  'var(--color-tertiary)',
+  '#8b5cf6',
+  '#f59e0b',
+  '#06b6d4',
+];
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [accounts] = useLocalStorage<Account[]>('aura_accounts', INITIAL_ACCOUNTS);
   const [transactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
-  
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((acc, t) => acc + t.amount, 0);
-    
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc, t) => acc + t.amount, 0);
 
+  // All-time totals for balance
+  const allTimeIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+  const allTimeExpenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
   const initialBalance = INITIAL_ACCOUNTS.reduce((acc, curr) => acc + curr.balance, 0);
-  const currentBalance = initialBalance + totalIncome - totalExpenses;
+  const currentBalance = initialBalance + allTimeIncome - allTimeExpenses;
 
-  const categories = Array.from(new Set(transactions.map(t => t.category)));
+  // Monthly filter for everything else
+  const monthlyTransactions = getMonthlyTransactions(transactions);
+  const { income: monthlyIncome, expenses: monthlyExpenses } = getTransactionTotals(monthlyTransactions);
+  const monthlySavings = Math.max(0, monthlyIncome - monthlyExpenses);
+
+  // Month-over-month change (real, not hardcoded)
+  const momChange = getMonthOverMonthChange(transactions);
+
+  // Spending by category (current month only)
+  const monthlyExpenseTransactions = monthlyTransactions.filter(t => t.type === 'expense');
+  const categories = Array.from(new Set(monthlyExpenseTransactions.map(t => t.category)));
   const spendingByCategory = categories.map(cat => ({
     label: cat,
-    amount: transactions
-      .filter(t => t.category === cat && t.type === 'expense')
-      .reduce((acc, t) => acc + t.amount, 0)
+    amount: monthlyExpenseTransactions.filter(t => t.category === cat).reduce((acc, t) => acc + t.amount, 0),
   })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
-
   const totalSpent = spendingByCategory.reduce((acc, c) => acc + c.amount, 0);
+
+  // Donut segments
+  const donutSegments = spendingByCategory.map((cat, i) => ({
+    ...cat,
+    color: DONUT_COLORS[i % DONUT_COLORS.length],
+    percentage: totalSpent > 0 ? cat.amount / totalSpent : 0,
+  }));
+
+  // Recent transactions sorted by date
+  const recentTransactions = sortByDateDesc(transactions).slice(0, 5);
+
+  // Safe to Spend
+  const safeToSpend = Math.max(0, APP_CONFIG.defaultMonthlyBudget - monthlyExpenses);
+  const usedPercent = APP_CONFIG.defaultMonthlyBudget > 0
+    ? Math.round((monthlyExpenses / APP_CONFIG.defaultMonthlyBudget) * 100)
+    : 0;
+
+  // Build donut arcs
+  let cumulativeOffset = 0;
+  const CIRCUMFERENCE = 251.2;
 
   return (
     <motion.div 
@@ -42,143 +80,187 @@ export const Dashboard = () => {
       exit={{ opacity: 0, y: -20 }}
       className="space-y-4 pb-24"
     >
+      {/* Hero: Balance */}
       <section className="flex flex-col gap-4">
         <div className="space-y-0.5">
-          <p className="text-on-surface-variant text-[10px] uppercase tracking-[0.2em] font-bold">Total Portfolio Balance</p>
+          <p className="text-on-surface-variant text-xs uppercase tracking-[0.15em] font-bold">Total Balance</p>
           <div className="flex items-baseline gap-2">
             <h2 className="text-4xl sm:text-5xl font-headline font-extrabold tracking-tighter text-primary">
               {formatCurrency(currentBalance)}
             </h2>
-            <div className="bg-secondary-container/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 text-secondary" />
-              <span className="text-secondary font-bold text-xs">+8.2%</span>
-            </div>
+            {momChange !== null && (
+              <div className={cn(
+                "px-2 py-0.5 rounded-full flex items-center gap-1",
+                momChange >= 0 ? "bg-secondary-container/20" : "bg-tertiary/10"
+              )}>
+                {momChange >= 0
+                  ? <TrendingDown className="w-3 h-3 text-secondary" />
+                  : <TrendingUp className="w-3 h-3 text-tertiary" />
+                }
+                <span className={cn("font-bold text-xs", momChange >= 0 ? "text-secondary" : "text-tertiary")}>
+                  {momChange >= 0 ? '-' : '+'}{Math.abs(momChange).toFixed(1)}%
+                </span>
+              </div>
+            )}
           </div>
+          <p className="text-on-surface-variant text-xs font-medium">{formatMonthLabel()}</p>
         </div>
 
-        <div className="bg-primary text-on-primary p-5 rounded-3xl shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-container rounded-full -mr-16 -mt-16 blur-3xl opacity-30"></div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <Lightbulb className="w-5 h-5 text-secondary-container mb-2 fill-current" />
-            <p className="text-base leading-snug font-medium">
-              You've saved <span className="text-secondary-container font-bold">{formatCurrency(totalIncome - totalExpenses > 0 ? totalIncome - totalExpenses : 0)}</span> this month. Keep it up!
-            </p>
-            <button 
-              onClick={() => navigate('/history')}
-              className="mt-4 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 group-hover:gap-3 transition-all"
-            >
-              View Analysis <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="bg-surface-container-lowest p-5 rounded-3xl space-y-4 sm:col-span-2 flex flex-col justify-between shadow-sm border border-outline-variant/5">
+        {/* Safe to Spend — promoted to primary position */}
+        <div className="bg-surface-container-lowest p-5 rounded-3xl space-y-4 shadow-sm border border-outline-variant/5">
           <div>
-            <h3 className="text-on-surface-variant text-[10px] uppercase tracking-widest mb-2 font-bold">Safe to Spend</h3>
+            <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-2 font-bold">Safe to Spend</h3>
             <div className="space-y-0.5">
-              <p className="text-3xl font-headline font-bold text-secondary">{formatCurrency(Math.max(0, APP_CONFIG.defaultMonthlyBudget - totalExpenses))}</p>
-              <p className="text-on-surface-variant text-[10px]">Based on your monthly budget of {formatCurrency(APP_CONFIG.defaultMonthlyBudget)}</p>
+              <p className={cn(
+                "text-3xl font-headline font-bold",
+                usedPercent > 90 ? "text-tertiary" : "text-secondary"
+              )}>
+                {formatCurrency(safeToSpend)}
+              </p>
+              <p className="text-on-surface-variant text-xs">of {formatCurrency(APP_CONFIG.defaultMonthlyBudget)} monthly budget</p>
             </div>
           </div>
           <div className="space-y-2">
             <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-secondary rounded-full shadow-[0_0_10px_rgba(74,222,128,0.3)] transition-all duration-1000" 
-                style={{ width: `${Math.min(100, (totalExpenses / APP_CONFIG.defaultMonthlyBudget) * 100)}%` }}
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-1000",
+                  usedPercent > 90 ? "bg-tertiary shadow-[0_0_10px_rgba(220,38,38,0.3)]" :
+                  usedPercent > 75 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]" :
+                  "bg-secondary shadow-[0_0_10px_rgba(74,222,128,0.3)]"
+                )}
+                style={{ width: `${Math.min(100, usedPercent)}%` }}
               ></div>
             </div>
-            <div className="flex justify-between text-[9px] font-bold text-on-surface-variant uppercase">
-              <span>Used {Math.round((totalExpenses / APP_CONFIG.defaultMonthlyBudget) * 100)}%</span>
-              <span>Goal: 75%</span>
+            <div className="flex justify-between text-xs font-bold text-on-surface-variant">
+              <span>{usedPercent}% used</span>
+              <span>{100 - Math.min(100, usedPercent)}% remaining</span>
             </div>
           </div>
         </div>
+      </section>
 
+      {/* Income / Expenses grid */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-surface-container-low p-5 rounded-3xl border-none">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-start mb-3">
             <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-sm">
               <TrendingUp className="w-5 h-5 text-secondary rotate-180" />
             </div>
           </div>
-          <h3 className="text-on-surface-variant text-[10px] uppercase tracking-widest mb-1 font-bold">Total Income</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(totalIncome)}</p>
+          <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-1 font-bold">Income</h3>
+          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyIncome)}</p>
         </div>
 
         <div className="bg-surface-container-low p-5 rounded-3xl border-none">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-start mb-3">
             <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-sm">
               <TrendingUp className="w-5 h-5 text-tertiary" />
             </div>
           </div>
-          <h3 className="text-on-surface-variant text-[10px] uppercase tracking-widest mb-1 font-bold">Total Expenses</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(totalExpenses)}</p>
+          <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-1 font-bold">Expenses</h3>
+          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyExpenses)}</p>
         </div>
+      </div>
 
-        <div className="bg-surface-container-lowest p-5 rounded-3xl sm:col-span-2 shadow-sm border border-outline-variant/5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
-          </div>
+      {/* Spending by Category — multi-color donut */}
+      <div className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
+          <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel()}</span>
+        </div>
+        {spendingByCategory.length > 0 ? (
           <div className="flex flex-col gap-6">
             <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" fill="transparent" r="40" stroke="var(--color-surface-container-highest)" strokeWidth="12" />
-                <circle 
-                  cx="50" cy="50" fill="transparent" r="40" stroke="var(--color-primary)" strokeWidth="12" 
-                  strokeDasharray="251.2" 
-                  strokeDashoffset={251.2 - (251.2 * Math.min(1, totalSpent / 10000))} 
-                  strokeLinecap="round" 
-                  className="transition-all duration-1000"
-                />
+                {donutSegments.map((seg) => {
+                  const dashLength = CIRCUMFERENCE * seg.percentage;
+                  const offset = CIRCUMFERENCE - cumulativeOffset;
+                  cumulativeOffset += dashLength;
+                  return (
+                    <circle
+                      key={seg.label}
+                      cx="50" cy="50" fill="transparent" r="40"
+                      stroke={seg.color}
+                      strokeWidth="12"
+                      strokeDasharray={`${dashLength} ${CIRCUMFERENCE - dashLength}`}
+                      strokeDashoffset={offset}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000"
+                    />
+                  );
+                })}
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="text-[8px] text-on-surface-variant uppercase tracking-widest font-bold">Total</span>
+                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Total</span>
                 <span className="text-base font-headline font-bold text-on-surface">{formatCurrency(totalSpent)}</span>
               </div>
             </div>
-            <div className="space-y-2">
-              {spendingByCategory.slice(0, 4).map((cat, i) => (
+            <div className="space-y-2.5">
+              {spendingByCategory.slice(0, 6).map((cat, i) => (
                 <div key={cat.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", i === 0 ? "bg-primary" : i === 1 ? "bg-secondary" : "bg-tertiary")}></div>
-                    <span className="text-[10px] text-on-surface font-medium">{cat.label}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}></div>
+                    <span className="text-xs text-on-surface font-medium">{cat.label}</span>
                   </div>
-                  <span className="font-headline font-bold text-[10px] text-on-surface">{formatCurrency(cat.amount)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-on-surface-variant">{totalSpent > 0 ? Math.round((cat.amount / totalSpent) * 100) : 0}%</span>
+                    <span className="font-headline font-bold text-xs text-on-surface">{formatCurrency(cat.amount)}</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-sm text-on-surface-variant">No expenses this month yet</p>
+          </div>
+        )}
       </div>
 
+      {/* Savings insight — compact, moved below */}
+      {monthlySavings > 0 && (
+        <div className="bg-secondary/5 border border-secondary/10 p-4 rounded-2xl flex items-center gap-3">
+          <Lightbulb className="w-5 h-5 text-secondary flex-shrink-0" />
+          <p className="text-sm text-on-surface font-medium">
+            You've saved <span className="text-secondary font-bold">{formatCurrency(monthlySavings)}</span> this month!
+          </p>
+        </div>
+      )}
+
+      {/* Recent Transactions — sorted by date */}
       <section className="bg-surface-container-low rounded-3xl p-5">
         <div className="flex justify-between items-end mb-4">
           <div>
             <h3 className="text-base font-headline font-bold text-primary">Recent Transactions</h3>
-            <p className="text-on-surface-variant text-[10px]">Tracking your architectural ledger</p>
+            <p className="text-on-surface-variant text-xs">Latest movements</p>
           </div>
-          <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1 rounded-full text-[9px] font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-widest">
+          <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-wider">
             View All
           </Link>
         </div>
         <div className="space-y-1.5">
-          {transactions.slice(0, 3).map((t) => (
-            <div key={t.id} className="flex items-center justify-between p-2.5 bg-surface-container-lowest rounded-2xl hover:bg-white/5 transition-colors border border-outline-variant/5">
-              <div className="flex items-center gap-2.5">
+          {recentTransactions.length > 0 ? recentTransactions.map((t) => (
+            <div key={t.id} className="flex items-center justify-between p-3 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
+              <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-surface-container-high rounded-full flex items-center justify-center">
-                  <CategoryIcon category={t.category} className="w-3.5 h-3.5 text-primary" />
+                  <CategoryIcon category={t.category} className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs font-headline font-bold text-on-surface">{t.title}</p>
-                  <p className="text-[9px] text-on-surface-variant font-medium">{t.category} • Today</p>
+                  <p className="text-sm font-headline font-bold text-on-surface">{t.title}</p>
+                  <p className="text-xs text-on-surface-variant font-medium">{t.category} • {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                 </div>
               </div>
-              <p className={cn("text-xs font-headline font-bold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
+              <p className={cn("text-sm font-headline font-bold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
                 {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
               </p>
             </div>
-          ))}
+          )) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-on-surface-variant font-medium">No transactions yet. Tap + to add one!</p>
+            </div>
+          )}
         </div>
       </section>
     </motion.div>

@@ -7,12 +7,19 @@ import { formatCurrency } from '../utils/formatters';
 import { INITIAL_RECURRING, INITIAL_CATEGORIES, APP_CONFIG } from '../constants';
 import { RecurringExpense } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 export const RecurringPage = () => {
+  const { toast } = useToast();
   const [recurring, setRecurring] = useLocalStorage<RecurringExpense[]>('aura_recurring', INITIAL_RECURRING);
   const [categories] = useLocalStorage<string[]>('aura_categories_list', INITIAL_CATEGORIES);
   const [isAdding, setIsAdding] = useState(false);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Dynamic month navigation
+  const [viewDate, setViewDate] = useState(new Date());
   
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
@@ -55,9 +62,9 @@ export const RecurringPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Remove this recurring bill?')) {
-      setRecurring(recurring.filter(r => r.id !== id));
-    }
+    setRecurring(recurring.filter(r => r.id !== id));
+    setDeleteId(null);
+    toast('Recurring bill removed', 'info');
   };
 
   return (
@@ -69,19 +76,30 @@ export const RecurringPage = () => {
     >
       <section className="bg-surface-container-lowest rounded-3xl p-5 shadow-sm border border-outline-variant/5">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="font-headline text-lg font-bold text-primary">October 2023</h2>
+          <h2 className="font-headline text-lg font-bold text-primary">
+            {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h2>
           <div className="flex gap-2">
             <button 
               onClick={() => setIsAdding(true)}
               className="p-2 bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
+              aria-label="Add recurring bill"
             >
               <Plus className="w-4 h-4 text-primary" />
             </button>
             <div className="flex gap-1">
-              <button className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+              <button
+                onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
+                className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
+                aria-label="Previous month"
+              >
                 <ChevronLeft className="w-4 h-4 text-primary" />
               </button>
-              <button className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+              <button
+                onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
+                className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
+                aria-label="Next month"
+              >
                 <ChevronRight className="w-4 h-4 text-primary" />
               </button>
             </div>
@@ -90,30 +108,40 @@ export const RecurringPage = () => {
 
         <div className="grid grid-cols-7 gap-1 text-center mb-4">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
-            <span key={`${d}-${idx}`} className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{d}</span>
+            <span key={`${d}-${idx}`} className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{d}</span>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 31 }).map((_, i) => {
+        {(() => {
+          const year = viewDate.getFullYear();
+          const month = viewDate.getMonth();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          const firstDayOfWeek = new Date(year, month, 1).getDay();
+          const cells = Array.from({ length: firstDayOfWeek }).map((_, i) => (
+            <div key={`empty-${i}`} />
+          ));
+          const dayCells = Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const hasExpense = recurring.some(r => new Date(r.dueDate).getDate() === day);
             const isSelected = day === selectedDay;
+            const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
             return (
               <button 
-                key={i} 
+                key={day} 
                 onClick={() => setSelectedDay(day)}
                 className={cn(
-                  "aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-bold transition-all",
+                  "aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-bold transition-all min-h-[40px]",
                   isSelected ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "text-on-surface hover:bg-surface-container-low",
-                  hasExpense && !isSelected && "border border-secondary/30"
+                  hasExpense && !isSelected && "border border-secondary/30",
+                  isToday && !isSelected && "ring-1 ring-primary/30"
                 )}
               >
                 <span>{day}</span>
                 {hasExpense && <div className={cn("w-1 h-1 rounded-full mt-0.5", isSelected ? "bg-on-primary" : "bg-secondary")}></div>}
               </button>
             );
-          })}
-        </div>
+          });
+          return <div className="grid grid-cols-7 gap-1">{cells}{dayCells}</div>;
+        })()}
       </section>
 
       {isAdding && (
@@ -181,39 +209,51 @@ export const RecurringPage = () => {
         <div className="flex items-center justify-between px-1">
           <h3 className="font-headline font-extrabold text-lg">Upcoming Bills</h3>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{recurring.length} Due</span>
+            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{recurring.length} Due</span>
           </div>
         </div>
         <div className="space-y-3">
-          {recurring.map(item => (
-            <div key={item.id} className="group bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-outline-variant/5">
-              <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center">
+          {recurring.length > 0 ? recurring.map(item => (
+            <div key={item.id} className="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-outline-variant/5">
+              <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center flex-shrink-0">
                 <CategoryIcon category={item.category} className="text-primary" />
               </div>
-              <div className="flex-grow">
+              <div className="flex-grow min-w-0">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-headline font-bold text-sm text-on-surface">{item.name}</h4>
-                  <div className="flex items-center gap-3">
-                    <span className="font-headline font-extrabold text-sm text-primary">{formatCurrency(item.amount)}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                  <h4 className="font-headline font-bold text-sm text-on-surface truncate">{item.name}</h4>
+                  <span className="font-headline font-extrabold text-sm text-primary flex-shrink-0 ml-2">{formatCurrency(item.amount)}</span>
                 </div>
-                <div className="flex justify-between items-center mt-0.5">
-                  <span className="text-[10px] text-on-surface-variant font-medium">Due on {new Date(item.dueDate).toLocaleDateString()}</span>
-                  {item.priority && <span className="text-[8px] uppercase tracking-tighter bg-surface-container-highest px-2 py-0.5 rounded-full font-bold text-primary">Priority</span>}
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-xs text-on-surface-variant font-medium">Due {new Date(item.dueDate).toLocaleDateString()}</span>
+                  {item.priority && <span className="text-xs uppercase tracking-tight bg-surface-container-highest px-2 py-0.5 rounded-full font-bold text-primary">Priority</span>}
                 </div>
               </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => handleEdit(item)} className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all" aria-label="Edit bill">
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button onClick={() => setDeleteId(item.id)} className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all" aria-label="Delete bill">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          ))}
+          )) : (
+            <div className="text-center py-8 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant/20">
+              <p className="text-sm text-on-surface-variant font-medium">No recurring bills yet</p>
+            </div>
+          )}
         </div>
       </section>
+
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        title="Remove Recurring Bill"
+        message="Are you sure you want to remove this recurring bill?"
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
     </motion.div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Plane, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight } from 'lucide-react';
 import Papa from 'papaparse';
@@ -6,13 +6,17 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, INITIAL_TRANSACTIONS, INITIAL_BUDGETS } from '../constants';
 import { Account, Transaction, Budget } from '../types';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 export const ProfilePage = () => {
+  const { toast } = useToast();
   const [accounts] = useLocalStorage<Account[]>('aura_accounts', INITIAL_ACCOUNTS);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
   const [budgets, setBudgets] = useLocalStorage<Budget[]>('aura_budgets', INITIAL_BUDGETS);
   const transactionInputRef = useRef<HTMLInputElement>(null);
   const budgetInputRef = useRef<HTMLInputElement>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   const totalIncome = transactions
     .filter(t => t.type === 'income')
@@ -26,10 +30,8 @@ export const ProfilePage = () => {
   const netWorth = initialBalance + totalIncome - totalExpenses;
 
   const handleReset = () => {
-    if (window.confirm('Are you sure you want to reset all data? This cannot be undone.')) {
-      localStorage.clear();
-      window.location.reload();
-    }
+    localStorage.clear();
+    window.location.reload();
   };
 
   const handleExport = () => {
@@ -72,9 +74,9 @@ export const ProfilePage = () => {
               }
             });
             setTransactions(newTransactions);
-            alert(`Imported ${imported.length} transactions!`);
+            toast(`Imported ${imported.length} transactions!`, 'success');
           } else {
-            alert('Invalid transaction CSV format.');
+            toast('Invalid transaction CSV format.', 'error');
           }
         }
       });
@@ -92,9 +94,9 @@ export const ProfilePage = () => {
           const imported = results.data as any[];
           if (imported.length > 0 && imported[0].limit !== undefined) {
             setBudgets(imported as Budget[]);
-            alert(`Imported ${imported.length} budgets!`);
+            toast(`Imported ${imported.length} budgets!`, 'success');
           } else {
-            alert('Invalid budget CSV format.');
+            toast('Invalid budget CSV format.', 'error');
           }
         }
       });
@@ -239,12 +241,22 @@ export const ProfilePage = () => {
 
       <section className="pt-4">
         <button 
-          onClick={handleReset}
+          onClick={() => setShowResetDialog(true)}
           className="w-full py-4 text-tertiary font-bold text-xs uppercase tracking-widest border border-tertiary/20 rounded-2xl hover:bg-tertiary/5 transition-colors"
         >
           Reset All Data
         </button>
       </section>
+
+      <ConfirmDialog
+        isOpen={showResetDialog}
+        title="Reset All Data"
+        message="Are you sure you want to reset all data? This will permanently delete all transactions, budgets, and settings. This cannot be undone."
+        confirmLabel="Reset Everything"
+        variant="danger"
+        onConfirm={handleReset}
+        onCancel={() => setShowResetDialog(false)}
+      />
     </motion.div>
   );
 };

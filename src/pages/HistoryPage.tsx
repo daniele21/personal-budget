@@ -16,17 +16,21 @@ import { formatCurrency } from '../utils/formatters';
 import { INITIAL_TRANSACTIONS } from '../constants';
 import { Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 export const HistoryPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const deleteTransaction = (id: string) => {
-    if (window.confirm('Delete this transaction?')) {
-      setTransactions(transactions.filter(t => t.id !== id));
-    }
+    setTransactions(transactions.filter(t => t.id !== id));
+    setDeleteId(null);
+    toast('Transaction deleted', 'info');
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -146,38 +150,38 @@ export const HistoryPage = () => {
           </div>
           <div className="space-y-2">
             {filteredTransactions.length > 0 ? filteredTransactions.map(t => (
-              <div key={t.id} className="group flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl hover:bg-surface-container-low transition-colors border border-outline-variant/5">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary">
+              <div key={t.id} className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
                     <CategoryIcon category={t.category} className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-on-surface">{t.title}</h4>
-                    <p className="text-[10px] font-medium text-on-surface-variant line-clamp-1">{t.description}</p>
-                    <p className="text-[9px] font-medium text-on-surface-variant/60 mt-0.5">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-on-surface truncate">{t.title}</h4>
+                    <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{t.description}</p>
+                    <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                   <div className="flex flex-col items-end">
                     <p className={cn("text-sm font-extrabold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
                       {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                     </p>
                     {t.attachmentUrl && <Paperclip className="w-3 h-3 text-primary/40 mt-1" />}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => navigate(`/edit/${t.id}`)}
-                      className="opacity-0 group-hover:opacity-100 p-2 text-primary hover:bg-primary/10 rounded-full transition-all"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => deleteTransaction(t.id)}
-                      className="opacity-0 group-hover:opacity-100 p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => navigate(`/edit/${t.id}`)}
+                    className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all"
+                    aria-label="Edit transaction"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setDeleteId(t.id)}
+                    className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
+                    aria-label="Delete transaction"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             )) : (
@@ -189,6 +193,16 @@ export const HistoryPage = () => {
           </div>
         </div>
       </section>
+
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteId && deleteTransaction(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
     </motion.div>
   );
 };

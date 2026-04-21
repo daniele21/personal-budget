@@ -9,10 +9,12 @@ import { INITIAL_TRANSACTIONS, INITIAL_CATEGORIES, APP_CONFIG } from '../constan
 import { Transaction } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
+import { useToast } from '../components/Toast';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('aura_transactions', INITIAL_TRANSACTIONS);
   const [amount, setAmount] = useState('0.00');
   const [type, setType] = useState<'expense' | 'income'>('expense');
@@ -48,7 +50,7 @@ export const AddTransaction = () => {
 
   const handleSave = async () => {
     if (!title) {
-      alert('Please enter a title');
+      toast('Please enter a title', 'warning');
       return;
     }
     
@@ -79,7 +81,7 @@ export const AddTransaction = () => {
       setTransactions([newTransaction, ...transactions]);
     }
     
-    alert(id ? 'Transaction updated successfully!' : 'Transaction saved successfully!');
+    toast(id ? 'Transaction updated!' : 'Transaction saved!', 'success');
     navigate('/history');
   };
 
@@ -88,7 +90,7 @@ export const AddTransaction = () => {
     if (file) {
       // Limit file size to 2MB for IndexedDB safety (though it can handle more)
       if (file.size > 2 * 1024 * 1024) {
-        alert('File is too large. Please select an image under 2MB.');
+        toast('File is too large. Please select an image under 2MB.', 'error');
         return;
       }
       const reader = new FileReader();
