@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── allowedUsers ──────────────────────────────────────────────
+    // Any authenticated user can read (to check if their own hash exists).
+    // Only the admin can write (add/remove users) via the app;
+    // the admin email hash is verified server-side in app logic.
+    match /allowedUsers/{hash} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'danielemoltisanti@gmail.com';
+    }
+
+    // ── Default: deny everything else ─────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

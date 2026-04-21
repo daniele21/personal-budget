@@ -51,7 +51,7 @@ export function useFirebaseAuth(): AuthState {
             await firebaseSignOut(auth);
             setUser(null);
             setAdminFlag(false);
-            setError('Access denied. Your account is not authorized.');
+            setError('Il tuo account non ha il permesso di accedere. Scrivi a info@staituned.com per richiedere l\'accesso.');
             setLoading(false);
             return;
           }
@@ -93,9 +93,10 @@ export function useFirebaseAuth(): AuthState {
 
   const signOut = useCallback(async () => {
     setError(null);
+    setUser(null);
+    setAdminFlag(false);
     try {
       await firebaseSignOut(auth);
-      setUser(null);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign-out failed';
       setError(message);

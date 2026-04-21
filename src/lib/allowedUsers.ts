@@ -14,7 +14,7 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
+  getDocFromServer,
   setDoc,
   deleteDoc,
   serverTimestamp,
@@ -98,15 +98,21 @@ export async function isEmailAllowed(email: string): Promise<boolean> {
 
   const h = await hashEmail(lower);
 
-  // Try Firestore first
+  // Try Firestore directly (bypass local cache to get a fast server response)
   try {
     const docRef = doc(db, COLLECTION, h);
-    const snap = await getDoc(docRef);
+    const TIMEOUT_MS = 5_000;
+    const snap = await Promise.race([
+      getDocFromServer(docRef),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore timeout')), TIMEOUT_MS),
+      ),
+    ]);
     // Opportunistically refresh full cache in background
     syncCacheInBackground();
     return snap.exists();
   } catch {
-    // Offline — use cache
+    // Offline or timeout — use cache
     console.warn('[AllowedUsers] Firestore unreachable, using local cache');
     const cached = readCache();
     return cached.some((c) => c.hash === h);

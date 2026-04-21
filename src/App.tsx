@@ -42,32 +42,30 @@ export default function App() {
     );
   }
 
-  if (!isLoggedIn) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <Login onSignIn={signInWithGoogle} error={authError} />
-      </Suspense>
-    );
-  }
-
   return (
     <Router>
-      <Suspense fallback={<Layout title=""><PageLoader /></Layout>}>
-        <Routes>
-          <Route path="/" element={<Layout title="Dashboard"><ErrorBoundary><Dashboard /></ErrorBoundary></Layout>} />
-          <Route path="/history" element={<Layout title="History"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
-          <Route path="/add" element={<Layout title="Add Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
-          <Route path="/edit/:id" element={<Layout title="Edit Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
-          <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
-          <Route path="/recurring" element={<Layout title="Recurring"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
-          <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
-          <Route path="/calendar" element={<Layout title="Calendar"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
-          <Route path="/insights" element={<Layout title="Insights"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
-          {isAdmin && (
-            <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
-          )}
-        </Routes>
-      </Suspense>
+      {!isLoggedIn ? (
+        <Suspense fallback={<PageLoader />}>
+          <Login onSignIn={signInWithGoogle} error={authError} />
+        </Suspense>
+      ) : (
+        <Suspense fallback={<Layout title=""><PageLoader /></Layout>}>
+          <Routes>
+            <Route path="/" element={<Layout title="Dashboard"><ErrorBoundary><Dashboard /></ErrorBoundary></Layout>} />
+            <Route path="/history" element={<Layout title="History"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
+            <Route path="/add" element={<Layout title="Add Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
+            <Route path="/edit/:id" element={<Layout title="Edit Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
+            <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
+            <Route path="/recurring" element={<Layout title="Recurring"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
+            <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
+            <Route path="/calendar" element={<Layout title="Calendar"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
+            <Route path="/insights" element={<Layout title="Insights"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
+            {isAdmin && (
+              <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
+            )}
+          </Routes>
+        </Suspense>
+      )}
     </Router>
   );
 }
