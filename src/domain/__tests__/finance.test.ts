@@ -356,29 +356,56 @@ describe('getRecurringDue', () => {
 
   it('generates transaction when bill is due (past due day this month)', () => {
     const bill = recurring({ dueDate: '2026-04-05T00:00:00.000Z' });
-    const result = getRecurringDue([bill], {}, today);
+    const result = getRecurringDue([bill], [], today);
     expect(result).toHaveLength(1);
     expect(result[0].transaction.amount).toBe(12.99);
     expect(result[0].transaction.category).toBe('Entertainment');
     expect(result[0].transaction.type).toBe('expense');
+    expect(result[0].transaction.sourceRecurringId).toBe('r1');
+    expect(result[0].transaction.sourceMonthKey).toBe('r1_2026_3');
   });
 
-  it('does not generate when already generated this month', () => {
+  it('does not generate when a tagged recurring transaction already exists this month', () => {
     const bill = recurring();
-    const alreadyGenerated = { [`r1_2026_3`]: 'some_tx_id' };
-    const result = getRecurringDue([bill], alreadyGenerated, today);
+    const result = getRecurringDue([bill], [{
+      id: 'tx-1',
+      amount: 12.99,
+      type: 'expense',
+      category: 'Entertainment',
+      date: '2026-04-05T00:00:00.000Z',
+      title: 'Netflix',
+      description: 'Auto-generated from recurring: Netflix',
+      paymentMethod: 'Bank Transfer',
+      sourceRecurringId: 'r1',
+      sourceMonthKey: 'r1_2026_3',
+    }], today);
+    expect(result).toHaveLength(0);
+  });
+
+  it('does not generate when a legacy auto-generated recurring transaction already exists this month', () => {
+    const bill = recurring();
+    const result = getRecurringDue([bill], [{
+      id: 'tx-legacy',
+      amount: 12.99,
+      type: 'expense',
+      category: 'Entertainment',
+      date: '2026-04-05T00:00:00.000Z',
+      title: 'Netflix',
+      description: 'Auto-generated from recurring: Netflix',
+      paymentMethod: 'Bank Transfer',
+    }], today);
     expect(result).toHaveLength(0);
   });
 
   it('does not generate when due date is in the future this month', () => {
     const bill = recurring({ dueDate: '2026-04-20T00:00:00.000Z' });
-    const result = getRecurringDue([bill], {}, today);
+    const result = getRecurringDue([bill], [], today);
     expect(result).toHaveLength(0);
   });
 
   it('generates on exact due day', () => {
     const bill = recurring({ dueDate: '2026-04-15T00:00:00.000Z' });
-    const result = getRecurringDue([bill], {}, today);
+    const result = getRecurringDue([bill], [], today);
     expect(result).toHaveLength(1);
   });
 
@@ -388,12 +415,12 @@ describe('getRecurringDue', () => {
       recurring({ id: 'r2', name: 'Spotify', amount: 9.99, dueDate: '2026-04-10T00:00:00.000Z' }),
       recurring({ id: 'r3', name: 'Gym', amount: 30, dueDate: '2026-04-25T00:00:00.000Z' }), // future
     ];
-    const result = getRecurringDue(bills, {}, today);
+    const result = getRecurringDue(bills, [], today);
     expect(result).toHaveLength(2);
   });
 
   it('returns empty when no recurring bills', () => {
-    expect(getRecurringDue([], {}, today)).toHaveLength(0);
+    expect(getRecurringDue([], [], today)).toHaveLength(0);
   });
 });
 

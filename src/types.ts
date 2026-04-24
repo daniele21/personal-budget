@@ -11,6 +11,8 @@ export interface Transaction {
   paymentMethod: string;
   attachmentUrl?: string;
   verified?: boolean;
+  sourceRecurringId?: string;
+  sourceMonthKey?: string;
 }
 
 export interface Budget {

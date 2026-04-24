@@ -131,13 +131,32 @@ export interface GeneratedTransaction {
   monthKey: string;
 }
 
+function isSameMonth(date: string, target: Date): boolean {
+  const parsed = new Date(date);
+  return (
+    parsed.getFullYear() === target.getFullYear() &&
+    parsed.getMonth() === target.getMonth()
+  );
+}
+
+function matchesLegacyRecurringTransaction(transaction: Transaction, bill: RecurringExpense, today: Date): boolean {
+  return (
+    transaction.type === 'expense' &&
+    transaction.amount === bill.amount &&
+    transaction.category === bill.category &&
+    transaction.title === bill.name &&
+    transaction.description === `Auto-generated from recurring: ${bill.name}` &&
+    isSameMonth(transaction.date, today)
+  );
+}
+
 /**
  * Determines which recurring bills should generate transactions.
  * Pure function — does not perform side effects.
  */
 export function getRecurringDue(
   recurring: RecurringExpense[],
-  alreadyGenerated: Record<string, string>,
+  existingTransactions: Transaction[],
   today: Date = new Date()
 ): GeneratedTransaction[] {
   const result: GeneratedTransaction[] = [];
@@ -146,7 +165,12 @@ export function getRecurringDue(
     const dueDate = new Date(bill.dueDate);
     const monthKey = `${bill.id}_${today.getFullYear()}_${today.getMonth()}`;
 
-    if (alreadyGenerated[monthKey]) return;
+    const alreadyGenerated = existingTransactions.some((transaction) => (
+      transaction.sourceRecurringId === bill.id &&
+      transaction.sourceMonthKey === monthKey
+    ) || matchesLegacyRecurringTransaction(transaction, bill, today));
+
+    if (alreadyGenerated) return;
 
     const dueDayThisMonth = new Date(today.getFullYear(), today.getMonth(), dueDate.getDate());
     dueDayThisMonth.setHours(0, 0, 0, 0);
@@ -164,6 +188,8 @@ export function getRecurringDue(
         title: bill.name,
         description: `Auto-generated from recurring: ${bill.name}`,
         paymentMethod: 'Bank Transfer',
+        sourceRecurringId: bill.id,
+        sourceMonthKey: monthKey,
       };
 
       result.push({ bill, transaction, monthKey });
