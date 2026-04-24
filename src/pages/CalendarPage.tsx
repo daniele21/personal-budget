@@ -408,25 +408,26 @@ export const CalendarPage = () => {
                 const display = getRecurringDisplayValues(item, monthKey);
 
                 return (
-                <div key={item.id} className="flex items-center gap-3 bg-primary/5 rounded-2xl p-3 border border-primary/10">
-                  <CategoryIcon category={display.category} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-on-surface truncate">{display.name}</p>
-                    <p className="text-[10px] text-on-surface-variant">
-                      {display.category} • monthly • active until {formatUtcDateLabel(item.endDate)}
-                    </p>
+                  <div key={item.id} className="flex items-center gap-3 bg-primary/5 rounded-2xl p-3 border border-primary/10">
+                    <CategoryIcon category={display.category} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-on-surface truncate">{display.name}</p>
+                      <p className="text-[10px] text-on-surface-variant">
+                        {display.category} • monthly • active until {formatUtcDateLabel(item.endDate)}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{formatCurrency(display.amount)}</span>
+                    <div className="flex gap-0.5">
+                      <button onClick={() => openRecurringActions(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label="Edit recurring options">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-sm font-bold text-primary">{formatCurrency(display.amount)}</span>
-                  <div className="flex gap-0.5">
-                    <button onClick={() => openRecurringActions(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label="Edit recurring options">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )})}
+                );
+              })}
             </div>
           )}
 

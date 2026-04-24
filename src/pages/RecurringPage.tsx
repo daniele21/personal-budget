@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, X, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { formatCurrency } from '../utils/formatters';
 import { APP_CONFIG } from '../constants';
 import { RecurringExpense } from '../types';
-import { CategoryIcon } from '../components/CategoryIcon';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { Button, Input } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
+import { RecurringEntryCard } from '../components/RecurringEntryCard';
 import {
-  formatUtcDateLabel,
   getDefaultRecurringEndDate,
   getUtcDateInputValue,
   getUtcDayOfMonth,
@@ -296,33 +294,15 @@ export const RecurringPage = () => {
         </div>
         <div className="space-y-3">
           {recurring.length > 0 ? recurring.map((item) => (
-            <div key={item.id} className="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-outline-variant/5">
-              <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center flex-shrink-0">
-                <CategoryIcon category={item.category} className="text-primary" />
-              </div>
-              <div className="flex-grow min-w-0">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-headline font-bold text-sm text-on-surface truncate">{item.name}</h4>
-                  <span className="font-headline font-extrabold text-sm text-primary flex-shrink-0 ml-2">{formatCurrency(item.amount)}</span>
-                </div>
-                <div className="flex justify-between items-center mt-1 gap-3">
-                  <span className="text-xs text-on-surface-variant font-medium">
-                    Day {item.dayOfMonth} • {formatUtcDateLabel(item.startDate)} → {formatUtcDateLabel(item.endDate)}
-                  </span>
-                  <span className="text-xs uppercase tracking-tight bg-surface-container-highest px-2 py-0.5 rounded-full font-bold text-primary">
-                    {item.overrides?.length ?? 0} monthly edits
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => handleEdit(item)} className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all" aria-label="Edit bill">
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button onClick={() => setDeleteId(item.id)} className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all" aria-label="Delete bill">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <RecurringEntryCard
+              key={item.id}
+              amount={item.amount}
+              category={item.category}
+              onDelete={() => setDeleteId(item.id)}
+              onEdit={() => handleEdit(item)}
+              subtitle={`Day ${item.dayOfMonth} • monthly • ${item.category}`}
+              title={item.name}
+            />
           )) : (
             <div className="text-center py-8 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant/20">
               <p className="text-sm text-on-surface-variant font-medium">No recurring bills yet</p>
