@@ -16,9 +16,11 @@ import { useToast } from '../components/Toast';
 import {
   formatUtcDateLabel,
   getDefaultRecurringEndDate,
+  getRecurringOverride,
   getUtcDateInputValue,
   getUtcDayOfMonth,
   isRecurringActiveInMonth,
+  upsertRecurringOverride,
 } from '../domain/recurring';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -33,7 +35,7 @@ const getMonthDays = (year: number, month: number) => {
 
 export const CalendarPage = () => {
   const navigate = useNavigate();
-  const { transactions, recurring, setRecurring, categories, addCategory } = useApp();
+  const { transactions, setTransactions, recurring, setRecurring, categories, addCategory } = useApp();
   const { toast } = useToast();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -50,6 +52,12 @@ export const CalendarPage = () => {
   const [newType, setNewType] = useState<TransactionType>('expense');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
+  const [recurringActionTarget, setRecurringActionTarget] = useState<RecurringExpense | null>(null);
+  const [occurrenceTarget, setOccurrenceTarget] = useState<RecurringExpense | null>(null);
+  const [occurrenceName, setOccurrenceName] = useState('');
+  const [occurrenceAmount, setOccurrenceAmount] = useState('');
+  const [occurrenceCategory, setOccurrenceCategory] = useState(categories[0] || 'Housing');
+  const [isOccurrenceAmountKeypadOpen, setIsOccurrenceAmountKeypadOpen] = useState(false);
 
   const { startOffset, totalDays } = useMemo(
     () => getMonthDays(viewYear, viewMonth),
@@ -90,8 +98,19 @@ export const CalendarPage = () => {
   const selectedTx = selectedDate ? txByDate[selectedDate] || [] : [];
   const selectedDay = selectedDate ? parseInt(selectedDate.split('-')[2], 10) : null;
   const selectedRecurring = selectedDay ? recurringByDay[selectedDay] || [] : [];
+  const visibleMonthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const monthLabel = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  const getRecurringDisplayValues = (item: RecurringExpense, monthKey: string) => {
+    const override = getRecurringOverride(item, monthKey);
+
+    return {
+      name: override?.title ?? item.name,
+      amount: override?.amount ?? item.amount,
+      category: override?.category ?? item.category,
+    };
+  };
 
   const goBack = () => {
     if (viewMonth === 0) {
@@ -207,6 +226,75 @@ export const CalendarPage = () => {
     setShowRecurringForm(true);
   };
 
+  const openRecurringActions = (item: RecurringExpense) => {
+    setRecurringActionTarget(item);
+  };
+
+  const openOccurrenceEditor = (item: RecurringExpense) => {
+    if (!selectedDate) return;
+
+    const monthKey = selectedDate.slice(0, 7);
+    const override = getRecurringOverride(item, monthKey);
+    const linkedTransaction = transactions.find((transaction) => (
+      transaction.sourceRecurringId === item.id &&
+      transaction.sourceMonthKey === monthKey
+    ));
+
+    setOccurrenceTarget(item);
+    setOccurrenceName(override?.title ?? linkedTransaction?.title ?? item.name);
+    setOccurrenceAmount(String(override?.amount ?? linkedTransaction?.amount ?? item.amount));
+    setOccurrenceCategory(override?.category ?? linkedTransaction?.category ?? item.category);
+    setRecurringActionTarget(null);
+  };
+
+  const handleSaveOccurrence = () => {
+    if (!occurrenceTarget || !selectedDate) return;
+
+    const trimmedName = occurrenceName.trim();
+    if (!trimmedName) {
+      toast('Enter a name', 'warning');
+      return;
+    }
+
+    const parsedAmount = parseFloat(occurrenceAmount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast('Enter a valid amount', 'warning');
+      return;
+    }
+
+    const monthKey = selectedDate.slice(0, 7);
+    const occurrenceDate = new Date(`${selectedDate}T00:00:00.000Z`).toISOString();
+
+    setRecurring(recurring.map((item) => (
+      item.id === occurrenceTarget.id
+        ? upsertRecurringOverride(item, {
+          monthKey,
+          title: trimmedName,
+          amount: parsedAmount,
+          category: occurrenceCategory,
+          type: occurrenceTarget.type ?? 'expense',
+          date: occurrenceDate,
+        })
+        : item
+    )));
+
+    setTransactions(transactions.map((transaction) => (
+      transaction.sourceRecurringId === occurrenceTarget.id && transaction.sourceMonthKey === monthKey
+        ? {
+          ...transaction,
+          title: trimmedName,
+          amount: parsedAmount,
+          category: occurrenceCategory,
+          date: occurrenceDate,
+          recurringEdited: true,
+        }
+        : transaction
+    )));
+
+    setOccurrenceTarget(null);
+    toast('Only this occurrence was updated', 'success');
+  };
+
   const handleDelete = (id: string) => {
     setRecurring(recurring.filter((item) => item.id !== id));
     setDeleteId(null);
@@ -315,18 +403,22 @@ export const CalendarPage = () => {
               <p className="text-[10px] uppercase tracking-widest text-primary font-bold flex items-center gap-1.5">
                 <RefreshCw className="w-3 h-3" /> Recurring on day {selectedDay}
               </p>
-              {selectedRecurring.map((item) => (
+              {selectedRecurring.map((item) => {
+                const monthKey = selectedDate ? selectedDate.slice(0, 7) : visibleMonthKey;
+                const display = getRecurringDisplayValues(item, monthKey);
+
+                return (
                 <div key={item.id} className="flex items-center gap-3 bg-primary/5 rounded-2xl p-3 border border-primary/10">
-                  <CategoryIcon category={item.category} />
+                  <CategoryIcon category={display.category} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-on-surface truncate">{item.name}</p>
+                    <p className="text-sm font-bold text-on-surface truncate">{display.name}</p>
                     <p className="text-[10px] text-on-surface-variant">
-                      {item.category} • monthly • active until {formatUtcDateLabel(item.endDate)}
+                      {display.category} • monthly • active until {formatUtcDateLabel(item.endDate)}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-primary">{formatCurrency(item.amount)}</span>
+                  <span className="text-sm font-bold text-primary">{formatCurrency(display.amount)}</span>
                   <div className="flex gap-0.5">
-                    <button onClick={() => handleEdit(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label="Edit">
+                    <button onClick={() => openRecurringActions(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label="Edit recurring options">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label="Delete">
@@ -334,7 +426,7 @@ export const CalendarPage = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
 
@@ -467,6 +559,107 @@ export const CalendarPage = () => {
         </div>
       )}
 
+      {recurringActionTarget && (
+        <div className="fixed inset-0 z-[165] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+          <button type="button" aria-label="Close recurring actions" className="absolute inset-0" onClick={() => setRecurringActionTarget(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative z-10 w-full max-w-sm rounded-t-3xl bg-surface-container-lowest p-6 shadow-2xl border border-outline-variant/10 sm:rounded-3xl"
+          >
+            <div className="space-y-1 mb-5">
+              <h3 className="font-headline font-bold text-primary">Edit Recurring</h3>
+              <p className="text-sm text-on-surface-variant">
+                Choose whether to edit only the occurrence for {selectedDate ? formatUtcDateLabel(`${selectedDate}T00:00:00.000Z`) : 'this month'} or the whole recurring series.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => openOccurrenceEditor(recurringActionTarget)}
+                className="w-full rounded-2xl bg-primary text-on-primary px-4 py-3 text-left"
+              >
+                <p className="font-bold text-sm">Only This Occurrence</p>
+                <p className="text-xs opacity-80 mt-1">Changes apply only to the selected month.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleEdit(recurringActionTarget);
+                  setRecurringActionTarget(null);
+                }}
+                className="w-full rounded-2xl bg-surface-container-high px-4 py-3 text-left"
+              >
+                <p className="font-bold text-sm text-on-surface">Whole Recurring Series</p>
+                <p className="text-xs text-on-surface-variant mt-1">Changes apply to the base recurring plan.</p>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {occurrenceTarget && (
+        <div className="fixed inset-0 z-[175] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+          <button type="button" aria-label="Close occurrence editor" className="absolute inset-0" onClick={() => setOccurrenceTarget(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative z-10 w-full max-w-md rounded-t-3xl bg-surface-container-lowest p-6 shadow-2xl border border-outline-variant/10 sm:rounded-3xl"
+          >
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h3 className="font-headline font-bold text-primary">Edit Only This Occurrence</h3>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {selectedDate ? formatUtcDateLabel(`${selectedDate}T00:00:00.000Z`) : 'Selected month'} only
+                </p>
+              </div>
+              <button onClick={() => setOccurrenceTarget(null)} aria-label="Close occurrence editor">
+                <X className="w-5 h-5 text-on-surface-variant" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(148px,0.8fr)] gap-3 items-stretch">
+                <div className="rounded-2xl bg-surface-container-high px-4 py-3 min-h-[72px] flex flex-col">
+                  <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-2">
+                    Name
+                  </label>
+                  <input
+                    className="flex-1 w-full bg-transparent border-none p-0 text-lg font-headline font-bold text-on-surface placeholder:text-on-surface-variant/45 focus:ring-0 leading-none"
+                    placeholder="e.g. Mortgage"
+                    value={occurrenceName}
+                    onChange={(e) => setOccurrenceName(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOccurrenceAmountKeypadOpen(true)}
+                  className="rounded-2xl bg-surface-container-high px-4 py-3 min-h-[72px] text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary flex flex-col"
+                >
+                  <span className="block text-[10px] uppercase font-bold text-on-surface-variant mb-2">
+                    Amount ({APP_CONFIG.currency})
+                  </span>
+                  <span className="mt-auto text-lg font-headline font-extrabold text-primary leading-none">
+                    {APP_CONFIG.currency}{occurrenceAmount || '0.00'}
+                  </span>
+                </button>
+              </div>
+
+              <CategoryPicker
+                categories={categories}
+                value={occurrenceCategory}
+                onChange={setOccurrenceCategory}
+                onAddCategory={addCategory}
+              />
+
+              <Button fullWidth onClick={handleSaveOccurrence}>
+                Save Only This Occurrence
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {recurring.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center justify-between px-1">
@@ -514,6 +707,12 @@ export const CalendarPage = () => {
         onClose={() => setIsAmountKeypadOpen(false)}
         onConfirm={setNewAmount}
         initialValue={newAmount || '0.00'}
+      />
+      <NumericKeypadModal
+        isOpen={isOccurrenceAmountKeypadOpen}
+        onClose={() => setIsOccurrenceAmountKeypadOpen(false)}
+        onConfirm={setOccurrenceAmount}
+        initialValue={occurrenceAmount || '0.00'}
       />
     </motion.div>
   );
