@@ -16,6 +16,7 @@ import { useToast } from '../components/Toast';
 import {
   formatUtcDateLabel,
   getDefaultRecurringEndDate,
+  getRecurringDraftStartDate,
   getRecurringOverride,
   getUtcDateInputValue,
   getUtcDayOfMonth,
@@ -99,6 +100,7 @@ export const CalendarPage = () => {
   const selectedDay = selectedDate ? parseInt(selectedDate.split('-')[2], 10) : null;
   const selectedRecurring = selectedDay ? recurringByDay[selectedDay] || [] : [];
   const visibleMonthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+  const fallbackDraftStartDate = getRecurringDraftStartDate(viewYear, viewMonth, today.getDate());
 
   const monthLabel = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -152,10 +154,21 @@ export const CalendarPage = () => {
     setEditingId(null);
     setNewName('');
     setNewAmount('');
-    setNewStartDate(selectedDate || new Date().toISOString().split('T')[0]);
+    setNewStartDate(selectedDate || fallbackDraftStartDate);
     setNewEndDate('');
     setNewCategory(categories[0] || 'Housing');
     setNewType('expense');
+  };
+
+  const openCreateRecurring = () => {
+    setEditingId(null);
+    setNewName('');
+    setNewAmount('');
+    setNewStartDate(selectedDate || fallbackDraftStartDate);
+    setNewEndDate('');
+    setNewCategory(categories[0] || 'Housing');
+    setNewType('expense');
+    setShowRecurringForm(true);
   };
 
   const handleSaveRecurring = () => {
@@ -379,7 +392,7 @@ export const CalendarPage = () => {
       </div>
 
       <button
-        onClick={() => setShowRecurringForm(true)}
+        onClick={openCreateRecurring}
         className="w-full flex items-center justify-center gap-2 py-3 bg-primary/10 hover:bg-primary/20 rounded-2xl transition-colors"
       >
         <RefreshCw className="w-4 h-4 text-primary" />

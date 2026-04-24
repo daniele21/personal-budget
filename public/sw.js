@@ -1,10 +1,19 @@
-const CACHE_NAME = 'aura-finance-v3';
+const CACHE_NAME = 'aura-finance-v4';
+const APP_SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/logo.png',
+  '/favicon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+];
 
 // Cache shell resources on install
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(['/', '/index.html'])
+      cache.addAll(APP_SHELL)
     )
   );
   // Activate immediately without waiting for old SW to finish
@@ -64,6 +73,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((response) => {
+        if (!response || response.status !== 200) return response;
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         return response;

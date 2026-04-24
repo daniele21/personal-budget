@@ -20,7 +20,7 @@ import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } fro
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
 import * as Finance from '../domain/finance';
-import { normalizeRecurringExpenses } from '../domain/recurring';
+import { normalizeRecurringExpenses, reconcileRecurringTransactions } from '../domain/recurring';
 
 // ─── Context Shape ──────────────────────────────────────────────────
 
@@ -129,6 +129,13 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       setStoredRecurring(recurring);
     }
   }, [storedRecurring, recurring, setStoredRecurring]);
+
+  useEffect(() => {
+    const reconciledTransactions = reconcileRecurringTransactions(transactions, recurring);
+    if (JSON.stringify(reconciledTransactions) !== JSON.stringify(transactions)) {
+      setTransactions(reconciledTransactions);
+    }
+  }, [transactions, recurring, setTransactions]);
 
   // Compat setters (kept for existing code that calls setUser/setIsLoggedIn)
   const setUser = useCallback((_u: User | null) => { /* managed by Firebase */ }, []);

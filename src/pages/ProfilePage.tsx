@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
+import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, PlusCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -239,7 +239,19 @@ export const ProfilePage = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-headline font-bold text-primary">Quick Access</h3>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Link
+            to="/add"
+            className="flex items-center gap-3 p-4 bg-primary text-on-primary rounded-2xl border border-primary/10 hover:bg-primary/90 transition-all"
+          >
+            <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center">
+              <PlusCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Add transaction</p>
+              <p className="text-[10px] text-on-primary/80">Fast manual entry</p>
+            </div>
+          </Link>
           <Link
             to="/budgets"
             className="flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/5 hover:bg-surface-container-low transition-all"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Lightbulb } from 'lucide-react';
+import { TrendingUp, TrendingDown, Lightbulb, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
@@ -210,9 +210,15 @@ export const Dashboard = () => {
             <h3 className="text-base font-headline font-bold text-primary">Recent Transactions</h3>
             <p className="text-on-surface-variant text-xs">Latest movements</p>
           </div>
-          <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-wider">
-            View All
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/add" className="inline-flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-wider">
+              <Plus className="w-3.5 h-3.5" />
+              Add
+            </Link>
+            <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-wider">
+              View All
+            </Link>
+          </div>
         </div>
         <div className="space-y-1.5">
           {recentTransactions.length > 0 ? recentTransactions.map((t) => (

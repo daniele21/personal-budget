@@ -61,6 +61,23 @@ export function getDefaultRecurringEndDate(startDate: string): string {
   return toIsoDate(end);
 }
 
+export function getRecurringDraftStartDate(
+  year: number,
+  monthIndex: number,
+  preferredDay: number,
+): string {
+  const safeDay = Math.min(
+    Math.max(preferredDay, 1),
+    new Date(year, monthIndex + 1, 0).getDate(),
+  );
+
+  return [
+    year,
+    String(monthIndex + 1).padStart(2, '0'),
+    String(safeDay).padStart(2, '0'),
+  ].join('-');
+}
+
 export function getMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -80,7 +97,7 @@ export function getRecurringOccurrenceDate(
     new Date(year, monthIndex + 1, 0).getDate(),
   );
 
-  return new Date(year, monthIndex, day);
+  return new Date(Date.UTC(year, monthIndex, day));
 }
 
 export function getRecurringOccurrenceDateFromMonthKey(
@@ -118,7 +135,7 @@ export function isRecurringActiveInMonth(
   year: number,
   monthIndex: number,
 ): boolean {
-  const occurrenceDate = getLocalDateParts(getRecurringOccurrenceDate(recurring, year, monthIndex));
+  const occurrenceDate = getUtcDateParts(getRecurringOccurrenceDate(recurring, year, monthIndex));
   const startDate = getUtcDateParts(ensureDate(recurring.startDate));
   const endDate = getUtcDateParts(ensureDate(recurring.endDate));
 
@@ -185,6 +202,87 @@ export function buildRecurringTransaction(
     sourceMonthKey: monthKey,
     recurringEdited: Boolean(override),
   };
+}
+
+export function reconcileRecurringTransactions(
+  transactions: Transaction[],
+  recurringItems: RecurringExpense[],
+): Transaction[] {
+  const recurringById = new Map(recurringItems.map((item) => [item.id, item]));
+  const recurringByName = new Map<string, RecurringExpense[]>();
+
+  recurringItems.forEach((item) => {
+    const key = item.name.trim().toLowerCase();
+    const matches = recurringByName.get(key) ?? [];
+    matches.push(item);
+    recurringByName.set(key, matches);
+  });
+
+  function getLegacyRecurringName(transaction: Transaction): string | null {
+    const prefix = 'Auto-generated from recurring: ';
+    if (!transaction.description?.startsWith(prefix)) return null;
+    return transaction.description.slice(prefix.length).trim() || null;
+  }
+
+  function resolveRecurringForTransaction(transaction: Transaction): {
+    recurring: RecurringExpense | null;
+    monthKey: string | null;
+  } {
+    if (transaction.sourceRecurringId && transaction.sourceMonthKey) {
+      return {
+        recurring: recurringById.get(transaction.sourceRecurringId) ?? null,
+        monthKey: transaction.sourceMonthKey,
+      };
+    }
+
+    const legacyName = getLegacyRecurringName(transaction) ?? transaction.title?.trim() ?? '';
+    if (!legacyName) {
+      return { recurring: null, monthKey: null };
+    }
+
+    const candidates = recurringByName.get(legacyName.toLowerCase()) ?? [];
+    if (candidates.length !== 1) {
+      return { recurring: null, monthKey: null };
+    }
+
+    const monthKey = getUtcDateInputValue(transaction.date).slice(0, 7);
+    return {
+      recurring: candidates[0],
+      monthKey,
+    };
+  }
+
+  return transactions.flatMap((transaction) => {
+    const { recurring, monthKey } = resolveRecurringForTransaction(transaction);
+    if (!recurring || !monthKey) {
+      return [transaction];
+    }
+
+    const { year, monthIndex } = getMonthKeyParts(monthKey);
+    if (!isRecurringActiveInMonth(recurring, year, monthIndex)) {
+      return [];
+    }
+
+    const occurrenceDate = getRecurringOccurrenceDate(recurring, year, monthIndex);
+    const expected = buildRecurringTransaction(recurring, monthKey, occurrenceDate);
+    if (!expected) {
+      return [];
+    }
+
+    return [{
+      ...transaction,
+      sourceRecurringId: recurring.id,
+      sourceMonthKey: monthKey,
+      amount: expected.amount,
+      type: expected.type,
+      category: expected.category,
+      date: expected.date,
+      title: expected.title,
+      description: expected.description,
+      paymentMethod: expected.paymentMethod,
+      recurringEdited: expected.recurringEdited,
+    }];
+  });
 }
 
 export function getUtcDateInputValue(isoDate: string): string {

@@ -7,6 +7,7 @@ import {
   buildRecurringTransaction,
   getMonthKey,
   getRecurringOccurrenceDate,
+  getUtcDateInputValue,
   isRecurringActiveInMonth,
 } from './recurring';
 
@@ -29,10 +30,42 @@ export function filterByCategory(transactions: Transaction[], category: string):
   return transactions.filter(t => t.category === category);
 }
 
+export function filterByDateRange(transactions: Transaction[], start: Date, end: Date): Transaction[] {
+  const startTime = start.getTime();
+  const endTime = end.getTime();
+
+  return transactions.filter(t => {
+    const time = new Date(t.date).getTime();
+    return time >= startTime && time <= endTime;
+  });
+}
+
 export function sortByDateDesc(transactions: Transaction[]): Transaction[] {
   return [...transactions].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+}
+
+export type TransactionSortKey = 'date' | 'amount';
+export type SortDirection = 'asc' | 'desc';
+
+export function sortTransactions(
+  transactions: Transaction[],
+  key: TransactionSortKey,
+  direction: SortDirection,
+): Transaction[] {
+  const multiplier = direction === 'asc' ? 1 : -1;
+
+  return [...transactions].sort((a, b) => {
+    const left = key === 'amount' ? a.amount : new Date(a.date).getTime();
+    const right = key === 'amount' ? b.amount : new Date(b.date).getTime();
+
+    if (left === right) {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+
+    return (left - right) * multiplier;
+  });
 }
 
 // ─── Totals ─────────────────────────────────────────────────────────
@@ -145,6 +178,14 @@ function isSameMonth(date: string, target: Date): boolean {
   );
 }
 
+function formatLocalDateKey(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 function matchesLegacyRecurringTransaction(transaction: Transaction, bill: RecurringExpense, today: Date): boolean {
   return (
     transaction.type === (bill.type ?? 'expense') &&
@@ -184,7 +225,7 @@ export function getRecurringDue(
 
     const dueDayThisMonth = getRecurringOccurrenceDate(bill, todayNormalized.getFullYear(), todayNormalized.getMonth());
 
-    if (dueDayThisMonth <= todayNormalized) {
+    if (getUtcDateInputValue(dueDayThisMonth.toISOString()) <= formatLocalDateKey(todayNormalized)) {
       const transaction = buildRecurringTransaction(bill, monthKey, dueDayThisMonth);
       if (!transaction) return;
 

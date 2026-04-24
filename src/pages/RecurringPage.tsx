@@ -13,6 +13,7 @@ import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { RecurringEntryCard } from '../components/RecurringEntryCard';
 import {
   getDefaultRecurringEndDate,
+  getRecurringDraftStartDate,
   getUtcDateInputValue,
   getUtcDayOfMonth,
   isRecurringActiveInMonth,
@@ -34,14 +35,30 @@ export const RecurringPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
 
+  const getCreateStartDate = () => getRecurringDraftStartDate(
+    viewDate.getFullYear(),
+    viewDate.getMonth(),
+    selectedDay,
+  );
+
   const resetForm = () => {
     setIsAdding(false);
     setEditingId(null);
     setNewName('');
     setNewAmount('');
-    setNewStartDate(new Date().toISOString().split('T')[0]);
+    setNewStartDate(getCreateStartDate());
     setNewEndDate('');
     setNewCategory(categories[0]);
+  };
+
+  const openCreateRecurring = () => {
+    setEditingId(null);
+    setNewName('');
+    setNewAmount('');
+    setNewStartDate(getCreateStartDate());
+    setNewEndDate('');
+    setNewCategory(categories[0]);
+    setIsAdding(true);
   };
 
   const handleAddRecurring = () => {
@@ -136,7 +153,7 @@ export const RecurringPage = () => {
           </h2>
           <div className="flex gap-2">
             <button
-              onClick={() => setIsAdding(true)}
+              onClick={openCreateRecurring}
               className="p-2 bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
               aria-label="Add recurring bill"
             >

@@ -3,7 +3,9 @@ import {
   filterByMonth,
   filterByType,
   filterByCategory,
+  filterByDateRange,
   sortByDateDesc,
+  sortTransactions,
   calculateTotals,
   analyzeBudget,
   analyzeBudgets,
@@ -130,6 +132,37 @@ describe('filterByCategory', () => {
   });
 });
 
+// ─── filterByDateRange ──────────────────────────────────────────────
+
+describe('filterByDateRange', () => {
+  const transactions = [
+    tx({ amount: 100, type: 'expense', date: '2026-04-01T10:00:00.000Z' }),
+    tx({ amount: 50, type: 'expense', date: '2026-04-15T12:00:00.000Z' }),
+    tx({ amount: 30, type: 'expense', date: '2026-05-01T00:00:00.000Z' }),
+  ];
+
+  it('returns only transactions inside the inclusive range', () => {
+    const result = filterByDateRange(
+      transactions,
+      new Date('2026-04-01T00:00:00.000Z'),
+      new Date('2026-04-30T23:59:59.999Z'),
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result.map(item => item.amount)).toEqual([100, 50]);
+  });
+
+  it('returns empty array when nothing matches the range', () => {
+    expect(
+      filterByDateRange(
+        transactions,
+        new Date('2026-03-01T00:00:00.000Z'),
+        new Date('2026-03-31T23:59:59.999Z'),
+      ),
+    ).toEqual([]);
+  });
+});
+
 // ─── sortByDateDesc ─────────────────────────────────────────────────
 
 describe('sortByDateDesc', () => {
@@ -156,6 +189,36 @@ describe('sortByDateDesc', () => {
 
   it('handles empty array', () => {
     expect(sortByDateDesc([])).toEqual([]);
+  });
+});
+
+// ─── sortTransactions ───────────────────────────────────────────────
+
+describe('sortTransactions', () => {
+  const transactions = [
+    tx({ amount: 10, type: 'expense', date: '2026-01-01T00:00:00.000Z' }),
+    tx({ amount: 30, type: 'expense', date: '2026-03-01T00:00:00.000Z' }),
+    tx({ amount: 20, type: 'expense', date: '2026-02-01T00:00:00.000Z' }),
+  ];
+
+  it('sorts by amount ascending', () => {
+    const sorted = sortTransactions(transactions, 'amount', 'asc');
+    expect(sorted.map(item => item.amount)).toEqual([10, 20, 30]);
+  });
+
+  it('sorts by amount descending', () => {
+    const sorted = sortTransactions(transactions, 'amount', 'desc');
+    expect(sorted.map(item => item.amount)).toEqual([30, 20, 10]);
+  });
+
+  it('sorts by date ascending', () => {
+    const sorted = sortTransactions(transactions, 'date', 'asc');
+    expect(sorted.map(item => item.amount)).toEqual([10, 20, 30]);
+  });
+
+  it('sorts by date descending', () => {
+    const sorted = sortTransactions(transactions, 'date', 'desc');
+    expect(sorted.map(item => item.amount)).toEqual([30, 20, 10]);
   });
 });
 
