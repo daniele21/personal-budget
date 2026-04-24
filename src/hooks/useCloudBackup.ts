@@ -2,7 +2,8 @@
  * useCloudBackup — automatic daily encrypted backup to Firestore.
  *
  * Behavior:
- * - On mount (when user is logged in), checks if a backup was already done today.
+ * - Runs only after the user explicitly enables cloud backup.
+ * - On mount (when enabled and logged in), checks if a backup was already done today.
  * - If not, pushes current local data to Firestore (encrypted, non-blocking).
  * - If local data is empty but a cloud backup exists, sets `backupAvailable = true`
  *   so the UI can prompt the user to restore.
@@ -13,6 +14,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { pushBackup, pullBackup, deleteBackup, BackupPayload } from '../lib/backup';
 
 const LAST_BACKUP_KEY = 'aura_last_backup_date';
+type BackupStatus = 'idle' | 'syncing' | 'success' | 'error' | 'skipped';
 
 function todayString(): string {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -20,6 +22,7 @@ function todayString(): string {
 
 interface UseCloudBackupOptions {
   uid: string | null;
+  enabled: boolean;
   /** Current app data to back up */
   getData: () => BackupPayload;
   /** Returns true when local data is effectively empty */
@@ -28,13 +31,29 @@ interface UseCloudBackupOptions {
   applyData: (data: BackupPayload) => void;
 }
 
-export function useCloudBackup({ uid, getData, isLocalEmpty, applyData }: UseCloudBackupOptions) {
+export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData }: UseCloudBackupOptions) {
   const backupInFlight = useRef(false);
   const [backupAvailable, setBackupAvailable] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>('idle');
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(LAST_BACKUP_KEY);
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setBackupAvailable(false);
+      setBackupStatus('idle');
+    }
+  }, [enabled]);
 
   // ─── On login: check if local is empty & cloud backup exists ───
   useEffect(() => {
     if (!uid) return;
+    if (!enabled) return;
     if (!isLocalEmpty()) return;
 
     pullBackup(uid).then((data) => {
@@ -42,60 +61,87 @@ export function useCloudBackup({ uid, getData, isLocalEmpty, applyData }: UseClo
         setBackupAvailable(true);
       }
     });
-  }, [uid, isLocalEmpty]);
+  }, [uid, enabled, isLocalEmpty]);
 
   // ─── Auto daily backup (non-blocking, only if data exists) ─────
   useEffect(() => {
     if (!uid) return;
+    if (!enabled) return;
     if (backupInFlight.current) return;
-    if (isLocalEmpty()) return; // don't overwrite cloud with empty data
+    if (isLocalEmpty()) {
+      setBackupStatus('skipped');
+      return; // don't overwrite cloud with empty data
+    }
 
     const lastBackup = localStorage.getItem(LAST_BACKUP_KEY);
     if (lastBackup === todayString()) return;
 
     backupInFlight.current = true;
+    setBackupStatus('syncing');
     pushBackup(uid, getData()).then((ok) => {
       if (ok) {
         localStorage.setItem(LAST_BACKUP_KEY, todayString());
+        setLastBackupDate(todayString());
+        setBackupStatus('success');
+      } else {
+        setBackupStatus('error');
       }
       backupInFlight.current = false;
     });
-  }, [uid, getData, isLocalEmpty]);
+  }, [uid, enabled, getData, isLocalEmpty]);
 
   // ─── Manual restore ─────────────────────────────────────────────
   const restoreFromCloud = useCallback(async (): Promise<boolean> => {
     if (!uid) return false;
+    if (!enabled) return false;
     const data = await pullBackup(uid);
     if (!data) return false;
     applyData(data);
     setBackupAvailable(false);
     return true;
-  }, [uid, applyData]);
+  }, [uid, enabled, applyData]);
 
   const dismissRestore = useCallback(() => setBackupAvailable(false), []);
 
   const deleteCloudBackup = useCallback(async (): Promise<boolean> => {
     if (!uid) return false;
-    return deleteBackup(uid);
+    const ok = await deleteBackup(uid);
+    if (ok) {
+      localStorage.removeItem(LAST_BACKUP_KEY);
+      setLastBackupDate(null);
+      setBackupAvailable(false);
+      setBackupStatus('idle');
+    }
+    return ok;
   }, [uid]);
 
   // Manual immediate push (for UI-triggered testing)
   const pushNow = useCallback(async (): Promise<boolean> => {
     if (!uid) return false;
-    if (isLocalEmpty()) {
-      console.warn('[Backup] pushNow skipped: local data is empty');
+    if (!enabled) {
+      setBackupStatus('skipped');
       return false;
     }
+    if (isLocalEmpty()) {
+      console.warn('[Backup] pushNow skipped: local data is empty');
+      setBackupStatus('skipped');
+      return false;
+    }
+    setBackupStatus('syncing');
     const ok = await pushBackup(uid, getData());
     if (ok) {
       try {
         localStorage.setItem(LAST_BACKUP_KEY, todayString());
+        setLastBackupDate(todayString());
       } catch (_) {
         // ignore storage errors
       }
+      setBackupStatus('success');
+    } else {
+      setBackupStatus('error');
     }
     return ok;
-  }, [uid, getData, isLocalEmpty]);
+  }, [uid, enabled, getData, isLocalEmpty]);
 
-  return { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow };
+  return { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate };
 }

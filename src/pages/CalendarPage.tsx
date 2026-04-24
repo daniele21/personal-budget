@@ -23,7 +23,7 @@ const getMonthDays = (year: number, month: number) => {
 };
 
 export const CalendarPage = () => {
-  const { transactions, recurring, setRecurring, categories, setCategories } = useApp();
+  const { transactions, recurring, setRecurring, categories, addCategory } = useApp();
   const { toast } = useToast();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -391,7 +391,7 @@ export const CalendarPage = () => {
             categories={categories}
             value={newCategory}
             onChange={setNewCategory}
-            onAddCategory={(name) => setCategories([...categories, name])}
+            onAddCategory={addCategory}
           />
 
           <Button fullWidth onClick={handleSaveRecurring}>

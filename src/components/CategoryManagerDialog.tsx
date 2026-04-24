@@ -9,10 +9,12 @@ import { ConfirmDialog } from './ConfirmDialog';
 interface CategoryManagerDialogProps {
   isOpen: boolean;
   categories: string[];
+  archivedCategories: string[];
   usageCounts: Record<string, CategoryUsage>;
   onAdd: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
   onDelete: (name: string) => void;
+  onRestore: (name: string) => void;
   onClose: () => void;
 }
 
@@ -36,10 +38,12 @@ function usageDetail(usage?: CategoryUsage): string {
 export function CategoryManagerDialog({
   isOpen,
   categories,
+  archivedCategories,
   usageCounts,
   onAdd,
   onRename,
   onDelete,
+  onRestore,
   onClose,
 }: CategoryManagerDialogProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -68,6 +72,10 @@ export function CategoryManagerDialog({
   }, [isOpen]);
 
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.localeCompare(b)), [categories]);
+  const sortedArchivedCategories = useMemo(
+    () => [...archivedCategories].sort((a, b) => a.localeCompare(b)),
+    [archivedCategories],
+  );
   const normalizedNewName = normalizeCategoryName(newName);
   const addDuplicate = normalizedNewName ? categoryExists(categories, normalizedNewName) : false;
   const canAdd = normalizedNewName.length > 0 && !addDuplicate;
@@ -128,7 +136,7 @@ export function CategoryManagerDialog({
                   Gestione categorie
                 </h3>
                 <p className="text-xs leading-relaxed text-on-surface-variant">
-                  Aggiungi, rinomina o rimuovi le categorie disponibili.
+                  Aggiungi, rinomina o archivia le categorie disponibili.
                 </p>
               </div>
             </div>
@@ -174,6 +182,9 @@ export function CategoryManagerDialog({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+              Attive
+            </p>
             {sortedCategories.length === 0 ? (
               <div className="p-6 text-center text-sm text-on-surface-variant">Nessuna categoria configurata.</div>
             ) : (
@@ -251,7 +262,7 @@ export function CategoryManagerDialog({
                             type="button"
                             onClick={() => setDeleteTarget(category)}
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-tertiary transition-colors hover:bg-tertiary/10"
-                            aria-label={`Elimina categoria ${category}`}
+                            aria-label={`Archivia categoria ${category}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -265,15 +276,46 @@ export function CategoryManagerDialog({
                 })}
               </div>
             )}
+
+            {sortedArchivedCategories.length > 0 && (
+              <div className="mt-5 border-t border-outline-variant/10 pt-3">
+                <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  Archiviate
+                </p>
+                <div className="space-y-1">
+                  {sortedArchivedCategories.map((category) => {
+                    const usage = usageCounts[category];
+                    return (
+                      <div key={category} className="flex items-center gap-3 rounded-2xl px-2 py-2 opacity-80">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-high">
+                          <CategoryIcon category={category} className="h-5 w-5 text-on-surface-variant" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-on-surface">{category}</p>
+                          <p className="text-[11px] font-medium text-on-surface-variant">{usageLabel(usage)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onRestore(category)}
+                          className="min-h-10 shrink-0 rounded-xl bg-surface-container-high px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/10"
+                        >
+                          Ripristina
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}
-        title="Elimina categoria"
-        message={deleteTarget ? usageDetail(deleteUsage) : ''}
-        confirmLabel="Elimina"
+        title="Archivia categoria"
+        message={deleteTarget ? `${usageDetail(deleteUsage)} La categoria verrà archiviata e potrà essere ripristinata.` : ''}
+        confirmLabel="Archivia"
         cancelLabel="Annulla"
         variant={deleteUsage?.total ? 'danger' : 'default'}
         onConfirm={() => {

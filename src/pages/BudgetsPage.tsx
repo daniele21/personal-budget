@@ -13,7 +13,7 @@ import { Card, Button, Input } from '../components/ui';
 
 export const BudgetsPage = () => {
   const { toast } = useToast();
-  const { budgets, setBudgets, categories, setCategories, monthlyTransactions } = useApp();
+  const { budgets, setBudgets, categories, addCategory, monthlyTransactions } = useApp();
   
   const [isAdding, setIsAdding] = useState(false);
   const [newCategory, setNewCategory] = useState(categories[0]);
@@ -110,7 +110,7 @@ export const BudgetsPage = () => {
               categories={categories}
               value={newCategory}
               onChange={setNewCategory}
-              onAddCategory={(name) => setCategories([...categories, name])}
+              onAddCategory={addCategory}
             />
             <Input
               label="Monthly Limit (€)"

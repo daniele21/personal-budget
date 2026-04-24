@@ -59,7 +59,7 @@ export default function App() {
             <Route path="/recurring" element={<Layout title="Recurring"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
             <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
             <Route path="/calendar" element={<Layout title="Calendar"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
-            <Route path="/insights" element={<Layout title="Insights"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
+            <Route path="/insights" element={<Layout title="Reports"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
             {isAdmin && (
               <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
             )}

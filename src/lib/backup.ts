@@ -81,6 +81,8 @@ export interface BackupPayload {
   recurring: unknown[];
   accounts: unknown[];
   categories: string[];
+  archivedCategories?: string[];
+  savingsGoals?: unknown[];
   monthlyBudget: number;
 }
 

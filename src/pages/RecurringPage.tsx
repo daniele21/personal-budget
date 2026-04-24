@@ -14,7 +14,7 @@ import { Button, Input } from '../components/ui';
 
 export const RecurringPage = () => {
   const { toast } = useToast();
-  const { recurring, setRecurring, categories, setCategories } = useApp();
+  const { recurring, setRecurring, categories, addCategory } = useApp();
   const [isAdding, setIsAdding] = useState(false);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -194,7 +194,7 @@ export const RecurringPage = () => {
               categories={categories}
               value={newCategory}
               onChange={setNewCategory}
-              onAddCategory={(name) => setCategories([...categories, name])}
+              onAddCategory={addCategory}
             />
             <Button fullWidth onClick={handleAddRecurring}>
               {editingId ? 'Update Bill' : 'Add Bill'}

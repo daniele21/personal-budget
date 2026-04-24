@@ -1,4 +1,4 @@
-import { Transaction, Budget, Account, RecurringExpense } from './types';
+import { Transaction, Budget, Account, RecurringExpense, SavingsGoal } from './types';
 
 export const APP_CONFIG = {
   name: 'Aura',
@@ -27,3 +27,5 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [];
 export const INITIAL_BUDGETS: Budget[] = [];
 
 export const INITIAL_RECURRING: RecurringExpense[] = [];
+
+export const INITIAL_SAVINGS_GOALS: SavingsGoal[] = [];

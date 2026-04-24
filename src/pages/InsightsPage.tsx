@@ -10,9 +10,10 @@ import * as Finance from '../domain/finance';
 
 // ─── Range definitions ──────────────────────────────────────────────
 
-type RangeKey = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
+type RangeKey = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
 
 const RANGES: { key: RangeKey; label: string }[] = [
+  { key: '1W', label: '1W' },
   { key: '1M', label: '1M' },
   { key: '3M', label: '3M' },
   { key: '6M', label: '6M' },
@@ -23,6 +24,24 @@ const RANGES: { key: RangeKey; label: string }[] = [
 
 function getDateRange(range: RangeKey, anchorYear: number, anchorMonth: number): { start: Date; end: Date; prevStart: Date; prevEnd: Date; label: string } {
   const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59); // end of anchor month
+
+  if (range === '1W') {
+    const today = new Date();
+    const anchor = anchorYear === today.getFullYear() && anchorMonth === today.getMonth()
+      ? today
+      : new Date(anchorYear, anchorMonth + 1, 0);
+    const start = new Date(anchor);
+    start.setDate(anchor.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(anchor);
+    weekEnd.setHours(23, 59, 59, 999);
+    const prevEnd = new Date(start.getTime() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevEnd.getDate() - 6);
+    prevStart.setHours(0, 0, 0, 0);
+    const label = `${start.toLocaleDateString('default', { day: 'numeric', month: 'short' })} — ${weekEnd.toLocaleDateString('default', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    return { start, end: weekEnd, prevStart, prevEnd, label };
+  }
 
   if (range === '1M') {
     const start = new Date(anchorYear, anchorMonth, 1);
@@ -149,8 +168,9 @@ export const InsightsPage = () => {
 
   // How many months in the range (for budget scaling)
   const rangeMonths = useMemo(() => {
+    if (range === '1W') return 1;
     return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-  }, [start, end]);
+  }, [range, start, end]);
 
   return (
     <motion.div
@@ -159,6 +179,11 @@ export const InsightsPage = () => {
       exit={{ opacity: 0, y: -20 }}
       className="space-y-4 pb-24"
     >
+      <section className="space-y-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Reports</p>
+        <h2 className="font-headline text-2xl font-extrabold text-primary">Weekly and monthly analysis</h2>
+      </section>
+
       {/* Range selector */}
       <div className="flex items-center gap-1 bg-surface-container-high rounded-2xl p-1">
         {RANGES.map(r => (

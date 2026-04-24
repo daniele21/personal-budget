@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags } from 'lucide-react';
+import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -13,15 +13,22 @@ import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import {
   addCategoryName,
-  deleteCategoryName,
+  archiveCategoryName,
   getCategoryUsageCounts,
   renameCategoryName,
   renameCategoryReferences,
+  restoreCategoryName,
 } from '../domain/categories';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
-  const { accounts, transactions, setTransactions, budgets, setBudgets, recurring, setRecurring, categories, setCategories, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance, user, signOut, isAdmin, deleteCloudBackup, pushBackupNow } = useApp();
+  const {
+    accounts, transactions, setTransactions, budgets, setBudgets, recurring, setRecurring,
+    categories, setCategories, archivedCategories, setArchivedCategories,
+    savingsGoals, setSavingsGoals, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance,
+    user, signOut, isAdmin, cloudBackupEnabled, setCloudBackupEnabled,
+    backupStatus, lastBackupDate, deleteCloudBackup, pushBackupNow,
+  } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -30,6 +37,9 @@ export const ProfilePage = () => {
   const [showResetLocalDialog, setShowResetLocalDialog] = useState(false);
   const [showResetAllDialog, setShowResetAllDialog] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [goalName, setGoalName] = useState('');
+  const [goalTarget, setGoalTarget] = useState('');
+  const [goalCurrent, setGoalCurrent] = useState('');
 
   const totalIncome = allTimeTotals.income;
   const totalExpenses = allTimeTotals.expenses;
@@ -52,6 +62,10 @@ export const ProfilePage = () => {
 
   const handleBackupNow = async () => {
     if (isBackingUp) return;
+    if (!cloudBackupEnabled) {
+      toast('Enable cloud backup first', 'warning');
+      return;
+    }
     setIsBackingUp(true);
     toast('Starting backup...', 'info');
     const ok = await pushBackupNow();
@@ -64,6 +78,7 @@ export const ProfilePage = () => {
     const nextCategories = addCategoryName(categories, name);
     if (nextCategories === categories) return;
     setCategories(nextCategories);
+    setArchivedCategories(archivedCategories.filter((category) => category !== name));
     toast('Categoria aggiunta', 'success');
   };
 
@@ -80,10 +95,55 @@ export const ProfilePage = () => {
   };
 
   const handleDeleteCategory = (name: string) => {
-    const nextCategories = deleteCategoryName(categories, name);
-    if (nextCategories.length === categories.length) return;
-    setCategories(nextCategories);
-    toast('Categoria rimossa dalla lista', 'info');
+    const next = archiveCategoryName(categories, archivedCategories, name);
+    setCategories(next.activeCategories);
+    setArchivedCategories(next.archivedCategories);
+    toast('Categoria archiviata', 'info');
+  };
+
+  const handleRestoreCategory = (name: string) => {
+    const next = restoreCategoryName(categories, archivedCategories, name);
+    setCategories(next.activeCategories);
+    setArchivedCategories(next.archivedCategories);
+    toast('Categoria ripristinata', 'success');
+  };
+
+  const handleAddGoal = () => {
+    const trimmedName = goalName.trim();
+    const targetAmount = parseFloat(goalTarget);
+    const currentAmount = goalCurrent ? parseFloat(goalCurrent) : 0;
+    if (!trimmedName) {
+      toast('Inserisci un nome per l’obiettivo', 'warning');
+      return;
+    }
+    if (isNaN(targetAmount) || targetAmount <= 0) {
+      toast('Inserisci un target valido', 'warning');
+      return;
+    }
+    if (isNaN(currentAmount) || currentAmount < 0) {
+      toast('Inserisci un importo attuale valido', 'warning');
+      return;
+    }
+
+    setSavingsGoals([
+      ...savingsGoals,
+      {
+        id: Math.random().toString(36).slice(2, 11),
+        name: trimmedName,
+        targetAmount,
+        currentAmount: Math.min(currentAmount, targetAmount),
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    setGoalName('');
+    setGoalTarget('');
+    setGoalCurrent('');
+    toast('Obiettivo aggiunto', 'success');
+  };
+
+  const handleDeleteGoal = (id: string) => {
+    setSavingsGoals(savingsGoals.filter((goal) => goal.id !== id));
+    toast('Obiettivo rimosso', 'info');
   };
 
   const handleExport = () => {
@@ -271,6 +331,72 @@ export const ProfilePage = () => {
       </section>
 
       <section>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-headline font-bold text-primary">Obiettivi di risparmio</h3>
+          <Target className="w-5 h-5 text-on-surface-variant" />
+        </div>
+        <div className="space-y-3">
+          {savingsGoals.map((goal) => {
+            const progress = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100)) : 0;
+            return (
+              <div key={goal.id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-on-surface truncate">{goal.name}</p>
+                    <p className="text-xs text-on-surface-variant">
+                      {formatCurrency(goal.currentAmount)} di {formatCurrency(goal.targetAmount)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteGoal(goal.id)}
+                    className="h-10 w-10 shrink-0 rounded-xl text-tertiary hover:bg-tertiary/10 flex items-center justify-center"
+                    aria-label={`Rimuovi obiettivo ${goal.name}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="mt-3 h-2 w-full rounded-full bg-surface-container-high overflow-hidden">
+                  <div className="h-full rounded-full bg-secondary transition-all" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-secondary">{progress}% completato</p>
+              </div>
+            );
+          })}
+
+          <div className="bg-surface-container-low rounded-2xl border border-outline-variant/5 p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input
+                value={goalName}
+                onChange={(e) => setGoalName(e.target.value)}
+                className="min-h-11 rounded-xl border-none bg-surface-container-lowest px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
+                placeholder="Nome"
+              />
+              <input
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+                type="number"
+                className="min-h-11 rounded-xl border-none bg-surface-container-lowest px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
+                placeholder="Target"
+              />
+              <input
+                value={goalCurrent}
+                onChange={(e) => setGoalCurrent(e.target.value)}
+                type="number"
+                className="min-h-11 rounded-xl border-none bg-surface-container-lowest px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
+                placeholder="Attuale"
+              />
+            </div>
+            <button
+              onClick={handleAddGoal}
+              className="w-full min-h-11 rounded-xl bg-primary text-on-primary text-sm font-headline font-extrabold active:scale-[0.98] transition-all"
+            >
+              Aggiungi obiettivo
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-headline font-bold text-primary">Data Management</h3>
         </div>
@@ -311,7 +437,7 @@ export const ProfilePage = () => {
 
           <button
             onClick={handleBackupNow}
-            disabled={isBackingUp}
+            disabled={isBackingUp || !cloudBackupEnabled}
             className="group w-full min-h-16 flex items-center justify-between gap-3 p-4 bg-primary text-on-primary rounded-2xl shadow-md shadow-primary/15 hover:bg-primary-container active:scale-[0.99] transition-all disabled:pointer-events-none disabled:opacity-70"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -323,12 +449,48 @@ export const ProfilePage = () => {
                   {isBackingUp ? 'Backing up...' : 'Backup now'}
                 </p>
                 <p className="text-[10px] text-on-primary/75 font-medium leading-tight">
-                  Encrypted cloud backup
+                  {cloudBackupEnabled ? 'Encrypted cloud backup' : 'Enable cloud backup first'}
                 </p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 shrink-0 text-on-primary/70 transition-transform group-hover:translate-x-0.5" />
           </button>
+
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/5 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Cloud className="w-5 h-5 text-secondary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-on-surface">Backup cloud cifrato</p>
+                  <p className="text-[10px] text-on-surface-variant font-medium">
+                    {cloudBackupEnabled ? 'Attivo' : 'Disattivato'} · Stato: {backupStatus}
+                    {lastBackupDate ? ` · Ultimo backup: ${lastBackupDate}` : ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCloudBackupEnabled(!cloudBackupEnabled)}
+                className={cn(
+                  'relative h-7 w-12 shrink-0 rounded-full transition-colors',
+                  cloudBackupEnabled ? 'bg-secondary' : 'bg-surface-container-highest',
+                )}
+                aria-label={cloudBackupEnabled ? 'Disattiva backup cloud' : 'Attiva backup cloud'}
+              >
+                <span
+                  className={cn(
+                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform',
+                    cloudBackupEnabled ? 'translate-x-6' : 'translate-x-1',
+                  )}
+                />
+              </button>
+            </div>
+            <p className="text-[10px] leading-relaxed text-on-surface-variant">
+              Quando attivo, Aura salva un backup cifrato su Firestore per il tuo account. Puoi disattivarlo o cancellarlo in qualsiasi momento.
+            </p>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <button 
@@ -407,7 +569,7 @@ export const ProfilePage = () => {
           <div>
             <p className="text-xs font-bold text-on-surface mb-1">Your data stays on this device</p>
             <p className="text-[10px] text-on-surface-variant leading-relaxed">
-              All transactions, budgets, and settings are stored locally in your browser. No financial data is sent to any server or third party. You own your data.
+              Transactions, budgets and settings are stored locally in your browser. If you enable cloud backup, an encrypted copy is stored in Firestore for restore across devices.
             </p>
           </div>
         </div>
@@ -483,10 +645,12 @@ export const ProfilePage = () => {
       <CategoryManagerDialog
         isOpen={showCategoryDialog}
         categories={categories}
+        archivedCategories={archivedCategories}
         usageCounts={categoryUsageCounts}
         onAdd={handleAddCategory}
         onRename={handleRenameCategory}
         onDelete={handleDeleteCategory}
+        onRestore={handleRestoreCategory}
         onClose={() => setShowCategoryDialog(false)}
       />
     </motion.div>

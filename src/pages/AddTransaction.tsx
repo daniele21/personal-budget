@@ -16,7 +16,7 @@ export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { transactions, setTransactions, categories, setCategories } = useApp();
+  const { transactions, setTransactions, categories, addCategory } = useApp();
   const [amount, setAmount] = useState('0.00');
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [category, setCategory] = useState(categories[0]);
@@ -178,7 +178,7 @@ export const AddTransaction = () => {
             categories={categories}
             value={category}
             onChange={setCategory}
-            onAddCategory={(name) => { setCategories([...categories, name]); setCategory(name); }}
+            onAddCategory={(name) => { addCategory(name); setCategory(name); }}
           />
         </div>
 

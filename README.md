@@ -1,23 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Aura Finance
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/af00a96b-d4da-42d9-937a-235705df2d92
+Mobile-first personal budget PWA with local-first storage, optional encrypted Firestore backup, Google sign-in, reports, recurring payments, custom categories, savings goals, and an admin allowlist.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+Prerequisite: Node.js.
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Copy `.env.example` to `.env` and fill the Firebase values.
 3. Run the app:
    `npm run dev`
+
+## Firebase Setup
+
+Enable Google sign-in in Firebase Authentication and create a Firestore database. The app uses:
+
+- `allowedUsers/{emailHash}` for access allowlisting
+- `backups/{uid}` for optional encrypted cloud backups
+
+Firestore rules are defined in `firestore.rules`.
 
 ## Deploy Firebase Hosting
 

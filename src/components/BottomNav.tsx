@@ -9,7 +9,7 @@ export const BottomNav = () => {
     { path: '/', icon: LayoutDashboard, label: 'Home' },
     { path: '/history', icon: History, label: 'History' },
     { path: '/add', icon: PlusCircle, label: 'Add', isSpecial: true },
-    { path: '/insights', icon: BarChart3, label: 'Insights' },
+    { path: '/insights', icon: BarChart3, label: 'Reports' },
     { path: '/calendar', icon: Calendar, label: 'Calendar' },
   ];
 

@@ -15,9 +15,10 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { useCloudBackup } from '../hooks/useCloudBackup';
 import { STORAGE_KEYS } from '../data/storageKeys';
-import { APP_CONFIG, INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING, INITIAL_ACCOUNTS, INITIAL_CATEGORIES } from '../constants';
-import { Transaction, Budget, RecurringExpense, Account, User } from '../types';
+import { APP_CONFIG, INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING, INITIAL_ACCOUNTS, INITIAL_CATEGORIES, INITIAL_SAVINGS_GOALS } from '../constants';
+import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { OnboardingDialog } from '../components/OnboardingDialog';
 import * as Finance from '../domain/finance';
 
 // ─── Context Shape ──────────────────────────────────────────────────
@@ -29,10 +30,17 @@ interface AppState {
   recurring: RecurringExpense[];
   accounts: Account[];
   categories: string[];
+  archivedCategories: string[];
+  savingsGoals: SavingsGoal[];
   monthlyBudget: number;
   user: User | null;
   isLoggedIn: boolean;
   isDarkMode: boolean;
+  cloudBackupEnabled: boolean;
+  backupAvailable: boolean;
+  backupStatus: 'idle' | 'syncing' | 'success' | 'error' | 'skipped';
+  lastBackupDate: string | null;
+  onboardingComplete: boolean;
   authLoading: boolean;
   authError: string | null;
   isAdmin: boolean;
@@ -43,10 +51,14 @@ interface AppState {
   setRecurring: (recurring: RecurringExpense[]) => void;
   setAccounts: (accounts: Account[]) => void;
   setCategories: (categories: string[]) => void;
+  setArchivedCategories: (categories: string[]) => void;
+  setSavingsGoals: (goals: SavingsGoal[]) => void;
   setMonthlyBudget: (budget: number) => void;
   setUser: (user: User | null) => void;
   setIsLoggedIn: (v: boolean) => void;
   setIsDarkMode: (v: boolean) => void;
+  setCloudBackupEnabled: (v: boolean) => void;
+  setOnboardingComplete: (v: boolean) => void;
 
   // Auth actions
   signInWithGoogle: () => Promise<void>;
@@ -64,6 +76,7 @@ interface AppState {
   addCategory: (name: string) => void;
   resetAll: () => void;
   restoreFromCloud: () => Promise<boolean>;
+  dismissRestore: () => void;
   deleteCloudBackup: () => Promise<boolean>;
   pushBackupNow: () => Promise<boolean>;
 
@@ -94,8 +107,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [recurring, setRecurring] = useLocalStorage<RecurringExpense[]>(STORAGE_KEYS.recurring, INITIAL_RECURRING);
   const [accounts, setAccounts] = useLocalStorage<Account[]>(STORAGE_KEYS.accounts, INITIAL_ACCOUNTS);
   const [categories, setCategories] = useLocalStorage<string[]>(STORAGE_KEYS.categories, INITIAL_CATEGORIES);
+  const [archivedCategories, setArchivedCategories] = useLocalStorage<string[]>(STORAGE_KEYS.archivedCategories, []);
+  const [savingsGoals, setSavingsGoals] = useLocalStorage<SavingsGoal[]>(STORAGE_KEYS.savingsGoals, INITIAL_SAVINGS_GOALS);
   const [monthlyBudget, setMonthlyBudget] = useLocalStorage<number>(STORAGE_KEYS.monthlyBudget, APP_CONFIG.defaultMonthlyBudget);
   const [isDarkMode, setIsDarkMode] = useLocalStorage(STORAGE_KEYS.darkMode, false);
+  const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage(STORAGE_KEYS.cloudBackupEnabled, false);
+  const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
 
   // Compat setters (kept for existing code that calls setUser/setIsLoggedIn)
   const setUser = useCallback((_u: User | null) => { /* managed by Firebase */ }, []);
@@ -146,7 +163,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (!categories.includes(name)) {
       setCategories([...categories, name]);
     }
-  }, [categories, setCategories]);
+    if (archivedCategories.includes(name)) {
+      setArchivedCategories(archivedCategories.filter((category) => category !== name));
+    }
+  }, [categories, archivedCategories, setCategories, setArchivedCategories]);
 
   const resetAll = useCallback(() => {
     localStorage.clear();
@@ -156,8 +176,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // ─── Cloud backup (non-blocking daily sync) ────────────────────
 
   const getBackupData = useCallback(() => ({
-    transactions, budgets, recurring, accounts, categories, monthlyBudget,
-  }), [transactions, budgets, recurring, accounts, categories, monthlyBudget]);
+    transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals, monthlyBudget,
+  }), [transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals, monthlyBudget]);
 
   const isLocalEmpty = useCallback(
     () => transactions.length === 0 && budgets.length === 0 && recurring.length === 0,
@@ -170,15 +190,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setRecurring(data.recurring as typeof recurring);
     setAccounts(data.accounts as typeof accounts);
     setCategories(data.categories);
+    setArchivedCategories(data.archivedCategories ?? []);
+    setSavingsGoals((data.savingsGoals ?? []) as typeof savingsGoals);
     setMonthlyBudget(data.monthlyBudget);
-  }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setMonthlyBudget]);
+  }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
 
-  const { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow } = useCloudBackup({
+  const { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate } = useCloudBackup({
     uid: user?.id ?? null,
+    enabled: cloudBackupEnabled,
     getData: getBackupData,
     isLocalEmpty,
     applyData: applyBackupData,
-  } as any);
+  });
 
   // Expose manual push to UI
   const pushBackupNow = useCallback(async (): Promise<boolean> => {
@@ -223,19 +246,21 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const value: AppState = {
     // Raw
-    transactions, budgets, recurring, accounts, categories,
-    monthlyBudget, user, isLoggedIn, isDarkMode,
+    transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals,
+    monthlyBudget, user, isLoggedIn, isDarkMode, cloudBackupEnabled, backupAvailable,
+    backupStatus, lastBackupDate, onboardingComplete,
     authLoading, authError, isAdmin,
     // Setters
     setTransactions, setBudgets, setRecurring, setAccounts,
-    setCategories, setMonthlyBudget, setUser, setIsLoggedIn, setIsDarkMode,
+    setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget, setUser, setIsLoggedIn, setIsDarkMode,
+    setCloudBackupEnabled, setOnboardingComplete,
     // Auth actions
     signInWithGoogle, signOut,
     // Actions
     addTransaction, updateTransaction, deleteTransaction,
     addBudget, deleteBudget,
     addRecurring, updateRecurring, deleteRecurring,
-  addCategory, resetAll, restoreFromCloud, deleteCloudBackup, pushBackupNow,
+    addCategory, resetAll, restoreFromCloud, dismissRestore, deleteCloudBackup, pushBackupNow,
     // Derived
     monthlyTransactions, monthlyTotals, allTimeTotals,
     safeToSpend: safeToSpendData, budgetStatuses, categorySpending,
@@ -253,6 +278,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         cancelLabel="No, ricomincia da zero"
         onConfirm={() => { restoreFromCloud(); }}
         onCancel={dismissRestore}
+      />
+      <OnboardingDialog
+        isOpen={isLoggedIn && !onboardingComplete && isLocalEmpty()}
+        monthlyBudget={monthlyBudget}
+        onSetMonthlyBudget={setMonthlyBudget}
+        onAddCategory={addCategory}
+        onAddGoal={(goal) => setSavingsGoals([...savingsGoals, goal])}
+        cloudBackupEnabled={cloudBackupEnabled}
+        onSetCloudBackupEnabled={setCloudBackupEnabled}
+        onComplete={() => setOnboardingComplete(true)}
       />
     </AppContext.Provider>
   );

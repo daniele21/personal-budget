@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   addCategoryName,
+  archiveCategoryName,
   categoryExists,
   deleteCategoryName,
   getCategoryUsageCounts,
   normalizeCategoryName,
+  restoreCategoryName,
   renameCategoryName,
   renameCategoryReferences,
 } from '../categories';
@@ -70,5 +72,15 @@ describe('category domain helpers', () => {
     expect(result.transactions.map((item) => item.category)).toEqual(['Dining', 'Transport']);
     expect(result.budgets.map((item) => item.category)).toEqual(['Dining']);
     expect(result.recurring.map((item) => item.category)).toEqual(['Dining']);
+  });
+
+  it('archives and restores category names without changing historical references', () => {
+    const archived = archiveCategoryName(['Housing', 'Food'], ['Transport'], 'Food');
+    expect(archived.activeCategories).toEqual(['Housing']);
+    expect(archived.archivedCategories).toEqual(['Transport', 'Food']);
+
+    const restored = restoreCategoryName(archived.activeCategories, archived.archivedCategories, 'Food');
+    expect(restored.activeCategories).toEqual(['Housing', 'Food']);
+    expect(restored.archivedCategories).toEqual(['Transport']);
   });
 });

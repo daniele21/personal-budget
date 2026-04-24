@@ -43,6 +43,25 @@ export function deleteCategoryName(categories: string[], name: string): string[]
   return categories.filter((category) => category !== name);
 }
 
+export function archiveCategoryName(activeCategories: string[], archivedCategories: string[], name: string) {
+  const nextActive = activeCategories.filter((category) => category !== name);
+  const nextArchived = archivedCategories.some((category) => category === name)
+    ? archivedCategories
+    : [...archivedCategories, name];
+
+  return { activeCategories: nextActive, archivedCategories: nextArchived };
+}
+
+export function restoreCategoryName(activeCategories: string[], archivedCategories: string[], name: string) {
+  const normalized = normalizeCategoryName(name);
+  const nextArchived = archivedCategories.filter((category) => category !== name);
+  const nextActive = categoryExists(activeCategories, normalized)
+    ? activeCategories
+    : [...activeCategories, normalized];
+
+  return { activeCategories: nextActive, archivedCategories: nextArchived };
+}
+
 export function getCategoryUsageCounts(data: CategoryDataSet): Record<string, CategoryUsage> {
   const counts: Record<string, CategoryUsage> = {};
 
