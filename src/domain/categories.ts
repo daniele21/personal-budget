@@ -88,6 +88,13 @@ export function getCategoryUsageCounts(data: CategoryDataSet): Record<string, Ca
     const count = ensure(bill.category);
     count.recurring += 1;
     count.total += 1;
+
+    bill.overrides?.forEach((override) => {
+      if (!override.category || override.category === bill.category) return;
+      const overrideCount = ensure(override.category);
+      overrideCount.recurring += 1;
+      overrideCount.total += 1;
+    });
   });
 
   return counts;
@@ -109,7 +116,13 @@ export function renameCategoryReferences(
       budget.category === oldName ? { ...budget, category: normalized } : budget
     )),
     recurring: data.recurring.map((bill) => (
-      bill.category === oldName ? { ...bill, category: normalized } : bill
+      {
+        ...bill,
+        category: bill.category === oldName ? normalized : bill.category,
+        overrides: bill.overrides?.map((override) => (
+          override.category === oldName ? { ...override, category: normalized } : override
+        )),
+      }
     )),
   };
 }

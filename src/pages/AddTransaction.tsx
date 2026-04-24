@@ -11,12 +11,13 @@ import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
+import { upsertRecurringOverride } from '../domain/recurring';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { transactions, setTransactions, categories, addCategory } = useApp();
+  const { transactions, setTransactions, recurring, setRecurring, categories, addCategory } = useApp();
   const [amount, setAmount] = useState('0.00');
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [category, setCategory] = useState(categories[0]);
@@ -67,18 +68,22 @@ export const AddTransaction = () => {
     }
     
     const transactionId = id || Math.random().toString(36).substr(2, 9);
+    const existingTransaction = id ? transactions.find((transaction) => transaction.id === id) : undefined;
     
     const newTransaction: Transaction = {
       id: transactionId,
       amount: parsedAmount,
       type,
       category,
-      date: new Date(date).toISOString(),
+      date: new Date(`${date}T00:00:00.000Z`).toISOString(),
       title: trimmedTitle,
       description: description.trim(),
       paymentMethod,
       // We store the flag in LocalStorage, but the actual data in IndexedDB
-      attachmentUrl: attachmentUrl ? 'indexeddb' : undefined 
+      attachmentUrl: attachmentUrl ? 'indexeddb' : undefined,
+      sourceRecurringId: existingTransaction?.sourceRecurringId,
+      sourceMonthKey: existingTransaction?.sourceMonthKey,
+      recurringEdited: existingTransaction?.sourceRecurringId ? true : existingTransaction?.recurringEdited,
     };
 
     if (attachmentUrl && attachmentUrl !== 'indexeddb') {
@@ -89,11 +94,41 @@ export const AddTransaction = () => {
 
     if (id) {
       setTransactions(transactions.map(t => t.id === id ? newTransaction : t));
+
+      if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
+        const parentRecurring = recurring.find((bill) => bill.id === existingTransaction.sourceRecurringId);
+
+        if (parentRecurring) {
+          const nextRecurring = recurring.map((bill) => (
+            bill.id === parentRecurring.id
+              ? upsertRecurringOverride(bill, {
+                monthKey: existingTransaction.sourceMonthKey,
+                amount: newTransaction.amount,
+                type: newTransaction.type,
+                category: newTransaction.category,
+                title: newTransaction.title,
+                description: newTransaction.description,
+                paymentMethod: newTransaction.paymentMethod,
+                date: newTransaction.date,
+              })
+              : bill
+          ));
+
+          setRecurring(nextRecurring);
+        }
+      }
     } else {
       setTransactions([newTransaction, ...transactions]);
     }
     
-    toast(id ? 'Transaction updated!' : 'Transaction saved!', 'success');
+    toast(
+      existingTransaction?.sourceRecurringId
+        ? 'Recurring transaction updated for this month only!'
+        : id
+          ? 'Transaction updated!'
+          : 'Transaction saved!',
+      'success',
+    );
     navigate('/history');
   };
 
@@ -165,6 +200,11 @@ export const AddTransaction = () => {
       <div className="space-y-4">
         <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/5">
           <label className="block text-on-surface-variant text-[10px] mb-4 uppercase tracking-widest font-bold">Transaction Title</label>
+          {id && transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">
+              This edit applies only to this recurring month
+            </p>
+          )}
           <input 
             className="w-full bg-surface-container-highest border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary-container font-bold" 
             placeholder="e.g. Weekly Groceries"

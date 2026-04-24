@@ -30,7 +30,16 @@ function budget(category: string): Budget {
 }
 
 function recurring(category: string): RecurringExpense {
-  return { id: `rec-${category}`, name: category, amount: 10, dueDate: '2026-01-01', category };
+  return {
+    id: `rec-${category}`,
+    name: category,
+    amount: 10,
+    startDate: '2026-01-01T00:00:00.000Z',
+    endDate: '2026-12-31T00:00:00.000Z',
+    dayOfMonth: 1,
+    category,
+    type: 'expense',
+  };
 }
 
 describe('category domain helpers', () => {
@@ -55,11 +64,15 @@ describe('category domain helpers', () => {
     const counts = getCategoryUsageCounts({
       transactions: [tx('Food'), tx('Food'), tx('Transport')],
       budgets: [budget('Food')],
-      recurring: [recurring('Transport')],
+      recurring: [{
+        ...recurring('Transport'),
+        overrides: [{ monthKey: '2026-02', category: 'Fuel' }],
+      }],
     });
 
     expect(counts.Food).toEqual({ transactions: 2, budgets: 1, recurring: 0, total: 3 });
     expect(counts.Transport).toEqual({ transactions: 1, budgets: 0, recurring: 1, total: 2 });
+    expect(counts.Fuel).toEqual({ transactions: 0, budgets: 0, recurring: 1, total: 1 });
   });
 
   it('renames category references in all data sets', () => {
@@ -72,6 +85,19 @@ describe('category domain helpers', () => {
     expect(result.transactions.map((item) => item.category)).toEqual(['Dining', 'Transport']);
     expect(result.budgets.map((item) => item.category)).toEqual(['Dining']);
     expect(result.recurring.map((item) => item.category)).toEqual(['Dining']);
+  });
+
+  it('renames recurring override categories too', () => {
+    const result = renameCategoryReferences({
+      transactions: [],
+      budgets: [],
+      recurring: [{
+        ...recurring('Housing'),
+        overrides: [{ monthKey: '2026-02', category: 'Food' }],
+      }],
+    }, 'Food', 'Dining');
+
+    expect(result.recurring[0].overrides?.[0].category).toBe('Dining');
   });
 
   it('archives and restores category names without changing historical references', () => {

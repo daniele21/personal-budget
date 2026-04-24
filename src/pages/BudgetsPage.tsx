@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { formatMonthLabel } from '../domain/finance';
 import { CategoryPicker } from '../components/CategoryPicker';
+import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { Card, Button, Input } from '../components/ui';
 
 export const BudgetsPage = () => {
@@ -19,6 +20,7 @@ export const BudgetsPage = () => {
   const [newCategory, setNewCategory] = useState(categories[0]);
   const [newLimit, setNewLimit] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isLimitKeypadOpen, setIsLimitKeypadOpen] = useState(false);
 
   const getSpentForCategory = (category: string) => {
     return monthlyTransactions
@@ -96,34 +98,45 @@ export const BudgetsPage = () => {
       </section>
 
       {isAdding && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-surface-container-lowest p-6 rounded-3xl shadow-lg border border-outline-variant/10 space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="font-headline font-bold text-primary">Set Category Budget</h3>
-            <button onClick={() => setIsAdding(false)}><X className="w-5 h-5 text-on-surface-variant" /></button>
-          </div>
-          <div className="space-y-3">
-            <CategoryPicker
-              categories={categories}
-              value={newCategory}
-              onChange={setNewCategory}
-              onAddCategory={addCategory}
-            />
-            <Input
-              label="Monthly Limit (€)"
-              type="number"
-              placeholder="e.g. 500"
-              value={newLimit}
-              onChange={(e) => setNewLimit(e.target.value)}
-            />
-            <Button fullWidth onClick={handleAddBudget}>
-              Save Budget
-            </Button>
-          </div>
-        </motion.div>
+        <div className="fixed inset-0 z-[160] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+          <button type="button" aria-label="Close budget form" className="absolute inset-0" onClick={() => setIsAdding(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative z-10 w-full max-w-md rounded-t-3xl bg-surface-container-lowest p-6 shadow-2xl border border-outline-variant/10 sm:rounded-3xl"
+          >
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="font-headline font-bold text-primary">Set Category Budget</h3>
+              <button onClick={() => setIsAdding(false)}><X className="w-5 h-5 text-on-surface-variant" /></button>
+            </div>
+            <div className="space-y-4">
+              <CategoryPicker
+                categories={categories}
+                value={newCategory}
+                onChange={setNewCategory}
+                onAddCategory={addCategory}
+              />
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-2">
+                  Monthly Limit (€)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsLimitKeypadOpen(true)}
+                  className="w-full rounded-2xl bg-surface-container-high px-4 py-3 text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Tap to edit</p>
+                  <p className="mt-1 text-2xl font-headline font-extrabold text-primary leading-none">
+                    €{newLimit || '0.00'}
+                  </p>
+                </button>
+              </div>
+              <Button fullWidth onClick={handleAddBudget}>
+                Save Budget
+              </Button>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       <div className="space-y-4">
@@ -190,6 +203,12 @@ export const BudgetsPage = () => {
         variant="danger"
         onConfirm={() => deleteTarget && handleDeleteBudget(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <NumericKeypadModal
+        isOpen={isLimitKeypadOpen}
+        onClose={() => setIsLimitKeypadOpen(false)}
+        onConfirm={setNewLimit}
+        initialValue={newLimit || '0.00'}
       />
     </motion.div>
   );

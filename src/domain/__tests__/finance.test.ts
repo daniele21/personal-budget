@@ -38,8 +38,11 @@ function recurring(overrides: Partial<RecurringExpense> = {}): RecurringExpense 
     id: 'r1',
     name: 'Netflix',
     amount: 12.99,
-    dueDate: '2026-04-05T00:00:00.000Z',
+    startDate: '2026-04-05T00:00:00.000Z',
+    endDate: '2027-04-04T00:00:00.000Z',
+    dayOfMonth: 5,
     category: 'Entertainment',
+    type: 'expense',
     ...overrides,
   };
 }
@@ -355,14 +358,14 @@ describe('getRecurringDue', () => {
   const today = new Date(2026, 3, 15); // April 15, 2026
 
   it('generates transaction when bill is due (past due day this month)', () => {
-    const bill = recurring({ dueDate: '2026-04-05T00:00:00.000Z' });
+    const bill = recurring({ startDate: '2026-04-05T00:00:00.000Z', dayOfMonth: 5 });
     const result = getRecurringDue([bill], [], today);
     expect(result).toHaveLength(1);
     expect(result[0].transaction.amount).toBe(12.99);
     expect(result[0].transaction.category).toBe('Entertainment');
     expect(result[0].transaction.type).toBe('expense');
     expect(result[0].transaction.sourceRecurringId).toBe('r1');
-    expect(result[0].transaction.sourceMonthKey).toBe('r1_2026_3');
+    expect(result[0].transaction.sourceMonthKey).toBe('2026-04');
   });
 
   it('does not generate when a tagged recurring transaction already exists this month', () => {
@@ -377,7 +380,7 @@ describe('getRecurringDue', () => {
       description: 'Auto-generated from recurring: Netflix',
       paymentMethod: 'Bank Transfer',
       sourceRecurringId: 'r1',
-      sourceMonthKey: 'r1_2026_3',
+      sourceMonthKey: '2026-04',
     }], today);
     expect(result).toHaveLength(0);
   });
@@ -398,25 +401,53 @@ describe('getRecurringDue', () => {
   });
 
   it('does not generate when due date is in the future this month', () => {
-    const bill = recurring({ dueDate: '2026-04-20T00:00:00.000Z' });
+    const bill = recurring({ startDate: '2026-04-20T00:00:00.000Z', dayOfMonth: 20 });
     const result = getRecurringDue([bill], [], today);
     expect(result).toHaveLength(0);
   });
 
   it('generates on exact due day', () => {
-    const bill = recurring({ dueDate: '2026-04-15T00:00:00.000Z' });
+    const bill = recurring({ startDate: '2026-04-15T00:00:00.000Z', dayOfMonth: 15 });
     const result = getRecurringDue([bill], [], today);
     expect(result).toHaveLength(1);
   });
 
   it('handles multiple bills', () => {
     const bills = [
-      recurring({ id: 'r1', dueDate: '2026-04-01T00:00:00.000Z' }),
-      recurring({ id: 'r2', name: 'Spotify', amount: 9.99, dueDate: '2026-04-10T00:00:00.000Z' }),
-      recurring({ id: 'r3', name: 'Gym', amount: 30, dueDate: '2026-04-25T00:00:00.000Z' }), // future
+      recurring({ id: 'r1', startDate: '2026-04-01T00:00:00.000Z', dayOfMonth: 1 }),
+      recurring({ id: 'r2', name: 'Spotify', amount: 9.99, startDate: '2026-04-10T00:00:00.000Z', dayOfMonth: 10 }),
+      recurring({ id: 'r3', name: 'Gym', amount: 30, startDate: '2026-04-25T00:00:00.000Z', dayOfMonth: 25 }), // future
     ];
     const result = getRecurringDue(bills, [], today);
     expect(result).toHaveLength(2);
+  });
+
+  it('does not generate outside the configured date range', () => {
+    const bill = recurring({
+      startDate: '2025-01-05T00:00:00.000Z',
+      endDate: '2026-03-05T00:00:00.000Z',
+      dayOfMonth: 5,
+    });
+    expect(getRecurringDue([bill], [], today)).toHaveLength(0);
+  });
+
+  it('applies a monthly override when generating the transaction', () => {
+    const bill = recurring({
+      overrides: [{
+        monthKey: '2026-04',
+        amount: 102,
+        title: 'Mortgage',
+        category: 'Housing',
+        description: 'Adjusted installment',
+      }],
+    });
+
+    const result = getRecurringDue([bill], [], today);
+    expect(result).toHaveLength(1);
+    expect(result[0].transaction.amount).toBe(102);
+    expect(result[0].transaction.title).toBe('Mortgage');
+    expect(result[0].transaction.category).toBe('Housing');
+    expect(result[0].transaction.recurringEdited).toBe(true);
   });
 
   it('returns empty when no recurring bills', () => {

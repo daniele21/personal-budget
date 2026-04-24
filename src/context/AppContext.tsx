@@ -10,7 +10,7 @@
  * - Syncs to localStorage on every change
  * - Exposes derived/computed values via the domain layer
  */
-import React, { createContext, useContext, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { useCloudBackup } from '../hooks/useCloudBackup';
@@ -20,6 +20,7 @@ import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } fro
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
 import * as Finance from '../domain/finance';
+import { normalizeRecurringExpenses } from '../domain/recurring';
 
 // ─── Context Shape ──────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // Persisted state
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>(STORAGE_KEYS.transactions, INITIAL_TRANSACTIONS);
   const [budgets, setBudgets] = useLocalStorage<Budget[]>(STORAGE_KEYS.budgets, INITIAL_BUDGETS);
-  const [recurring, setRecurring] = useLocalStorage<RecurringExpense[]>(STORAGE_KEYS.recurring, INITIAL_RECURRING);
+  const [storedRecurring, setStoredRecurring] = useLocalStorage<RecurringExpense[]>(STORAGE_KEYS.recurring, INITIAL_RECURRING);
   const [accounts, setAccounts] = useLocalStorage<Account[]>(STORAGE_KEYS.accounts, INITIAL_ACCOUNTS);
   const [categories, setCategories] = useLocalStorage<string[]>(STORAGE_KEYS.categories, INITIAL_CATEGORIES);
   const [archivedCategories, setArchivedCategories] = useLocalStorage<string[]>(STORAGE_KEYS.archivedCategories, []);
@@ -113,6 +114,21 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useLocalStorage(STORAGE_KEYS.darkMode, false);
   const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage(STORAGE_KEYS.cloudBackupEnabled, false);
   const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
+
+  const recurring = useMemo(
+    () => normalizeRecurringExpenses(storedRecurring),
+    [storedRecurring],
+  );
+
+  const setRecurring = useCallback((nextRecurring: RecurringExpense[]) => {
+    setStoredRecurring(normalizeRecurringExpenses(nextRecurring));
+  }, [setStoredRecurring]);
+
+  useEffect(() => {
+    if (JSON.stringify(storedRecurring) !== JSON.stringify(recurring)) {
+      setStoredRecurring(recurring);
+    }
+  }, [storedRecurring, recurring, setStoredRecurring]);
 
   // Compat setters (kept for existing code that calls setUser/setIsLoggedIn)
   const setUser = useCallback((_u: User | null) => { /* managed by Firebase */ }, []);
@@ -187,7 +203,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const applyBackupData = useCallback((data: import('../lib/backup').BackupPayload) => {
     setTransactions(data.transactions as typeof transactions);
     setBudgets(data.budgets as typeof budgets);
-    setRecurring(data.recurring as typeof recurring);
+    setRecurring(normalizeRecurringExpenses(data.recurring as typeof recurring));
     setAccounts(data.accounts as typeof accounts);
     setCategories(data.categories);
     setArchivedCategories(data.archivedCategories ?? []);

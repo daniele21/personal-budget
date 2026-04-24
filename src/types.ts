@@ -13,6 +13,7 @@ export interface Transaction {
   verified?: boolean;
   sourceRecurringId?: string;
   sourceMonthKey?: string;
+  recurringEdited?: boolean;
 }
 
 export interface Budget {
@@ -40,14 +41,31 @@ export interface User {
   photoUrl: string;
 }
 
+export interface RecurringOverride {
+  monthKey: string;
+  amount?: number;
+  type?: TransactionType;
+  category?: string;
+  title?: string;
+  description?: string;
+  paymentMethod?: string;
+  date?: string;
+  skipped?: boolean;
+}
+
 export interface RecurringExpense {
   id: string;
   name: string;
   amount: number;
-  dueDate: string;
+  startDate: string;
+  endDate: string;
+  dayOfMonth: number;
   category: string;
-  frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  type?: TransactionType;
+  frequency?: 'monthly';
   priority?: boolean;
+  overrides?: RecurringOverride[];
+  dueDate?: string;
 }
 
 export interface SavingsGoal {

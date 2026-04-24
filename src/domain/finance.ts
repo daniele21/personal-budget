@@ -3,6 +3,12 @@
  * No React, no side effects, no UI concerns. Fully testable.
  */
 import { Transaction, Budget, RecurringExpense } from '../types';
+import {
+  buildRecurringTransaction,
+  getMonthKey,
+  getRecurringOccurrenceDate,
+  isRecurringActiveInMonth,
+} from './recurring';
 
 // ─── Transaction Filtering ──────────────────────────────────────────
 
@@ -11,7 +17,7 @@ export function filterByMonth(transactions: Transaction[], date: Date = new Date
   const month = date.getMonth();
   return transactions.filter(t => {
     const d = new Date(t.date);
-    return d.getFullYear() === year && d.getMonth() === month;
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month;
   });
 }
 
@@ -134,14 +140,14 @@ export interface GeneratedTransaction {
 function isSameMonth(date: string, target: Date): boolean {
   const parsed = new Date(date);
   return (
-    parsed.getFullYear() === target.getFullYear() &&
-    parsed.getMonth() === target.getMonth()
+    parsed.getUTCFullYear() === target.getFullYear() &&
+    parsed.getUTCMonth() === target.getMonth()
   );
 }
 
 function matchesLegacyRecurringTransaction(transaction: Transaction, bill: RecurringExpense, today: Date): boolean {
   return (
-    transaction.type === 'expense' &&
+    transaction.type === (bill.type ?? 'expense') &&
     transaction.amount === bill.amount &&
     transaction.category === bill.category &&
     transaction.title === bill.name &&
@@ -160,10 +166,14 @@ export function getRecurringDue(
   today: Date = new Date()
 ): GeneratedTransaction[] {
   const result: GeneratedTransaction[] = [];
+  const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   recurring.forEach(bill => {
-    const dueDate = new Date(bill.dueDate);
-    const monthKey = `${bill.id}_${today.getFullYear()}_${today.getMonth()}`;
+    if (!isRecurringActiveInMonth(bill, todayNormalized.getFullYear(), todayNormalized.getMonth())) {
+      return;
+    }
+
+    const monthKey = getMonthKey(todayNormalized);
 
     const alreadyGenerated = existingTransactions.some((transaction) => (
       transaction.sourceRecurringId === bill.id &&
@@ -172,25 +182,11 @@ export function getRecurringDue(
 
     if (alreadyGenerated) return;
 
-    const dueDayThisMonth = new Date(today.getFullYear(), today.getMonth(), dueDate.getDate());
-    dueDayThisMonth.setHours(0, 0, 0, 0);
-
-    const todayNormalized = new Date(today);
-    todayNormalized.setHours(0, 0, 0, 0);
+    const dueDayThisMonth = getRecurringOccurrenceDate(bill, todayNormalized.getFullYear(), todayNormalized.getMonth());
 
     if (dueDayThisMonth <= todayNormalized) {
-      const transaction: Transaction = {
-        id: `rec_${bill.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        amount: bill.amount,
-        type: 'expense',
-        category: bill.category,
-        date: dueDayThisMonth.toISOString(),
-        title: bill.name,
-        description: `Auto-generated from recurring: ${bill.name}`,
-        paymentMethod: 'Bank Transfer',
-        sourceRecurringId: bill.id,
-        sourceMonthKey: monthKey,
-      };
+      const transaction = buildRecurringTransaction(bill, monthKey, dueDayThisMonth);
+      if (!transaction) return;
 
       result.push({ bill, transaction, monthKey });
     }

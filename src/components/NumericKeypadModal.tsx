@@ -15,6 +15,11 @@ export const NumericKeypadModal = ({ isOpen, onClose, onConfirm, initialValue }:
   const [value, setValue] = useState(initialValue === '0.00' ? '' : initialValue);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setValue(initialValue === '0.00' ? '' : initialValue);
+  }, [isOpen, initialValue]);
+
   // Focus trap & keyboard handling
   useEffect(() => {
     if (!isOpen) return;
@@ -58,7 +63,7 @@ export const NumericKeypadModal = ({ isOpen, onClose, onConfirm, initialValue }:
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[190] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Enter amount"

@@ -18,6 +18,12 @@ Chosen: archive categories instead of deleting historical meaning.
 
 Rationale: deleting a category from the active picker should not erase the semantic label attached to old transactions, budgets, recurring items, or reports.
 
+### Recurring Entries
+
+Chosen: model recurring entries as monthly templates with explicit start and end dates plus month-specific overrides.
+
+Rationale: a recurring payment must stay stable as the source pattern while still allowing one-off adjustments, such as a single mortgage installment changing from 100 to 102 without rewriting the whole plan.
+
 ### AI
 
 Chosen: no AI in current scope.
