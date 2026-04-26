@@ -7,6 +7,7 @@ import { ComparisonSummary } from '../components/compare/ComparisonSummary';
 import { OverlayChart } from '../components/compare/OverlayChart';
 import { CategoryDelta } from '../components/compare/CategoryDelta';
 import { CompareInsights } from '../components/compare/CompareInsights';
+import { pageTransition } from '../utils/motion';
 
 export function ComparePage() {
   const { transactions } = useApp();
@@ -34,9 +35,9 @@ export function ComparePage() {
   const comparison = useMemo(() => comparePeriods(transactions, ranges.a, ranges.b), [transactions, ranges]);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4 pb-24">
+    <motion.div {...pageTransition} className="space-y-4 pb-24">
       <section className="space-y-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Compare</p>
+        <p className="text-micro font-bold text-on-surface-variant">Compare</p>
         <h2 className="font-headline text-2xl font-extrabold text-primary">Period comparison</h2>
       </section>
       <PeriodSelector monthA={monthA} monthB={monthB} onMonthAChange={setMonthA} onMonthBChange={setMonthB} onPreset={setPreset} />

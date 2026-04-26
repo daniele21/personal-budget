@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, PlusCircle, BarChart3, Trophy } from 'lucide-react';
+import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, BarChart3, Trophy } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { AccountList } from '../components/profile/AccountList';
 import {
   addCategoryName,
   archiveCategoryName,
@@ -21,6 +22,7 @@ import {
   renameCategoryReferences,
   restoreCategoryName,
 } from '../domain/categories';
+import { pageTransition } from '../utils/motion';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
@@ -47,14 +49,6 @@ export const ProfilePage = () => {
   const totalExpenses = allTimeTotals.expenses;
   const netWorth = currentBalance;
   const quickAccessItems = [
-    {
-      to: '/add',
-      label: 'Add',
-      ariaLabel: 'Add transaction',
-      icon: PlusCircle,
-      className: 'bg-primary text-on-primary shadow-md shadow-primary/15 hover:bg-primary-container',
-      iconClassName: 'bg-white/15',
-    },
     {
       to: '/budgets',
       label: 'Budgets',
@@ -261,15 +255,13 @@ export const ProfilePage = () => {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      {...pageTransition}
       className="space-y-5 pb-24"
     >
       <section>
         <div className="flex flex-col gap-3 mb-6">
           <div>
-            <p className="text-on-surface-variant text-[10px] tracking-[0.2em] uppercase mb-1 font-bold">Total Net Worth</p>
+            <p className="text-on-surface-variant text-micro mb-1 font-bold">Total Net Worth</p>
             <h2 className="text-4xl font-extrabold text-primary tracking-tight">{formatCurrency(netWorth)}</h2>
           </div>
           <div className="flex items-center gap-2 text-secondary font-bold bg-secondary-container/20 px-4 py-1.5 rounded-full w-fit text-xs">
@@ -283,7 +275,7 @@ export const ProfilePage = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-headline font-bold text-primary">Quick Access</h3>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 gap-3">
           {quickAccessItems.map((item) => {
             const Icon = item.icon;
 
@@ -293,14 +285,14 @@ export const ProfilePage = () => {
                 to={item.to}
                 aria-label={item.ariaLabel}
                 className={cn(
-                  'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-outline-variant/5 px-1.5 py-3 text-center transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-outline-variant/5 px-2 py-3 text-center transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                   item.className,
                 )}
               >
                 <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', item.iconClassName)}>
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="max-w-full truncate text-[10px] font-bold leading-tight">{item.label}</span>
+                <span className="text-xs font-bold leading-tight">{item.label}</span>
               </Link>
             );
           })}
@@ -405,7 +397,7 @@ export const ProfilePage = () => {
                 <div className="mt-3 h-2 w-full rounded-full bg-surface-container-high overflow-hidden">
                   <div className="h-full rounded-full bg-secondary transition-all" style={{ width: `${progress}%` }} />
                 </div>
-                <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-secondary">{progress}% completato</p>
+                <p className="mt-2 text-micro font-bold text-secondary">{progress}% completato</p>
               </div>
             );
           })}
@@ -458,7 +450,7 @@ export const ProfilePage = () => {
               </div>
               <div className="text-left min-w-0">
                 <p className="text-sm font-bold text-on-surface">Gestione categorie</p>
-                <p className="text-[10px] text-on-surface-variant font-medium">
+                <p className="text-micro text-on-surface-variant font-medium">
                   Aggiungi, modifica o elimina categorie
                 </p>
               </div>
@@ -476,7 +468,7 @@ export const ProfilePage = () => {
               </div>
               <div className="text-left">
                 <p className="text-sm font-bold text-on-surface">Export Data</p>
-                <p className="text-[10px] text-on-surface-variant font-medium">Download transactions & budgets as CSV</p>
+                <p className="text-micro text-on-surface-variant font-medium">Download transactions & budgets as CSV</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
@@ -495,7 +487,7 @@ export const ProfilePage = () => {
                 <p className="text-sm font-headline font-extrabold leading-tight">
                   {isBackingUp ? 'Backing up...' : 'Backup now'}
                 </p>
-                <p className="text-[10px] text-on-primary/75 font-medium leading-tight">
+                <p className="text-micro text-on-primary/75 font-medium leading-tight">
                   {cloudBackupEnabled ? 'Encrypted cloud backup' : 'Enable cloud backup first'}
                 </p>
               </div>
@@ -511,7 +503,7 @@ export const ProfilePage = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-on-surface">Backup cloud cifrato</p>
-                  <p className="text-[10px] text-on-surface-variant font-medium">
+                  <p className="text-micro text-on-surface-variant font-medium">
                     {cloudBackupEnabled ? 'Attivo' : 'Disattivato'} · Stato: {backupStatus}
                     {lastBackupDate ? ` · Ultimo backup: ${lastBackupDate}` : ''}
                   </p>
@@ -523,7 +515,7 @@ export const ProfilePage = () => {
                 label={cloudBackupEnabled ? 'Disattiva backup cloud' : 'Attiva backup cloud'}
               />
             </div>
-            <p className="text-[10px] leading-relaxed text-on-surface-variant">
+            <p className="text-micro leading-relaxed text-on-surface-variant">
               Quando attivo, Aura salva un backup cifrato su Firestore per il tuo account. Puoi disattivarlo o cancellarlo in qualsiasi momento.
             </p>
           </div>
@@ -570,33 +562,7 @@ export const ProfilePage = () => {
         </div>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-headline font-bold text-primary">Your Accounts</h3>
-        </div>
-        <div className="space-y-3">
-          {accounts.map(acc => (
-            <div key={acc.id} className="group bg-surface-container-low p-4 rounded-2xl flex items-center justify-between transition-all border border-outline-variant/5">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-sm border border-outline-variant/5">
-                  {acc.type === 'checking' ? <Landmark className="w-5 h-5 text-primary" /> :
-                   acc.type === 'savings' ? <ShieldCheck className="w-5 h-5 text-secondary" /> :
-                   acc.type === 'credit' ? <CreditCard className="w-5 h-5 text-primary" /> :
-                   <Wallet className="w-5 h-5 text-primary" />}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-on-surface">{acc.name}</p>
-                  <p className="text-[10px] text-on-surface-variant font-medium">{acc.bank} • {acc.lastFour}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-sm text-primary">{formatCurrency(acc.balance)}</p>
-                <p className="text-[10px] text-secondary font-bold uppercase tracking-widest">{acc.status || acc.apy}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <AccountList accounts={accounts} />
 
       <section className="pt-4 space-y-4">
         {/* Privacy notice */}
@@ -604,7 +570,7 @@ export const ProfilePage = () => {
           <ShieldCheck className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-bold text-on-surface mb-1">Your data stays on this device</p>
-            <p className="text-[10px] text-on-surface-variant leading-relaxed">
+            <p className="text-micro text-on-surface-variant leading-relaxed">
               Transactions, budgets and settings are stored locally in your browser. If you enable cloud backup, an encrypted copy is stored in Firestore for restore across devices.
             </p>
           </div>
@@ -640,7 +606,7 @@ export const ProfilePage = () => {
 
         {/* Danger zone — visually separated */}
         <div className="pt-6 mt-4 border-t border-outline-variant/10">
-          <p className="text-[10px] uppercase tracking-widest text-tertiary font-bold mb-3 text-center">Danger Zone</p>
+          <p className="text-micro text-tertiary font-bold mb-3 text-center">Danger Zone</p>
           <div className="space-y-2">
             <button 
               onClick={() => setShowResetLocalDialog(true)}

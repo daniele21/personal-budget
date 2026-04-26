@@ -3,17 +3,18 @@ import { CategoryDelta as CategoryDeltaType } from '../../domain/finance';
 import { CategoryIcon } from '../CategoryIcon';
 import { formatCurrency } from '../../utils/formatters';
 import { cn } from '../../lib/utils';
+import { Card } from '../ui';
 
 export function CategoryDelta({ deltas }: { deltas: CategoryDeltaType[] }) {
   const max = Math.max(1, ...deltas.map((item) => Math.max(item.amountA, item.amountB)));
 
   if (deltas.length === 0) {
-    return <p className="rounded-3xl bg-surface-container-lowest p-8 text-center text-sm text-on-surface-variant">No expense categories in these periods.</p>;
+    return <Card className="p-8 text-center text-sm text-on-surface-variant">No expense categories in these periods.</Card>;
   }
 
   return (
-    <div className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4 space-y-3">
-      <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Category comparison</p>
+    <Card className="space-y-3 p-4">
+      <p className="text-micro font-bold text-on-surface-variant">Category comparison</p>
       {deltas.map((item) => (
         <div key={item.category} className="space-y-2">
           <div className="flex items-center justify-between gap-3">
@@ -25,7 +26,7 @@ export function CategoryDelta({ deltas }: { deltas: CategoryDeltaType[] }) {
               {item.delta >= 0 ? '+' : ''}{formatCurrency(item.delta)}
             </p>
           </div>
-          <div className="grid grid-cols-[44px_1fr_72px] items-center gap-2 text-[10px] text-on-surface-variant">
+          <div className="grid grid-cols-[44px_1fr_72px] items-center gap-2 text-micro text-on-surface-variant">
             <span>A</span>
             <div className="h-2 rounded-full bg-surface-container-high overflow-hidden">
               <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(3, (item.amountA / max) * 100)}%` }} />
@@ -39,6 +40,6 @@ export function CategoryDelta({ deltas }: { deltas: CategoryDeltaType[] }) {
           </div>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }

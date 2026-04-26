@@ -2,6 +2,7 @@ import React from 'react';
 import { AnnualReview } from '../../domain/finance';
 import { formatCurrency } from '../../utils/formatters';
 import { cn } from '../../lib/utils';
+import { Card } from '../ui';
 
 export function AnnualSummaryCards({ review }: { review: AnnualReview }) {
   const cards = [
@@ -14,10 +15,10 @@ export function AnnualSummaryCards({ review }: { review: AnnualReview }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {cards.map((card) => (
-        <div key={card.label} className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">{card.label}</p>
+        <Card key={card.label} className="p-4">
+          <p className="text-micro font-bold text-on-surface-variant mb-2">{card.label}</p>
           <p className={cn('text-xl font-extrabold', card.color)}>{card.value}</p>
-        </div>
+        </Card>
       ))}
     </div>
   );

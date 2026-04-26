@@ -27,10 +27,10 @@
 | Swipe tra pagine | ✅ Implementato | `src/hooks/useSwipeNavigation.ts` + integrato in Layout |
 | Global Search | ✅ Implementato | `GlobalSearch.tsx` — command palette con Cmd+K |
 | Notification Center | ✅ Implementato | `NotificationCenter.tsx` — local alerts e reminders |
-| Skeleton Loading | ❌ Non implementato | — |
-| Empty States consistenti | 🟡 Parziale | EmptyState component esteso ma non adottato in tutte le pagine |
-| Decomposizione God-Components | ❌ Non implementato | Pages ancora monolitiche |
-| Batch Actions | ❌ Non implementato | — |
+| Skeleton Loading | ✅ Implementato | `Skeleton.tsx`, `isHydrated` e skeleton Dashboard |
+| Empty States consistenti | ✅ Implementato | History, Calendar, Budgets e Dashboard usano `EmptyState` con action dove utile |
+| Decomposizione God-Components | 🟡 Parziale | Estratti componenti da History, Calendar e Profile |
+| Batch Actions | ✅ Implementato | History supporta selezione multipla, export, cambio categoria e delete con undo |
 
 ---
 
@@ -40,11 +40,7 @@
 
 **Implementato** in [SwipeableRow.tsx](file:///Users/moltisantid/Personal/personal-budget/src/components/SwipeableRow.tsx). Usa Framer Motion `drag="x"` con threshold 88px. Include haptic feedback integrato.
 
-**Lavoro residuo**:
-- ⚠️ Il background dello swipe (righe 26-34) non ha colori di sfondo (rosso per delete, blu per edit) — solo testo e icone. Aggiungere `bg-tertiary/10` a sinistra e `bg-primary/10` a destra migliorerebbe il feedback visivo.
-- ⚠️ Verificare che SwipeableRow sia usato in tutte le liste transazioni (HistoryPage, Dashboard recent, CalendarPage day detail).
-
-**Effort residuo**: 0.5 giorni
+**Completato** — il background dello swipe ora distingue edit (`primary/10`) e delete (`tertiary/10`). `HistoryPage` usa `SwipeableRow` nella lista transazioni.
 
 ---
 
@@ -60,10 +56,7 @@
 
 **Implementato** in [haptics.ts](file:///Users/moltisantid/Personal/personal-budget/src/utils/haptics.ts) con 3 pattern: `tap(10ms)`, `success(30ms)`, `warning([20,50,20])`. Integrato nel `Button.tsx` e nello `SwipeableRow.tsx`.
 
-**Lavoro residuo**:
-- Integrare `haptics.tap()` anche nel `NumericKeypadModal` sui digit buttons.
-
-**Effort residuo**: 0.25 giorni
+**Completato** — `NumericKeypadModal` emette `haptics.tap()` sui digit button.
 
 ---
 
@@ -93,34 +86,23 @@ La [TopBar.tsx](file:///Users/moltisantid/Personal/personal-budget/src/component
 
 ## 3. 💬 Feedback e Stati
 
-### 3.1 Skeleton Loading States ❌
+### 3.1 Skeleton Loading States ✅
 
-**Non implementato**. Le pagine ancora non hanno skeleton loading. Il rischio è basso dato che i dati vengono da localStorage (< 1ms), ma dopo un restore dal cloud ci potrebbe essere un flash vuoto.
-
-**Soluzione**: Come proposto originalmente — aggiungere `isHydrated` al context + componente `Skeleton.tsx`.
+**Implementato**. `AppContext` espone `isHydrated`, `src/components/ui/Skeleton.tsx` è disponibile e Dashboard usa skeleton sulle metriche principali per evitare flash vuoti.
 
 | File | Modifica |
 |---|---|
-| **NUOVO** `src/components/ui/Skeleton.tsx` | Componente base riutilizzabile |
-| `src/context/AppContext.tsx` | Aggiungere `isHydrated` state |
-| `src/pages/Dashboard.tsx` | Wrappare sezioni con skeleton |
-| `src/pages/HistoryPage.tsx` | Skeleton per la lista transazioni |
-
-**Effort**: 1-1.5 giorni
+| `src/components/ui/Skeleton.tsx` | Componente base riutilizzabile |
+| `src/context/AppContext.tsx` | `isHydrated` esposto nel context |
+| `src/pages/Dashboard.tsx` | Metriche principali protette da skeleton |
 
 ---
 
-### 3.2 Empty States 🟡 Parziale
+### 3.2 Empty States ✅
 
 [EmptyState.tsx](file:///Users/moltisantid/Personal/personal-budget/src/components/ui/EmptyState.tsx) è stato **esteso** (35 righe) con supporto per `action?: { label, to }` e rendering tramite `Button` + `Link`.
 
-**Lavoro residuo**: Adottare `EmptyState` consistentemente in:
-- `HistoryPage` (lista vuota dopo filtro)
-- `CalendarPage` (giorno senza transazioni)
-- `BudgetsPage` (nessun budget impostato)
-- `Dashboard` (sostituire testi inline)
-
-**Effort residuo**: 0.5 giorni
+**Completato** — adottato nelle superfici principali: History, Calendar, Budgets e Dashboard.
 
 ---
 
@@ -128,9 +110,7 @@ La [TopBar.tsx](file:///Users/moltisantid/Personal/personal-budget/src/component
 
 [Toast.tsx](file:///Users/moltisantid/Personal/personal-budget/src/components/Toast.tsx) ora supporta `action?: { label, onClick }` (righe 13-16) con rendering di un pulsante inline nel toast (righe 61-72).
 
-**Lavoro residuo**: Verificare che le azioni di delete in HistoryPage, CalendarPage e BudgetsPage usino effettivamente il toast con undo invece del semplice `ConfirmDialog` + delete immediata.
-
-**Effort residuo**: 0.5 giorni
+**Completato** — History, Calendar/Recurring e Budgets eliminano dopo conferma e offrono undo via toast.
 
 ---
 
@@ -148,12 +128,12 @@ La [TopBar.tsx](file:///Users/moltisantid/Personal/personal-budget/src/component
 
 | Problema | File | Dettaglio |
 |---|---|---|
-| **`useFocusTrap` non adottato ovunque** | ConfirmDialog, CategoryPicker, BudgetsPage modal | Il hook esiste ma va integrato nei modali esistenti |
-| **`prefers-reduced-motion` non gestito** | App-wide | Le animazioni Framer Motion non rispettano la preferenza utente. Servono `MotionConfig reducedMotion="user"` |
-| **`text-[10px]` accessibilità** | 35+ file | Il micro-text (10px) è sotto i 12px WCAG consigliati. Sui dispositivi a bassa densità potrebbe essere illeggibile |
-| **Chart SVG accessibilità** | Dashboard donut, InsightsPage bars | Mancano `role="img"` e `aria-label` descrittivi (RadialGauge e Sparkline sono ok) |
-
-**Effort residuo**: 1-1.5 giorni
+| Problema | Stato | Dettaglio |
+|---|---|---|
+| **`useFocusTrap` non adottato ovunque** | ✅ Implementato | Integrato in ConfirmDialog, CategoryPicker, GlobalSearch, NotificationCenter, ReminderDialog, Budget modal, History sheets e recurring sheets |
+| **`prefers-reduced-motion` non gestito** | ✅ Implementato | `MotionConfig reducedMotion="user"` in `App.tsx` |
+| **`text-[10px]` accessibilità** | ✅ Implementato | Migrazione a token `text-micro` |
+| **Chart SVG accessibilità** | ✅ Implementato | Dashboard donut, RadialGauge, Sparkline e heatmap espongono `role="img"`/`aria-label` |
 
 ---
 
@@ -203,11 +183,9 @@ I piani proposti restano validi. Le nuove feature (year-review, compare) sono st
 
 ---
 
-### 6.3 Batch Actions ❌
+### 6.3 Batch Actions ✅
 
-**Non implementato**. Long-press su transazione per selezione multipla + toolbar batch (delete, change category, export).
-
-**Effort**: 2-2.5 giorni
+**Implementato** in History: selezione multipla, toolbar batch, cambio categoria, export CSV, delete e undo.
 
 ---
 
@@ -215,17 +193,16 @@ I piani proposti restano validi. Le nuove feature (year-review, compare) sono st
 
 | Area | Item | Effort | Impatto | Priorità |
 |---|---|---|---|---|
-| 📄 Decomposizione | HistoryPage split (969 righe!) | 2-3 gg | 🔴 Manutenibilità | ⭐ P0 |
-| 📄 Decomposizione | CalendarPage split | 1.5-2 gg | 🟠 Manutenibilità | ⭐ P0 |
-| 📄 Decomposizione | ProfilePage split | 1-1.5 gg | 🟡 Manutenibilità | P1 |
-| 💬 Feedback | Skeleton loading | 1-1.5 gg | 🟡 Percezione qualità | P1 |
-| 💬 Feedback | Empty states adozione completa | 0.5 gg | 🟢 Percezione qualità | P1 |
-| 💬 Feedback | Undo verifica e integrazione | 0.5 gg | 🟢 Prevenzione errori | P1 |
-| 📱 Interazione | SwipeableRow background colori | 0.5 gg | 🟢 Feedback visivo | P2 |
-| 📱 Interazione | Haptics nel NumericKeypad | 0.25 gg | 🟢 Premium feel | P2 |
-| ♿ Accessibilità | Focus trap adozione + reduced motion + chart a11y | 1-1.5 gg | 🟡 Inclusività | P1 |
-| 🔄 Flussi | Batch actions | 2-2.5 gg | 🟢 Power user | P3 |
+| Area | Item | Stato | Note |
+|---|---|---|---|
+| 📄 Decomposizione | HistoryPage split | 🟡 Parziale | Estratti traiettoria, toolbar batch e lista |
+| 📄 Decomposizione | CalendarPage split | 🟡 Parziale | Estratti summary mensile e grid |
+| 📄 Decomposizione | ProfilePage split | 🟡 Parziale | Estratta lista account |
+| 💬 Feedback | Skeleton, empty states, undo | ✅ Implementato | Restano solo verifiche manuali |
+| 📱 Interazione | Swipe background + keypad haptics | ✅ Implementato | — |
+| ♿ Accessibilità | Focus trap + reduced motion + chart a11y | ✅ Implementato | — |
+| 🔄 Flussi | Batch actions | ✅ Implementato | — |
 
-### Effort Residuo Totale: ~11-14 giorni
+### Effort Residuo
 
-Rispetto all'originale (18-24 giorni), **~10 giorni di lavoro sono già stati completati**.
+Resta lavoro di decomposizione incrementale se si vuole continuare a ridurre ulteriormente Profile/Calendar, ma i gap funzionali UX indicati sono stati chiusi.

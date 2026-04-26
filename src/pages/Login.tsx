@@ -28,7 +28,7 @@ export const Login = ({ onSignIn, error }: LoginProps) => {
         </motion.div>
         <div className="space-y-2">
           <h1 className="text-5xl font-headline font-extrabold text-primary tracking-tighter">{APP_CONFIG.name}</h1>
-          <p className="text-on-surface-variant text-sm font-medium tracking-wide uppercase">{APP_CONFIG.tagline}</p>
+          <p className="text-on-surface-variant text-sm font-medium tracking-wide">{APP_CONFIG.tagline}</p>
         </div>
         <p className="text-on-surface-variant/70 max-w-[240px] mx-auto text-sm leading-relaxed">
           {APP_CONFIG.description}
@@ -55,11 +55,11 @@ export const Login = ({ onSignIn, error }: LoginProps) => {
         
         <div className="flex items-center gap-4 py-2">
           <div className="h-px bg-outline-variant/20 flex-1"></div>
-          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Secure Access</span>
+          <span className="text-micro font-bold text-on-surface-variant/40">Secure Access</span>
           <div className="h-px bg-outline-variant/20 flex-1"></div>
         </div>
         
-        <p className="text-[10px] text-on-surface-variant/50 text-center leading-relaxed">
+        <p className="text-micro text-on-surface-variant/50 text-center leading-relaxed">
           By continuing, you agree to our <br/>
           <span className="underline cursor-pointer">Terms of Service</span> and <span className="underline cursor-pointer">Privacy Policy</span>.
         </p>

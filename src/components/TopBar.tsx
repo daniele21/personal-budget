@@ -92,7 +92,7 @@ export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarPr
           >
             <Bell className="w-5 h-5 text-primary" />
             {notifications.unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 bg-tertiary text-on-primary rounded-full border border-surface text-[9px] font-bold leading-4 text-center">
+              <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 bg-tertiary text-on-primary rounded-full border border-surface text-micro font-bold leading-4 text-center">
                 {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
               </span>
             )}

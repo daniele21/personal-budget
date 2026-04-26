@@ -4,12 +4,30 @@
 @theme {
   --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-size-micro: 10px;
-  --font-size-caption: 12px;
-  --font-size-body: 14px;
-  --font-size-title: 16px;
-  --font-size-headline: 24px;
-  --font-size-hero: 36px;
+
+  /* --- Tailwind default font sizes (must be preserved) --- */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  --font-size-5xl: 3rem;
+  --font-size-6xl: 3.75rem;
+  --font-size-7xl: 4.5rem;
+  --font-size-8xl: 6rem;
+  --font-size-9xl: 8rem;
+
+  /* --- Custom semantic font sizes --- */
+  --font-size-micro: 0.625rem;    /* 10px — labels, badges */
+  --font-size-caption: 0.75rem;   /* 12px — secondary text */
+  --font-size-body: 0.875rem;     /* 14px — primary content */
+  --font-size-title: 1rem;        /* 16px — section titles */
+  --font-size-headline: 1.5rem;   /* 24px — page headlines */
+  --font-size-hero: 2.25rem;      /* 36px — balance, key metrics */
+
 
   --color-surface: #f3faff;
   --color-on-surface: #071e27;
@@ -66,6 +84,7 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
+
 }
 
 .hero-gradient {

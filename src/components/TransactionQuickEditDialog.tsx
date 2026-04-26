@@ -68,7 +68,7 @@ export function TransactionQuickEditDialog({
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Quick edit</p>
+                <p className="text-micro font-bold text-primary">Quick edit</p>
                 <h3 className="font-headline text-lg font-extrabold text-on-surface">Transaction details</h3>
               </div>
               <button type="button" onClick={onClose} className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high" aria-label="Close quick edit">

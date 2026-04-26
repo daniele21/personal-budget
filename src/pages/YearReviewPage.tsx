@@ -11,6 +11,7 @@ import { CategoryShift } from '../components/year-review/CategoryShift';
 import { Button } from '../components/ui';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../utils/formatters';
+import { pageTransition } from '../utils/motion';
 
 export function YearReviewPage() {
   const { transactions } = useApp();
@@ -29,9 +30,9 @@ export function YearReviewPage() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4 pb-24">
+    <motion.div {...pageTransition} className="space-y-4 pb-24">
       <section className="space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Year in Review</p>
+        <p className="text-micro font-bold text-on-surface-variant">Year in Review</p>
         <div className="flex items-center justify-between gap-3">
           <button type="button" onClick={() => setYear((current) => current - 1)} className="w-10 h-10 rounded-xl hover:bg-surface-container-low flex items-center justify-center" aria-label="Previous year">
             <ChevronLeft className="w-5 h-5 text-primary" />

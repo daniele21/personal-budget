@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bell, CheckCheck, X, AlertTriangle, RefreshCw, CalendarClock, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationRecord } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
 import { formatDate } from '../utils/formatters';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ const ICONS: Record<NotificationRecord['type'], React.ReactNode> = {
 export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
   const navigate = useNavigate();
   const notifications = useNotifications();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) notifications.markAllRead();
@@ -36,9 +39,10 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
       {isOpen && (
         <motion.div className="fixed inset-0 z-[180] bg-black/30 px-4 pt-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Notification center"
+            aria-labelledby="notification-center-title"
             className="ml-auto max-w-md rounded-3xl bg-surface-container-lowest border border-outline-variant/10 shadow-2xl overflow-hidden"
             initial={{ y: -12, scale: 0.98 }}
             animate={{ y: 0, scale: 1 }}
@@ -48,8 +52,8 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-primary" />
                 <div>
-                  <p className="text-sm font-bold text-on-surface">Notifications</p>
-                  <p className="text-[10px] text-on-surface-variant">Local alerts and reminders</p>
+                  <p id="notification-center-title" className="text-sm font-bold text-on-surface">Notifications</p>
+                  <p className="text-micro text-on-surface-variant">Local alerts and reminders</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -74,7 +78,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-on-surface">{record.title}</p>
                         <p className="text-xs text-on-surface-variant leading-relaxed">{record.body}</p>
-                        <p className="mt-1 text-[10px] text-on-surface-variant/70">{formatDate(record.createdAt)}</p>
+                        <p className="mt-1 text-micro text-on-surface-variant/70">{formatDate(record.createdAt)}</p>
                       </div>
                     </button>
                   ))}

@@ -3,13 +3,14 @@ import { AnnualReview } from '../../domain/finance';
 import { CategoryIcon } from '../CategoryIcon';
 import { formatCurrency } from '../../utils/formatters';
 import { cn } from '../../lib/utils';
+import { Card } from '../ui';
 
 export function CategoryShift({ review }: { review: AnnualReview }) {
   const shifts = review.categoryShifts.slice(0, 6);
 
   return (
-    <div className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4 space-y-4">
-      <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Category shifts vs previous year</p>
+    <Card className="space-y-4 p-4">
+      <p className="text-micro font-bold text-on-surface-variant">Category shifts vs previous year</p>
       {shifts.length === 0 ? (
         <p className="text-sm text-on-surface-variant">No previous year data to compare.</p>
       ) : shifts.map((shift) => (
@@ -20,7 +21,7 @@ export function CategoryShift({ review }: { review: AnnualReview }) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-on-surface truncate">{shift.category}</p>
-              <p className="text-[10px] text-on-surface-variant">{formatCurrency(shift.current)} vs {formatCurrency(shift.previous)}</p>
+              <p className="text-micro text-on-surface-variant">{formatCurrency(shift.current)} vs {formatCurrency(shift.previous)}</p>
             </div>
           </div>
           <p className={cn('text-xs font-bold', shift.delta <= 0 ? 'text-secondary' : 'text-tertiary')}>
@@ -28,6 +29,6 @@ export function CategoryShift({ review }: { review: AnnualReview }) {
           </p>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }

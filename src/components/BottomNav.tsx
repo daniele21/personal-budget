@@ -14,19 +14,19 @@ export const BottomNav = () => {
   ];
 
   return (
-    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-3 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
+    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-1.5 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path;
         const Icon = item.icon;
 
         if (item.isSpecial) {
           return (
-            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-8">
+            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-6">
               <div className={cn(
-                "w-14 h-14 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
+                "w-12 h-12 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
                 isActive && "ring-4 ring-primary/20"
               )}>
-                <Plus className="w-8 h-8" />
+                <Plus className="w-6 h-6" />
               </div>
             </Link>
           );
@@ -39,18 +39,18 @@ export const BottomNav = () => {
             aria-label={item.label}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              "flex flex-col items-center justify-center min-w-[64px] py-1 rounded-2xl transition-all active:scale-90",
+              "flex flex-col items-center justify-center min-w-[56px] py-1 rounded-2xl transition-all active:scale-90",
               isActive ? "text-primary" : "text-on-surface-variant"
             )}
           >
             <div className={cn(
-              "p-1.5 rounded-xl transition-colors",
+              "p-1 rounded-lg transition-colors",
               isActive ? "bg-primary/10" : "bg-transparent"
             )}>
               <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
             </div>
             <span className={cn(
-              "text-[10px] font-bold uppercase tracking-tighter mt-1 transition-opacity",
+              "text-xs font-medium mt-0.5 transition-opacity",
               isActive ? "opacity-100" : "opacity-60"
             )}>
               {item.label}

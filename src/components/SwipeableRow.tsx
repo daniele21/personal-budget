@@ -23,12 +23,12 @@ export function SwipeableRow({ children, onEdit, onDelete }: SwipeableRowProps) 
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      <div className="absolute inset-0 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-widest">
+      <div className="absolute inset-0 grid grid-cols-2 overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-2 bg-primary/10 px-4 text-xs font-bold text-primary">
           <Pencil className="w-4 h-4" />
           Edit
         </div>
-        <div className="flex items-center gap-2 text-tertiary text-xs font-bold uppercase tracking-widest">
+        <div className="flex items-center justify-end gap-2 bg-tertiary/10 px-4 text-xs font-bold text-tertiary">
           Delete
           <Trash2 className="w-4 h-4" />
         </div>

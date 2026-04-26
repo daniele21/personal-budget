@@ -1,6 +1,7 @@
 import React from 'react';
 import { DailySpending } from '../../domain/finance';
 import { formatCurrency } from '../../utils/formatters';
+import { Card } from '../ui';
 
 const COLORS = [
   'var(--color-surface-container-high)',
@@ -12,8 +13,8 @@ const COLORS = [
 
 export function SpendingHeatmap({ data }: { data: DailySpending[] }) {
   return (
-    <div className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4 overflow-hidden">
-      <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-3">Daily spending heatmap</p>
+    <Card className="overflow-hidden p-4">
+      <p className="text-micro font-bold text-on-surface-variant mb-3">Daily spending heatmap</p>
       <div className="overflow-x-auto pb-2">
         <svg width="740" height="112" role="img" aria-label="Daily spending heatmap">
           {data.map((day, index) => {
@@ -35,11 +36,11 @@ export function SpendingHeatmap({ data }: { data: DailySpending[] }) {
           })}
         </svg>
       </div>
-      <div className="flex items-center justify-end gap-1 text-[10px] text-on-surface-variant">
+      <div className="flex items-center justify-end gap-1 text-micro text-on-surface-variant">
         <span>Less</span>
         {COLORS.map((color) => <span key={color} className="w-3 h-3 rounded-[4px]" style={{ background: color }} />)}
         <span>More</span>
       </div>
-    </div>
+    </Card>
   );
 }

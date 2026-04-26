@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -8,10 +8,12 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { CategoryPicker } from '../components/CategoryPicker';
-import { Button, EmptyState, Input } from '../components/ui';
+import { Button, Card, EmptyState, Input } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { RecurringEntryCard } from '../components/RecurringEntryCard';
 import { haptics } from '../utils/haptics';
+import { pageTransition } from '../utils/motion';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   getDefaultRecurringEndDate,
   getRecurringDraftStartDate,
@@ -35,6 +37,7 @@ export const RecurringPage = () => {
   const [newCategory, setNewCategory] = useState(categories[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
+  const recurringDialogRef = useRef<HTMLDivElement>(null);
 
   const getCreateStartDate = () => getRecurringDraftStartDate(
     viewDate.getFullYear(),
@@ -51,6 +54,8 @@ export const RecurringPage = () => {
     setNewEndDate('');
     setNewCategory(categories[0]);
   };
+
+  useFocusTrap(recurringDialogRef, isAdding, resetForm);
 
   const openCreateRecurring = () => {
     setEditingId(null);
@@ -150,12 +155,10 @@ export const RecurringPage = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      {...pageTransition}
       className="space-y-4 pb-24"
     >
-      <section className="bg-surface-container-lowest rounded-3xl p-5 shadow-sm border border-outline-variant/5">
+      <Card as="section">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline text-lg font-bold text-primary">
             {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -189,7 +192,7 @@ export const RecurringPage = () => {
 
         <div className="grid grid-cols-7 gap-1 text-center mb-4">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((dayLabel, idx) => (
-            <span key={`${dayLabel}-${idx}`} className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{dayLabel}</span>
+            <span key={`${dayLabel}-${idx}`} className="text-xs font-bold text-on-surface-variant">{dayLabel}</span>
           ))}
         </div>
 
@@ -222,18 +225,22 @@ export const RecurringPage = () => {
             );
           })}
         </div>
-      </section>
+      </Card>
 
       {isAdding && (
         <div className="fixed inset-0 z-[160] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6">
           <button type="button" aria-label="Close recurring form" className="absolute inset-0" onClick={resetForm} />
           <motion.div
+            ref={recurringDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="recurring-form-title"
             initial={{ opacity: 0, scale: 0.97, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="relative z-10 w-full max-w-md max-h-[88vh] overflow-hidden rounded-t-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 sm:rounded-3xl"
           >
             <div className="flex items-center justify-between border-b border-outline-variant/10 px-6 py-5">
-              <h3 className="font-headline font-bold text-primary">{editingId ? 'Edit Recurring Bill' : 'Add Recurring Bill'}</h3>
+              <h3 id="recurring-form-title" className="font-headline font-bold text-primary">{editingId ? 'Edit Recurring Bill' : 'Add Recurring Bill'}</h3>
               <button onClick={resetForm}><X className="w-5 h-5 text-on-surface-variant" /></button>
             </div>
 
@@ -241,7 +248,7 @@ export const RecurringPage = () => {
               <div className="space-y-3 pb-24">
                 <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(148px,0.8fr)] gap-3 items-stretch">
                   <div className="rounded-2xl bg-surface-container-high px-4 py-3 min-h-[72px] flex flex-col">
-                    <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-2">
+                    <label className="block text-micro font-bold text-on-surface-variant mb-2">
                       Bill Name
                     </label>
                     <input
@@ -256,7 +263,7 @@ export const RecurringPage = () => {
                     onClick={() => setIsAmountKeypadOpen(true)}
                     className="rounded-2xl bg-surface-container-high px-4 py-3 min-h-[72px] text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary flex flex-col"
                   >
-                    <span className="block text-[10px] uppercase font-bold text-on-surface-variant mb-2">
+                    <span className="block text-micro font-bold text-on-surface-variant mb-2">
                       Amount ({APP_CONFIG.currency})
                     </span>
                     <span className="mt-auto text-lg font-headline font-extrabold text-primary leading-none">
@@ -266,7 +273,7 @@ export const RecurringPage = () => {
                 </div>
                 <div className="rounded-2xl bg-surface-container-high p-4 space-y-2.5">
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Schedule Window</p>
+                    <p className="text-micro font-bold text-on-surface-variant">Schedule Window</p>
                     <p className="text-xs text-on-surface-variant mt-1 leading-snug">Start and end stay on the exact calendar day you choose.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -284,7 +291,7 @@ export const RecurringPage = () => {
                     />
                   </div>
                 </div>
-                <p className="text-[10px] font-medium text-on-surface-variant leading-snug">
+                <p className="text-micro font-medium text-on-surface-variant leading-snug">
                   If you leave the end date empty, the recurring bill stays active for 1 year from the start date.
                 </p>
                 <CategoryPicker
@@ -315,7 +322,7 @@ export const RecurringPage = () => {
         <div className="flex items-center justify-between px-1">
           <h3 className="font-headline font-extrabold text-lg">Recurring Plans</h3>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{recurring.length} Active</span>
+            <span className="text-xs font-bold text-on-surface-variant">{recurring.length} Active</span>
           </div>
         </div>
         <div className="space-y-3">

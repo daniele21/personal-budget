@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '../ui';
+import { Button, Card } from '../ui';
 
 interface PeriodSelectorProps {
   monthA: Date;
@@ -28,7 +28,7 @@ export function PeriodSelector({ monthA, monthB, onMonthAChange, onMonthBChange,
   };
 
   return (
-    <div className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4 space-y-4">
+    <Card className="space-y-4 p-4">
       <div className="grid grid-cols-3 gap-2">
         <Button size="sm" variant="secondary" onClick={() => onPreset('month')}>Month</Button>
         <Button size="sm" variant="secondary" onClick={() => onPreset('quarter')}>Quarter</Button>
@@ -40,7 +40,7 @@ export function PeriodSelector({ monthA, monthB, onMonthAChange, onMonthBChange,
           { label: 'Period B', value: monthB, onChange: onMonthBChange, target: 'b' as const },
         ].map((item) => (
           <div key={item.label} className="rounded-2xl bg-surface-container-low p-3">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">{item.label}</p>
+            <p className="text-micro font-bold text-on-surface-variant mb-2">{item.label}</p>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => shift(item.target, -1)} className="w-9 h-9 rounded-xl hover:bg-surface-container-high flex items-center justify-center" aria-label={`Previous ${item.label}`}>
                 <ChevronLeft className="w-4 h-4 text-primary" />
@@ -58,6 +58,6 @@ export function PeriodSelector({ monthA, monthB, onMonthAChange, onMonthBChange,
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

@@ -2,11 +2,12 @@ import React from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { TrendPoint } from '../../domain/finance';
 import { formatCurrency } from '../../utils/formatters';
+import { Card } from '../ui';
 
 export function MonthlyTrendChart({ data }: { data: TrendPoint[] }) {
   return (
-    <div className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4">
-      <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-3">Monthly trend</p>
+    <Card className="p-4">
+      <p className="text-micro font-bold text-on-surface-variant mb-3">Monthly trend</p>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
@@ -18,6 +19,6 @@ export function MonthlyTrendChart({ data }: { data: TrendPoint[] }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </Card>
   );
 }

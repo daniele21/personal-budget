@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { X, ChevronLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
+import { haptics } from '../utils/haptics';
 
 interface NumericKeypadModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export const NumericKeypadModal = ({ isOpen, onClose, onConfirm, initialValue }:
   }, [isOpen, value]);
 
   const handleKey = (key: string) => {
+    haptics.tap();
     if (key === 'back') {
       setValue(prev => prev.slice(0, -1));
     } else if (key === '.') {
@@ -77,7 +79,7 @@ export const NumericKeypadModal = ({ isOpen, onClose, onConfirm, initialValue }:
         className="w-full max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-8 space-y-8 shadow-2xl"
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">Enter Amount</h3>
+          <h3 className="text-on-surface-variant text-micro font-bold">Enter Amount</h3>
           <button onClick={onClose} className="p-2 hover:bg-surface-container-low rounded-full transition-colors" aria-label="Close keypad">
             <X className="w-5 h-5 text-on-surface-variant" />
           </button>

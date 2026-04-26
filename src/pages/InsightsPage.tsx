@@ -4,9 +4,11 @@ import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ArrowUpRight, Arro
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { Card } from '../components/ui';
 import { cn } from '../lib/utils';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
+import { pageTransition } from '../utils/motion';
 
 // ─── Range definitions ──────────────────────────────────────────────
 
@@ -174,13 +176,11 @@ export const InsightsPage = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      {...pageTransition}
       className="space-y-4 pb-24"
     >
       <section className="space-y-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Reports</p>
+        <p className="text-micro font-bold text-on-surface-variant">Reports</p>
         <h2 className="font-headline text-2xl font-extrabold text-primary">Weekly and monthly analysis</h2>
       </section>
 
@@ -191,7 +191,7 @@ export const InsightsPage = () => {
             key={r.key}
             onClick={() => { setRange(r.key); setExpandedCat(null); }}
             className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
+              'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
               range === r.key ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low',
             )}
           >
@@ -214,15 +214,15 @@ export const InsightsPage = () => {
       {/* Overview cards */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-          <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Income</p>
+          <p className="text-micro text-on-surface-variant font-bold mb-1">Income</p>
           <p className="text-base font-bold text-secondary">{formatCurrency(totals.income)}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-          <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Expenses</p>
+          <p className="text-micro text-on-surface-variant font-bold mb-1">Expenses</p>
           <p className="text-base font-bold text-tertiary">{formatCurrency(totals.expenses)}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-          <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Net</p>
+          <p className="text-micro text-on-surface-variant font-bold mb-1">Net</p>
           <p className={cn('text-base font-bold', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
             {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net)}
           </p>
@@ -233,15 +233,15 @@ export const InsightsPage = () => {
       {rangeMonths > 1 && (
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-surface-container-low/50 rounded-2xl p-2.5 border border-outline-variant/5">
-            <p className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-0.5">Avg/mo Income</p>
+            <p className="text-micro text-on-surface-variant font-bold mb-0.5">Avg/mo Income</p>
             <p className="text-sm font-bold text-secondary">{formatCurrency(totals.income / rangeMonths)}</p>
           </div>
           <div className="bg-surface-container-low/50 rounded-2xl p-2.5 border border-outline-variant/5">
-            <p className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-0.5">Avg/mo Expenses</p>
+            <p className="text-micro text-on-surface-variant font-bold mb-0.5">Avg/mo Expenses</p>
             <p className="text-sm font-bold text-tertiary">{formatCurrency(totals.expenses / rangeMonths)}</p>
           </div>
           <div className="bg-surface-container-low/50 rounded-2xl p-2.5 border border-outline-variant/5">
-            <p className="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-0.5">Avg/mo Net</p>
+            <p className="text-micro text-on-surface-variant font-bold mb-0.5">Avg/mo Net</p>
             <p className={cn('text-sm font-bold', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
               {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net / rangeMonths)}
             </p>
@@ -273,8 +273,8 @@ export const InsightsPage = () => {
 
       {/* Spending breakdown bar */}
       {categorySpending.length > 0 && (
-        <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5 shadow-sm space-y-3">
-          <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Spending Breakdown</h3>
+        <Card className="space-y-3 p-4">
+          <h3 className="text-xs font-bold text-on-surface-variant">Spending Breakdown</h3>
           <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-container-high">
             {categorySpending.map((cat, i) => (
               <div
@@ -289,17 +289,17 @@ export const InsightsPage = () => {
             {categorySpending.map((cat, i) => (
               <div key={cat.category} className="flex items-center gap-1.5">
                 <span className={cn('w-2 h-2 rounded-full', BAR_COLORS[i % BAR_COLORS.length])} />
-                <span className={cn('text-[10px] font-bold', TEXT_COLORS[i % TEXT_COLORS.length])}>{cat.category}</span>
-                <span className="text-[10px] text-on-surface-variant">{(cat.percentage * 100).toFixed(0)}%</span>
+                <span className={cn('text-micro font-bold', TEXT_COLORS[i % TEXT_COLORS.length])}>{cat.category}</span>
+                <span className="text-micro text-on-surface-variant">{(cat.percentage * 100).toFixed(0)}%</span>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Category cards */}
       <div className="space-y-2">
-        <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-1">By Category</h3>
+        <h3 className="text-xs font-bold text-on-surface-variant px-1">By Category</h3>
         {allCategories.length === 0 ? (
           <p className="text-xs text-on-surface-variant/60 py-8 text-center">No transactions in this period</p>
         ) : (
@@ -350,7 +350,7 @@ export const InsightsPage = () => {
 
                         {cat.change !== null && (
                           <span className={cn(
-                            'text-[10px] font-bold flex items-center gap-0.5',
+                            'text-micro font-bold flex items-center gap-0.5',
                             cat.change <= 0 ? 'text-secondary' : 'text-tertiary',
                           )}>
                             {cat.change <= 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
@@ -359,7 +359,7 @@ export const InsightsPage = () => {
                         )}
 
                         {budgetPercent !== null && scaledLimit && (
-                          <span className="text-[10px] text-on-surface-variant font-bold">
+                          <span className="text-micro text-on-surface-variant font-bold">
                             {formatCurrency(cat.expense)} / {formatCurrency(scaledLimit)}
                           </span>
                         )}
@@ -378,7 +378,7 @@ export const InsightsPage = () => {
                       <div key={tx.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-surface-container-low/50">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
-                          <p className="text-[10px] text-on-surface-variant">
+                          <p className="text-micro text-on-surface-variant">
                             {new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: rangeMonths > 12 ? 'numeric' : undefined })}
                           </p>
                         </div>

@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Plus, Check, X, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { CategoryIcon } from './CategoryIcon';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface CategoryPickerProps {
   categories: string[];
@@ -21,6 +22,16 @@ export const CategoryPicker = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = `${label.toLowerCase().replace(/\s+/g, '-')}-picker-title`;
+
+  const closePicker = () => {
+    setIsOpen(false);
+    setIsAdding(false);
+    setNewName('');
+  };
+
+  useFocusTrap(dialogRef, isOpen, closePicker);
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category === value) ?? value ?? categories[0] ?? '',
@@ -48,7 +59,7 @@ export const CategoryPicker = ({
   return (
     <>
       <div>
-        <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-2">{label}</label>
+        <label className="block text-micro font-bold text-on-surface-variant mb-2">{label}</label>
         <button
           type="button"
           onClick={() => setIsOpen(true)}
@@ -61,7 +72,7 @@ export const CategoryPicker = ({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-on-surface truncate">{selectedCategory || 'Select category'}</p>
-            <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Tap to choose</p>
+            <p className="text-micro font-bold text-on-surface-variant">Tap to choose</p>
           </div>
           <ChevronRight className="w-4 h-4 text-on-surface-variant flex-shrink-0" />
         </button>
@@ -74,26 +85,27 @@ export const CategoryPicker = ({
             aria-label="Close category picker"
             className="absolute inset-0"
             onClick={() => {
-              setIsOpen(false);
-              setIsAdding(false);
-              setNewName('');
-            }}
-          />
+            closePicker();
+          }}
+        />
 
-          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-t-3xl bg-surface-container-lowest shadow-2xl sm:rounded-3xl border border-outline-variant/10">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            className="relative z-10 w-full max-w-md overflow-hidden rounded-t-3xl bg-surface-container-lowest shadow-2xl sm:rounded-3xl border border-outline-variant/10"
+          >
             <div className="flex items-center justify-between border-b border-outline-variant/10 px-5 py-4">
               <div>
-                <h3 className="font-headline text-lg font-bold text-primary">{label}</h3>
-                <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Choose one category</p>
+                <h3 id={titleId} className="font-headline text-lg font-bold text-primary">{label}</h3>
+                <p className="text-micro font-bold text-on-surface-variant">Choose one category</p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  setIsAdding(false);
-                  setNewName('');
-                }}
+                onClick={closePicker}
                 className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-low"
+                aria-label="Close category picker"
               >
                 <X className="w-5 h-5" />
               </button>

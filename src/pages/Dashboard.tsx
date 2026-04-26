@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart } from 'lucide-react';
@@ -6,13 +6,14 @@ import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
-import { EmptyState, Skeleton } from '../components/ui';
+import { Card, EmptyState, Skeleton } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
 import { useRecurringAutoGenerate } from '../hooks/useRecurringAutoGenerate';
 import { formatMonthLabel } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
+import { pageTransition } from '../utils/motion';
 
 const DONUT_COLORS = [
   'var(--color-primary)',
@@ -41,6 +42,12 @@ export const Dashboard = () => {
   const totalSpent = categorySpending.reduce((acc, c) => acc + c.amount, 0);
   const animatedBalance = useAnimatedNumber(currentBalance);
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
+  const [barsMounted, setBarsMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setBarsMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const weeklyIncome = Array.from({ length: 7 }, (_, index) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - index));
@@ -71,15 +78,13 @@ export const Dashboard = () => {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      {...pageTransition}
       className="space-y-4 pb-24"
     >
       {/* Hero: Balance */}
       <section className="flex flex-col gap-4">
         <div className="space-y-0.5">
-          <p className="text-on-surface-variant text-xs uppercase tracking-[0.15em] font-bold">Total Balance</p>
+          <p className="text-on-surface-variant text-xs font-bold">Total Balance</p>
           <div className="flex items-baseline gap-2">
             {isHydrated ? (
               <h2 className="text-4xl sm:text-5xl font-headline font-extrabold tracking-tighter text-primary">
@@ -107,10 +112,10 @@ export const Dashboard = () => {
         </div>
 
         {/* Safe to Spend — promoted to primary position */}
-        <div className="bg-surface-container-lowest p-5 rounded-3xl space-y-4 shadow-sm border border-outline-variant/5">
+        <Card className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-2 font-bold">Safe to Spend</h3>
+              <h3 className="text-on-surface-variant text-xs mb-2 font-bold">Safe to Spend</h3>
               {isHydrated ? (
                 <p className={cn(
                   "text-3xl font-headline font-bold",
@@ -133,10 +138,10 @@ export const Dashboard = () => {
                 className={cn(
                   "h-full rounded-full transition-all duration-1000",
                   usedPercent > 90 ? "bg-tertiary shadow-[0_0_10px_rgba(220,38,38,0.3)]" :
-                  usedPercent > 75 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]" :
+                  usedPercent > 75 ? "bg-accent-amber shadow-[0_0_10px_rgba(245,158,11,0.3)]" :
                   "bg-secondary shadow-[0_0_10px_rgba(74,222,128,0.3)]"
                 )}
-                style={{ width: `${Math.min(100, usedPercent)}%` }}
+                style={{ width: barsMounted ? `${Math.min(100, usedPercent)}%` : '0%' }}
               ></div>
             </div>
             <div className="flex justify-between text-xs font-bold text-on-surface-variant">
@@ -144,7 +149,7 @@ export const Dashboard = () => {
               <span>{100 - Math.min(100, usedPercent)}% remaining</span>
             </div>
           </div>
-        </div>
+        </Card>
       </section>
 
       {/* Income / Expenses grid */}
@@ -156,7 +161,7 @@ export const Dashboard = () => {
             </div>
             <Sparkline values={weeklyIncome} color="var(--color-secondary)" label="Income over the last 7 days" />
           </div>
-          <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-1 font-bold">Income</h3>
+          <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Income</h3>
           <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyIncome)}</p>
         </div>
 
@@ -167,13 +172,13 @@ export const Dashboard = () => {
             </div>
             <Sparkline values={weeklyExpenses} color="var(--color-tertiary)" label="Expenses over the last 7 days" />
           </div>
-          <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-1 font-bold">Expenses</h3>
+          <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Expenses</h3>
           <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyExpenses)}</p>
         </div>
       </div>
 
       {/* Spending by Category — multi-color donut */}
-      <div className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5">
+      <Card>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
           <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel()}</span>
@@ -202,7 +207,7 @@ export const Dashboard = () => {
                 })}
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Total</span>
+                <span className="text-micro text-on-surface-variant font-bold">Total</span>
                 <span className="text-base font-headline font-bold text-on-surface">{formatCurrency(totalSpent)}</span>
               </div>
             </div>
@@ -229,7 +234,7 @@ export const Dashboard = () => {
             action={{ label: 'Add transaction', to: '/add' }}
           />
         )}
-      </div>
+      </Card>
 
       {/* Savings insight — compact, moved below */}
       {monthlySavings > 0 && (
@@ -249,11 +254,11 @@ export const Dashboard = () => {
             <p className="text-on-surface-variant text-xs">Latest movements</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/add" className="inline-flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-wider">
+            <Link to="/add" className="inline-flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all">
               <Plus className="w-3.5 h-3.5" />
               Add
             </Link>
-            <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all uppercase tracking-wider">
+            <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all">
               View All
             </Link>
           </div>

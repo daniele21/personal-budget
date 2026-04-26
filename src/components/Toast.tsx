@@ -34,7 +34,7 @@ const ICONS: Record<ToastType, React.ReactNode> = {
 const STYLES: Record<ToastType, string> = {
   success: 'border-secondary/20 bg-secondary/5',
   error: 'border-tertiary/20 bg-tertiary/5',
-  warning: 'border-amber-500/20 bg-amber-500/5',
+  warning: 'border-accent-amber/20 bg-accent-amber/5',
   info: 'border-primary/20 bg-primary/5',
 };
 

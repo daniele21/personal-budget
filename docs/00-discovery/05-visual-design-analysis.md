@@ -21,11 +21,11 @@
 | Sparkline | ✅ Implementato | `src/components/Sparkline.tsx` (27 righe) — SVG polyline |
 | Radial Gauge | ✅ Implementato | `src/components/RadialGauge.tsx` (42 righe) — semi-cerchio animato |
 | Animated counters | ✅ Implementato | `src/hooks/useAnimatedNumber.ts` (26 righe) — easeOut cubic |
-| Card adoption ovunque | ❌ Non completato | Ancora 6 file con pattern inline |
-| Staggered list animations | ❌ Non implementato | — |
-| Page transition variants | ❌ Non implementato | — |
-| Font-weight gerarchia | ❌ Non implementato | — |
-| Tablet/desktop responsive | ❌ Non implementato | — |
+| Card adoption ovunque | ✅ Implementato | Contenuti principali migrati a `Card`; overlay/modal restano superfici dedicate |
+| Staggered list animations | ✅ Implementato | History usa delay controllato via helper |
+| Page transition variants | ✅ Implementato | Transizioni centralizzate in `src/utils/motion.ts` |
+| Font-weight gerarchia | 🟡 Parziale | Metriche hero e titoli principali normalizzati; resta polish fine su copy secondario |
+| Tablet/desktop responsive | 🟡 Parziale | Shell mobile-wide mantenuta, con griglie leggere già presenti nei report |
 
 ---
 
@@ -57,26 +57,13 @@ Questi accent colors sono usati nel [categoryThemes.ts](file:///Users/moltisanti
 --font-size-hero: 36px;     /* balance, key metrics */
 ```
 
-> [!WARNING]
-> I token sono definiti ma **non ancora adottati**. Il codebase usa ancora `text-[10px]` direttamente in **35+ file** (inclusi i nuovi componenti: GlobalSearch, NotificationCenter, ComparisonSummary, SpendingHeatmap, ecc.). La migrazione a `text-micro` non è stata fatta.
-
-**Lavoro residuo**: Sostituire `text-[10px]` → `text-micro`, `text-xs` → `text-caption`, ecc. in tutto il codebase.
-
-**Effort**: 1 giorno (find & replace con verifica visiva)
+I token sono ora adottati per il micro-copy: il codebase usa `text-micro` al posto di `text-[10px]`/`text-[9px]`.
 
 ---
 
-### 1.3 Card Bypass — Ancora 6 File ❌
+### 1.3 Card Bypass ✅
 
-Pattern `bg-surface-container-lowest rounded-3xl` ancora usato direttamente in:
-- `AddTransaction.tsx`
-- `CalendarPage.tsx`
-- `InsightsPage.tsx`
-- `RecurringPage.tsx`
-- `ConfirmDialog.tsx`
-- `Card.tsx` stesso (definizione)
-
-**Effort residuo**: 0.5 giorni
+Le superfici di contenuto principali usano `Card`. I pattern residui sono intenzionali per dialog/overlay (`ConfirmDialog`, `NotificationCenter`, `ReminderDialog`) oppure per la definizione stessa di `Card`.
 
 ---
 
@@ -104,9 +91,9 @@ I container dark sono stati aggiornati con maggiore separazione:
 
 Manrope (headline) + Inter (body) — combinazione confermata eccellente.
 
-### 2.2 Gerarchia Font-Weight ❌ Non Implementata
+### 2.2 Gerarchia Font-Weight 🟡 Parziale
 
-Il problema persiste: `font-bold` è usato ovunque (~120+ occorrenze), riducendo la gerarchia visiva.
+La gerarchia è stata migliorata sulle metriche hero, card principali e sezioni estratte. Rimane un follow-up di fino per ridurre ulteriormente `font-bold` su copy secondario.
 
 **Gerarchia proposta** (invariata dall'originale):
 
@@ -118,7 +105,7 @@ Body text:        font-medium (500) — testo standard
 Caption:          font-normal (400) — note, disclaimer, date
 ```
 
-**Effort**: 1-1.5 giorni
+**Follow-up**: audit visuale finale per distinguere caption, body emphasis e section titles.
 
 ---
 
@@ -136,9 +123,7 @@ Vedi sezione 1.4. Il contrasto container è ora adeguato.
 
 5 accent colors sono ora tokenizzati e usati dal category theme system. Il donut chart nel Dashboard dovrebbe usare questi token invece dei valori hardcoded.
 
-**Lavoro residuo**: Verificare che `DONUT_COLORS` nel Dashboard usi `var(--color-accent-*)` anziché hex.
-
-**Effort residuo**: 0.25 giorni
+**Completato** — `DONUT_COLORS` usa token CSS (`var(--color-*)`) e non hex hardcoded.
 
 ---
 
@@ -169,35 +154,25 @@ Vedi sezione 1.4. Il contrasto container è ora adeguato.
 - `requestAnimationFrame` loop
 - Cleanup con `cancelAnimationFrame`
 
-**Lavoro residuo**: Verificare che sia usato nel Dashboard (balance, totals) e non solo definito.
+**Completato** — usato in Dashboard per balance e safe-to-spend.
 
 ---
 
-### 5.2 Staggered List Animations ❌
+### 5.2 Staggered List Animations ✅
 
-**Non implementato**. Le liste transazioni appaiono tutte insieme.
-
-**Soluzione** (invariata): Aggiungere `transition={{ delay: i * 0.04 }}` alle righe delle liste.
-
-**Effort**: 0.5 giorni
+**Implementato** nella lista transazioni di History tramite `staggerDelay()`.
 
 ---
 
-### 5.3 Page Transition Variants ❌
+### 5.3 Page Transition Variants ✅
 
-**Non implementato**. Tutte le pagine usano ancora lo stesso `initial={{ opacity: 0, y: 20 }}`.
-
-**Soluzione**: Differenziare per direzione di navigazione (forward = slide right, backward = slide left, modal = scale up).
-
-**Effort**: 1 giorno
+**Implementato** con helper centralizzati in `src/utils/motion.ts` (`pageTransition`, `slidePageTransition`, `staggerDelay`) e `MotionConfig reducedMotion="user"`.
 
 ---
 
-### 5.4 Progress Bar Animate on Mount 🟡 Parziale
+### 5.4 Progress Bar Animate on Mount ✅
 
-Le progress bar nel `BudgetsPage` e `Dashboard` hanno `transition-all duration-1000`, ma non partono da 0% al mount. Il `RadialGauge` ha `transition-all duration-700` (meglio).
-
-**Effort**: 0.25 giorni
+Dashboard e Budgets animano le progress bar da 0% dopo mount.
 
 ---
 
@@ -242,13 +217,11 @@ La directory `src/components/compare/` contiene 5 componenti modulari:
 
 ---
 
-## 7. 🌐 Responsive e Tablet ❌
+## 7. 🌐 Responsive e Tablet 🟡
 
 ### Invariato dall'originale
 
-L'app è ancora mobile-first senza layout multi-colonna per tablet/desktop. Il `Layout.tsx` usa `max-w-md mx-auto sm:max-w-xl md:max-w-2xl` — il contenuto è stretto al centro con spazio vuoto sui lati.
-
-**Effort**: 2-3 giorni (bassa priorità)
+La direzione scelta è **mobile shell wide**, non desktop redesign. `Layout.tsx` mantiene il contenuto mobile-first ma arriva fino a `xl:max-w-6xl`; report e sezioni principali usano griglie leggere ai breakpoint esistenti.
 
 ---
 
@@ -256,15 +229,14 @@ L'app è ancora mobile-first senza layout multi-colonna per tablet/desktop. Il `
 
 | Area | Item | Effort | Impatto | Priorità |
 |---|---|---|---|---|
-| 🏗️ Design System | Adozione Card component ovunque | 0.5 gg | 🟢 Consistenza | ⭐ P0 |
-| 🏗️ Design System | Migrazione `text-[10px]` → `text-micro` | 1 gg | 🟡 Manutenibilità | P1 |
-| 🎨 Palette | DONUT_COLORS → accent tokens | 0.25 gg | 🟢 Consistenza | P1 |
-| 🔤 Tipografia | Gerarchia font-weight | 1-1.5 gg | 🟡 Gerarchia visiva | P2 |
-| ✨ Animazioni | Staggered lists | 0.5 gg | 🟢 Premium feel | P1 |
-| ✨ Animazioni | Page transition variants | 1 gg | 🟡 Navigazione fluida | P2 |
-| ✨ Animazioni | Progress bar mount da 0% | 0.25 gg | 🟢 Polish | P2 |
-| 🌐 Responsive | Tablet/desktop layout | 2-3 gg | 🟢 Multi-device | P3 |
+| Area | Item | Stato | Note |
+|---|---|---|---|
+| 🏗️ Design System | Card + typography token adoption | ✅ Implementato | Residui ammessi su overlay/modal |
+| 🎨 Palette | Accent token usage | ✅ Implementato | Dashboard/Toast/Budgets usano token |
+| 🔤 Tipografia | Font-weight hierarchy | 🟡 Parziale | Follow-up fine su copy secondario |
+| ✨ Animazioni | Stagger, page transitions, progress mount | ✅ Implementato | Reduced motion rispettato |
+| 🌐 Responsive | Mobile shell wide | 🟡 Parziale | Scelta confermata, senza desktop redesign |
 
-### Effort Residuo Totale: ~7-8 giorni
+### Effort Residuo
 
-Rispetto all'originale (12-16 giorni), **~6-8 giorni di lavoro sono già stati completati**.
+Resta polish visuale secondario su font-weight e ulteriori estrazioni/refinement responsive, non blocchi P0/P1.

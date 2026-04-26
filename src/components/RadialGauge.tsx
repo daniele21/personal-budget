@@ -34,7 +34,7 @@ export function RadialGauge({ percent, label, value }: RadialGaugeProps) {
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
         <p className="font-headline text-lg font-extrabold text-on-surface">{value}</p>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{label}</p>
+        <p className="text-micro font-bold text-on-surface-variant">{label}</p>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { SearchEntity, SearchResult } from '../domain/search';
 import { useGlobalSearch } from '../hooks/useGlobalSearch';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { cn } from '../lib/utils';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface GlobalSearchProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ function ResultRow({ result, onSelect }: { result: SearchResult; onSelect: (resu
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-on-surface truncate">{result.title}</p>
-        <p className="text-[10px] text-on-surface-variant truncate">
+        <p className="text-micro text-on-surface-variant truncate">
           {result.subtitle}{result.date ? ` · ${formatDate(result.date)}` : ''}
         </p>
       </div>
@@ -56,7 +57,9 @@ function ResultRow({ result, onSelect }: { result: SearchResult; onSelect: (resu
 export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const { query, setQuery, grouped, results, recentSearches, rememberSearch, clearRecentSearches } = useGlobalSearch();
+  useFocusTrap(dialogRef, isOpen, onClose);
 
   const handleSelect = (result: SearchResult) => {
     rememberSearch(query || result.title);
@@ -93,9 +96,10 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           exit={{ opacity: 0 }}
         >
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Global search"
+            aria-labelledby="global-search-title"
             className="mx-auto max-w-2xl rounded-3xl border border-outline-variant/10 bg-surface-container-lowest shadow-2xl overflow-hidden"
             initial={{ y: 18, scale: 0.98 }}
             animate={{ y: 0, scale: 1 }}
@@ -103,6 +107,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           >
             <div className="flex items-center gap-3 border-b border-outline-variant/10 px-4 py-3">
               <Search className="w-5 h-5 text-primary shrink-0" />
+              <h2 id="global-search-title" className="sr-only">Global search</h2>
               <input
                 ref={inputRef}
                 value={query}
@@ -124,9 +129,9 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
               {!query.trim() && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Recent searches</p>
+                    <p className="text-micro font-bold text-on-surface-variant">Recent searches</p>
                     {recentSearches.length > 0 && (
-                      <button type="button" onClick={clearRecentSearches} className="text-[10px] font-bold text-primary">
+                      <button type="button" onClick={clearRecentSearches} className="text-micro font-bold text-primary">
                         Clear
                       </button>
                     )}
@@ -158,7 +163,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                     if (items.length === 0) return null;
                     return (
                       <section key={entity} className="space-y-1">
-                        <p className="px-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                        <p className="px-2 text-micro font-bold text-on-surface-variant">
                           {ENTITY_LABELS[entity]}
                         </p>
                         {items.map((result) => (

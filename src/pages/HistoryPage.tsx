@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowDown,
@@ -6,40 +6,27 @@ import {
   CalendarRange,
   ChevronDown,
   Check,
-  CheckSquare,
-  Download,
   Filter,
-  Pencil,
   Search,
   SlidersHorizontal,
-  Paperclip,
-  Square,
-  Trash2,
-  TrendingUp,
-  Wallet,
   X,
 } from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  CartesianGrid, 
-  Tooltip
-} from 'recharts';
 import { cn } from '../lib/utils';
-import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { SwipeableRow } from '../components/SwipeableRow';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { Button, EmptyState, Input } from '../components/ui';
+import { Button, Input } from '../components/ui';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
 import { haptics } from '../utils/haptics';
 import { upsertRecurringOverride } from '../domain/recurring';
+import { BatchToolbar } from '../components/history/BatchToolbar';
+import { FinancialTrajectoryCard } from '../components/history/FinancialTrajectoryCard';
+import { TransactionHistoryList } from '../components/history/TransactionHistoryList';
+import { slidePageTransition } from '../utils/motion';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 type PeriodPreset = 'current-month' | 'last-month' | '3-months' | 'all' | 'custom';
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -116,6 +103,9 @@ function FilterSheet({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen, onClose);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -146,6 +136,7 @@ function FilterSheet({
             aria-label={`Close ${title}`}
           />
           <motion.div
+            ref={dialogRef}
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -153,7 +144,7 @@ function FilterSheet({
           >
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">History controls</p>
+                <p className="text-micro font-bold text-primary">History controls</p>
                 <h3 className="font-headline text-xl font-extrabold text-on-surface">{title}</h3>
                 {subtitle && <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">{subtitle}</p>}
               </div>
@@ -499,56 +490,10 @@ export const HistoryPage = () => {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      {...slidePageTransition}
       className="space-y-4 pb-24"
     >
-      <section className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-bold text-on-surface uppercase tracking-widest">Financial Trajectory</h3>
-          <TrendingUp className="w-4 h-4 text-secondary" />
-        </div>
-        <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant)" opacity={0.1} />
-              <XAxis 
-                dataKey="date" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fill: 'var(--color-on-surface-variant)' }} 
-                minTickGap={30}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'var(--color-surface-container-high)', 
-                  border: 'none', 
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                }}
-                itemStyle={{ color: 'var(--color-primary)' }}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="balance" 
-                stroke="var(--color-primary)" 
-                strokeWidth={3}
-                fillOpacity={1} 
-                fill="url(#colorBalance)" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+      <FinancialTrajectoryCard data={chartData} />
 
       <section className="space-y-4">
         <div className="relative group">
@@ -630,110 +575,25 @@ export const HistoryPage = () => {
         </div>
       </section>
 
-      {selectedIds.length > 0 && (
-        <section className="rounded-3xl border border-primary/10 bg-primary/5 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-bold text-primary">{selectedIds.length} selected</p>
-              <p className="text-xs text-on-surface-variant">Batch edit, export, or delete selected transactions.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={batchCategory}
-                onChange={(event) => setBatchCategory(event.target.value)}
-                className="min-h-10 rounded-xl border-none bg-surface-container-lowest px-3 text-xs font-bold text-on-surface focus:ring-2 focus:ring-primary"
-                aria-label="Batch category"
-              >
-                {appCategories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-              <Button size="sm" variant="secondary" onClick={changeSelectedCategory}>Change category</Button>
-              <Button size="sm" variant="secondary" onClick={exportSelected}>
-                <Download className="w-3.5 h-3.5" /> Export
-              </Button>
-              <Button size="sm" variant="danger" onClick={deleteSelected}>Delete</Button>
-              <Button size="sm" variant="ghost" onClick={clearSelection}>Clear</Button>
-            </div>
-          </div>
-        </section>
-      )}
+      <BatchToolbar
+        selectedCount={selectedIds.length}
+        categories={appCategories}
+        batchCategory={batchCategory}
+        onBatchCategoryChange={setBatchCategory}
+        onChangeCategory={changeSelectedCategory}
+        onExport={exportSelected}
+        onDelete={deleteSelected}
+        onClear={clearSelection}
+      />
 
-      <section className="space-y-6">
-        <div>
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h3 className="font-headline font-extrabold text-lg">Transaction History</h3>
-          </div>
-          <div className="space-y-2">
-            {filteredTransactions.length > 0 ? filteredTransactions.map((t, index) => (
-              <motion.div
-                key={t.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(index, 8) * 0.025 }}
-              >
-                <SwipeableRow onEdit={() => setQuickEditTransaction(t)} onDelete={() => setDeleteId(t.id)}>
-                  <div className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelected(t.id)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        toggleSelected(t.id);
-                      }}
-                      className="mr-3 rounded-xl p-1.5 text-primary hover:bg-primary/10"
-                      aria-label={selectedIds.includes(t.id) ? `Deselect ${t.title || t.category}` : `Select ${t.title || t.category}`}
-                    >
-                      {selectedIds.includes(t.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                    </button>
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
-                        <CategoryIcon category={t.category} className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-on-surface truncate">{t.title}</h4>
-                        <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{t.description}</p>
-                        <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                      <div className="flex flex-col items-end">
-                        <p className={cn("text-sm font-extrabold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
-                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                        </p>
-                        {t.attachmentUrl && <Paperclip className="w-3 h-3 text-primary/40 mt-1" />}
-                      </div>
-                      <button
-                        onClick={() => setQuickEditTransaction(t)}
-                        className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all"
-                        aria-label={`Quick edit transaction ${t.title || t.category}`}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(t.id)}
-                        className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
-                        aria-label={`Delete transaction ${t.title || t.category}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </SwipeableRow>
-              </motion.div>
-            )) : (
-              <div className="rounded-3xl bg-surface-container-low border border-dashed border-outline-variant/20">
-                <EmptyState
-                  icon={hasBaseTransactions ? <Search className="w-10 h-10" /> : <Wallet className="w-10 h-10" />}
-                  title={hasBaseTransactions ? 'No transactions match the filters' : 'No transactions yet'}
-                  description={hasBaseTransactions ? 'Adjust search, categories, period, or sort to broaden the list.' : 'Add your first transaction to start building history.'}
-                  action={hasBaseTransactions ? undefined : { label: 'Add transaction', to: '/add' }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      <TransactionHistoryList
+        transactions={filteredTransactions}
+        selectedIds={selectedIds}
+        hasBaseTransactions={hasBaseTransactions}
+        onToggleSelected={toggleSelected}
+        onQuickEdit={setQuickEditTransaction}
+        onDelete={setDeleteId}
+      />
 
       <ConfirmDialog
         isOpen={deleteId !== null}
@@ -762,7 +622,7 @@ export const HistoryPage = () => {
         <div className="space-y-4">
           <div>
             <div className="mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Category</p>
+              <p className="text-micro font-bold text-on-surface-variant">Category</p>
               <p className="mt-1 text-xs text-on-surface-variant">Pick one or more categories, or leave all visible.</p>
             </div>
             <div className="mb-3 flex flex-wrap gap-2">
@@ -825,7 +685,7 @@ export const HistoryPage = () => {
           </div>
           <div className="rounded-2xl bg-surface-container-low p-4">
             <div className="mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Period</p>
+              <p className="text-micro font-bold text-on-surface-variant">Period</p>
               <p className="mt-1 text-xs text-on-surface-variant">Start from a quick preset, or switch to a custom date range.</p>
             </div>
             <div className="mb-4 flex flex-wrap gap-2">

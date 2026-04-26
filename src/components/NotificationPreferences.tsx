@@ -9,7 +9,7 @@ function Toggle({ checked, onChange, label, description }: { checked: boolean; o
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm font-bold text-on-surface">{label}</p>
-        <p className="text-[10px] text-on-surface-variant leading-relaxed">{description}</p>
+        <p className="text-micro text-on-surface-variant leading-relaxed">{description}</p>
       </div>
       <Switch checked={checked} onChange={onChange} label={label} />
     </div>
@@ -36,7 +36,7 @@ export function NotificationPreferences() {
           </div>
           <div>
             <p className="text-sm font-bold text-on-surface">Local notifications</p>
-            <p className="text-[10px] text-on-surface-variant leading-relaxed">
+            <p className="text-micro text-on-surface-variant leading-relaxed">
               Budget alerts, recurring due items and reminders stay on this device. iOS requires the installed PWA for reliable web notifications.
             </p>
           </div>
@@ -77,7 +77,7 @@ export function NotificationPreferences() {
 
       <div className="space-y-3 pt-2 border-t border-outline-variant/10">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Custom reminders</p>
+          <p className="text-micro font-bold text-on-surface-variant">Custom reminders</p>
           <button type="button" onClick={() => setShowReminderDialog(true)} className="h-9 px-3 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
@@ -90,7 +90,7 @@ export function NotificationPreferences() {
               <div key={reminder.id} className="flex items-center justify-between gap-3 rounded-2xl bg-surface-container-low p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-on-surface truncate">{reminder.title}</p>
-                  <p className="text-[10px] text-on-surface-variant">{reminder.date}{reminder.completed ? ' · completed' : ''}</p>
+                  <p className="text-micro text-on-surface-variant">{reminder.date}{reminder.completed ? ' · completed' : ''}</p>
                 </div>
                 <button type="button" onClick={() => notifications.deleteReminder(reminder.id)} className="w-9 h-9 rounded-xl text-tertiary hover:bg-tertiary/10 flex items-center justify-center" aria-label={`Delete reminder ${reminder.title}`}>
                   <Trash2 className="w-4 h-4" />

@@ -2,6 +2,7 @@ import React from 'react';
 import { PeriodComparison } from '../../domain/finance';
 import { formatCurrency } from '../../utils/formatters';
 import { cn } from '../../lib/utils';
+import { Card } from '../ui';
 
 export function ComparisonSummary({ comparison }: { comparison: PeriodComparison }) {
   const rows = [
@@ -16,14 +17,14 @@ export function ComparisonSummary({ comparison }: { comparison: PeriodComparison
         const delta = row.a - row.b;
         const percent = row.b !== 0 ? (delta / row.b) * 100 : null;
         return (
-          <div key={row.label} className="rounded-3xl bg-surface-container-lowest border border-outline-variant/5 p-4">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">{row.label}</p>
+          <Card key={row.label} className="p-4">
+            <p className="text-micro font-bold text-on-surface-variant mb-2">{row.label}</p>
             <p className={cn('text-xl font-extrabold', row.color)}>{formatCurrency(row.a)}</p>
             <p className="text-xs text-on-surface-variant">vs {formatCurrency(row.b)}</p>
-            <p className={cn('mt-2 text-[10px] font-bold uppercase tracking-widest', delta >= 0 ? 'text-secondary' : 'text-tertiary')}>
+            <p className={cn('mt-2 text-micro font-bold', delta >= 0 ? 'text-secondary' : 'text-tertiary')}>
               {delta >= 0 ? '+' : ''}{formatCurrency(delta)}{percent !== null ? ` · ${percent >= 0 ? '+' : ''}${percent.toFixed(0)}%` : ''}
             </p>
-          </div>
+          </Card>
         );
       })}
     </div>

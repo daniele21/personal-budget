@@ -73,7 +73,7 @@ export function OnboardingDialog({
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Primo setup</p>
+            <p className="text-micro font-bold text-primary">Primo setup</p>
             <h3 id="onboarding-title" className="font-headline text-xl font-extrabold text-on-surface">
               Configura Aura
             </h3>
@@ -93,7 +93,7 @@ export function OnboardingDialog({
 
         <div className="space-y-4">
           <div>
-            <label className="mb-2 block text-[10px] font-bold uppercase text-on-surface-variant">
+            <label className="mb-2 block text-micro font-bold text-on-surface-variant">
               Budget mensile ({APP_CONFIG.currency})
             </label>
             <input
@@ -105,7 +105,7 @@ export function OnboardingDialog({
           </div>
 
           <div>
-            <label className="mb-2 block text-[10px] font-bold uppercase text-on-surface-variant">
+            <label className="mb-2 block text-micro font-bold text-on-surface-variant">
               Categorie extra
             </label>
             <input

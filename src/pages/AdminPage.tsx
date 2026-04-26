@@ -98,7 +98,7 @@ export const AdminPage = () => {
           <p className="text-sm font-semibold text-on-surface">Admin</p>
           <p className="text-xs text-on-surface-variant">{ADMIN_EMAIL}</p>
         </div>
-        <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-full">
+        <span className="ml-auto text-micro font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
           Always allowed
         </span>
       </div>
@@ -145,7 +145,7 @@ export const AdminPage = () => {
 
       {/* User list */}
       <div className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant/60 px-1">
+        <h3 className="text-xs font-bold text-on-surface-variant/60 px-1">
           Allowed Users ({allowedUsers.length})
         </h3>
 
@@ -167,7 +167,7 @@ export const AdminPage = () => {
                 <div>
                   <p className="text-sm font-medium text-on-surface">{u.maskedEmail}</p>
                   {u.addedAt && (
-                    <p className="text-[10px] text-on-surface-variant/50">
+                    <p className="text-micro text-on-surface-variant/50">
                       Added {new Date(u.addedAt).toLocaleDateString()}
                     </p>
                   )}

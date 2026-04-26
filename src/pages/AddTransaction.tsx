@@ -12,6 +12,7 @@ import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { upsertRecurringOverride } from '../domain/recurring';
+import { Card } from '../components/ui';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
@@ -177,7 +178,7 @@ export const AddTransaction = () => {
       </div>
 
       <section className="mb-10 text-center">
-        <label className="block text-on-surface-variant text-[10px] mb-2 uppercase tracking-[0.2em] font-bold">Entry Amount</label>
+        <label className="block text-on-surface-variant text-micro mb-2 font-bold">Entry Amount</label>
         <div 
           onClick={() => setIsKeypadOpen(true)}
           className="relative inline-flex items-baseline justify-center cursor-pointer group"
@@ -198,10 +199,10 @@ export const AddTransaction = () => {
       </section>
 
       <div className="space-y-4">
-        <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/5">
-          <label className="block text-on-surface-variant text-[10px] mb-4 uppercase tracking-widest font-bold">Transaction Title</label>
+        <Card className="p-6">
+          <label className="block text-on-surface-variant text-micro mb-4 font-bold">Transaction Title</label>
           {id && transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">
+            <p className="text-micro font-bold text-primary mb-3">
               This edit applies only to this recurring month
             </p>
           )}
@@ -211,20 +212,20 @@ export const AddTransaction = () => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-        </div>
+        </Card>
 
-        <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/5">
+        <Card className="p-6">
           <CategoryPicker
             categories={categories}
             value={category}
             onChange={setCategory}
             onAddCategory={(name) => { addCategory(name); setCategory(name); }}
           />
-        </div>
+        </Card>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
-            <label htmlFor="transaction-date" className="block text-on-surface-variant text-xs uppercase tracking-wider font-bold">Date</label>
+            <label htmlFor="transaction-date" className="block text-on-surface-variant text-xs font-bold">Date</label>
             <input 
               id="transaction-date"
               type="date" 
@@ -234,7 +235,7 @@ export const AddTransaction = () => {
             />
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
-            <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs uppercase tracking-wider font-bold">Payment Method</label>
+            <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs font-bold">Payment Method</label>
             <select 
               id="transaction-payment-method"
               className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full appearance-none"
@@ -249,9 +250,9 @@ export const AddTransaction = () => {
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/5">
+        <Card className="p-6">
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">Description / Notes</label>
+            <label className="block text-on-surface-variant text-micro font-bold">Description / Notes</label>
             <div className="flex items-center gap-2">
               {attachmentUrl && (
                 <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-outline-variant/20">
@@ -266,7 +267,7 @@ export const AddTransaction = () => {
               )}
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 text-primary text-[10px] font-bold uppercase tracking-wider hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors"
+                className="flex items-center gap-1 text-primary text-micro font-bold hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors"
               >
                 <Camera className="w-3.5 h-3.5" />
                 <span>{attachmentUrl ? 'Change' : 'Attach'}</span>
@@ -286,7 +287,7 @@ export const AddTransaction = () => {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           ></textarea>
-        </div>
+        </Card>
       </div>
 
       <div className="mt-8">

@@ -8,7 +8,7 @@ export function AnnualHighlights({ review }: { review: AnnualReview }) {
     <div className="rounded-3xl bg-primary text-on-primary p-5 shadow-lg shadow-primary/15">
       <div className="flex items-center gap-2 mb-4">
         <Trophy className="w-5 h-5" />
-        <p className="text-[10px] uppercase tracking-widest font-bold text-on-primary/75">Highlights</p>
+        <p className="text-micro font-bold text-on-primary/75">Highlights</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>

@@ -17,7 +17,7 @@ export function Input({ label, className, ...props }: InputProps) {
   return (
     <div>
       {label && (
-        <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">
+        <label className="block text-micro font-bold text-on-surface-variant mb-1">
           {label}
         </label>
       )}
@@ -47,7 +47,7 @@ export function Select({ label, options, className, ...props }: SelectProps) {
   return (
     <div>
       {label && (
-        <label className="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">
+        <label className="block text-micro font-bold text-on-surface-variant mb-1">
           {label}
         </label>
       )}

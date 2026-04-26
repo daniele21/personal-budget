@@ -38,7 +38,7 @@ export const RecurringEntryCard: React.FC<RecurringEntryCardProps> = ({
       <CategoryIcon category={category} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-on-surface">{title}</p>
-        <p className="text-[10px] text-on-surface-variant">{subtitle}</p>
+        <p className="text-micro text-on-surface-variant">{subtitle}</p>
       </div>
       <span className="text-sm font-bold text-primary">{formatCurrency(amount)}</span>
       {(onEdit || onDelete) && (
