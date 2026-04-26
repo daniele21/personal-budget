@@ -547,6 +547,59 @@ describe('getRecurringDue', () => {
     expect(result).toHaveLength(1);
   });
 
+  it('generates every due weekly occurrence in the current month', () => {
+    const bill = recurring({
+      startDate: '2026-04-01T00:00:00.000Z',
+      endDate: '2026-04-30T00:00:00.000Z',
+      dayOfMonth: 1,
+      frequency: 'weekly',
+    });
+
+    const result = getRecurringDue([bill], [], today);
+    expect(result.map((entry) => entry.transaction.sourceMonthKey)).toEqual([
+      '2026-04-01',
+      '2026-04-08',
+      '2026-04-15',
+    ]);
+  });
+
+  it('dedupes daily recurring transactions by occurrence date', () => {
+    const bill = recurring({
+      startDate: '2026-04-14T00:00:00.000Z',
+      endDate: '2026-04-16T00:00:00.000Z',
+      dayOfMonth: 14,
+      frequency: 'daily',
+    });
+
+    const result = getRecurringDue([bill], [{
+      id: 'tx-1',
+      amount: 12.99,
+      type: 'expense',
+      category: 'Entertainment',
+      date: '2026-04-14T00:00:00.000Z',
+      title: 'Netflix',
+      description: 'Auto-generated from recurring: Netflix',
+      paymentMethod: 'Bank Transfer',
+      sourceRecurringId: 'r1',
+      sourceMonthKey: '2026-04-14',
+    }], today);
+
+    expect(result.map((entry) => entry.transaction.sourceMonthKey)).toEqual(['2026-04-15']);
+  });
+
+  it('generates yearly recurring entries in the matching month only', () => {
+    const bill = recurring({
+      startDate: '2025-04-15T00:00:00.000Z',
+      endDate: '2027-04-15T00:00:00.000Z',
+      dayOfMonth: 15,
+      frequency: 'yearly',
+    });
+
+    const result = getRecurringDue([bill], [], today);
+    expect(result).toHaveLength(1);
+    expect(result[0].transaction.sourceMonthKey).toBe('2026-04-15');
+  });
+
   it('handles multiple bills', () => {
     const bills = [
       recurring({ id: 'r1', startDate: '2026-04-01T00:00:00.000Z', dayOfMonth: 1 }),

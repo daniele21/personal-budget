@@ -104,6 +104,7 @@ export const AddTransaction = () => {
             bill.id === parentRecurring.id
               ? upsertRecurringOverride(bill, {
                 monthKey: existingTransaction.sourceMonthKey,
+                occurrenceKey: existingTransaction.sourceMonthKey,
                 amount: newTransaction.amount,
                 type: newTransaction.type,
                 category: newTransaction.category,
@@ -124,7 +125,7 @@ export const AddTransaction = () => {
     
     toast(
       existingTransaction?.sourceRecurringId
-        ? 'Recurring transaction updated for this month only!'
+        ? 'Recurring transaction updated for this occurrence only!'
         : id
           ? 'Transaction updated!'
           : 'Transaction saved!',

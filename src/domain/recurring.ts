@@ -1,6 +1,13 @@
-import { RecurringExpense, RecurringOverride, Transaction, TransactionType } from '../types';
+import {
+  RecurringExpense,
+  RecurringFrequency,
+  RecurringOverride,
+  Transaction,
+  TransactionType,
+} from '../types';
 
 const DEFAULT_RECURRING_PAYMENT_METHOD = 'Bank Transfer';
+const RECURRING_FREQUENCIES: RecurringFrequency[] = ['daily', 'weekly', 'monthly', 'yearly'];
 
 function ensureDate(value: string | undefined, fallback: Date = new Date()): Date {
   if (!value) return new Date(fallback);
@@ -49,6 +56,18 @@ function compareDateParts(left: DateParts, right: DateParts): number {
   return left.day - right.day;
 }
 
+function isRecurringFrequency(value: unknown): value is RecurringFrequency {
+  return RECURRING_FREQUENCIES.includes(value as RecurringFrequency);
+}
+
+function isDateWithinRange(date: Date, startDate: Date, endDate: Date): boolean {
+  const dateParts = getUtcDateParts(date);
+  return (
+    compareDateParts(dateParts, getUtcDateParts(startDate)) >= 0 &&
+    compareDateParts(dateParts, getUtcDateParts(endDate)) <= 0
+  );
+}
+
 export function toIsoDate(date: Date): string {
   return startOfUtcDay(date).toISOString();
 }
@@ -87,6 +106,20 @@ export function getMonthKeyParts(monthKey: string): { year: number; monthIndex: 
   return { year, monthIndex: month - 1 };
 }
 
+export function getRecurringFrequencyLabel(frequency: RecurringFrequency | undefined): string {
+  switch (frequency) {
+    case 'daily':
+      return 'daily';
+    case 'weekly':
+      return 'weekly';
+    case 'yearly':
+      return 'yearly';
+    case 'monthly':
+    default:
+      return 'monthly';
+  }
+}
+
 export function getRecurringOccurrenceDate(
   recurring: RecurringExpense,
   year: number,
@@ -108,11 +141,21 @@ export function getRecurringOccurrenceDateFromMonthKey(
   return getRecurringOccurrenceDate(recurring, year, monthIndex);
 }
 
+export function getRecurringOccurrenceKey(recurring: RecurringExpense, occurrenceDate: Date): string {
+  if ((recurring.frequency ?? 'monthly') === 'monthly') {
+    return `${occurrenceDate.getUTCFullYear()}-${String(occurrenceDate.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  return getUtcDateInputValue(occurrenceDate.toISOString());
+}
+
 export function getRecurringOverride(
   recurring: RecurringExpense,
-  monthKey: string,
+  occurrenceKey: string,
 ): RecurringOverride | undefined {
-  return recurring.overrides?.find((override) => override.monthKey === monthKey);
+  return recurring.overrides?.find((override) => (
+    (override.occurrenceKey ?? override.monthKey) === occurrenceKey
+  ));
 }
 
 export function upsertRecurringOverride(
@@ -120,14 +163,59 @@ export function upsertRecurringOverride(
   override: RecurringOverride,
 ): RecurringExpense {
   const overrides = recurring.overrides ?? [];
-  const nextOverrides = overrides.some((entry) => entry.monthKey === override.monthKey)
-    ? overrides.map((entry) => (entry.monthKey === override.monthKey ? { ...entry, ...override } : entry))
+  const overrideKey = override.occurrenceKey ?? override.monthKey;
+  const nextOverrides = overrides.some((entry) => (entry.occurrenceKey ?? entry.monthKey) === overrideKey)
+    ? overrides.map((entry) => (
+      (entry.occurrenceKey ?? entry.monthKey) === overrideKey ? { ...entry, ...override } : entry
+    ))
     : [...overrides, override];
 
   return {
     ...recurring,
-    overrides: nextOverrides.sort((a, b) => a.monthKey.localeCompare(b.monthKey)),
+    overrides: nextOverrides.sort((a, b) => (
+      (a.occurrenceKey ?? a.monthKey).localeCompare(b.occurrenceKey ?? b.monthKey)
+    )),
   };
+}
+
+export function getRecurringOccurrencesInMonth(
+  recurring: RecurringExpense,
+  year: number,
+  monthIndex: number,
+): Date[] {
+  const frequency = recurring.frequency ?? 'monthly';
+  const startDate = startOfUtcDay(ensureDate(recurring.startDate));
+  const endDate = startOfUtcDay(ensureDate(recurring.endDate));
+  const occurrences: Date[] = [];
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+
+  if (frequency === 'monthly') {
+    const occurrenceDate = getRecurringOccurrenceDate(recurring, year, monthIndex);
+    return isDateWithinRange(occurrenceDate, startDate, endDate) ? [occurrenceDate] : [];
+  }
+
+  if (frequency === 'yearly') {
+    const startParts = getUtcDateParts(startDate);
+    if (monthIndex !== startParts.monthIndex) return [];
+
+    const day = Math.min(startParts.day, daysInMonth);
+    const occurrenceDate = new Date(Date.UTC(year, monthIndex, day));
+    return isDateWithinRange(occurrenceDate, startDate, endDate) ? [occurrenceDate] : [];
+  }
+
+  const startParts = getUtcDateParts(startDate);
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const occurrenceDate = new Date(Date.UTC(year, monthIndex, day));
+    if (!isDateWithinRange(occurrenceDate, startDate, endDate)) continue;
+
+    if (frequency === 'daily' || occurrenceDate.getUTCDay() === startDate.getUTCDay()) {
+      occurrences.push(occurrenceDate);
+    }
+  }
+
+  return frequency === 'weekly'
+    ? occurrences.filter((date) => compareDateParts(getUtcDateParts(date), startParts) >= 0)
+    : occurrences;
 }
 
 export function isRecurringActiveInMonth(
@@ -135,11 +223,7 @@ export function isRecurringActiveInMonth(
   year: number,
   monthIndex: number,
 ): boolean {
-  const occurrenceDate = getUtcDateParts(getRecurringOccurrenceDate(recurring, year, monthIndex));
-  const startDate = getUtcDateParts(ensureDate(recurring.startDate));
-  const endDate = getUtcDateParts(ensureDate(recurring.endDate));
-
-  return compareDateParts(occurrenceDate, startDate) >= 0 && compareDateParts(occurrenceDate, endDate) <= 0;
+  return getRecurringOccurrencesInMonth(recurring, year, monthIndex).length > 0;
 }
 
 export function normalizeRecurringExpense(recurring: RecurringExpense): RecurringExpense {
@@ -148,6 +232,7 @@ export function normalizeRecurringExpense(recurring: RecurringExpense): Recurrin
   const endDate = toIsoDate(ensureDate(recurring.endDate ?? getDefaultRecurringEndDate(startDate)));
   const dayOfMonth = recurring.dayOfMonth ?? ensureDate(recurring.dueDate ?? recurring.startDate).getUTCDate();
   const type: TransactionType = recurring.type ?? (recurring.priority === false ? 'income' : 'expense');
+  const frequency = isRecurringFrequency(recurring.frequency) ? recurring.frequency : 'monthly';
 
   const overrides = (recurring.overrides ?? [])
     .filter((override) => typeof override.monthKey === 'string' && override.monthKey.length > 0)
@@ -168,7 +253,7 @@ export function normalizeRecurringExpense(recurring: RecurringExpense): Recurrin
     endDate,
     dayOfMonth: Math.min(Math.max(dayOfMonth, 1), 31),
     type,
-    frequency: 'monthly',
+    frequency,
     priority: recurring.priority ?? type === 'expense',
     overrides,
   };
@@ -180,17 +265,17 @@ export function normalizeRecurringExpenses(recurring: RecurringExpense[]): Recur
 
 export function buildRecurringTransaction(
   recurring: RecurringExpense,
-  monthKey: string,
+  occurrenceKey: string,
   occurrenceDate: Date,
 ): Transaction | null {
-  const override = getRecurringOverride(recurring, monthKey);
+  const override = getRecurringOverride(recurring, occurrenceKey);
 
   if (override?.skipped) {
     return null;
   }
 
   return {
-    id: `rec_${recurring.id}_${monthKey}_${Math.random().toString(36).slice(2, 6)}`,
+    id: `rec_${recurring.id}_${occurrenceKey}_${Math.random().toString(36).slice(2, 6)}`,
     amount: override?.amount ?? recurring.amount,
     type: override?.type ?? recurring.type ?? 'expense',
     category: override?.category ?? recurring.category,
@@ -199,7 +284,7 @@ export function buildRecurringTransaction(
     description: override?.description ?? `Auto-generated from recurring: ${recurring.name}`,
     paymentMethod: override?.paymentMethod ?? DEFAULT_RECURRING_PAYMENT_METHOD,
     sourceRecurringId: recurring.id,
-    sourceMonthKey: monthKey,
+    sourceMonthKey: occurrenceKey,
     recurringEdited: Boolean(override),
   };
 }
@@ -226,45 +311,52 @@ export function reconcileRecurringTransactions(
 
   function resolveRecurringForTransaction(transaction: Transaction): {
     recurring: RecurringExpense | null;
-    monthKey: string | null;
+    occurrenceKey: string | null;
   } {
     if (transaction.sourceRecurringId && transaction.sourceMonthKey) {
       return {
         recurring: recurringById.get(transaction.sourceRecurringId) ?? null,
-        monthKey: transaction.sourceMonthKey,
+        occurrenceKey: transaction.sourceMonthKey,
       };
     }
 
     const legacyName = getLegacyRecurringName(transaction) ?? transaction.title?.trim() ?? '';
     if (!legacyName) {
-      return { recurring: null, monthKey: null };
+      return { recurring: null, occurrenceKey: null };
     }
 
     const candidates = recurringByName.get(legacyName.toLowerCase()) ?? [];
     if (candidates.length !== 1) {
-      return { recurring: null, monthKey: null };
+      return { recurring: null, occurrenceKey: null };
     }
 
-    const monthKey = getUtcDateInputValue(transaction.date).slice(0, 7);
+    const matchedRecurring = candidates[0];
+    const transactionDate = ensureDate(transaction.date);
+    const occurrenceKey = getRecurringOccurrenceKey(matchedRecurring, transactionDate);
     return {
-      recurring: candidates[0],
-      monthKey,
+      recurring: matchedRecurring,
+      occurrenceKey,
     };
   }
 
   return transactions.flatMap((transaction) => {
-    const { recurring, monthKey } = resolveRecurringForTransaction(transaction);
-    if (!recurring || !monthKey) {
+    const { recurring, occurrenceKey } = resolveRecurringForTransaction(transaction);
+    if (!recurring || !occurrenceKey) {
       return [transaction];
     }
 
-    const { year, monthIndex } = getMonthKeyParts(monthKey);
-    if (!isRecurringActiveInMonth(recurring, year, monthIndex)) {
+    const transactionDate = ensureDate(transaction.date);
+    const { year, monthIndex } = occurrenceKey.length === 7
+      ? getMonthKeyParts(occurrenceKey)
+      : { year: transactionDate.getUTCFullYear(), monthIndex: transactionDate.getUTCMonth() };
+    const occurrenceDate = getRecurringOccurrencesInMonth(recurring, year, monthIndex)
+      .find((date) => getRecurringOccurrenceKey(recurring, date) === occurrenceKey);
+
+    if (!occurrenceDate) {
       return [];
     }
 
-    const occurrenceDate = getRecurringOccurrenceDate(recurring, year, monthIndex);
-    const expected = buildRecurringTransaction(recurring, monthKey, occurrenceDate);
+    const expected = buildRecurringTransaction(recurring, occurrenceKey, occurrenceDate);
     if (!expected) {
       return [];
     }
@@ -272,7 +364,7 @@ export function reconcileRecurringTransactions(
     return [{
       ...transaction,
       sourceRecurringId: recurring.id,
-      sourceMonthKey: monthKey,
+      sourceMonthKey: occurrenceKey,
       amount: expected.amount,
       type: expected.type,
       category: expected.category,

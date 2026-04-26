@@ -14,19 +14,19 @@ export const BottomNav = () => {
   ];
 
   return (
-    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-1.5 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
+    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-3 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path;
         const Icon = item.icon;
 
         if (item.isSpecial) {
           return (
-            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-6">
+            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-8">
               <div className={cn(
-                "w-12 h-12 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
+                "w-14 h-14 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
                 isActive && "ring-4 ring-primary/20"
               )}>
-                <Plus className="w-6 h-6" />
+                <Plus className="w-8 h-8" />
               </div>
             </Link>
           );

@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
-import { RecurringExpense } from '../types';
+import { RecurringExpense, RecurringFrequency } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
@@ -16,11 +16,20 @@ import { pageTransition } from '../utils/motion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   getDefaultRecurringEndDate,
+  getRecurringFrequencyLabel,
   getRecurringDraftStartDate,
+  getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
   getUtcDayOfMonth,
   isRecurringActiveInMonth,
 } from '../domain/recurring';
+
+const recurringFrequencyOptions: Array<{ value: RecurringFrequency; label: string }> = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+];
 
 export const RecurringPage = () => {
   const { toast } = useToast();
@@ -35,6 +44,7 @@ export const RecurringPage = () => {
   const [newStartDate, setNewStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [newEndDate, setNewEndDate] = useState('');
   const [newCategory, setNewCategory] = useState(categories[0]);
+  const [newFrequency, setNewFrequency] = useState<RecurringFrequency>('monthly');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const recurringDialogRef = useRef<HTMLDivElement>(null);
@@ -53,6 +63,7 @@ export const RecurringPage = () => {
     setNewStartDate(getCreateStartDate());
     setNewEndDate('');
     setNewCategory(categories[0]);
+    setNewFrequency('monthly');
   };
 
   useFocusTrap(recurringDialogRef, isAdding, resetForm);
@@ -64,6 +75,7 @@ export const RecurringPage = () => {
     setNewStartDate(getCreateStartDate());
     setNewEndDate('');
     setNewCategory(categories[0]);
+    setNewFrequency('monthly');
     setIsAdding(true);
   };
 
@@ -108,7 +120,7 @@ export const RecurringPage = () => {
       dayOfMonth: getUtcDayOfMonth(startDate),
       category: newCategory,
       type: 'expense',
-      frequency: 'monthly',
+      frequency: newFrequency,
       priority: true,
       overrides: existingOverrides,
     };
@@ -131,6 +143,7 @@ export const RecurringPage = () => {
     setNewStartDate(getUtcDateInputValue(bill.startDate));
     setNewEndDate(getUtcDateInputValue(bill.endDate));
     setNewCategory(bill.category);
+    setNewFrequency(bill.frequency ?? 'monthly');
     setIsAdding(true);
   };
 
@@ -203,7 +216,8 @@ export const RecurringPage = () => {
           {Array.from({ length: daysInMonth }).map((_, index) => {
             const day = index + 1;
             const hasExpense = recurring.some((item) => (
-              item.dayOfMonth === day && isRecurringActiveInMonth(item, year, month)
+              isRecurringActiveInMonth(item, year, month) &&
+              getRecurringOccurrencesInMonth(item, year, month).some((date) => date.getUTCDate() === day)
             ));
             const isSelected = day === selectedDay;
             const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
@@ -256,6 +270,7 @@ export const RecurringPage = () => {
                       placeholder="e.g. Mortgage"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
+                      data-autofocus="true"
                     />
                   </div>
                   <button
@@ -275,6 +290,23 @@ export const RecurringPage = () => {
                   <div>
                     <p className="text-micro font-bold text-on-surface-variant">Schedule Window</p>
                     <p className="text-xs text-on-surface-variant mt-1 leading-snug">Start and end stay on the exact calendar day you choose.</p>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {recurringFrequencyOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setNewFrequency(option.value)}
+                        className={cn(
+                          'rounded-xl px-2 py-2 text-xs font-bold transition-all',
+                          newFrequency === option.value
+                            ? 'bg-primary text-on-primary'
+                            : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <Input
@@ -333,7 +365,7 @@ export const RecurringPage = () => {
               category={item.category}
               onDelete={() => setDeleteId(item.id)}
               onEdit={() => handleEdit(item)}
-              subtitle={`Day ${item.dayOfMonth} • monthly • ${item.category}`}
+              subtitle={`Starts ${getUtcDateInputValue(item.startDate)} • ${getRecurringFrequencyLabel(item.frequency)} • ${item.category}`}
               title={item.name}
             />
           )) : (

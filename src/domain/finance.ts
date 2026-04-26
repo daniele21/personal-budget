@@ -6,9 +6,9 @@ import { Transaction, Budget, RecurringExpense } from '../types';
 import {
   buildRecurringTransaction,
   getMonthKey,
-  getRecurringOccurrenceDate,
+  getRecurringOccurrenceKey,
+  getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
-  isRecurringActiveInMonth,
 } from './recurring';
 
 // ─── Transaction Filtering ──────────────────────────────────────────
@@ -465,27 +465,35 @@ export function getRecurringDue(
   const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   recurring.forEach(bill => {
-    if (!isRecurringActiveInMonth(bill, todayNormalized.getFullYear(), todayNormalized.getMonth())) {
-      return;
-    }
-
     const monthKey = getMonthKey(todayNormalized);
+    const occurrenceDates = getRecurringOccurrencesInMonth(
+      bill,
+      todayNormalized.getFullYear(),
+      todayNormalized.getMonth(),
+    );
 
-    const alreadyGenerated = existingTransactions.some((transaction) => (
-      transaction.sourceRecurringId === bill.id &&
-      transaction.sourceMonthKey === monthKey
-    ) || matchesLegacyRecurringTransaction(transaction, bill, today));
+    occurrenceDates.forEach((occurrenceDate) => {
+      if (getUtcDateInputValue(occurrenceDate.toISOString()) > formatLocalDateKey(todayNormalized)) {
+        return;
+      }
 
-    if (alreadyGenerated) return;
+      const occurrenceKey = getRecurringOccurrenceKey(bill, occurrenceDate);
+      const alreadyGenerated = existingTransactions.some((transaction) => (
+        transaction.sourceRecurringId === bill.id &&
+        transaction.sourceMonthKey === occurrenceKey
+      ) || (
+        (bill.frequency ?? 'monthly') === 'monthly' &&
+        occurrenceKey === monthKey &&
+        matchesLegacyRecurringTransaction(transaction, bill, today)
+      ));
 
-    const dueDayThisMonth = getRecurringOccurrenceDate(bill, todayNormalized.getFullYear(), todayNormalized.getMonth());
+      if (alreadyGenerated) return;
 
-    if (getUtcDateInputValue(dueDayThisMonth.toISOString()) <= formatLocalDateKey(todayNormalized)) {
-      const transaction = buildRecurringTransaction(bill, monthKey, dueDayThisMonth);
+      const transaction = buildRecurringTransaction(bill, occurrenceKey, occurrenceDate);
       if (!transaction) return;
 
-      result.push({ bill, transaction, monthKey });
-    }
+      result.push({ bill, transaction, monthKey: occurrenceKey });
+    });
   });
 
   return result;

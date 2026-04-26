@@ -16,7 +16,7 @@
 | **Aggiunta transazioni** | Tastierino numerico custom, categorie con icone, allegati foto via IndexedDB, metodo di pagamento, edit tramite route `/edit/:id` |
 | **Storico** | Lista filtrata per testo e categoria, grafico ad area dell'andamento saldo, modifica e cancellazione inline |
 | **Budget** | Creazione budget per categoria, progress bar spesa vs limite, riepilogo totale |
-| **Ricorrenti** | Calendario mensile, CRUD bollette/abbonamenti con data scadenza e categoria |
+| **Ricorrenti** | Calendario mensile, CRUD bollette/abbonamenti con frequenza giornaliera, settimanale, mensile o annuale, data scadenza e categoria |
 | **Profilo** | Net worth, export CSV transazioni+budget, import CSV, reset dati, sezione account |
 | **PWA** | `manifest.json` + Service Worker base |
 | **Design** | Design system con variabili CSS (light + dark), font Manrope/Inter, animazioni Framer Motion |

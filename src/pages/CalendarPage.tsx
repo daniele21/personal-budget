@@ -7,7 +7,7 @@ import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { cn } from '../lib/utils';
-import { RecurringExpense, TransactionType } from '../types';
+import { RecurringExpense, RecurringFrequency, TransactionType } from '../types';
 import { APP_CONFIG } from '../constants';
 import { Button, EmptyState, Input } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
@@ -21,13 +21,22 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   formatUtcDateLabel,
   getDefaultRecurringEndDate,
+  getRecurringFrequencyLabel,
   getRecurringDraftStartDate,
+  getRecurringOccurrenceKey,
+  getRecurringOccurrencesInMonth,
   getRecurringOverride,
   getUtcDateInputValue,
   getUtcDayOfMonth,
-  isRecurringActiveInMonth,
   upsertRecurringOverride,
 } from '../domain/recurring';
+
+const recurringFrequencyOptions: Array<{ value: RecurringFrequency; label: string }> = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+];
 
 const getMonthDays = (year: number, month: number) => {
   const firstDay = new Date(year, month, 1);
@@ -54,6 +63,7 @@ export const CalendarPage = () => {
   const [newEndDate, setNewEndDate] = useState('');
   const [newCategory, setNewCategory] = useState(categories[0] || 'Housing');
   const [newType, setNewType] = useState<TransactionType>('expense');
+  const [newFrequency, setNewFrequency] = useState<RecurringFrequency>('monthly');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const [recurringActionTarget, setRecurringActionTarget] = useState<RecurringExpense | null>(null);
@@ -96,8 +106,10 @@ export const CalendarPage = () => {
   const recurringByDay = useMemo(() => {
     const map: Record<number, RecurringExpense[]> = {};
     for (const item of recurring) {
-      if (!isRecurringActiveInMonth(item, viewYear, viewMonth)) continue;
-      (map[item.dayOfMonth] ??= []).push(item);
+      getRecurringOccurrencesInMonth(item, viewYear, viewMonth).forEach((occurrenceDate) => {
+        const day = occurrenceDate.getUTCDate();
+        (map[day] ??= []).push(item);
+      });
     }
     return map;
   }, [recurring, viewYear, viewMonth]);
@@ -105,13 +117,12 @@ export const CalendarPage = () => {
   const selectedTx = selectedDate ? txByDate[selectedDate] || [] : [];
   const selectedDay = selectedDate ? parseInt(selectedDate.split('-')[2], 10) : null;
   const selectedRecurring = selectedDay ? recurringByDay[selectedDay] || [] : [];
-  const visibleMonthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
   const fallbackDraftStartDate = getRecurringDraftStartDate(viewYear, viewMonth, today.getDate());
 
   const monthLabel = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
 
-  const getRecurringDisplayValues = (item: RecurringExpense, monthKey: string) => {
-    const override = getRecurringOverride(item, monthKey);
+  const getRecurringDisplayValues = (item: RecurringExpense, occurrenceKey: string) => {
+    const override = getRecurringOverride(item, occurrenceKey);
 
     return {
       name: override?.title ?? item.name,
@@ -149,10 +160,14 @@ export const CalendarPage = () => {
   }, [dailyTotals]);
 
   const monthlyRecurringTotal = useMemo(
-    () => (Object.values(recurringByDay) as RecurringExpense[][])
-      .flat()
-      .reduce((sum, item) => sum + item.amount, 0),
-    [recurringByDay],
+    () => recurring.reduce((sum, item) => (
+      sum + getRecurringOccurrencesInMonth(item, viewYear, viewMonth).reduce((occurrenceSum, occurrenceDate) => {
+        const occurrenceKey = getRecurringOccurrenceKey(item, occurrenceDate);
+        const override = getRecurringOverride(item, occurrenceKey);
+        return occurrenceSum + (override?.amount ?? item.amount);
+      }, 0)
+    ), 0),
+    [recurring, viewYear, viewMonth],
   );
 
   const resetForm = () => {
@@ -164,6 +179,7 @@ export const CalendarPage = () => {
     setNewEndDate('');
     setNewCategory(categories[0] || 'Housing');
     setNewType('expense');
+    setNewFrequency('monthly');
   };
 
   useFocusTrap(recurringFormRef, showRecurringForm, resetForm);
@@ -178,6 +194,7 @@ export const CalendarPage = () => {
     setNewEndDate('');
     setNewCategory(categories[0] || 'Housing');
     setNewType('expense');
+    setNewFrequency('monthly');
     setShowRecurringForm(true);
   };
 
@@ -222,7 +239,7 @@ export const CalendarPage = () => {
       dayOfMonth: getUtcDayOfMonth(startDate),
       category: newCategory,
       type: newType,
-      frequency: 'monthly',
+      frequency: newFrequency,
       priority: newType === 'expense',
       overrides: existingOverrides,
     };
@@ -246,6 +263,7 @@ export const CalendarPage = () => {
     setNewEndDate(getUtcDateInputValue(item.endDate));
     setNewCategory(item.category);
     setNewType(item.type ?? 'expense');
+    setNewFrequency(item.frequency ?? 'monthly');
     setShowRecurringForm(true);
   };
 
@@ -256,11 +274,12 @@ export const CalendarPage = () => {
   const openOccurrenceEditor = (item: RecurringExpense) => {
     if (!selectedDate) return;
 
-    const monthKey = selectedDate.slice(0, 7);
-    const override = getRecurringOverride(item, monthKey);
+    const selectedOccurrenceDate = new Date(`${selectedDate}T00:00:00.000Z`);
+    const occurrenceKey = getRecurringOccurrenceKey(item, selectedOccurrenceDate);
+    const override = getRecurringOverride(item, occurrenceKey);
     const linkedTransaction = transactions.find((transaction) => (
       transaction.sourceRecurringId === item.id &&
-      transaction.sourceMonthKey === monthKey
+      transaction.sourceMonthKey === occurrenceKey
     ));
 
     setOccurrenceTarget(item);
@@ -285,13 +304,15 @@ export const CalendarPage = () => {
       return;
     }
 
-    const monthKey = selectedDate.slice(0, 7);
+    const selectedOccurrenceDate = new Date(`${selectedDate}T00:00:00.000Z`);
+    const occurrenceKey = getRecurringOccurrenceKey(occurrenceTarget, selectedOccurrenceDate);
     const occurrenceDate = new Date(`${selectedDate}T00:00:00.000Z`).toISOString();
 
     setRecurring(recurring.map((item) => (
       item.id === occurrenceTarget.id
         ? upsertRecurringOverride(item, {
-          monthKey,
+          monthKey: occurrenceKey,
+          occurrenceKey,
           title: trimmedName,
           amount: parsedAmount,
           category: occurrenceCategory,
@@ -302,7 +323,7 @@ export const CalendarPage = () => {
     )));
 
     setTransactions(transactions.map((transaction) => (
-      transaction.sourceRecurringId === occurrenceTarget.id && transaction.sourceMonthKey === monthKey
+      transaction.sourceRecurringId === occurrenceTarget.id && transaction.sourceMonthKey === occurrenceKey
         ? {
           ...transaction,
           title: trimmedName,
@@ -388,11 +409,13 @@ export const CalendarPage = () => {
           {selectedRecurring.length > 0 && (
             <div className="space-y-2">
               <p className="text-micro text-primary font-bold flex items-center gap-1.5">
-                <RefreshCw className="w-3 h-3" /> Recurring on day {selectedDay}
+                <RefreshCw className="w-3 h-3" /> Recurring on this day
               </p>
               {selectedRecurring.map((item) => {
-                const monthKey = selectedDate ? selectedDate.slice(0, 7) : visibleMonthKey;
-                const display = getRecurringDisplayValues(item, monthKey);
+                const occurrenceKey = selectedDate
+                  ? getRecurringOccurrenceKey(item, new Date(`${selectedDate}T00:00:00.000Z`))
+                  : '';
+                const display = getRecurringDisplayValues(item, occurrenceKey);
 
                 return (
                   <div key={item.id} className="flex items-center gap-3 bg-primary/5 rounded-2xl p-3 border border-primary/10">
@@ -400,7 +423,7 @@ export const CalendarPage = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-on-surface truncate">{display.name}</p>
                       <p className="text-micro text-on-surface-variant">
-                        {display.category} • monthly • active until {formatUtcDateLabel(item.endDate)}
+                        {display.category} • {getRecurringFrequencyLabel(item.frequency)} • active until {formatUtcDateLabel(item.endDate)}
                       </p>
                     </div>
                     <span className="text-sm font-bold text-primary">{formatCurrency(display.amount)}</span>
@@ -511,6 +534,7 @@ export const CalendarPage = () => {
                       placeholder="e.g. Mortgage, Salary"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
+                      data-autofocus="true"
                     />
                   </div>
                   <button
@@ -530,6 +554,23 @@ export const CalendarPage = () => {
                   <div>
                     <p className="text-micro font-bold text-on-surface-variant">Schedule Window</p>
                     <p className="text-xs text-on-surface-variant mt-1 leading-snug">Start and end stay on the exact calendar day you choose.</p>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {recurringFrequencyOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setNewFrequency(option.value)}
+                        className={cn(
+                          'rounded-xl px-2 py-2 text-xs font-bold transition-all',
+                          newFrequency === option.value
+                            ? 'bg-primary text-on-primary'
+                            : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <Input label="Start Date" type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
@@ -682,7 +723,7 @@ export const CalendarPage = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-on-surface truncate">{item.name}</p>
                   <p className="text-micro text-on-surface-variant">
-                    Day {item.dayOfMonth} • monthly • {item.category}
+                    Starts {getUtcDateInputValue(item.startDate)} • {getRecurringFrequencyLabel(item.frequency)} • {item.category}
                   </p>
                 </div>
                 <span className="text-sm font-bold text-primary">{formatCurrency(item.amount)}</span>

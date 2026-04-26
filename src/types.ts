@@ -43,6 +43,7 @@ export interface User {
 
 export interface RecurringOverride {
   monthKey: string;
+  occurrenceKey?: string;
   amount?: number;
   type?: TransactionType;
   category?: string;
@@ -53,6 +54,8 @@ export interface RecurringOverride {
   skipped?: boolean;
 }
 
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
 export interface RecurringExpense {
   id: string;
   name: string;
@@ -62,7 +65,7 @@ export interface RecurringExpense {
   dayOfMonth: number;
   category: string;
   type?: TransactionType;
-  frequency?: 'monthly';
+  frequency?: RecurringFrequency;
   priority?: boolean;
   overrides?: RecurringOverride[];
   dueDate?: string;

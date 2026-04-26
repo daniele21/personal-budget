@@ -218,6 +218,7 @@ export const HistoryPage = () => {
         bill.id === existingTransaction.sourceRecurringId
           ? upsertRecurringOverride(bill, {
             monthKey: existingTransaction.sourceMonthKey,
+            occurrenceKey: existingTransaction.sourceMonthKey,
             amount: nextTransaction.amount,
             type: nextTransaction.type,
             category: nextTransaction.category,

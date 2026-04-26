@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getDefaultRecurringEndDate,
   getRecurringDraftStartDate,
+  getRecurringOccurrenceKey,
+  getRecurringOccurrencesInMonth,
   reconcileRecurringTransactions,
   isRecurringActiveInMonth,
   normalizeRecurringExpense,
@@ -35,6 +37,23 @@ describe('recurring domain helpers', () => {
     expect(legacy.endDate).toBe('2027-04-04T00:00:00.000Z');
     expect(legacy.dayOfMonth).toBe(5);
     expect(legacy.type).toBe('expense');
+    expect(legacy.frequency).toBe('monthly');
+  });
+
+  it('keeps supported recurring frequencies during normalization', () => {
+    const weekly = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Gym',
+      amount: 20,
+      startDate: '2026-04-06T00:00:00.000Z',
+      endDate: '2026-04-30T00:00:00.000Z',
+      dayOfMonth: 6,
+      category: 'Health',
+      type: 'expense',
+      frequency: 'weekly',
+    });
+
+    expect(weekly.frequency).toBe('weekly');
   });
 
   it('detects whether a recurring item is active in a given month', () => {
@@ -52,6 +71,65 @@ describe('recurring domain helpers', () => {
     expect(isRecurringActiveInMonth(recurring, 2026, 3)).toBe(true);
     expect(isRecurringActiveInMonth(recurring, 2026, 4)).toBe(true);
     expect(isRecurringActiveInMonth(recurring, 2026, 6)).toBe(false);
+  });
+
+  it('returns every weekly occurrence in a month on the start weekday', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Gym',
+      amount: 20,
+      startDate: '2026-04-06T00:00:00.000Z',
+      endDate: '2026-04-30T00:00:00.000Z',
+      dayOfMonth: 6,
+      category: 'Health',
+      type: 'expense',
+      frequency: 'weekly',
+    });
+
+    expect(getRecurringOccurrencesInMonth(recurring, 2026, 3).map((date) => date.toISOString())).toEqual([
+      '2026-04-06T00:00:00.000Z',
+      '2026-04-13T00:00:00.000Z',
+      '2026-04-20T00:00:00.000Z',
+      '2026-04-27T00:00:00.000Z',
+    ]);
+  });
+
+  it('returns daily occurrences inside the active date range', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Coffee',
+      amount: 3,
+      startDate: '2026-04-29T00:00:00.000Z',
+      endDate: '2026-05-02T00:00:00.000Z',
+      dayOfMonth: 29,
+      category: 'Food',
+      type: 'expense',
+      frequency: 'daily',
+    });
+
+    expect(getRecurringOccurrencesInMonth(recurring, 2026, 3).map((date) => getRecurringOccurrenceKey(recurring, date))).toEqual([
+      '2026-04-29',
+      '2026-04-30',
+    ]);
+  });
+
+  it('returns yearly occurrences only in the start month', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Insurance',
+      amount: 300,
+      startDate: '2026-04-15T00:00:00.000Z',
+      endDate: '2028-12-31T00:00:00.000Z',
+      dayOfMonth: 15,
+      category: 'Insurance',
+      type: 'expense',
+      frequency: 'yearly',
+    });
+
+    expect(getRecurringOccurrencesInMonth(recurring, 2027, 3).map((date) => date.toISOString())).toEqual([
+      '2027-04-15T00:00:00.000Z',
+    ]);
+    expect(getRecurringOccurrencesInMonth(recurring, 2027, 4)).toEqual([]);
   });
 
   it('upserts an override by month key', () => {
