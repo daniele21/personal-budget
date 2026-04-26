@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, BarChart3, Trophy } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
@@ -94,6 +95,23 @@ function filterByRange(transactions: Transaction[], start: Date, end: Date): Tra
 const BAR_COLORS = ['bg-primary', 'bg-secondary', 'bg-tertiary', 'bg-[#8b5cf6]', 'bg-[#f59e0b]', 'bg-[#06b6d4]', 'bg-[#ec4899]', 'bg-[#10b981]'];
 const TEXT_COLORS = ['text-primary', 'text-secondary', 'text-tertiary', 'text-[#8b5cf6]', 'text-[#f59e0b]', 'text-[#06b6d4]', 'text-[#ec4899]', 'text-[#10b981]'];
 
+const DEEPER_ANALYSIS_LINKS = [
+  {
+    to: '/compare',
+    label: 'Compare periods',
+    ariaLabel: 'Open period comparison report',
+    icon: BarChart3,
+    iconClassName: 'bg-accent-cyan/10 text-accent-cyan',
+  },
+  {
+    to: '/year-review',
+    label: 'Year in Review',
+    ariaLabel: 'Open year in review report',
+    icon: Trophy,
+    iconClassName: 'bg-accent-amber/10 text-accent-amber',
+  },
+];
+
 // ─── Component ──────────────────────────────────────────────────────
 
 export const InsightsPage = () => {
@@ -182,6 +200,29 @@ export const InsightsPage = () => {
       <section className="space-y-1">
         <p className="text-micro font-bold text-on-surface-variant">Reports</p>
         <h2 className="font-headline text-2xl font-extrabold text-primary">Weekly and monthly analysis</h2>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-xs font-bold text-on-surface-variant px-1">Deeper analysis</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {DEEPER_ANALYSIS_LINKS.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-label={item.ariaLabel}
+                className="flex min-h-14 items-center gap-2 rounded-2xl border border-outline-variant/5 bg-surface-container-lowest px-3 py-2 transition-all hover:bg-surface-container-low active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <span className={cn('flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl', item.iconClassName)}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 text-sm font-bold leading-tight text-on-surface">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
       {/* Range selector */}

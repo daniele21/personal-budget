@@ -156,6 +156,8 @@ I god-components sono **cresciuti** rispetto all'analisi originale:
 
 I piani proposti restano validi. Le nuove feature (year-review, compare) sono state correttamente implementate come componenti modulari (`src/components/compare/`, `src/components/year-review/`) — ✅ buon pattern. Lo stesso approccio va applicato alle pagine monolitiche.
 
+Nota UX: gli entrypoint per `compare` e `year-review` sono stati collocati nella sezione Reports come strumenti di analisi avanzata; il profilo resta focalizzato su impostazioni, account, backup e preferenze.
+
 **Effort**: 5-6 giorni (HistoryPage 2-3, CalendarPage 1.5-2, ProfilePage 1-1.5)
 
 ---

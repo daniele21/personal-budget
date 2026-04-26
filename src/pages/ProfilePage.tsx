@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, BarChart3, Trophy } from 'lucide-react';
+import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -64,22 +64,6 @@ export const ProfilePage = () => {
       icon: RefreshCw,
       className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
       iconClassName: 'bg-secondary/10 text-secondary',
-    },
-    {
-      to: '/compare',
-      label: 'Compare',
-      ariaLabel: 'Compare periods',
-      icon: BarChart3,
-      className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
-      iconClassName: 'bg-accent-cyan/10 text-accent-cyan',
-    },
-    {
-      to: '/year-review',
-      label: 'Year',
-      ariaLabel: 'Open year review',
-      icon: Trophy,
-      className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
-      iconClassName: 'bg-accent-amber/10 text-accent-amber',
     },
   ];
   const categoryUsageCounts = useMemo(
@@ -275,7 +259,7 @@ export const ProfilePage = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-headline font-bold text-primary">Quick Access</h3>
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {quickAccessItems.map((item) => {
             const Icon = item.icon;
 
@@ -439,40 +423,29 @@ export const ProfilePage = () => {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-headline font-bold text-primary">Data Management</h3>
         </div>
-        <div className="grid grid-cols-1 gap-3">
-          <button
-            onClick={() => setShowCategoryDialog(true)}
-            className="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+        <div className="space-y-3">
+          {/* Compact action grid — 2 columns */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setShowCategoryDialog(true)}
+              className="flex flex-col items-center gap-3 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high active:scale-[0.98] transition-all"
+            >
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Tags className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="text-sm font-bold text-on-surface">Gestione categorie</p>
-                <p className="text-micro text-on-surface-variant font-medium">
-                  Aggiungi, modifica o elimina categorie
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 shrink-0 text-on-surface-variant/40" />
-          </button>
+              <p className="text-xs font-bold text-on-surface">Categories</p>
+            </button>
 
-          <button 
-            onClick={handleExport}
-            className="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all"
-          >
-            <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              className="flex flex-col items-center gap-3 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high active:scale-[0.98] transition-all"
+            >
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Download className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-left">
-                <p className="text-sm font-bold text-on-surface">Export Data</p>
-                <p className="text-micro text-on-surface-variant font-medium">Download transactions & budgets as CSV</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
-          </button>
+              <p className="text-xs font-bold text-on-surface">Export CSV</p>
+            </button>
+          </div>
 
           <button
             onClick={handleBackupNow}
@@ -495,17 +468,17 @@ export const ProfilePage = () => {
             <ChevronRight className="w-4 h-4 shrink-0 text-on-primary/70 transition-transform group-hover:translate-x-0.5" />
           </button>
 
-          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/5 p-4 space-y-3">
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/5 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center shrink-0">
                   <Cloud className="w-5 h-5 text-secondary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-on-surface">Backup cloud cifrato</p>
+                  <p className="text-sm font-bold text-on-surface">Cloud backup</p>
                   <p className="text-micro text-on-surface-variant font-medium">
-                    {cloudBackupEnabled ? 'Attivo' : 'Disattivato'} · Stato: {backupStatus}
-                    {lastBackupDate ? ` · Ultimo backup: ${lastBackupDate}` : ''}
+                    {cloudBackupEnabled ? 'Attivo' : 'Off'}
+                    {lastBackupDate ? ` · ${lastBackupDate}` : ''}
                   </p>
                 </div>
               </div>
@@ -515,9 +488,6 @@ export const ProfilePage = () => {
                 label={cloudBackupEnabled ? 'Disattiva backup cloud' : 'Attiva backup cloud'}
               />
             </div>
-            <p className="text-micro leading-relaxed text-on-surface-variant">
-              Quando attivo, Aura salva un backup cifrato su Firestore per il tuo account. Puoi disattivarlo o cancellarlo in qualsiasi momento.
-            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

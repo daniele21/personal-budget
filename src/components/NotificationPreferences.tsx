@@ -4,13 +4,11 @@ import { Button, Card, Switch } from './ui';
 import { ReminderDialog } from './ReminderDialog';
 import { useNotifications } from '../hooks/useNotifications';
 
-function Toggle({ checked, onChange, label, description }: { checked: boolean; onChange: () => void; label: string; description: string }) {
+/** Compact toggle row — label-only, no description text for scannability. */
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-sm font-bold text-on-surface">{label}</p>
-        <p className="text-micro text-on-surface-variant leading-relaxed">{description}</p>
-      </div>
+    <div className="flex items-center justify-between gap-3 min-h-11">
+      <p className="text-sm font-bold text-on-surface">{label}</p>
       <Switch checked={checked} onChange={onChange} label={label} />
     </div>
   );
@@ -29,17 +27,14 @@ export function NotificationPreferences() {
 
   return (
     <Card className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            <Bell className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-on-surface">Local notifications</p>
-            <p className="text-micro text-on-surface-variant leading-relaxed">
-              Budget alerts, recurring due items and reminders stay on this device. iOS requires the installed PWA for reliable web notifications.
-            </p>
-          </div>
+      {/* Compact header — icon + short intro */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <Bell className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-on-surface">Local notifications</p>
+          <p className="text-micro text-on-surface-variant">Alerts and reminders, stored on-device.</p>
         </div>
       </div>
 
@@ -50,28 +45,24 @@ export function NotificationPreferences() {
           checked={notifications.preferences.enabled}
           onChange={() => notifications.updatePreferences({ enabled: !notifications.preferences.enabled })}
           label="Notifications enabled"
-          description="Native notifications are shown when this browser allows them."
         />
       )}
 
-      <div className="space-y-3 pt-2 border-t border-outline-variant/10">
+      <div className="space-y-1 pt-2 border-t border-outline-variant/10">
         <Toggle
           checked={notifications.preferences.budgetAlerts}
           onChange={() => notifications.updatePreferences({ budgetAlerts: !notifications.preferences.budgetAlerts })}
           label="Budget alerts"
-          description="Notify when a category reaches warning or exceeded status."
         />
         <Toggle
           checked={notifications.preferences.recurringReminders}
           onChange={() => notifications.updatePreferences({ recurringReminders: !notifications.preferences.recurringReminders })}
           label="Recurring reminders"
-          description="Notify when recurring entries are due for review."
         />
         <Toggle
           checked={notifications.preferences.customReminders}
           onChange={() => notifications.updatePreferences({ customReminders: !notifications.preferences.customReminders })}
           label="Custom reminders"
-          description="Notify for personal reminders saved locally."
         />
       </div>
 
