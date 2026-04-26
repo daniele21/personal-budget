@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowDown,
@@ -7,13 +6,17 @@ import {
   CalendarRange,
   ChevronDown,
   Check,
+  CheckSquare,
+  Download,
   Filter,
   Pencil,
   Search,
   SlidersHorizontal,
   Paperclip,
+  Square,
   Trash2,
   TrendingUp,
+  Wallet,
   X,
 } from 'lucide-react';
 import { 
@@ -28,11 +31,15 @@ import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { SwipeableRow } from '../components/SwipeableRow';
+import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { Input } from '../components/ui/Input';
+import { Button, EmptyState, Input } from '../components/ui';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
+import { haptics } from '../utils/haptics';
+import { upsertRecurringOverride } from '../domain/recurring';
 
 type PeriodPreset = 'current-month' | 'last-month' | '3-months' | 'all' | 'custom';
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -168,9 +175,16 @@ function FilterSheet({
 }
 
 export const HistoryPage = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const { transactions, deleteTransaction: ctxDeleteTransaction } = useApp();
+  const {
+    transactions,
+    setTransactions,
+    deleteTransaction: ctxDeleteTransaction,
+    categories: appCategories,
+    addCategory,
+    recurring,
+    setRecurring,
+  } = useApp();
   const currentMonthRange = useMemo(() => getCurrentMonthRange(), []);
   const lastMonthRange = useMemo(() => getLastMonthRange(), []);
   const lastThreeMonthsRange = useMemo(() => getLastThreeMonthsRange(), []);
@@ -184,11 +198,95 @@ export const HistoryPage = () => {
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchCategory, setBatchCategory] = useState(appCategories[0] ?? '');
 
   const deleteTransaction = (id: string) => {
+    const deleted = transactions.find((transaction) => transaction.id === id);
     ctxDeleteTransaction(id);
     setDeleteId(null);
-    toast('Transaction deleted', 'info');
+    haptics.warning();
+    toast('Transaction deleted', 'info', 5000, deleted ? {
+      label: 'Undo',
+      onClick: () => {
+        setTransactions([deleted, ...transactions]);
+        haptics.success();
+      },
+    } : undefined);
+  };
+
+  const saveQuickEdit = (nextTransaction: Transaction) => {
+    const existingTransaction = transactions.find((transaction) => transaction.id === nextTransaction.id);
+    setTransactions(transactions.map((transaction) => (
+      transaction.id === nextTransaction.id ? nextTransaction : transaction
+    )));
+
+    if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
+      setRecurring(recurring.map((bill) => (
+        bill.id === existingTransaction.sourceRecurringId
+          ? upsertRecurringOverride(bill, {
+            monthKey: existingTransaction.sourceMonthKey,
+            amount: nextTransaction.amount,
+            type: nextTransaction.type,
+            category: nextTransaction.category,
+            title: nextTransaction.title,
+            description: nextTransaction.description,
+            paymentMethod: nextTransaction.paymentMethod,
+            date: nextTransaction.date,
+          })
+          : bill
+      )));
+    }
+
+    setQuickEditTransaction(null);
+    haptics.success();
+    toast('Transaction updated', 'success');
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => (
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    ));
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
+  const deleteSelected = () => {
+    const deleted = transactions.filter((transaction) => selectedIds.includes(transaction.id));
+    setTransactions(transactions.filter((transaction) => !selectedIds.includes(transaction.id)));
+    setSelectedIds([]);
+    haptics.warning();
+    toast(`${deleted.length} transactions deleted`, 'info', 5000, {
+      label: 'Undo',
+      onClick: () => {
+        setTransactions([...deleted, ...transactions.filter((transaction) => !selectedIds.includes(transaction.id))]);
+        haptics.success();
+      },
+    });
+  };
+
+  const changeSelectedCategory = () => {
+    if (!batchCategory) return;
+    setTransactions(transactions.map((transaction) => (
+      selectedIds.includes(transaction.id) ? { ...transaction, category: batchCategory } : transaction
+    )));
+    setSelectedIds([]);
+    toast('Category updated for selected transactions', 'success');
+  };
+
+  const exportSelected = () => {
+    const selected = transactions.filter((transaction) => selectedIds.includes(transaction.id));
+    const header = ['id', 'amount', 'type', 'category', 'date', 'title', 'description', 'paymentMethod'];
+    const rows = selected.map((transaction) => header.map((key) => JSON.stringify(transaction[key as keyof Transaction] ?? '')).join(','));
+    const blob = new Blob([[header.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `aura_selected_transactions_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast('Selected transactions exported', 'success');
   };
 
   const rangeStart = useMemo(() => new Date(`${startDate}T00:00:00`), [startDate]);
@@ -532,53 +630,105 @@ export const HistoryPage = () => {
         </div>
       </section>
 
+      {selectedIds.length > 0 && (
+        <section className="rounded-3xl border border-primary/10 bg-primary/5 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-primary">{selectedIds.length} selected</p>
+              <p className="text-xs text-on-surface-variant">Batch edit, export, or delete selected transactions.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={batchCategory}
+                onChange={(event) => setBatchCategory(event.target.value)}
+                className="min-h-10 rounded-xl border-none bg-surface-container-lowest px-3 text-xs font-bold text-on-surface focus:ring-2 focus:ring-primary"
+                aria-label="Batch category"
+              >
+                {appCategories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+              <Button size="sm" variant="secondary" onClick={changeSelectedCategory}>Change category</Button>
+              <Button size="sm" variant="secondary" onClick={exportSelected}>
+                <Download className="w-3.5 h-3.5" /> Export
+              </Button>
+              <Button size="sm" variant="danger" onClick={deleteSelected}>Delete</Button>
+              <Button size="sm" variant="ghost" onClick={clearSelection}>Clear</Button>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="space-y-6">
         <div>
           <div className="flex items-center justify-between mb-4 px-1">
             <h3 className="font-headline font-extrabold text-lg">Transaction History</h3>
           </div>
           <div className="space-y-2">
-            {filteredTransactions.length > 0 ? filteredTransactions.map(t => (
-              <div key={t.id} className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
-                    <CategoryIcon category={t.category} className="w-4 h-4" />
+            {filteredTransactions.length > 0 ? filteredTransactions.map((t, index) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(index, 8) * 0.025 }}
+              >
+                <SwipeableRow onEdit={() => setQuickEditTransaction(t)} onDelete={() => setDeleteId(t.id)}>
+                  <div className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
+                    <button
+                      type="button"
+                      onClick={() => toggleSelected(t.id)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        toggleSelected(t.id);
+                      }}
+                      className="mr-3 rounded-xl p-1.5 text-primary hover:bg-primary/10"
+                      aria-label={selectedIds.includes(t.id) ? `Deselect ${t.title || t.category}` : `Select ${t.title || t.category}`}
+                    >
+                      {selectedIds.includes(t.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                    </button>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
+                        <CategoryIcon category={t.category} className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-on-surface truncate">{t.title}</h4>
+                        <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{t.description}</p>
+                        <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <div className="flex flex-col items-end">
+                        <p className={cn("text-sm font-extrabold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
+                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </p>
+                        {t.attachmentUrl && <Paperclip className="w-3 h-3 text-primary/40 mt-1" />}
+                      </div>
+                      <button
+                        onClick={() => setQuickEditTransaction(t)}
+                        className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all"
+                        aria-label={`Quick edit transaction ${t.title || t.category}`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(t.id)}
+                        className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
+                        aria-label={`Delete transaction ${t.title || t.category}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-on-surface truncate">{t.title}</h4>
-                    <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{t.description}</p>
-                    <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                  <div className="flex flex-col items-end">
-                    <p className={cn("text-sm font-extrabold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
-                      {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                    </p>
-                    {t.attachmentUrl && <Paperclip className="w-3 h-3 text-primary/40 mt-1" />}
-                  </div>
-                  <button 
-                    onClick={() => navigate(`/edit/${t.id}`)}
-                    className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all"
-                    aria-label="Edit transaction"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => setDeleteId(t.id)}
-                    className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
-                    aria-label="Delete transaction"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                </SwipeableRow>
+              </motion.div>
             )) : (
-              <div className="text-center py-12 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant/20">
-                <Search className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-3" />
-                <p className="text-sm text-on-surface-variant font-medium">
-                  {hasBaseTransactions ? 'No transactions match the current filters' : 'No transactions yet'}
-                </p>
+              <div className="rounded-3xl bg-surface-container-low border border-dashed border-outline-variant/20">
+                <EmptyState
+                  icon={hasBaseTransactions ? <Search className="w-10 h-10" /> : <Wallet className="w-10 h-10" />}
+                  title={hasBaseTransactions ? 'No transactions match the filters' : 'No transactions yet'}
+                  description={hasBaseTransactions ? 'Adjust search, categories, period, or sort to broaden the list.' : 'Add your first transaction to start building history.'}
+                  action={hasBaseTransactions ? undefined : { label: 'Add transaction', to: '/add' }}
+                />
               </div>
             )}
           </div>
@@ -593,6 +743,14 @@ export const HistoryPage = () => {
         variant="danger"
         onConfirm={() => deleteId && deleteTransaction(deleteId)}
         onCancel={() => setDeleteId(null)}
+      />
+
+      <TransactionQuickEditDialog
+        transaction={quickEditTransaction}
+        categories={appCategories}
+        onAddCategory={addCategory}
+        onClose={() => setQuickEditTransaction(null)}
+        onSave={saveQuickEdit}
       />
 
       <FilterSheet

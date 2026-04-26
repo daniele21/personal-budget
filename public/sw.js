@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aura-finance-v4';
+const CACHE_NAME = 'aura-finance-v5';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -80,6 +80,40 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => cached);
 
       return cached || fetchPromise;
+    })
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'AURA_SHOW_NOTIFICATION') return;
+  const payload = event.data.payload || {};
+  event.waitUntil(
+    self.registration.showNotification(payload.title || 'Aura Finance', {
+      body: payload.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: payload.tag,
+      data: {
+        route: payload.route || '/',
+      },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const route = event.notification.data?.route || '/';
+  const targetUrl = new URL(route, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(targetUrl);
     })
   );
 });

@@ -162,6 +162,261 @@ export function spendingByCategory(monthlyTransactions: Transaction[]): Category
     .sort((a, b) => b.amount - a.amount);
 }
 
+// ─── Period Comparison ─────────────────────────────────────────────
+
+export interface DateRange {
+  start: Date;
+  end: Date;
+  label: string;
+}
+
+export interface CategoryDelta {
+  category: string;
+  amountA: number;
+  amountB: number;
+  delta: number;
+  deltaPercent: number | null;
+}
+
+export interface PeriodComparison {
+  rangeA: DateRange;
+  rangeB: DateRange;
+  transactionsA: Transaction[];
+  transactionsB: Transaction[];
+  totalsA: TransactionTotals;
+  totalsB: TransactionTotals;
+  categoryDeltas: CategoryDelta[];
+  insights: string[];
+}
+
+export function createMonthRange(year: number, month: number): DateRange {
+  const start = new Date(year, month, 1, 0, 0, 0, 0);
+  const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+  return {
+    start,
+    end,
+    label: start.toLocaleString('default', { month: 'long', year: 'numeric' }),
+  };
+}
+
+export function normalizeDateRange(startInput: string | Date, endInput: string | Date, label?: string): DateRange {
+  const start = new Date(startInput);
+  const end = new Date(endInput);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  if (start.getTime() <= end.getTime()) {
+    return { start, end, label: label ?? `${start.toLocaleDateString()} - ${end.toLocaleDateString()}` };
+  }
+
+  return { start: end, end: start, label: label ?? `${end.toLocaleDateString()} - ${start.toLocaleDateString()}` };
+}
+
+export function getCategoryDeltas(transactionsA: Transaction[], transactionsB: Transaction[]): CategoryDelta[] {
+  const expensesA = filterByType(transactionsA, 'expense');
+  const expensesB = filterByType(transactionsB, 'expense');
+  const categories = Array.from(new Set([...expensesA.map((t) => t.category), ...expensesB.map((t) => t.category)]));
+
+  return categories
+    .map((category) => {
+      const amountA = filterByCategory(expensesA, category).reduce((sum, item) => sum + item.amount, 0);
+      const amountB = filterByCategory(expensesB, category).reduce((sum, item) => sum + item.amount, 0);
+      const delta = amountA - amountB;
+      const deltaPercent = amountB > 0 ? (delta / amountB) * 100 : amountA > 0 ? null : 0;
+      return { category, amountA, amountB, delta, deltaPercent };
+    })
+    .filter((item) => item.amountA > 0 || item.amountB > 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+export function getComparisonInsights(totalsA: TransactionTotals, totalsB: TransactionTotals, deltas: CategoryDelta[]): string[] {
+  const insights: string[] = [];
+  const expenseDelta = totalsA.expenses - totalsB.expenses;
+  const incomeDelta = totalsA.income - totalsB.income;
+
+  if (totalsB.expenses > 0) {
+    const percent = Math.abs((expenseDelta / totalsB.expenses) * 100).toFixed(0);
+    insights.push(expenseDelta <= 0 ? `Expenses are down ${percent}% versus period B.` : `Expenses are up ${percent}% versus period B.`);
+  }
+
+  if (totalsB.income > 0) {
+    const percent = Math.abs((incomeDelta / totalsB.income) * 100).toFixed(0);
+    insights.push(incomeDelta >= 0 ? `Income is up ${percent}% versus period B.` : `Income is down ${percent}% versus period B.`);
+  }
+
+  const biggestIncrease = deltas.find((item) => item.delta > 0);
+  const biggestDecrease = deltas.find((item) => item.delta < 0);
+  if (biggestIncrease) insights.push(`Biggest increase: ${biggestIncrease.category}.`);
+  if (biggestDecrease) insights.push(`Biggest decrease: ${biggestDecrease.category}.`);
+
+  return insights.slice(0, 4);
+}
+
+export function comparePeriods(transactions: Transaction[], rangeA: DateRange, rangeB: DateRange): PeriodComparison {
+  const transactionsA = filterByDateRange(transactions, rangeA.start, rangeA.end);
+  const transactionsB = filterByDateRange(transactions, rangeB.start, rangeB.end);
+  const totalsA = calculateTotals(transactionsA);
+  const totalsB = calculateTotals(transactionsB);
+  const categoryDeltas = getCategoryDeltas(transactionsA, transactionsB);
+
+  return {
+    rangeA,
+    rangeB,
+    transactionsA,
+    transactionsB,
+    totalsA,
+    totalsB,
+    categoryDeltas,
+    insights: getComparisonInsights(totalsA, totalsB, categoryDeltas),
+  };
+}
+
+export interface TrendPoint {
+  label: string;
+  income: number;
+  expenses: number;
+  net: number;
+}
+
+export function getMonthlyBreakdown(transactions: Transaction[], year: number): TrendPoint[] {
+  return Array.from({ length: 12 }, (_, month) => {
+    const monthTransactions = filterByMonth(transactions, new Date(year, month, 1));
+    const totals = calculateTotals(monthTransactions);
+    return {
+      label: new Date(year, month, 1).toLocaleString('default', { month: 'short' }),
+      income: totals.income,
+      expenses: totals.expenses,
+      net: totals.net,
+    };
+  });
+}
+
+// ─── Year Review ───────────────────────────────────────────────────
+
+export interface DailySpending {
+  date: string;
+  amount: number;
+  intensity: 0 | 1 | 2 | 3 | 4;
+}
+
+export interface CategoryShift {
+  category: string;
+  current: number;
+  previous: number;
+  delta: number;
+  deltaPercent: number | null;
+}
+
+export interface AnnualReview {
+  year: number;
+  transactions: Transaction[];
+  totals: TransactionTotals;
+  savingsRate: number | null;
+  monthlyBreakdown: TrendPoint[];
+  topCategories: CategorySpending[];
+  biggestExpense: Transaction | null;
+  biggestIncome: Transaction | null;
+  savedMonths: number;
+  bestMonth: TrendPoint | null;
+  heatmap: DailySpending[];
+  categoryShifts: CategoryShift[];
+  highlights: string[];
+}
+
+export function filterByYear(transactions: Transaction[], year: number): Transaction[] {
+  return transactions.filter((transaction) => new Date(transaction.date).getUTCFullYear() === year);
+}
+
+function formatDateKey(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+export function getDailySpendingHeatmap(transactions: Transaction[], year: number): DailySpending[] {
+  const expenses = filterByType(filterByYear(transactions, year), 'expense');
+  const totalsByDay = new Map<string, number>();
+  expenses.forEach((transaction) => {
+    const key = formatDateKey(new Date(transaction.date));
+    totalsByDay.set(key, (totalsByDay.get(key) ?? 0) + transaction.amount);
+  });
+
+  const max = Math.max(0, ...Array.from(totalsByDay.values()));
+  const days: DailySpending[] = [];
+  const current = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
+
+  while (current <= end) {
+    const date = formatDateKey(current);
+    const amount = totalsByDay.get(date) ?? 0;
+    const ratio = max > 0 ? amount / max : 0;
+    const intensity = amount === 0 ? 0 : ratio > 0.75 ? 4 : ratio > 0.5 ? 3 : ratio > 0.25 ? 2 : 1;
+    days.push({ date, amount, intensity });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return days;
+}
+
+export function getCategoryShifts(transactions: Transaction[], year: number): CategoryShift[] {
+  const current = spendingByCategory(filterByYear(transactions, year));
+  const previous = spendingByCategory(filterByYear(transactions, year - 1));
+  const categories = Array.from(new Set([...current.map((item) => item.category), ...previous.map((item) => item.category)]));
+
+  return categories
+    .map((category) => {
+      const currentAmount = current.find((item) => item.category === category)?.amount ?? 0;
+      const previousAmount = previous.find((item) => item.category === category)?.amount ?? 0;
+      const delta = currentAmount - previousAmount;
+      const deltaPercent = previousAmount > 0 ? (delta / previousAmount) * 100 : currentAmount > 0 ? null : 0;
+      return { category, current: currentAmount, previous: previousAmount, delta, deltaPercent };
+    })
+    .filter((item) => item.current > 0 || item.previous > 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+export function getAnnualReview(transactions: Transaction[], year: number): AnnualReview {
+  const annualTransactions = filterByYear(transactions, year);
+  const totals = calculateTotals(annualTransactions);
+  const expenses = filterByType(annualTransactions, 'expense');
+  const income = filterByType(annualTransactions, 'income');
+  const monthlyBreakdown = getMonthlyBreakdown(transactions, year);
+  const savedMonths = monthlyBreakdown.filter((month) => month.net > 0).length;
+  const bestMonth = monthlyBreakdown.reduce<TrendPoint | null>((best, month) => {
+    if (!best || month.net > best.net) return month;
+    return best;
+  }, null);
+  const biggestExpense = expenses.reduce<Transaction | null>((max, item) => (!max || item.amount > max.amount ? item : max), null);
+  const biggestIncome = income.reduce<Transaction | null>((max, item) => (!max || item.amount > max.amount ? item : max), null);
+  const savingsRate = totals.income > 0 ? (totals.net / totals.income) * 100 : null;
+  const topCategories = spendingByCategory(annualTransactions).slice(0, 5);
+  const categoryShifts = getCategoryShifts(transactions, year);
+
+  const highlights: string[] = [];
+  if (bestMonth) highlights.push(`Best month: ${bestMonth.label}.`);
+  highlights.push(`Saved money in ${savedMonths} of 12 months.`);
+  if (biggestExpense) highlights.push(`Biggest expense: ${biggestExpense.title || biggestExpense.category}.`);
+  if (topCategories[0]) highlights.push(`Top spending category: ${topCategories[0].category}.`);
+
+  return {
+    year,
+    transactions: annualTransactions,
+    totals,
+    savingsRate,
+    monthlyBreakdown,
+    topCategories,
+    biggestExpense,
+    biggestIncome,
+    savedMonths,
+    bestMonth,
+    heatmap: getDailySpendingHeatmap(transactions, year),
+    categoryShifts,
+    highlights,
+  };
+}
+
 // ─── Recurring Bills ────────────────────────────────────────────────
 
 export interface GeneratedTransaction {

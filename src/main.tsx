@@ -1,5 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import { MotionConfig } from 'motion/react';
 import App from './App.tsx';
 import { ToastProvider } from './components/Toast';
 import { AppProvider } from './context/AppContext';
@@ -10,9 +11,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <ToastProvider>
-        <AppProvider>
-          <App />
-        </AppProvider>
+        <MotionConfig reducedMotion="user">
+          <AppProvider>
+            <App />
+          </AppProvider>
+        </MotionConfig>
       </ToastProvider>
     </ErrorBoundary>
   </StrictMode>,

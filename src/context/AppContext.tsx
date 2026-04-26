@@ -10,7 +10,7 @@
  * - Syncs to localStorage on every change
  * - Exposes derived/computed values via the domain layer
  */
-import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { useCloudBackup } from '../hooks/useCloudBackup';
@@ -45,6 +45,7 @@ interface AppState {
   authLoading: boolean;
   authError: string | null;
   isAdmin: boolean;
+  isHydrated: boolean;
 
   // Setters
   setTransactions: (txs: Transaction[]) => void;
@@ -114,6 +115,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useLocalStorage(STORAGE_KEYS.darkMode, false);
   const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage(STORAGE_KEYS.cloudBackupEnabled, false);
   const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const recurring = useMemo(
     () => normalizeRecurringExpenses(storedRecurring),
@@ -272,7 +278,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals,
     monthlyBudget, user, isLoggedIn, isDarkMode, cloudBackupEnabled, backupAvailable,
     backupStatus, lastBackupDate, onboardingComplete,
-    authLoading, authError, isAdmin,
+    authLoading, authError, isAdmin, isHydrated,
     // Setters
     setTransactions, setBudgets, setRecurring, setAccounts,
     setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget, setUser, setIsLoggedIn, setIsDarkMode,

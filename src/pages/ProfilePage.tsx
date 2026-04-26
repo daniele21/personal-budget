@@ -1,12 +1,14 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, PlusCircle } from 'lucide-react';
+import { TrendingUp, Download, Upload, Landmark, ShieldCheck, CreditCard, Wallet, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, PlusCircle, BarChart3, Trophy } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
 import { Transaction, Budget } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CategoryManagerDialog } from '../components/CategoryManagerDialog';
+import { NotificationPreferences } from '../components/NotificationPreferences';
+import { Switch } from '../components/ui';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
@@ -44,6 +46,48 @@ export const ProfilePage = () => {
   const totalIncome = allTimeTotals.income;
   const totalExpenses = allTimeTotals.expenses;
   const netWorth = currentBalance;
+  const quickAccessItems = [
+    {
+      to: '/add',
+      label: 'Add',
+      ariaLabel: 'Add transaction',
+      icon: PlusCircle,
+      className: 'bg-primary text-on-primary shadow-md shadow-primary/15 hover:bg-primary-container',
+      iconClassName: 'bg-white/15',
+    },
+    {
+      to: '/budgets',
+      label: 'Budgets',
+      ariaLabel: 'Open budgets',
+      icon: PieChart,
+      className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
+      iconClassName: 'bg-primary/10 text-primary',
+    },
+    {
+      to: '/recurring',
+      label: 'Recurring',
+      ariaLabel: 'Open recurring bills and income',
+      icon: RefreshCw,
+      className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
+      iconClassName: 'bg-secondary/10 text-secondary',
+    },
+    {
+      to: '/compare',
+      label: 'Compare',
+      ariaLabel: 'Compare periods',
+      icon: BarChart3,
+      className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
+      iconClassName: 'bg-accent-cyan/10 text-accent-cyan',
+    },
+    {
+      to: '/year-review',
+      label: 'Year',
+      ariaLabel: 'Open year review',
+      icon: Trophy,
+      className: 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
+      iconClassName: 'bg-accent-amber/10 text-accent-amber',
+    },
+  ];
   const categoryUsageCounts = useMemo(
     () => getCategoryUsageCounts({ transactions, budgets, recurring }),
     [transactions, budgets, recurring],
@@ -239,43 +283,27 @@ export const ProfilePage = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-headline font-bold text-primary">Quick Access</h3>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Link
-            to="/add"
-            className="flex items-center gap-3 p-4 bg-primary text-on-primary rounded-2xl border border-primary/10 hover:bg-primary/90 transition-all"
-          >
-            <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center">
-              <PlusCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">Add transaction</p>
-              <p className="text-[10px] text-on-primary/80">Fast manual entry</p>
-            </div>
-          </Link>
-          <Link
-            to="/budgets"
-            className="flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/5 hover:bg-surface-container-low transition-all"
-          >
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <PieChart className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-on-surface">Budgets</p>
-              <p className="text-[10px] text-on-surface-variant">Manage limits</p>
-            </div>
-          </Link>
-          <Link
-            to="/recurring"
-            className="flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/5 hover:bg-surface-container-low transition-all"
-          >
-            <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center">
-              <RefreshCw className="w-5 h-5 text-secondary" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-on-surface">Recurring</p>
-              <p className="text-[10px] text-on-surface-variant">Bills & income</p>
-            </div>
-          </Link>
+        <div className="grid grid-cols-5 gap-2">
+          {quickAccessItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-label={item.ariaLabel}
+                className={cn(
+                  'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-outline-variant/5 px-1.5 py-3 text-center transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                  item.className,
+                )}
+              >
+                <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', item.iconClassName)}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="max-w-full truncate text-[10px] font-bold leading-tight">{item.label}</span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -340,6 +368,13 @@ export const ProfilePage = () => {
             )}
           </div>
         </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-headline font-bold text-primary">Notifications</h3>
+        </div>
+        <NotificationPreferences />
       </section>
 
       <section>
@@ -482,22 +517,11 @@ export const ProfilePage = () => {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCloudBackupEnabled(!cloudBackupEnabled)}
-                className={cn(
-                  'relative h-7 w-12 shrink-0 rounded-full transition-colors',
-                  cloudBackupEnabled ? 'bg-secondary' : 'bg-surface-container-highest',
-                )}
-                aria-label={cloudBackupEnabled ? 'Disattiva backup cloud' : 'Attiva backup cloud'}
-              >
-                <span
-                  className={cn(
-                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform',
-                    cloudBackupEnabled ? 'translate-x-6' : 'translate-x-1',
-                  )}
-                />
-              </button>
+              <Switch
+                checked={cloudBackupEnabled}
+                onChange={() => setCloudBackupEnabled(!cloudBackupEnabled)}
+                label={cloudBackupEnabled ? 'Disattiva backup cloud' : 'Attiva backup cloud'}
+              />
             </div>
             <p className="text-[10px] leading-relaxed text-on-surface-variant">
               Quando attivo, Aura salva un backup cifrato su Firestore per il tuo account. Puoi disattivarlo o cancellarlo in qualsiasi momento.
@@ -567,7 +591,7 @@ export const ProfilePage = () => {
               </div>
               <div className="text-right">
                 <p className="font-bold text-sm text-primary">{formatCurrency(acc.balance)}</p>
-                <p className="text-[8px] text-secondary font-bold uppercase tracking-widest">{acc.status || acc.apy}</p>
+                <p className="text-[10px] text-secondary font-bold uppercase tracking-widest">{acc.status || acc.apy}</p>
               </div>
             </div>
           ))}

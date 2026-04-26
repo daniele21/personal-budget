@@ -76,3 +76,31 @@ export interface SavingsGoal {
   targetDate?: string;
   createdAt: string;
 }
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  budgetAlerts: boolean;
+  recurringReminders: boolean;
+  customReminders: boolean;
+  reminderLeadDays: number;
+}
+
+export interface CustomReminder {
+  id: string;
+  title: string;
+  date: string;
+  note?: string;
+  completed?: boolean;
+  createdAt: string;
+}
+
+export interface NotificationRecord {
+  id: string;
+  title: string;
+  body: string;
+  type: 'budget' | 'recurring' | 'reminder' | 'system';
+  route: string;
+  createdAt: string;
+  read: boolean;
+  dedupeKey?: string;
+}

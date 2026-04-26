@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ export const ConfirmDialog = ({
   onCancel,
 }: ConfirmDialogProps) => {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen, onCancel);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,6 +49,7 @@ export const ConfirmDialog = ({
       aria-describedby="confirm-dialog-message"
     >
       <motion.div
+        ref={dialogRef}
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}

@@ -48,7 +48,7 @@ export const RecurringEntryCard: React.FC<RecurringEntryCardProps> = ({
               type="button"
               onClick={onEdit}
               className="rounded-full p-1.5 text-primary hover:bg-primary/10"
-              aria-label="Edit recurring item"
+              aria-label={`Edit recurring item ${title}`}
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -58,7 +58,7 @@ export const RecurringEntryCard: React.FC<RecurringEntryCardProps> = ({
               type="button"
               onClick={onDelete}
               className="rounded-full p-1.5 text-tertiary hover:bg-tertiary/10"
-              aria-label="Delete recurring item"
+              aria-label={`Delete recurring item ${title}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

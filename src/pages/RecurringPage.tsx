@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
 import { RecurringExpense } from '../types';
@@ -8,9 +8,10 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { CategoryPicker } from '../components/CategoryPicker';
-import { Button, Input } from '../components/ui';
+import { Button, EmptyState, Input } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { RecurringEntryCard } from '../components/RecurringEntryCard';
+import { haptics } from '../utils/haptics';
 import {
   getDefaultRecurringEndDate,
   getRecurringDraftStartDate,
@@ -129,9 +130,17 @@ export const RecurringPage = () => {
   };
 
   const handleDelete = (id: string) => {
+    const deleted = recurring.find((item) => item.id === id);
     setRecurring(recurring.filter((item) => item.id !== id));
     setDeleteId(null);
-    toast('Recurring bill removed', 'info');
+    haptics.warning();
+    toast('Recurring bill removed', 'info', 5000, deleted ? {
+      label: 'Undo',
+      onClick: () => {
+        setRecurring([...recurring, deleted]);
+        haptics.success();
+      },
+    } : undefined);
   };
 
   const year = viewDate.getFullYear();
@@ -321,8 +330,13 @@ export const RecurringPage = () => {
               title={item.name}
             />
           )) : (
-            <div className="text-center py-8 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant/20">
-              <p className="text-sm text-on-surface-variant font-medium">No recurring bills yet</p>
+            <div className="rounded-3xl bg-surface-container-low border border-dashed border-outline-variant/20">
+              <EmptyState
+                icon={<RefreshCw className="w-10 h-10" />}
+                title="No recurring bills yet"
+                description="Create rent, subscriptions, salary, or other repeating entries."
+                action={<Button size="md" onClick={openCreateRecurring}>Add recurring bill</Button>}
+              />
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, PieChart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
@@ -10,7 +10,8 @@ import { useApp } from '../context/AppContext';
 import { formatMonthLabel } from '../domain/finance';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
-import { Card, Button, Input } from '../components/ui';
+import { Card, Button, Input, EmptyState } from '../components/ui';
+import { haptics } from '../utils/haptics';
 
 export const BudgetsPage = () => {
   const { toast } = useToast();
@@ -50,9 +51,17 @@ export const BudgetsPage = () => {
   };
 
   const handleDeleteBudget = (category: string) => {
+    const deleted = budgets.find(b => b.category === category);
     setBudgets(budgets.filter(b => b.category !== category));
     setDeleteTarget(null);
-    toast('Budget removed', 'info');
+    haptics.warning();
+    toast('Budget removed', 'info', 5000, deleted ? {
+      label: 'Undo',
+      onClick: () => {
+        setBudgets([...budgets, deleted]);
+        haptics.success();
+      },
+    } : undefined);
   };
 
   const totalLimit = budgets.reduce((acc, b) => acc + b.limit, 0);
@@ -74,6 +83,7 @@ export const BudgetsPage = () => {
             <button 
               onClick={() => setIsAdding(true)}
               className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors"
+              aria-label="Add budget"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -107,7 +117,7 @@ export const BudgetsPage = () => {
           >
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-headline font-bold text-primary">Set Category Budget</h3>
-              <button onClick={() => setIsAdding(false)}><X className="w-5 h-5 text-on-surface-variant" /></button>
+              <button onClick={() => setIsAdding(false)} aria-label="Close budget form"><X className="w-5 h-5 text-on-surface-variant" /></button>
             </div>
             <div className="space-y-4">
               <CategoryPicker
@@ -140,7 +150,7 @@ export const BudgetsPage = () => {
       )}
 
       <div className="space-y-4">
-        {budgets.map(budget => {
+        {budgets.length > 0 ? budgets.map(budget => {
           const spent = getSpentForCategory(budget.category);
           const budgetProgress = budget.limit > 0 ? Math.round((spent / budget.limit) * 100) : 0;
           
@@ -192,7 +202,16 @@ export const BudgetsPage = () => {
               )}
             </Card>
           );
-        })}
+        }) : (
+          <Card>
+            <EmptyState
+              icon={<PieChart className="w-10 h-10" />}
+              title="No budgets yet"
+              description="Create category limits to track progress through the month."
+              action={<Button size="md" onClick={() => setIsAdding(true)}>Add budget</Button>}
+            />
+          </Card>
+        )}
       </div>
 
       <ConfirmDialog

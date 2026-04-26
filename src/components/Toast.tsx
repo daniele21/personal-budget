@@ -10,10 +10,14 @@ interface Toast {
   message: string;
   type: ToastType;
   duration?: number;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType, duration?: number) => void;
+  toast: (message: string, type?: ToastType, duration?: number, action?: Toast['action']) => void;
 }
 
 const ToastContext = createContext<ToastContextType>({ toast: () => {} });
@@ -54,6 +58,18 @@ const ToastItem = ({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
     >
       {ICONS[toast.type]}
       <p className="flex-1 text-sm font-medium text-on-surface">{toast.message}</p>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action?.onClick();
+            onDismiss(toast.id);
+          }}
+          className="rounded-full px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         onClick={() => onDismiss(toast.id)}
         className="p-1 rounded-full hover:bg-surface-container-high transition-colors"
@@ -72,9 +88,9 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const addToast = useCallback((message: string, type: ToastType = 'info', duration?: number) => {
+  const addToast = useCallback((message: string, type: ToastType = 'info', duration?: number, action?: Toast['action']) => {
     const id = Math.random().toString(36).slice(2, 9);
-    setToasts(prev => [...prev, { id, message, type, duration }]);
+    setToasts(prev => [...prev, { id, message, type, duration, action }]);
   }, []);
 
   return (

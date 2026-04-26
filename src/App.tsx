@@ -12,6 +12,8 @@ import { CalendarPage } from './pages/CalendarPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { AdminPage } from './pages/AdminPage';
 import { Login } from './pages/Login';
+import { ComparePage } from './pages/ComparePage';
+import { YearReviewPage } from './pages/YearReviewPage';
 
 // Components
 import { Layout } from './components/Layout';
@@ -48,6 +50,8 @@ export default function App() {
           <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
           <Route path="/calendar" element={<Layout title="Calendar"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
           <Route path="/insights" element={<Layout title="Reports"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
+          <Route path="/compare" element={<Layout title="Compare"><ErrorBoundary><ComparePage /></ErrorBoundary></Layout>} />
+          <Route path="/year-review" element={<Layout title="Year in Review"><ErrorBoundary><YearReviewPage /></ErrorBoundary></Layout>} />
           {isAdmin && (
             <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
           )}

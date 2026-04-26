@@ -20,6 +20,11 @@ export const STORAGE_KEYS = {
   onboardingComplete: 'aura_onboarding_complete',
   allowedUsersCache: 'aura_allowed_users_cache',
   allowedUsersCacheTs: 'aura_allowed_users_cache_ts',
+  recentSearches: 'aura_recent_searches',
+  notificationPreferences: 'aura_notification_preferences',
+  customReminders: 'aura_custom_reminders',
+  notificationRecords: 'aura_notification_records',
+  lastNotificationCheck: 'aura_last_notification_check',
 } as const;
 
 export type StorageKey = keyof typeof STORAGE_KEYS;

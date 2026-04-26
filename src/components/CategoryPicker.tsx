@@ -53,6 +53,8 @@ export const CategoryPicker = ({
           type="button"
           onClick={() => setIsOpen(true)}
           className="w-full flex items-center gap-3 rounded-2xl bg-surface-container-high px-4 py-3 text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
         >
           <div className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center flex-shrink-0">
             <CategoryIcon category={selectedCategory} className="w-4 h-4 text-primary" />
@@ -98,11 +100,13 @@ export const CategoryPicker = ({
             </div>
 
             <div className="max-h-[72vh] overflow-y-auto overscroll-contain px-4 py-4">
-              <div className="space-y-2">
+              <div className="space-y-2" role="listbox" aria-label={label}>
                 {categories.map((category) => (
                   <button
                     key={category}
                     type="button"
+                    role="option"
+                    aria-selected={value === category}
                     onClick={() => handleSelect(category)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all text-sm',

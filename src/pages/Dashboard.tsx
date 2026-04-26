@@ -1,29 +1,33 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Lightbulb, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { EmptyState, Skeleton } from '../components/ui';
+import { Sparkline } from '../components/Sparkline';
+import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
 import { useRecurringAutoGenerate } from '../hooks/useRecurringAutoGenerate';
 import { formatMonthLabel } from '../domain/finance';
+import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 
 const DONUT_COLORS = [
   'var(--color-primary)',
   'var(--color-secondary)',
   'var(--color-tertiary)',
-  '#8b5cf6',
-  '#f59e0b',
-  '#06b6d4',
+  'var(--color-accent-purple)',
+  'var(--color-accent-amber)',
+  'var(--color-accent-cyan)',
 ];
 
 export const Dashboard = () => {
   const {
     transactions, setTransactions, budgets, recurring,
     currentBalance, monthlyTotals, monthlyBudget,
-    safeToSpend, categorySpending, momChange, recentTransactions,
+    safeToSpend, categorySpending, momChange, recentTransactions, isHydrated,
   } = useApp();
 
   // Side-effect hooks (UI-level orchestration)
@@ -35,6 +39,24 @@ export const Dashboard = () => {
   const monthlySavings = Math.max(0, monthlyTotals.net);
   const { remaining: safeAmount, usedPercent } = safeToSpend;
   const totalSpent = categorySpending.reduce((acc, c) => acc + c.amount, 0);
+  const animatedBalance = useAnimatedNumber(currentBalance);
+  const animatedSafeAmount = useAnimatedNumber(safeAmount);
+  const weeklyIncome = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const key = date.toISOString().slice(0, 10);
+    return transactions
+      .filter((transaction) => transaction.date.slice(0, 10) === key && transaction.type === 'income')
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+  });
+  const weeklyExpenses = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const key = date.toISOString().slice(0, 10);
+    return transactions
+      .filter((transaction) => transaction.date.slice(0, 10) === key && transaction.type === 'expense')
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+  });
 
   // Donut segments
   const donutSegments = categorySpending.map((cat, i) => ({
@@ -59,9 +81,13 @@ export const Dashboard = () => {
         <div className="space-y-0.5">
           <p className="text-on-surface-variant text-xs uppercase tracking-[0.15em] font-bold">Total Balance</p>
           <div className="flex items-baseline gap-2">
-            <h2 className="text-4xl sm:text-5xl font-headline font-extrabold tracking-tighter text-primary">
-              {formatCurrency(currentBalance)}
-            </h2>
+            {isHydrated ? (
+              <h2 className="text-4xl sm:text-5xl font-headline font-extrabold tracking-tighter text-primary">
+                {formatCurrency(animatedBalance)}
+              </h2>
+            ) : (
+              <Skeleton className="h-12 w-56" />
+            )}
             {momChange !== null && (
               <div className={cn(
                 "px-2 py-0.5 rounded-full flex items-center gap-1",
@@ -82,16 +108,23 @@ export const Dashboard = () => {
 
         {/* Safe to Spend — promoted to primary position */}
         <div className="bg-surface-container-lowest p-5 rounded-3xl space-y-4 shadow-sm border border-outline-variant/5">
-          <div>
-            <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-2 font-bold">Safe to Spend</h3>
-            <div className="space-y-0.5">
-              <p className={cn(
-                "text-3xl font-headline font-bold",
-                usedPercent > 90 ? "text-tertiary" : "text-secondary"
-              )}>
-                {formatCurrency(safeAmount)}
-              </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-2 font-bold">Safe to Spend</h3>
+              {isHydrated ? (
+                <p className={cn(
+                  "text-3xl font-headline font-bold",
+                  usedPercent > 90 ? "text-tertiary" : "text-secondary"
+                )}>
+                  {formatCurrency(animatedSafeAmount)}
+                </p>
+              ) : (
+                <Skeleton className="h-9 w-36" />
+              )}
               <p className="text-on-surface-variant text-xs">of {formatCurrency(monthlyBudget)} monthly budget</p>
+            </div>
+            <div className="mx-auto sm:mx-0">
+              <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" />
             </div>
           </div>
           <div className="space-y-2">
@@ -121,6 +154,7 @@ export const Dashboard = () => {
             <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-sm">
               <TrendingUp className="w-5 h-5 text-secondary rotate-180" />
             </div>
+            <Sparkline values={weeklyIncome} color="var(--color-secondary)" label="Income over the last 7 days" />
           </div>
           <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-1 font-bold">Income</h3>
           <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyIncome)}</p>
@@ -131,6 +165,7 @@ export const Dashboard = () => {
             <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-sm">
               <TrendingUp className="w-5 h-5 text-tertiary" />
             </div>
+            <Sparkline values={weeklyExpenses} color="var(--color-tertiary)" label="Expenses over the last 7 days" />
           </div>
           <h3 className="text-on-surface-variant text-xs uppercase tracking-widest mb-1 font-bold">Expenses</h3>
           <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyExpenses)}</p>
@@ -146,7 +181,7 @@ export const Dashboard = () => {
         {categorySpending.length > 0 ? (
           <div className="flex flex-col gap-6">
             <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100" role="img" aria-label={`Spending by category total ${formatCurrency(totalSpent)}`}>
                 <circle cx="50" cy="50" fill="transparent" r="40" stroke="var(--color-surface-container-highest)" strokeWidth="12" />
                 {donutSegments.map((seg) => {
                   const dashLength = CIRCUMFERENCE * seg.percentage;
@@ -187,9 +222,12 @@ export const Dashboard = () => {
             </div>
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-sm text-on-surface-variant">No expenses this month yet</p>
-          </div>
+          <EmptyState
+            icon={<PieChart className="w-10 h-10" />}
+            title="No expenses this month"
+            description="Add your first expense to see category breakdowns here."
+            action={{ label: 'Add transaction', to: '/add' }}
+          />
         )}
       </div>
 
@@ -237,9 +275,12 @@ export const Dashboard = () => {
               </p>
             </div>
           )) : (
-            <div className="text-center py-8">
-              <p className="text-sm text-on-surface-variant font-medium">No transactions yet. Tap + to add one!</p>
-            </div>
+            <EmptyState
+              icon={<Wallet className="w-10 h-10" />}
+              title="No transactions yet"
+              description="Start with an income or expense to populate your dashboard."
+              action={{ label: 'Add transaction', to: '/add' }}
+            />
           )}
         </div>
       </section>

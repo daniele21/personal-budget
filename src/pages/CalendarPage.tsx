@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, RefreshCw, X, Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, RefreshCw, X, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
@@ -9,10 +9,11 @@ import { CategoryPicker } from '../components/CategoryPicker';
 import { cn } from '../lib/utils';
 import { RecurringExpense, TransactionType } from '../types';
 import { APP_CONFIG } from '../constants';
-import { Button, Input } from '../components/ui';
+import { Button, EmptyState, Input } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { haptics } from '../utils/haptics';
 import {
   formatUtcDateLabel,
   getDefaultRecurringEndDate,
@@ -309,9 +310,17 @@ export const CalendarPage = () => {
   };
 
   const handleDelete = (id: string) => {
+    const deleted = recurring.find((item) => item.id === id);
     setRecurring(recurring.filter((item) => item.id !== id));
     setDeleteId(null);
-    toast('Recurring removed', 'info');
+    haptics.warning();
+    toast('Recurring removed', 'info', 5000, deleted ? {
+      label: 'Undo',
+      onClick: () => {
+        setRecurring([...recurring, deleted]);
+        haptics.success();
+      },
+    } : undefined);
   };
 
   return (
@@ -394,6 +403,7 @@ export const CalendarPage = () => {
       <button
         onClick={openCreateRecurring}
         className="w-full flex items-center justify-center gap-2 py-3 bg-primary/10 hover:bg-primary/20 rounded-2xl transition-colors"
+        aria-label="Add recurring entry"
       >
         <RefreshCw className="w-4 h-4 text-primary" />
         <span className="text-xs font-bold text-primary uppercase tracking-wider">+ Add Recurring</span>
@@ -431,10 +441,10 @@ export const CalendarPage = () => {
                     </div>
                     <span className="text-sm font-bold text-primary">{formatCurrency(display.amount)}</span>
                     <div className="flex gap-0.5">
-                      <button onClick={() => openRecurringActions(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label="Edit recurring options">
+                      <button onClick={() => openRecurringActions(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label={`Edit recurring options for ${display.name}`}>
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label="Delete">
+                      <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label={`Delete recurring ${display.name}`}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -445,7 +455,14 @@ export const CalendarPage = () => {
           )}
 
           {selectedTx.length === 0 && selectedRecurring.length === 0 ? (
-            <p className="text-xs text-on-surface-variant/60 py-4 text-center">No transactions on this day</p>
+            <div className="rounded-3xl bg-surface-container-low border border-dashed border-outline-variant/20">
+              <EmptyState
+                icon={<CalendarDays className="w-10 h-10" />}
+                title="No activity on this day"
+                description="Add a transaction or recurring entry for this date."
+                action={{ label: 'Add transaction', to: '/add' }}
+              />
+            </div>
           ) : selectedTx.length > 0 && (
             <div className="space-y-2">
               {selectedTx.map((tx) => (
@@ -490,7 +507,7 @@ export const CalendarPage = () => {
           >
             <div className="flex justify-between items-center">
               <h3 className="font-headline font-bold text-primary px-6 pt-5">{editingId ? 'Edit Recurring' : 'New Recurring'}</h3>
-              <button onClick={resetForm} aria-label="Close" className="mr-5 mt-4"><X className="w-5 h-5 text-on-surface-variant" /></button>
+              <button onClick={resetForm} aria-label="Close recurring form" className="mr-5 mt-4"><X className="w-5 h-5 text-on-surface-variant" /></button>
             </div>
 
             <div className="max-h-[calc(88vh-80px)] overflow-y-auto overscroll-contain px-6 py-5">
@@ -694,10 +711,10 @@ export const CalendarPage = () => {
                 </div>
                 <span className="text-sm font-bold text-primary">{formatCurrency(item.amount)}</span>
                 <div className="flex gap-0.5">
-                  <button onClick={() => handleEdit(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label="Edit">
+                  <button onClick={() => handleEdit(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label={`Edit recurring ${item.name}`}>
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label="Delete">
+                  <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label={`Delete recurring ${item.name}`}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

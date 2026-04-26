@@ -224,8 +224,9 @@ export const AddTransaction = () => {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
-            <label className="block text-on-surface-variant text-[9px] uppercase tracking-wider font-bold">Date</label>
+            <label htmlFor="transaction-date" className="block text-on-surface-variant text-xs uppercase tracking-wider font-bold">Date</label>
             <input 
+              id="transaction-date"
               type="date" 
               className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full"
               value={date}
@@ -233,8 +234,9 @@ export const AddTransaction = () => {
             />
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
-            <label className="block text-on-surface-variant text-[9px] uppercase tracking-wider font-bold">Payment Method</label>
+            <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs uppercase tracking-wider font-bold">Payment Method</label>
             <select 
+              id="transaction-payment-method"
               className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full appearance-none"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}

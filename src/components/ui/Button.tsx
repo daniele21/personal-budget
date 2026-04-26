@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
+import { haptics } from '../../utils/haptics';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -38,10 +39,15 @@ export function Button({
   fullWidth = false,
   className,
   children,
+  onClick,
   ...props
 }: ButtonProps) {
   return (
     <button
+      onClick={(event) => {
+        haptics.tap();
+        onClick?.(event);
+      }}
       className={cn(
         'inline-flex items-center justify-center gap-2 text-center font-headline font-extrabold leading-tight transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-50',
         variantStyles[variant],

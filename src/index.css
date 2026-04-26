@@ -4,6 +4,12 @@
 @theme {
   --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-size-micro: 10px;
+  --font-size-caption: 12px;
+  --font-size-body: 14px;
+  --font-size-title: 16px;
+  --font-size-headline: 24px;
+  --font-size-hero: 36px;
 
   --color-surface: #f3faff;
   --color-on-surface: #071e27;
@@ -16,6 +22,11 @@
   --color-on-secondary-container: #217128;
   --color-tertiary: #6e0009;
   --color-tertiary-container: #990011;
+  --color-accent-purple: #8b5cf6;
+  --color-accent-amber: #f59e0b;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-pink: #ec4899;
+  --color-accent-lime: #84cc16;
   --color-surface-container-low: #e6f6ff;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #d5ecf8;
@@ -29,7 +40,7 @@
 
 @layer base {
   :root.dark {
-    --color-surface: #0a1921;
+    --color-surface: #0c1a24;
     --color-on-surface: #f3faff;
     --color-on-surface-variant: #94a3b8;
     --color-primary: #60a5fa;
@@ -40,11 +51,11 @@
     --color-on-secondary-container: #dcfce7;
     --color-tertiary: #f87171;
     --color-tertiary-container: #7f1d1d;
-    --color-surface-container-low: #11222c;
-    --color-surface-container-lowest: #162a35;
-    --color-surface-container-high: #1c333f;
-    --color-surface-container-highest: #243d4a;
-    --color-outline-variant: #334155;
+    --color-surface-container-low: #132832;
+    --color-surface-container-lowest: #1a3040;
+    --color-surface-container-high: #213a48;
+    --color-surface-container-highest: #2a4858;
+    --color-outline-variant: #3d5568;
   }
 }
 

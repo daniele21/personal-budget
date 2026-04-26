@@ -14,6 +14,13 @@ import {
   spendingByCategory,
   getRecurringDue,
   formatMonthLabel,
+  comparePeriods,
+  createMonthRange,
+  filterByYear,
+  getAnnualReview,
+  getCategoryDeltas,
+  getDailySpendingHeatmap,
+  getMonthlyBreakdown,
 } from '../finance';
 import { Transaction, Budget, RecurringExpense } from '../../types';
 
@@ -252,6 +259,71 @@ describe('calculateTotals', () => {
     const totals = calculateTotals([tx({ amount: 300, type: 'expense' })]);
     expect(totals.net).toBe(-300);
     expect(totals.income).toBe(0);
+  });
+});
+
+// ─── comparison and annual review ──────────────────────────────────
+
+describe('comparePeriods', () => {
+  const transactions = [
+    tx({ amount: 1000, type: 'income', category: 'Salary', date: '2026-04-01T00:00:00.000Z' }),
+    tx({ amount: 300, type: 'expense', category: 'Dining', date: '2026-04-10T00:00:00.000Z' }),
+    tx({ amount: 200, type: 'expense', category: 'Dining', date: '2026-03-10T00:00:00.000Z' }),
+    tx({ amount: 75, type: 'expense', category: 'Transport', date: '2026-03-12T00:00:00.000Z' }),
+  ];
+
+  it('compares totals and category deltas between two month ranges', () => {
+    const comparison = comparePeriods(
+      transactions,
+      createMonthRange(2026, 3),
+      createMonthRange(2026, 2),
+    );
+
+    expect(comparison.totalsA.income).toBe(1000);
+    expect(comparison.totalsA.expenses).toBe(300);
+    expect(comparison.totalsB.expenses).toBe(275);
+    expect(comparison.categoryDeltas.find((item) => item.category === 'Dining')?.delta).toBe(100);
+  });
+});
+
+describe('getCategoryDeltas', () => {
+  it('returns null percent when the previous period had no category spend', () => {
+    const deltas = getCategoryDeltas(
+      [tx({ amount: 50, type: 'expense', category: 'Health' })],
+      [],
+    );
+    expect(deltas[0]).toMatchObject({ category: 'Health', delta: 50, deltaPercent: null });
+  });
+});
+
+describe('annual review helpers', () => {
+  const annualTransactions = [
+    tx({ amount: 1200, type: 'income', category: 'Salary', title: 'Salary', date: '2026-01-05T00:00:00.000Z' }),
+    tx({ amount: 400, type: 'expense', category: 'Housing', title: 'Rent', date: '2026-01-10T00:00:00.000Z' }),
+    tx({ amount: 200, type: 'expense', category: 'Dining', title: 'Dinner', date: '2026-02-10T00:00:00.000Z' }),
+    tx({ amount: 100, type: 'expense', category: 'Dining', title: 'Dinner', date: '2025-02-10T00:00:00.000Z' }),
+  ];
+
+  it('filters transactions by year', () => {
+    expect(filterByYear(annualTransactions, 2026)).toHaveLength(3);
+  });
+
+  it('builds 12 monthly trend points', () => {
+    const breakdown = getMonthlyBreakdown(annualTransactions, 2026);
+    expect(breakdown).toHaveLength(12);
+    expect(breakdown[0].income).toBe(1200);
+  });
+
+  it('builds a heatmap for every day in the year', () => {
+    expect(getDailySpendingHeatmap(annualTransactions, 2026)).toHaveLength(365);
+  });
+
+  it('summarizes annual review metrics', () => {
+    const review = getAnnualReview(annualTransactions, 2026);
+    expect(review.totals.income).toBe(1200);
+    expect(review.topCategories[0].category).toBe('Housing');
+    expect(review.biggestExpense?.title).toBe('Rent');
+    expect(review.categoryShifts.find((item) => item.category === 'Dining')?.delta).toBe(100);
   });
 });
 
