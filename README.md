@@ -47,6 +47,25 @@ Molte app di budgeting sono troppo complesse, richiedono account cloud, integran
 - Pannello admin limitato alla gestione dell'allowlist utenti.
 - Flusso di primo avvio con scelta tra backup trovato, dati demo locali o partenza da zero.
 
+## Anteprima funzionale
+
+Le schermate seguenti mostrano il flusso principale dell'app con dati demo locali: controllo rapido della situazione finanziaria, inserimento movimenti, analisi dello storico, report, budget e ricorrenze.
+
+| Dashboard | Distribuzione spese | Nuova transazione |
+|---|---|---|
+| <img src="screenshots/Screenshot%202026-04-27%20alle%2011.21.27.png" alt="Dashboard con saldo totale, safe to spend, income ed expenses" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.21.34.png" alt="Dashboard con grafico spending by category e lista categorie" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.21.51.png" alt="Schermata add transaction con importo, titolo e categoria" width="220"> |
+| Saldo totale, safe-to-spend e metriche mensili per capire subito quanto resta disponibile. | Donut e breakdown per categoria per individuare le aree di spesa principali. | Inserimento mobile-first con tipo movimento, importo, titolo, categoria, data e metodo di pagamento. |
+
+| Storico | Report mensile | Dettaglio report |
+|---|---|---|
+| <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.05.png" alt="Storico transazioni ordinato per data" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.15.png" alt="Report mensile con income, expenses, net flow e spending breakdown" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.23.png" alt="Report con dettaglio budget e spese per categoria" width="220"> |
+| Lista transazioni ordinata per data con importi, categorie e descrizioni. | Report locale con entrate, uscite, net flow e confronto rispetto al periodo precedente. | Analisi per categoria con progressi rispetto al budget e variazioni sul periodo precedente. |
+
+| Calendario | Ricorrenze | Budget |
+|---|---|---|
+| <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.33.png" alt="Calendario mensile con income, expenses e recurring" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.44.png" alt="Dettaglio ricorrenze e movimenti del giorno selezionato" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.50.png" alt="Pagina budget con progresso mensile e limiti per categoria" width="220"> |
+| Vista mensile con indicatori giornalieri per movimenti e ricorrenze. | Ricorrenze attive, movimenti generati e dettaglio del giorno selezionato. | Limiti mensili per categoria, speso, residuo e progresso complessivo. |
+
 ## Privacy e sicurezza
 
 Aura Finance segue un modello local-first:
@@ -57,7 +76,7 @@ Aura Finance segue un modello local-first:
 - quando il backup è attivo, il payload viene cifrato prima della scrittura su Firestore;
 - l'admin non ha accesso ai dati finanziari degli utenti;
 - non sono presenti funzionalità AI nel perimetro attuale;
-- notifiche, ricerca, confronti e report sono calcolati localmente.
+- notifiche, ricerca, confronti e report sono calcolati localmente;
 - i dati demo sono generati e salvati solo nel browser; se un backup cloud esiste e l'utente sceglie zero o demo, il backup cloud viene disattivato localmente per evitare sovrascritture accidentali.
 
 Per i dettagli operativi vedere [privacy-notes.md](docs/04-privacy-gdpr/privacy-notes.md), [project-brief.md](product/project-brief.md) e [solution-strategy.md](docs/00-discovery/01-solution-strategy.md).
@@ -76,6 +95,8 @@ Per i dettagli operativi vedere [privacy-notes.md](docs/04-privacy-gdpr/privacy-
 | Deploy | Firebase Hosting |
 
 ## Architettura del repo
+
+![Diagramma architettura Aura Finance](docs/assets/aura-architecture.svg)
 
 ```text
 src/

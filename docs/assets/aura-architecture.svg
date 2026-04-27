@@ -1,0 +1,98 @@
+<svg width="1120" height="760" viewBox="0 0 1120 760" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Aura Finance architecture</title>
+  <desc id="desc">Architecture diagram showing Aura Finance as a local-first React PWA with UI pages, app context and hooks, pure domain logic, browser storage, optional encrypted Firestore backup, and an admin allowlist.</desc>
+
+  <defs>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0B2F4A" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2 2L10 6L2 10" fill="none" stroke="#0B3F6F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <linearGradient id="header" x1="40" y1="32" x2="1080" y2="126" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#063B66"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <style>
+      .bg { fill: #F4FAFD; }
+      .panel { fill: #FFFFFF; stroke: #DCEAF2; stroke-width: 2; filter: url(#shadow); }
+      .soft { fill: #E8F5FB; stroke: #CFE5F1; stroke-width: 2; }
+      .local { fill: #EAF7EF; stroke: #BFE5CB; stroke-width: 2; }
+      .cloud { fill: #FFF7DE; stroke: #F0D78A; stroke-width: 2; }
+      .admin { fill: #F4ECFF; stroke: #D8C2FF; stroke-width: 2; }
+      .danger { fill: #FCEEEF; stroke: #E9BCC1; stroke-width: 2; }
+      .title { font: 800 34px Inter, Arial, sans-serif; fill: #FFFFFF; }
+      .subtitle { font: 500 16px Inter, Arial, sans-serif; fill: #D9EEF7; }
+      .h2 { font: 800 22px Inter, Arial, sans-serif; fill: #082434; }
+      .h3 { font: 800 17px Inter, Arial, sans-serif; fill: #0A2A3A; }
+      .body { font: 500 14px Inter, Arial, sans-serif; fill: #41505B; }
+      .small { font: 600 12px Inter, Arial, sans-serif; fill: #5B6A75; }
+      .tag { font: 800 12px Inter, Arial, sans-serif; fill: #0B3F6F; }
+      .line { stroke: #0B3F6F; stroke-width: 3; marker-end: url(#arrow); }
+      .dash { stroke: #98740D; stroke-width: 3; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .nope { stroke: #8A1020; stroke-width: 3; stroke-dasharray: 7 7; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1120" height="760" rx="28"/>
+
+  <rect x="40" y="32" width="1040" height="94" rx="24" fill="url(#header)"/>
+  <text x="72" y="76" class="title">Aura Finance Architecture</text>
+  <text x="72" y="104" class="subtitle">Mobile-first, local-first personal budget PWA with optional encrypted cloud backup</text>
+
+  <rect x="70" y="164" width="980" height="88" rx="22" class="panel"/>
+  <text x="100" y="199" class="h2">React PWA shell</text>
+  <text x="100" y="224" class="body">Vite, React Router, Tailwind tokens, service worker, installable mobile-first UI</text>
+  <rect x="812" y="188" width="196" height="38" rx="19" fill="#E6F2FA"/>
+  <text x="837" y="212" class="tag">Browser runtime</text>
+
+  <rect x="70" y="300" width="220" height="128" rx="22" class="soft"/>
+  <text x="100" y="334" class="h2">UI pages</text>
+  <text x="100" y="362" class="body">Dashboard</text>
+  <text x="100" y="384" class="body">Transactions</text>
+  <text x="100" y="406" class="body">Reports, budgets, calendar</text>
+
+  <rect x="450" y="300" width="220" height="128" rx="22" class="soft"/>
+  <text x="480" y="334" class="h2">App state</text>
+  <text x="480" y="362" class="body">AppContext</text>
+  <text x="480" y="384" class="body">Hooks and orchestration</text>
+  <text x="480" y="406" class="body">Auth, backup, reminders</text>
+
+  <rect x="830" y="300" width="220" height="128" rx="22" class="soft"/>
+  <text x="860" y="334" class="h2">Domain logic</text>
+  <text x="860" y="362" class="body">Finance calculations</text>
+  <text x="860" y="384" class="body">Recurring generation</text>
+  <text x="860" y="406" class="body">Search and categories</text>
+
+  <line x1="290" y1="364" x2="440" y2="364" class="line"/>
+  <line x1="670" y1="364" x2="820" y2="364" class="line"/>
+
+  <rect x="70" y="492" width="300" height="142" rx="22" class="local"/>
+  <text x="100" y="528" class="h2">Local browser data</text>
+  <text x="100" y="558" class="body">localStorage: transactions, budgets,</text>
+  <text x="100" y="580" class="body">categories, preferences, reminders</text>
+  <text x="100" y="608" class="body">IndexedDB: image attachments</text>
+
+  <rect x="410" y="492" width="300" height="142" rx="22" class="cloud"/>
+  <text x="440" y="528" class="h2">Optional cloud backup</text>
+  <text x="440" y="558" class="body">Firestore stores encrypted payloads</text>
+  <text x="440" y="580" class="body">Only after explicit user opt-in</text>
+  <text x="440" y="608" class="body">Restore across devices</text>
+
+  <rect x="750" y="492" width="300" height="142" rx="22" class="admin"/>
+  <text x="780" y="528" class="h2">Admin scope</text>
+  <text x="780" y="558" class="body">Allowlist access control only</text>
+  <text x="780" y="580" class="body">No financial record visibility</text>
+  <text x="780" y="608" class="body">Email hashes in Firestore</text>
+
+  <path d="M560 428V482" class="line"/>
+  <path d="M560 428C560 462 220 456 220 482" class="line"/>
+  <path d="M560 428C560 462 900 456 900 482" class="line"/>
+
+  <path d="M370 563H400" class="dash"/>
+
+  <rect x="70" y="660" width="980" height="72" rx="24" class="danger"/>
+  <text x="100" y="690" class="h3">Privacy boundary:</text>
+  <text x="250" y="690" class="body">reports, search, notifications, demo data and finance calculations run locally.</text>
+  <text x="250" y="712" class="body">AI, open banking and admin access to financial records are out of scope.</text>
+</svg>
