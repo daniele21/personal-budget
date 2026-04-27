@@ -56,6 +56,11 @@ export interface RecurringOverride {
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
+export interface RecurringReminderSettings {
+  enabled: boolean;
+  leadDays: number;
+}
+
 export interface RecurringExpense {
   id: string;
   name: string;
@@ -67,6 +72,7 @@ export interface RecurringExpense {
   type?: TransactionType;
   frequency?: RecurringFrequency;
   priority?: boolean;
+  reminder?: RecurringReminderSettings;
   overrides?: RecurringOverride[];
   dueDate?: string;
 }

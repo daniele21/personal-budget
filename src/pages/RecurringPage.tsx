@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Bell, Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
 import { RecurringExpense, RecurringFrequency } from '../types';
@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { CategoryPicker } from '../components/CategoryPicker';
-import { Button, Card, EmptyState, Input } from '../components/ui';
+import { Button, Card, EmptyState, Input, Switch } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { RecurringEntryCard } from '../components/RecurringEntryCard';
 import { haptics } from '../utils/haptics';
@@ -17,6 +17,8 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   getDefaultRecurringEndDate,
   getRecurringFrequencyLabel,
+  getRecurringReminderLabel,
+  getRecurringReminderSettings,
   getRecurringDraftStartDate,
   getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
@@ -29,6 +31,13 @@ const recurringFrequencyOptions: Array<{ value: RecurringFrequency; label: strin
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' },
+];
+
+const recurringReminderOptions = [
+  { value: 0, label: 'Due date' },
+  { value: 1, label: '1 day before' },
+  { value: 3, label: '3 days before' },
+  { value: 7, label: '7 days before' },
 ];
 
 export const RecurringPage = () => {
@@ -45,6 +54,8 @@ export const RecurringPage = () => {
   const [newEndDate, setNewEndDate] = useState('');
   const [newCategory, setNewCategory] = useState(categories[0]);
   const [newFrequency, setNewFrequency] = useState<RecurringFrequency>('monthly');
+  const [newReminderEnabled, setNewReminderEnabled] = useState(false);
+  const [newReminderLeadDays, setNewReminderLeadDays] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const recurringDialogRef = useRef<HTMLDivElement>(null);
@@ -64,6 +75,8 @@ export const RecurringPage = () => {
     setNewEndDate('');
     setNewCategory(categories[0]);
     setNewFrequency('monthly');
+    setNewReminderEnabled(false);
+    setNewReminderLeadDays(1);
   };
 
   useFocusTrap(recurringDialogRef, isAdding, resetForm);
@@ -76,6 +89,8 @@ export const RecurringPage = () => {
     setNewEndDate('');
     setNewCategory(categories[0]);
     setNewFrequency('monthly');
+    setNewReminderEnabled(false);
+    setNewReminderLeadDays(1);
     setIsAdding(true);
   };
 
@@ -122,6 +137,10 @@ export const RecurringPage = () => {
       type: 'expense',
       frequency: newFrequency,
       priority: true,
+      reminder: {
+        enabled: newReminderEnabled,
+        leadDays: newReminderLeadDays,
+      },
       overrides: existingOverrides,
     };
 
@@ -144,6 +163,9 @@ export const RecurringPage = () => {
     setNewEndDate(getUtcDateInputValue(bill.endDate));
     setNewCategory(bill.category);
     setNewFrequency(bill.frequency ?? 'monthly');
+    const reminder = getRecurringReminderSettings(bill);
+    setNewReminderEnabled(reminder.enabled);
+    setNewReminderLeadDays(reminder.leadDays);
     setIsAdding(true);
   };
 
@@ -291,14 +313,14 @@ export const RecurringPage = () => {
                     <p className="text-micro font-bold text-on-surface-variant">Schedule Window</p>
                     <p className="text-xs text-on-surface-variant mt-1 leading-snug">Start and end stay on the exact calendar day you choose.</p>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-2 [grid-template-columns:repeat(4,minmax(0,1fr))]">
                     {recurringFrequencyOptions.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         onClick={() => setNewFrequency(option.value)}
                         className={cn(
-                          'rounded-xl px-2 py-2 text-xs font-bold transition-all',
+                          'min-h-11 whitespace-nowrap rounded-xl px-1.5 py-2 text-[0.6875rem] font-bold transition-all',
                           newFrequency === option.value
                             ? 'bg-primary text-on-primary'
                             : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
@@ -326,6 +348,43 @@ export const RecurringPage = () => {
                 <p className="text-micro font-medium text-on-surface-variant leading-snug">
                   If you leave the end date empty, the recurring bill stays active for 1 year from the start date.
                 </p>
+                <div className="rounded-2xl bg-surface-container-high p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                        <Bell className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-on-surface">Reminder</p>
+                        <p className="text-micro text-on-surface-variant">Local notification before this recurring item is due.</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={newReminderEnabled}
+                      onChange={() => setNewReminderEnabled((current) => !current)}
+                      label="Recurring reminder"
+                    />
+                  </div>
+                  {newReminderEnabled && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {recurringReminderOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setNewReminderLeadDays(option.value)}
+                          className={cn(
+                            'rounded-xl px-2 py-2 text-xs font-bold transition-all',
+                            newReminderLeadDays === option.value
+                              ? 'bg-secondary text-on-primary'
+                              : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <CategoryPicker
                   categories={categories}
                   value={newCategory}
@@ -365,6 +424,7 @@ export const RecurringPage = () => {
               category={item.category}
               onDelete={() => setDeleteId(item.id)}
               onEdit={() => handleEdit(item)}
+              reminderLabel={getRecurringReminderSettings(item).enabled ? getRecurringReminderLabel(getRecurringReminderSettings(item)) : undefined}
               subtitle={`Starts ${getUtcDateInputValue(item.startDate)} • ${getRecurringFrequencyLabel(item.frequency)} • ${item.category}`}
               title={item.name}
             />

@@ -17,6 +17,6 @@ Financial data remains local unless the user explicitly enables the existing enc
 
 ## Notifications
 
-Notification preferences, notification records, and custom reminders are stored in localStorage. Native notifications use the browser Notification API and the existing service worker. Browser or operating-system notification services may display the notification on the device, but Aura does not send reminder or financial data to Firebase Cloud Messaging or any backend scheduler.
+Notification preferences, notification records, recurring reminder settings, and custom reminders are stored in localStorage. Native notifications use the browser Notification API and the existing service worker. Browser or operating-system notification services may display the notification on the device, but Aura does not send reminder or financial data to Firebase Cloud Messaging or any backend scheduler.
 
 Known platform limitation: on iOS, reliable web notification behavior requires the app to be installed as a supported PWA.

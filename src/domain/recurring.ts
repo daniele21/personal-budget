@@ -2,11 +2,14 @@ import {
   RecurringExpense,
   RecurringFrequency,
   RecurringOverride,
+  RecurringReminderSettings,
   Transaction,
   TransactionType,
 } from '../types';
 
 const DEFAULT_RECURRING_PAYMENT_METHOD = 'Bank Transfer';
+const DEFAULT_RECURRING_REMINDER_LEAD_DAYS = 0;
+const MAX_RECURRING_REMINDER_LEAD_DAYS = 30;
 const RECURRING_FREQUENCIES: RecurringFrequency[] = ['daily', 'weekly', 'monthly', 'yearly'];
 
 function ensureDate(value: string | undefined, fallback: Date = new Date()): Date {
@@ -54,6 +57,23 @@ function compareDateParts(left: DateParts, right: DateParts): number {
   if (left.year !== right.year) return left.year - right.year;
   if (left.monthIndex !== right.monthIndex) return left.monthIndex - right.monthIndex;
   return left.day - right.day;
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const nextDate = startOfUtcDay(date);
+  nextDate.setUTCDate(nextDate.getUTCDate() + days);
+  return nextDate;
+}
+
+function clampReminderLeadDays(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_RECURRING_REMINDER_LEAD_DAYS;
+  }
+
+  return Math.min(
+    Math.max(Math.round(value), DEFAULT_RECURRING_REMINDER_LEAD_DAYS),
+    MAX_RECURRING_REMINDER_LEAD_DAYS,
+  );
 }
 
 function isRecurringFrequency(value: unknown): value is RecurringFrequency {
@@ -118,6 +138,28 @@ export function getRecurringFrequencyLabel(frequency: RecurringFrequency | undef
     default:
       return 'monthly';
   }
+}
+
+export function getRecurringReminderSettings(
+  recurring: RecurringExpense,
+): RecurringReminderSettings {
+  if (!recurring.reminder) {
+    return { enabled: true, leadDays: DEFAULT_RECURRING_REMINDER_LEAD_DAYS };
+  }
+
+  return {
+    enabled: recurring.reminder.enabled,
+    leadDays: clampReminderLeadDays(recurring.reminder.leadDays),
+  };
+}
+
+export function getRecurringReminderLabel(
+  reminder: RecurringReminderSettings | undefined,
+): string {
+  if (!reminder?.enabled) return 'No reminder';
+  if (reminder.leadDays === 0) return 'Due date reminder';
+  if (reminder.leadDays === 1) return '1 day before';
+  return `${reminder.leadDays} days before`;
 }
 
 export function getRecurringOccurrenceDate(
@@ -226,6 +268,59 @@ export function isRecurringActiveInMonth(
   return getRecurringOccurrencesInMonth(recurring, year, monthIndex).length > 0;
 }
 
+export interface RecurringReminderCandidate {
+  bill: RecurringExpense;
+  occurrenceDate: Date;
+  occurrenceKey: string;
+  daysUntilDue: number;
+}
+
+export function getRecurringReminderCandidates(
+  recurringItems: RecurringExpense[],
+  today: Date = new Date(),
+): RecurringReminderCandidate[] {
+  const todayUtc = startOfUtcDay(new Date(Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  )));
+
+  return recurringItems.flatMap((bill) => {
+    const reminder = getRecurringReminderSettings(bill);
+    if (!reminder.enabled) return [];
+
+    const windowEnd = addUtcDays(todayUtc, reminder.leadDays);
+    const months = new Map<string, { year: number; monthIndex: number }>();
+    let cursor = new Date(Date.UTC(todayUtc.getUTCFullYear(), todayUtc.getUTCMonth(), 1));
+    const lastMonth = new Date(Date.UTC(windowEnd.getUTCFullYear(), windowEnd.getUTCMonth(), 1));
+
+    while (compareDateParts(getUtcDateParts(cursor), getUtcDateParts(lastMonth)) <= 0) {
+      months.set(`${cursor.getUTCFullYear()}-${cursor.getUTCMonth()}`, {
+        year: cursor.getUTCFullYear(),
+        monthIndex: cursor.getUTCMonth(),
+      });
+      cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+    }
+
+    return Array.from(months.values()).flatMap(({ year, monthIndex }) => (
+      getRecurringOccurrencesInMonth(bill, year, monthIndex)
+        .filter((occurrenceDate) => {
+          const occurrenceParts = getUtcDateParts(occurrenceDate);
+          return (
+            compareDateParts(occurrenceParts, getUtcDateParts(todayUtc)) >= 0 &&
+            compareDateParts(occurrenceParts, getUtcDateParts(windowEnd)) <= 0
+          );
+        })
+        .map((occurrenceDate) => ({
+          bill,
+          occurrenceDate,
+          occurrenceKey: getRecurringOccurrenceKey(bill, occurrenceDate),
+          daysUntilDue: Math.round((occurrenceDate.getTime() - todayUtc.getTime()) / 86_400_000),
+        }))
+    ));
+  });
+}
+
 export function normalizeRecurringExpense(recurring: RecurringExpense): RecurringExpense {
   const legacyStart = recurring.startDate ?? recurring.dueDate ?? new Date().toISOString();
   const startDate = toIsoDate(ensureDate(legacyStart));
@@ -233,6 +328,12 @@ export function normalizeRecurringExpense(recurring: RecurringExpense): Recurrin
   const dayOfMonth = recurring.dayOfMonth ?? ensureDate(recurring.dueDate ?? recurring.startDate).getUTCDate();
   const type: TransactionType = recurring.type ?? (recurring.priority === false ? 'income' : 'expense');
   const frequency = isRecurringFrequency(recurring.frequency) ? recurring.frequency : 'monthly';
+  const reminder = recurring.reminder
+    ? {
+      enabled: Boolean(recurring.reminder.enabled),
+      leadDays: clampReminderLeadDays(recurring.reminder.leadDays),
+    }
+    : undefined;
 
   const overrides = (recurring.overrides ?? [])
     .filter((override) => typeof override.monthKey === 'string' && override.monthKey.length > 0)
@@ -255,6 +356,7 @@ export function normalizeRecurringExpense(recurring: RecurringExpense): Recurrin
     type,
     frequency,
     priority: recurring.priority ?? type === 'expense',
+    reminder,
     overrides,
   };
 }

@@ -4,6 +4,8 @@ import {
   getRecurringDraftStartDate,
   getRecurringOccurrenceKey,
   getRecurringOccurrencesInMonth,
+  getRecurringReminderCandidates,
+  getRecurringReminderSettings,
   reconcileRecurringTransactions,
   isRecurringActiveInMonth,
   normalizeRecurringExpense,
@@ -54,6 +56,37 @@ describe('recurring domain helpers', () => {
     });
 
     expect(weekly.frequency).toBe('weekly');
+  });
+
+  it('normalizes recurring reminder settings', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Rent',
+      amount: 900,
+      startDate: '2026-04-05T00:00:00.000Z',
+      endDate: '2027-04-04T00:00:00.000Z',
+      dayOfMonth: 5,
+      category: 'Housing',
+      type: 'expense',
+      reminder: { enabled: true, leadDays: 99 },
+    });
+
+    expect(recurring.reminder).toEqual({ enabled: true, leadDays: 30 });
+  });
+
+  it('treats legacy recurring entries as due-date reminders', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Rent',
+      amount: 900,
+      startDate: '2026-04-05T00:00:00.000Z',
+      endDate: '2027-04-04T00:00:00.000Z',
+      dayOfMonth: 5,
+      category: 'Housing',
+      type: 'expense',
+    });
+
+    expect(getRecurringReminderSettings(recurring)).toEqual({ enabled: true, leadDays: 0 });
   });
 
   it('detects whether a recurring item is active in a given month', () => {
@@ -130,6 +163,43 @@ describe('recurring domain helpers', () => {
       '2027-04-15T00:00:00.000Z',
     ]);
     expect(getRecurringOccurrencesInMonth(recurring, 2027, 4)).toEqual([]);
+  });
+
+  it('returns recurring reminder candidates within the configured lead window', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Rent',
+      amount: 900,
+      startDate: '2026-04-05T00:00:00.000Z',
+      endDate: '2027-04-04T00:00:00.000Z',
+      dayOfMonth: 5,
+      category: 'Housing',
+      type: 'expense',
+      reminder: { enabled: true, leadDays: 3 },
+    });
+
+    expect(getRecurringReminderCandidates([recurring], new Date(2026, 3, 2))).toEqual([{
+      bill: recurring,
+      occurrenceDate: new Date('2026-04-05T00:00:00.000Z'),
+      occurrenceKey: '2026-04',
+      daysUntilDue: 3,
+    }]);
+  });
+
+  it('does not return recurring reminder candidates when item reminders are disabled', () => {
+    const recurring = normalizeRecurringExpense({
+      id: 'r1',
+      name: 'Rent',
+      amount: 900,
+      startDate: '2026-04-05T00:00:00.000Z',
+      endDate: '2027-04-04T00:00:00.000Z',
+      dayOfMonth: 5,
+      category: 'Housing',
+      type: 'expense',
+      reminder: { enabled: false, leadDays: 3 },
+    });
+
+    expect(getRecurringReminderCandidates([recurring], new Date(2026, 3, 2))).toEqual([]);
   });
 
   it('upserts an override by month key', () => {

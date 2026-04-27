@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { STORAGE_KEYS } from '../data/storageKeys';
-import { BudgetStatus, getRecurringDue } from '../domain/finance';
+import { BudgetStatus } from '../domain/finance';
+import { getRecurringReminderCandidates } from '../domain/recurring';
 import { RecurringExpense, Transaction } from '../types';
 import { useLocalStorage } from './useLocalStorage';
 import { useNotifications } from './useNotifications';
@@ -23,6 +24,17 @@ function daysUntil(date: Date, today: Date): number {
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   return Math.round((target - start) / 86_400_000);
+}
+
+function hasRecordedRecurringOccurrence(
+  transactions: Transaction[],
+  recurringId: string,
+  occurrenceKey: string,
+): boolean {
+  return transactions.some((transaction) => (
+    transaction.sourceRecurringId === recurringId &&
+    transaction.sourceMonthKey === occurrenceKey
+  ));
 }
 
 export function useNotificationScheduler({ transactions, recurring, budgetStatuses }: SchedulerInput) {
@@ -59,15 +71,21 @@ export function useNotificationScheduler({ transactions, recurring, budgetStatus
     }
 
     if (notifications.preferences.recurringReminders) {
-      getRecurringDue(recurring, transactions, today).forEach(({ bill }) => {
-        emit({
-          title: `${bill.name} is due`,
-          body: `${bill.category} recurring item is ready to review.`,
-          type: 'recurring',
-          route: '/recurring',
-          dedupeKey: `recurring:${todayKey}:${bill.id}`,
+      getRecurringReminderCandidates(recurring, today)
+        .filter(({ bill, occurrenceKey }) => !hasRecordedRecurringOccurrence(transactions, bill.id, occurrenceKey))
+        .forEach(({ bill, daysUntilDue, occurrenceKey }) => {
+          const body = daysUntilDue === 0
+            ? `${bill.category} recurring item is due today.`
+            : `${bill.category} recurring item is due in ${daysUntilDue} day(s).`;
+
+          emit({
+            title: `${bill.name} reminder`,
+            body,
+            type: 'recurring',
+            route: '/recurring',
+            dedupeKey: `recurring:${todayKey}:${bill.id}:${occurrenceKey}`,
+          });
         });
-      });
     }
 
     if (notifications.preferences.customReminders) {

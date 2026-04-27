@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, RefreshCw, X, Pencil, Trash2 } from 'lucide-react';
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, RefreshCw, X, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
@@ -9,7 +9,7 @@ import { CategoryPicker } from '../components/CategoryPicker';
 import { cn } from '../lib/utils';
 import { RecurringExpense, RecurringFrequency, TransactionType } from '../types';
 import { APP_CONFIG } from '../constants';
-import { Button, EmptyState, Input } from '../components/ui';
+import { Button, EmptyState, Input, Switch } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
@@ -23,6 +23,7 @@ import {
   getDefaultRecurringEndDate,
   getRecurringFrequencyLabel,
   getRecurringDraftStartDate,
+  getRecurringReminderSettings,
   getRecurringOccurrenceKey,
   getRecurringOccurrencesInMonth,
   getRecurringOverride,
@@ -36,6 +37,13 @@ const recurringFrequencyOptions: Array<{ value: RecurringFrequency; label: strin
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' },
+];
+
+const recurringReminderOptions = [
+  { value: 0, label: 'Due date' },
+  { value: 1, label: '1 day before' },
+  { value: 3, label: '3 days before' },
+  { value: 7, label: '7 days before' },
 ];
 
 const getMonthDays = (year: number, month: number) => {
@@ -64,6 +72,8 @@ export const CalendarPage = () => {
   const [newCategory, setNewCategory] = useState(categories[0] || 'Housing');
   const [newType, setNewType] = useState<TransactionType>('expense');
   const [newFrequency, setNewFrequency] = useState<RecurringFrequency>('monthly');
+  const [newReminderEnabled, setNewReminderEnabled] = useState(false);
+  const [newReminderLeadDays, setNewReminderLeadDays] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const [recurringActionTarget, setRecurringActionTarget] = useState<RecurringExpense | null>(null);
@@ -180,6 +190,8 @@ export const CalendarPage = () => {
     setNewCategory(categories[0] || 'Housing');
     setNewType('expense');
     setNewFrequency('monthly');
+    setNewReminderEnabled(false);
+    setNewReminderLeadDays(1);
   };
 
   useFocusTrap(recurringFormRef, showRecurringForm, resetForm);
@@ -195,6 +207,8 @@ export const CalendarPage = () => {
     setNewCategory(categories[0] || 'Housing');
     setNewType('expense');
     setNewFrequency('monthly');
+    setNewReminderEnabled(false);
+    setNewReminderLeadDays(1);
     setShowRecurringForm(true);
   };
 
@@ -241,6 +255,10 @@ export const CalendarPage = () => {
       type: newType,
       frequency: newFrequency,
       priority: newType === 'expense',
+      reminder: {
+        enabled: newReminderEnabled,
+        leadDays: newReminderLeadDays,
+      },
       overrides: existingOverrides,
     };
 
@@ -264,6 +282,9 @@ export const CalendarPage = () => {
     setNewCategory(item.category);
     setNewType(item.type ?? 'expense');
     setNewFrequency(item.frequency ?? 'monthly');
+    const reminder = getRecurringReminderSettings(item);
+    setNewReminderEnabled(reminder.enabled);
+    setNewReminderLeadDays(reminder.leadDays);
     setShowRecurringForm(true);
   };
 
@@ -555,14 +576,14 @@ export const CalendarPage = () => {
                     <p className="text-micro font-bold text-on-surface-variant">Schedule Window</p>
                     <p className="text-xs text-on-surface-variant mt-1 leading-snug">Start and end stay on the exact calendar day you choose.</p>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-2 [grid-template-columns:repeat(4,minmax(0,1fr))]">
                     {recurringFrequencyOptions.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         onClick={() => setNewFrequency(option.value)}
                         className={cn(
-                          'rounded-xl px-2 py-2 text-xs font-bold transition-all',
+                          'min-h-11 whitespace-nowrap rounded-xl px-1.5 py-2 text-[0.6875rem] font-bold transition-all',
                           newFrequency === option.value
                             ? 'bg-primary text-on-primary'
                             : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
@@ -580,6 +601,44 @@ export const CalendarPage = () => {
                 <p className="text-micro font-medium text-on-surface-variant leading-snug">
                   Leave the end date empty to keep this recurring entry active for 1 year from the start date.
                 </p>
+
+                <div className="rounded-2xl bg-surface-container-high p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                        <Bell className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-on-surface">Reminder</p>
+                        <p className="text-micro text-on-surface-variant">Local notification before this recurring item is due.</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={newReminderEnabled}
+                      onChange={() => setNewReminderEnabled((current) => !current)}
+                      label="Recurring reminder"
+                    />
+                  </div>
+                  {newReminderEnabled && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {recurringReminderOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setNewReminderLeadDays(option.value)}
+                          className={cn(
+                            'rounded-xl px-2 py-2 text-xs font-bold transition-all',
+                            newReminderLeadDays === option.value
+                              ? 'bg-secondary text-on-primary'
+                              : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <CategoryPicker
                   categories={categories}
