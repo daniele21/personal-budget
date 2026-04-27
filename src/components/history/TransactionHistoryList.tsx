@@ -1,28 +1,24 @@
 import React from 'react';
-import { CheckSquare, Paperclip, Pencil, Search, Square, Trash2, Wallet } from 'lucide-react';
+import { Paperclip, Search, Wallet } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Transaction } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatCurrency } from '../../utils/formatters';
-import { CategoryIcon } from '../CategoryIcon';
+import { CategoryBadge } from '../ui/CategoryBadge';
 import { EmptyState } from '../ui';
 import { SwipeableRow } from '../SwipeableRow';
 import { staggerDelay } from '../../utils/motion';
 
 interface TransactionHistoryListProps {
   transactions: Transaction[];
-  selectedIds: string[];
   hasBaseTransactions: boolean;
-  onToggleSelected: (id: string) => void;
   onQuickEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
 }
 
 export function TransactionHistoryList({
   transactions,
-  selectedIds,
   hasBaseTransactions,
-  onToggleSelected,
   onQuickEdit,
   onDelete,
 }: TransactionHistoryListProps) {
@@ -41,24 +37,14 @@ export function TransactionHistoryList({
               transition={{ delay: staggerDelay(index) }}
             >
               <SwipeableRow onEdit={() => onQuickEdit(transaction)} onDelete={() => onDelete(transaction.id)}>
-                <div className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
-                  <button
-                    type="button"
-                    onClick={() => onToggleSelected(transaction.id)}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      onToggleSelected(transaction.id);
-                    }}
-                    className="mr-3 rounded-xl p-1.5 text-primary hover:bg-primary/10"
-                    aria-label={selectedIds.includes(transaction.id) ? `Deselect ${transaction.title || transaction.category}` : `Select ${transaction.title || transaction.category}`}
-                  >
-                    {selectedIds.includes(transaction.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => onQuickEdit(transaction)}
+                  className="w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl transition-all border border-outline-variant/5 hover:bg-surface-container-low active:scale-[0.99] text-left"
+                >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
-                      <CategoryIcon category={transaction.category} className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
+                    <CategoryBadge category={transaction.category} size="md" className="flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
                       <h4 className="text-sm font-bold text-on-surface truncate">{transaction.title}</h4>
                       <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{transaction.description}</p>
                       <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">
@@ -73,22 +59,8 @@ export function TransactionHistoryList({
                       </p>
                       {transaction.attachmentUrl && <Paperclip className="w-3 h-3 text-primary/40 mt-1" />}
                     </div>
-                    <button
-                      onClick={() => onQuickEdit(transaction)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-full transition-all"
-                      aria-label={`Quick edit transaction ${transaction.title || transaction.category}`}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDelete(transaction.id)}
-                      className="p-2 text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
-                      aria-label={`Delete transaction ${transaction.title || transaction.category}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
-                </div>
+                </button>
               </SwipeableRow>
             </motion.div>
           )) : (

@@ -394,9 +394,21 @@ export const RecurringPage = () => {
               </div>
             </div>
 
-            <div className="absolute inset-x-0 bottom-0 border-t border-outline-variant/10 bg-surface-container-lowest/95 px-6 py-4 backdrop-blur">
-              <Button fullWidth onClick={handleAddRecurring}>
-                {editingId ? 'Update Bill' : 'Add Bill'}
+            <div className="absolute inset-x-0 bottom-0 border-t border-outline-variant/10 bg-surface-container-lowest/95 px-6 py-4 backdrop-blur flex gap-3">
+              {editingId && (
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={() => {
+                    setDeleteId(editingId);
+                    setIsAdding(false);
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+              <Button className={editingId ? "flex-[2]" : "w-full"} onClick={handleAddRecurring}>
+                {editingId ? 'Update' : 'Add Bill'}
               </Button>
             </div>
           </motion.div>
@@ -422,6 +434,7 @@ export const RecurringPage = () => {
               key={item.id}
               amount={item.amount}
               category={item.category}
+              type={item.type}
               onDelete={() => setDeleteId(item.id)}
               onEdit={() => handleEdit(item)}
               reminderLabel={getRecurringReminderSettings(item).enabled ? getRecurringReminderLabel(getRecurringReminderSettings(item)) : undefined}

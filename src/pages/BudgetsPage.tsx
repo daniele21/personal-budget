@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Plus, X, Trash2, PieChart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
-import { CategoryIcon } from '../components/CategoryIcon';
+import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
@@ -128,7 +128,9 @@ export const BudgetsPage = () => {
             className="relative z-10 w-full max-w-md rounded-t-3xl bg-surface-container-lowest p-6 shadow-2xl border border-outline-variant/10 sm:rounded-3xl"
           >
             <div className="flex justify-between items-center mb-5">
-              <h3 id="budget-form-title" className="font-headline font-bold text-primary">Set Category Budget</h3>
+              <h3 id="budget-form-title" className="font-headline font-bold text-primary">
+                {budgets.some(b => b.category === newCategory) ? 'Edit Category Budget' : 'Set Category Budget'}
+              </h3>
               <button onClick={() => setIsAdding(false)} aria-label="Close budget form"><X className="w-5 h-5 text-on-surface-variant" /></button>
             </div>
             <div className="space-y-4">
@@ -137,6 +139,7 @@ export const BudgetsPage = () => {
                 value={newCategory}
                 onChange={setNewCategory}
                 onAddCategory={addCategory}
+                disabled={budgets.some(b => b.category === newCategory)}
               />
               <div>
                 <label className="block text-micro font-bold text-on-surface-variant mb-2">
@@ -153,9 +156,23 @@ export const BudgetsPage = () => {
                   </p>
                 </button>
               </div>
-              <Button fullWidth onClick={handleAddBudget}>
-                Save Budget
-              </Button>
+              <div className="flex gap-3 pt-2">
+                {budgets.some(b => b.category === newCategory) && (
+                  <Button
+                    variant="danger"
+                    className="flex-1"
+                    onClick={() => {
+                      setDeleteTarget(newCategory);
+                      setIsAdding(false);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                )}
+                <Button className={budgets.some(b => b.category === newCategory) ? "flex-[2]" : "w-full"} onClick={handleAddBudget}>
+                  {budgets.some(b => b.category === newCategory) ? 'Update' : 'Save Budget'}
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -167,52 +184,53 @@ export const BudgetsPage = () => {
           const budgetProgress = budget.limit > 0 ? Math.round((spent / budget.limit) * 100) : 0;
           
           return (
-            <Card key={budget.category}>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center">
-                    <CategoryIcon category={budget.category} className="text-primary" />
+            <button
+              key={budget.category}
+              onClick={() => {
+                setNewCategory(budget.category);
+                setNewLimit(budget.limit.toString());
+                setIsAdding(true);
+              }}
+              className="w-full text-left"
+            >
+              <Card className="active:scale-[0.98] transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <CategoryBadge category={budget.category} size="md" />
+                    <div>
+                      <h4 className="font-headline font-bold text-on-surface">{budget.category}</h4>
+                      <p className="text-xs text-on-surface-variant font-bold">
+                        {spent > budget.limit
+                          ? <span className="text-tertiary">Over by {formatCurrency(spent - budget.limit)}</span>
+                          : <>{formatCurrency(Math.max(0, budget.limit - spent))} left</>
+                        }
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-headline font-bold text-on-surface">{budget.category}</h4>
-                    <p className="text-xs text-on-surface-variant font-bold">
-                      {spent > budget.limit
-                        ? <span className="text-tertiary">Over by {formatCurrency(spent - budget.limit)}</span>
-                        : <>{formatCurrency(Math.max(0, budget.limit - spent))} left</>
-                      }
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-sm font-extrabold text-on-surface">{formatCurrency(spent)}</p>
+                      <p className="text-xs text-on-surface-variant font-medium">of {formatCurrency(budget.limit)}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <p className="text-sm font-extrabold text-on-surface">{formatCurrency(spent)}</p>
-                    <p className="text-xs text-on-surface-variant font-medium">of {formatCurrency(budget.limit)}</p>
-                  </div>
-                  <button
-                    onClick={() => setDeleteTarget(budget.category)}
-                    className="p-2 text-on-surface-variant hover:text-tertiary hover:bg-tertiary/10 rounded-full transition-all"
-                    aria-label={`Delete ${budget.category} budget`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                  <div 
+                    className={cn(
+                      "h-full rounded-full transition-all duration-1000",
+                      budgetProgress > 100 ? "bg-tertiary" : budgetProgress > 90 ? "bg-accent-amber" : "bg-primary"
+                    )}
+                    style={{ width: barsMounted ? `${Math.min(100, budgetProgress)}%` : '0%' }}
+                  ></div>
                 </div>
-              </div>
-              <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
-                <div 
-                  className={cn(
-                    "h-full rounded-full transition-all duration-1000",
-                    budgetProgress > 100 ? "bg-tertiary" : budgetProgress > 90 ? "bg-accent-amber" : "bg-primary"
-                  )}
-                  style={{ width: barsMounted ? `${Math.min(100, budgetProgress)}%` : '0%' }}
-                ></div>
-              </div>
-              {budgetProgress > 90 && budgetProgress <= 100 && (
-                <p className="text-xs text-accent-amber font-bold mt-2">Approaching limit</p>
-              )}
-              {budgetProgress > 100 && (
-                <p className="text-xs text-tertiary font-bold mt-2">🚨 Budget exceeded!</p>
-              )}
-            </Card>
+                {budgetProgress > 90 && budgetProgress <= 100 && (
+                  <p className="text-xs text-accent-amber font-bold mt-2">Approaching limit</p>
+                )}
+                {budgetProgress > 100 && (
+                  <p className="text-xs text-tertiary font-bold mt-2">🚨 Budget exceeded!</p>
+                )}
+              </Card>
+            </button>
           );
         }) : (
           <Card>

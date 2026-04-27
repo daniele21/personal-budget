@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, Pencil } from 'lucide-react';
 import { Transaction } from '../types';
 import { Button, Input } from './ui';
 import { CategoryPicker } from './CategoryPicker';
+import { NumericKeypadModal } from './NumericKeypadModal';
+import { APP_CONFIG } from '../constants';
+import { cn } from '../lib/utils';
 
 interface TransactionQuickEditDialogProps {
   transaction: Transaction | null;
@@ -11,6 +14,7 @@ interface TransactionQuickEditDialogProps {
   onAddCategory: (name: string) => void;
   onClose: () => void;
   onSave: (transaction: Transaction) => void;
+  onDelete: (id: string) => void;
 }
 
 export function TransactionQuickEditDialog({
@@ -19,11 +23,16 @@ export function TransactionQuickEditDialog({
   onAddCategory,
   onClose,
   onSave,
+  onDelete,
 }: TransactionQuickEditDialogProps) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState('');
+  const [type, setType] = useState<'expense' | 'income'>('expense');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [description, setDescription] = useState('');
+  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
   useEffect(() => {
     if (!transaction) return;
@@ -31,6 +40,9 @@ export function TransactionQuickEditDialog({
     setAmount(String(transaction.amount));
     setCategory(transaction.category);
     setDate(transaction.date.slice(0, 10));
+    setType(transaction.type);
+    setPaymentMethod(transaction.paymentMethod);
+    setDescription(transaction.description || '');
   }, [transaction]);
 
   const handleSave = () => {
@@ -41,8 +53,11 @@ export function TransactionQuickEditDialog({
       ...transaction,
       title: title.trim(),
       amount: parsedAmount,
+      type,
       category,
       date: new Date(`${date}T00:00:00.000Z`).toISOString(),
+      paymentMethod,
+      description,
       recurringEdited: transaction.sourceRecurringId ? true : transaction.recurringEdited,
     });
   };
@@ -75,15 +90,103 @@ export function TransactionQuickEditDialog({
                 <X className="w-4 h-4" />
               </button>
             </div>
-
-            <div className="space-y-3">
-              <Input label="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Amount" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} />
-                <Input label="Date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <div className="space-y-4">
+              <div className="flex p-1 bg-surface-container-high rounded-full mb-2 w-full max-w-[200px] mx-auto scale-90">
+                <button 
+                  onClick={() => setType('expense')}
+                  className={cn(
+                    "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-[10px] transition-all",
+                    type === 'expense' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
+                  )}
+                >
+                  Expense
+                </button>
+                <button 
+                  onClick={() => setType('income')}
+                  className={cn(
+                    "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-[10px] transition-all",
+                    type === 'income' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
+                  )}
+                >
+                  Income
+                </button>
               </div>
-              <CategoryPicker categories={categories} value={category} onChange={setCategory} onAddCategory={onAddCategory} />
-              <Button fullWidth onClick={handleSave}>Save changes</Button>
+
+              <section className="text-center py-2">
+                <label className="block text-on-surface-variant text-micro mb-1 font-bold">Entry Amount</label>
+                <div 
+                  onClick={() => setIsKeypadOpen(true)}
+                  className="relative inline-flex items-baseline justify-center cursor-pointer group"
+                >
+                  <span className="text-xl font-headline font-extrabold text-on-surface-variant mr-1.5 group-hover:scale-110 transition-transform">{APP_CONFIG.currency}</span>
+                  <span className="text-4xl font-headline font-extrabold text-primary p-0 group-hover:scale-105 transition-transform">
+                    {amount}
+                  </span>
+                  <Pencil className="w-3.5 h-3.5 text-primary/30 ml-1.5 group-hover:text-primary transition-colors" />
+                </div>
+                
+                <NumericKeypadModal 
+                  isOpen={isKeypadOpen} 
+                  onClose={() => setIsKeypadOpen(false)} 
+                  onConfirm={(val) => setAmount(val)}
+                  initialValue={amount}
+                />
+              </section>
+
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto px-1 pb-2">
+                <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
+                  <label className="text-micro font-bold text-on-surface-variant">Transaction Title</label>
+                  <input 
+                    className="w-full bg-transparent border-none p-0 text-sm font-bold text-on-surface focus:ring-0" 
+                    placeholder="Title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
+                    <label className="text-micro font-bold text-on-surface-variant">Date</label>
+                    <input 
+                      type="date" 
+                      className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
+                    <label className="text-micro font-bold text-on-surface-variant">Payment</label>
+                    <select 
+                      className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full appearance-none"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <option value="Credit Card">Credit Card</option>
+                      <option value="Debit Card">Debit Card</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-surface-container-low rounded-2xl p-4">
+                  <CategoryPicker categories={categories} value={category} onChange={setCategory} onAddCategory={onAddCategory} />
+                </div>
+
+                <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
+                  <label className="text-micro font-bold text-on-surface-variant">Description / Notes</label>
+                  <textarea 
+                    className="w-full bg-transparent border-none p-0 text-xs font-bold text-on-surface focus:ring-0 min-h-[60px] resize-none placeholder:text-on-surface-variant/50" 
+                    placeholder="Add notes..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="danger" className="flex-1" onClick={() => transaction && onDelete(transaction.id)}>Delete</Button>
+                <Button className="flex-[2]" onClick={handleSave}>Save changes</Button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

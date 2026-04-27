@@ -4,14 +4,15 @@ import { Bell, CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
-import { CategoryIcon } from '../components/CategoryIcon';
+import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { cn } from '../lib/utils';
-import { RecurringExpense, RecurringFrequency, TransactionType } from '../types';
+import { RecurringExpense, RecurringFrequency, TransactionType, Transaction } from '../types';
 import { APP_CONFIG } from '../constants';
 import { Button, EmptyState, Input, Switch } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { haptics } from '../utils/haptics';
 import { pageTransition } from '../utils/motion';
@@ -78,6 +79,8 @@ export const CalendarPage = () => {
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const [recurringActionTarget, setRecurringActionTarget] = useState<RecurringExpense | null>(null);
   const [occurrenceTarget, setOccurrenceTarget] = useState<RecurringExpense | null>(null);
+  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [occurrenceName, setOccurrenceName] = useState('');
   const [occurrenceAmount, setOccurrenceAmount] = useState('');
   const [occurrenceCategory, setOccurrenceCategory] = useState(categories[0] || 'Housing');
@@ -374,6 +377,51 @@ export const CalendarPage = () => {
     } : undefined);
   };
 
+  const saveQuickEdit = (nextTransaction: Transaction) => {
+    const existingTransaction = transactions.find((transaction) => transaction.id === nextTransaction.id);
+    setTransactions(transactions.map((transaction) => (
+      transaction.id === nextTransaction.id ? nextTransaction : transaction
+    )));
+
+    if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
+      setRecurring(recurring.map((bill) => (
+        bill.id === existingTransaction.sourceRecurringId
+          ? upsertRecurringOverride(bill, {
+            monthKey: existingTransaction.sourceMonthKey,
+            occurrenceKey: existingTransaction.sourceMonthKey,
+            amount: nextTransaction.amount,
+            type: nextTransaction.type,
+            category: nextTransaction.category,
+            title: nextTransaction.title,
+            description: nextTransaction.description,
+            paymentMethod: nextTransaction.paymentMethod,
+            date: nextTransaction.date,
+          })
+          : bill
+      )));
+    }
+
+    setQuickEditTransaction(null);
+    haptics.success();
+    toast('Transaction updated', 'success');
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    const deleted = transactions.find(t => t.id === id);
+    if (!deleted) return;
+    
+    setTransactions(transactions.filter(t => t.id !== id));
+    setTransactionToDelete(null);
+    haptics.warning();
+    toast('Transaction deleted', 'info', 5000, {
+      label: 'Undo',
+      onClick: () => {
+        setTransactions([...transactions, deleted]);
+        haptics.success();
+      }
+    });
+  };
+
   return (
     <motion.div
       {...pageTransition}
@@ -439,24 +487,26 @@ export const CalendarPage = () => {
                 const display = getRecurringDisplayValues(item, occurrenceKey);
 
                 return (
-                  <div key={item.id} className="flex items-center gap-3 bg-primary/5 rounded-2xl p-3 border border-primary/10">
-                    <CategoryIcon category={display.category} />
+                  <button
+                    key={item.id}
+                    onClick={() => openRecurringActions(item)}
+                    className="flex w-full items-center gap-3 bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 text-left active:scale-[0.98] transition-all"
+                  >
+                    <CategoryBadge category={display.category} size="md" className="flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-on-surface truncate">{display.name}</p>
-                      <p className="text-micro text-on-surface-variant">
+                      <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">
                         {display.category} • {getRecurringFrequencyLabel(item.frequency)} • active until {formatUtcDateLabel(item.endDate)}
                       </p>
                     </div>
-                    <span className="text-sm font-bold text-primary">{formatCurrency(display.amount)}</span>
-                    <div className="flex gap-0.5">
-                      <button onClick={() => openRecurringActions(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label={`Edit recurring options for ${display.name}`}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label={`Delete recurring ${display.name}`}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <div className="flex flex-col items-end">
+                        <span className={cn('text-sm font-extrabold', item.type === 'income' ? 'text-secondary' : 'text-on-surface')}>
+                          {item.type === 'income' ? '+' : '-'}{formatCurrency(display.amount)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -474,31 +524,24 @@ export const CalendarPage = () => {
           ) : selectedTx.length > 0 && (
             <div className="space-y-2">
               {selectedTx.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-                  <CategoryIcon category={tx.category} />
+                <button
+                  key={tx.id}
+                  onClick={() => setQuickEditTransaction(tx)}
+                  className="flex w-full items-center gap-3 bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 text-left active:scale-[0.98] transition-all"
+                >
+                  <CategoryBadge category={tx.category} size="md" className="flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-on-surface truncate">{tx.title || tx.category}</p>
-                    <p className="text-micro text-on-surface-variant">{tx.category}</p>
+                    <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{tx.category}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {tx.type === 'income' ? (
-                      <TrendingUp className="w-3 h-3 text-secondary" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 text-tertiary" />
-                    )}
-                    <span className={cn('text-sm font-bold', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/edit/${tx.id}`)}
-                      className="p-1.5 text-primary hover:bg-primary/10 rounded-full transition-all"
-                      aria-label={`Edit transaction ${tx.title || tx.category}`}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    <div className="flex flex-col items-end">
+                      <p className={cn('text-sm font-extrabold', tx.type === 'income' ? 'text-secondary' : 'text-on-surface')}>
+                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -649,8 +692,20 @@ export const CalendarPage = () => {
               </div>
             </div>
 
-            <div className="absolute inset-x-0 bottom-0 border-t border-outline-variant/10 bg-surface-container-lowest/95 px-6 py-4 backdrop-blur">
-              <Button fullWidth onClick={handleSaveRecurring}>
+            <div className="absolute inset-x-0 bottom-0 border-t border-outline-variant/10 bg-surface-container-lowest/95 px-6 py-4 backdrop-blur flex gap-3">
+              {editingId && (
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={() => {
+                    setDeleteId(editingId);
+                    setShowRecurringForm(false);
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+              <Button className={editingId ? "flex-[2]" : "w-full"} onClick={handleSaveRecurring}>
                 {editingId ? 'Update' : 'Add Recurring'}
               </Button>
             </div>
@@ -759,9 +814,21 @@ export const CalendarPage = () => {
                 onAddCategory={addCategory}
               />
 
-              <Button fullWidth onClick={handleSaveOccurrence}>
-                Save Only This Occurrence
-              </Button>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={() => {
+                    setDeleteId(occurrenceTarget.id);
+                    setOccurrenceTarget(null);
+                  }}
+                >
+                  Delete Series
+                </Button>
+                <Button className="flex-[2]" onClick={handleSaveOccurrence}>
+                  Save
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -777,24 +844,26 @@ export const CalendarPage = () => {
           </div>
           <div className="space-y-2">
             {recurring.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-                <CategoryIcon category={item.category} />
+              <button
+                key={item.id}
+                onClick={() => handleEdit(item)}
+                className="flex w-full items-center gap-3 bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 text-left active:scale-[0.98] transition-all"
+              >
+                <CategoryBadge category={item.category} size="md" className="flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-on-surface truncate">{item.name}</p>
-                  <p className="text-micro text-on-surface-variant">
+                  <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">
                     Starts {getUtcDateInputValue(item.startDate)} • {getRecurringFrequencyLabel(item.frequency)} • {item.category}
                   </p>
                 </div>
-                <span className="text-sm font-bold text-primary">{formatCurrency(item.amount)}</span>
-                <div className="flex gap-0.5">
-                  <button onClick={() => handleEdit(item)} className="p-1.5 text-primary hover:bg-primary/10 rounded-full" aria-label={`Edit recurring ${item.name}`}>
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-tertiary hover:bg-tertiary/10 rounded-full" aria-label={`Delete recurring ${item.name}`}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <div className="flex flex-col items-end">
+                    <span className={cn('text-sm font-extrabold', item.type === 'income' ? 'text-secondary' : 'text-on-surface')}>
+                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -808,6 +877,26 @@ export const CalendarPage = () => {
         variant="danger"
         onConfirm={() => deleteId && handleDelete(deleteId)}
         onCancel={() => setDeleteId(null)}
+      />
+      <ConfirmDialog
+        isOpen={transactionToDelete !== null}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction?"
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => transactionToDelete && handleDeleteTransaction(transactionToDelete)}
+        onCancel={() => setTransactionToDelete(null)}
+      />
+      <TransactionQuickEditDialog
+        transaction={quickEditTransaction}
+        categories={categories}
+        onAddCategory={addCategory}
+        onClose={() => setQuickEditTransaction(null)}
+        onSave={saveQuickEdit}
+        onDelete={(id) => {
+          setQuickEditTransaction(null);
+          setTransactionToDelete(id);
+        }}
       />
       <NumericKeypadModal
         isOpen={isAmountKeypadOpen}

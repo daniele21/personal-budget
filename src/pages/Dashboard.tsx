@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart } from 'luc
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
-import { CategoryIcon } from '../components/CategoryIcon';
+import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { Card, EmptyState, Skeleton } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
@@ -14,6 +14,11 @@ import { useRecurringAutoGenerate } from '../hooks/useRecurringAutoGenerate';
 import { formatMonthLabel } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
+import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Transaction } from '../types';
+import { haptics } from '../utils/haptics';
+import { useToast } from '../components/Toast';
 
 const DONUT_COLORS = [
   'var(--color-primary)',
@@ -29,7 +34,9 @@ export const Dashboard = () => {
     transactions, setTransactions, budgets, recurring,
     currentBalance, monthlyTotals, monthlyBudget,
     safeToSpend, categorySpending, momChange, recentTransactions, isHydrated,
+    categories, addCategory
   } = useApp();
+  const { toast } = useToast();
 
   // Side-effect hooks (UI-level orchestration)
   useRecurringAutoGenerate(recurring, transactions, setTransactions);
@@ -43,6 +50,8 @@ export const Dashboard = () => {
   const animatedBalance = useAnimatedNumber(currentBalance);
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const [barsMounted, setBarsMounted] = useState(false);
+  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setBarsMounted(true));
@@ -71,6 +80,31 @@ export const Dashboard = () => {
     label: cat.category,
     color: DONUT_COLORS[i % DONUT_COLORS.length],
   }));
+
+  const saveQuickEdit = (nextTransaction: Transaction) => {
+    setTransactions(transactions.map((transaction) => (
+      transaction.id === nextTransaction.id ? nextTransaction : transaction
+    )));
+    setQuickEditTransaction(null);
+    haptics.success();
+    toast('Transaction updated', 'success');
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    const deleted = transactions.find(t => t.id === id);
+    if (!deleted) return;
+    
+    setTransactions(transactions.filter(t => t.id !== id));
+    setTransactionToDelete(null);
+    haptics.warning();
+    toast('Transaction deleted', 'info', 5000, {
+      label: 'Undo',
+      onClick: () => {
+        setTransactions([...transactions, deleted]);
+        haptics.success();
+      }
+    });
+  };
 
   // Build donut arcs
   let cumulativeOffset = 0;
@@ -211,16 +245,16 @@ export const Dashboard = () => {
                 <span className="text-base font-headline font-bold text-on-surface">{formatCurrency(totalSpent)}</span>
               </div>
             </div>
-            <div className="space-y-2.5">
+            <div className="space-y-1.5">
               {categorySpending.slice(0, 6).map((cat, i) => (
-                <div key={cat.category} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}></div>
-                    <span className="text-xs text-on-surface font-medium">{cat.category}</span>
+                <div key={cat.category} className="flex items-center justify-between bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5">
+                  <div className="flex items-center gap-3">
+                    <CategoryBadge category={cat.category} size="md" className="flex-shrink-0" />
+                    <span className="text-sm text-on-surface font-bold">{cat.category}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-on-surface-variant">{totalSpent > 0 ? Math.round((cat.amount / totalSpent) * 100) : 0}%</span>
-                    <span className="font-headline font-bold text-xs text-on-surface">{formatCurrency(cat.amount)}</span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-headline font-extrabold text-sm text-on-surface">{formatCurrency(cat.amount)}</span>
+                    <span className="text-xs font-medium text-on-surface-variant/60">{totalSpent > 0 ? Math.round((cat.amount / totalSpent) * 100) : 0}% of total</span>
                   </div>
                 </div>
               ))}
@@ -265,20 +299,24 @@ export const Dashboard = () => {
         </div>
         <div className="space-y-1.5">
           {recentTransactions.length > 0 ? recentTransactions.map((t) => (
-            <div key={t.id} className="flex items-center justify-between p-3 bg-surface-container-lowest rounded-2xl transition-colors border border-outline-variant/5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-surface-container-high rounded-full flex items-center justify-center">
-                  <CategoryIcon category={t.category} className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-headline font-bold text-on-surface">{t.title}</p>
-                  <p className="text-xs text-on-surface-variant font-medium">{t.category} • {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+            <button
+              key={t.id}
+              onClick={() => setQuickEditTransaction(t)}
+              className="flex w-full items-center gap-3 bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 text-left active:scale-[0.98] transition-all"
+            >
+              <CategoryBadge category={t.category} size="md" className="flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-on-surface truncate">{t.title}</p>
+                <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{t.category} • {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                <div className="flex flex-col items-end">
+                  <p className={cn('text-sm font-extrabold', t.type === 'income' ? 'text-secondary' : 'text-on-surface')}>
+                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                  </p>
                 </div>
               </div>
-              <p className={cn("text-sm font-headline font-bold", t.type === 'income' ? "text-secondary" : "text-on-surface")}>
-                {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-              </p>
-            </div>
+            </button>
           )) : (
             <EmptyState
               icon={<Wallet className="w-10 h-10" />}
@@ -289,6 +327,27 @@ export const Dashboard = () => {
           )}
         </div>
       </section>
+
+      <ConfirmDialog
+        isOpen={transactionToDelete !== null}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction?"
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => transactionToDelete && handleDeleteTransaction(transactionToDelete)}
+        onCancel={() => setTransactionToDelete(null)}
+      />
+      <TransactionQuickEditDialog
+        transaction={quickEditTransaction}
+        categories={categories}
+        onAddCategory={addCategory}
+        onClose={() => setQuickEditTransaction(null)}
+        onSave={saveQuickEdit}
+        onDelete={(id) => {
+          setQuickEditTransaction(null);
+          setTransactionToDelete(id);
+        }}
+      />
     </motion.div>
   );
 };

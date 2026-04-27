@@ -16,19 +16,20 @@ import {
 export interface CategoryTheme {
   icon: LucideIcon;
   color: string;
+  bgColor: string;
 }
 
 const CATEGORY_THEMES: Record<string, CategoryTheme> = {
-  Housing: { icon: Home, color: 'var(--color-primary)' },
-  Rent: { icon: Home, color: 'var(--color-primary)' },
-  Groceries: { icon: ShoppingCart, color: 'var(--color-secondary)' },
-  Dining: { icon: Utensils, color: 'var(--color-accent-amber)' },
-  Transport: { icon: Bus, color: 'var(--color-accent-cyan)' },
-  Entertainment: { icon: Film, color: 'var(--color-accent-pink)' },
-  Health: { icon: Dumbbell, color: 'var(--color-tertiary)' },
-  Salary: { icon: Wallet, color: 'var(--color-secondary)' },
-  Utilities: { icon: Landmark, color: 'var(--color-accent-purple)' },
-  Shopping: { icon: ShoppingBag, color: 'var(--color-accent-lime)' },
+  Housing: { icon: Home, color: 'var(--color-primary)', bgColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' },
+  Rent: { icon: Home, color: 'var(--color-primary)', bgColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' },
+  Groceries: { icon: ShoppingCart, color: 'var(--color-secondary)', bgColor: 'color-mix(in srgb, var(--color-secondary) 15%, transparent)' },
+  Dining: { icon: Utensils, color: 'var(--color-accent-amber)', bgColor: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)' },
+  Transport: { icon: Bus, color: 'var(--color-accent-cyan)', bgColor: 'color-mix(in srgb, var(--color-accent-cyan) 15%, transparent)' },
+  Entertainment: { icon: Film, color: 'var(--color-accent-pink)', bgColor: 'color-mix(in srgb, var(--color-accent-pink) 15%, transparent)' },
+  Health: { icon: Dumbbell, color: 'var(--color-tertiary)', bgColor: 'color-mix(in srgb, var(--color-tertiary) 15%, transparent)' },
+  Salary: { icon: Wallet, color: 'var(--color-secondary)', bgColor: 'color-mix(in srgb, var(--color-secondary) 15%, transparent)' },
+  Utilities: { icon: Landmark, color: 'var(--color-accent-purple)', bgColor: 'color-mix(in srgb, var(--color-accent-purple) 15%, transparent)' },
+  Shopping: { icon: ShoppingBag, color: 'var(--color-accent-lime)', bgColor: 'color-mix(in srgb, var(--color-accent-lime) 15%, transparent)' },
 };
 
 function hashCategory(category: string): number {
@@ -36,19 +37,24 @@ function hashCategory(category: string): number {
 }
 
 const FALLBACK_COLORS = [
-  'var(--color-primary)',
-  'var(--color-secondary)',
-  'var(--color-tertiary)',
-  'var(--color-accent-purple)',
-  'var(--color-accent-amber)',
-  'var(--color-accent-cyan)',
-  'var(--color-accent-pink)',
-  'var(--color-accent-lime)',
+  { color: 'var(--color-primary)', bgColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' },
+  { color: 'var(--color-secondary)', bgColor: 'color-mix(in srgb, var(--color-secondary) 15%, transparent)' },
+  { color: 'var(--color-tertiary)', bgColor: 'color-mix(in srgb, var(--color-tertiary) 15%, transparent)' },
+  { color: 'var(--color-accent-purple)', bgColor: 'color-mix(in srgb, var(--color-accent-purple) 15%, transparent)' },
+  { color: 'var(--color-accent-amber)', bgColor: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)' },
+  { color: 'var(--color-accent-cyan)', bgColor: 'color-mix(in srgb, var(--color-accent-cyan) 15%, transparent)' },
+  { color: 'var(--color-accent-pink)', bgColor: 'color-mix(in srgb, var(--color-accent-pink) 15%, transparent)' },
+  { color: 'var(--color-accent-lime)', bgColor: 'color-mix(in srgb, var(--color-accent-lime) 15%, transparent)' },
 ];
 
 export function getCategoryTheme(category: string): CategoryTheme {
-  return CATEGORY_THEMES[category] ?? {
+  if (CATEGORY_THEMES[category]) {
+    return CATEGORY_THEMES[category];
+  }
+  const fallback = FALLBACK_COLORS[hashCategory(category) % FALLBACK_COLORS.length];
+  return {
     icon: category ? Tag : PieChart,
-    color: FALLBACK_COLORS[hashCategory(category) % FALLBACK_COLORS.length],
+    color: fallback.color,
+    bgColor: fallback.bgColor,
   };
 }

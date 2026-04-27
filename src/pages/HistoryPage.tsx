@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { CategoryIcon } from '../components/CategoryIcon';
+import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
@@ -22,7 +22,6 @@ import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
 import { haptics } from '../utils/haptics';
 import { upsertRecurringOverride } from '../domain/recurring';
-import { BatchToolbar } from '../components/history/BatchToolbar';
 import { FinancialTrajectoryCard } from '../components/history/FinancialTrajectoryCard';
 import { TransactionHistoryList } from '../components/history/TransactionHistoryList';
 import { slidePageTransition } from '../utils/motion';
@@ -190,8 +189,6 @@ export const HistoryPage = () => {
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [batchCategory, setBatchCategory] = useState(appCategories[0] ?? '');
 
   const deleteTransaction = (id: string) => {
     const deleted = transactions.find((transaction) => transaction.id === id);
@@ -236,50 +233,7 @@ export const HistoryPage = () => {
     toast('Transaction updated', 'success');
   };
 
-  const toggleSelected = (id: string) => {
-    setSelectedIds((current) => (
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
-    ));
-  };
 
-  const clearSelection = () => setSelectedIds([]);
-
-  const deleteSelected = () => {
-    const deleted = transactions.filter((transaction) => selectedIds.includes(transaction.id));
-    setTransactions(transactions.filter((transaction) => !selectedIds.includes(transaction.id)));
-    setSelectedIds([]);
-    haptics.warning();
-    toast(`${deleted.length} transactions deleted`, 'info', 5000, {
-      label: 'Undo',
-      onClick: () => {
-        setTransactions([...deleted, ...transactions.filter((transaction) => !selectedIds.includes(transaction.id))]);
-        haptics.success();
-      },
-    });
-  };
-
-  const changeSelectedCategory = () => {
-    if (!batchCategory) return;
-    setTransactions(transactions.map((transaction) => (
-      selectedIds.includes(transaction.id) ? { ...transaction, category: batchCategory } : transaction
-    )));
-    setSelectedIds([]);
-    toast('Category updated for selected transactions', 'success');
-  };
-
-  const exportSelected = () => {
-    const selected = transactions.filter((transaction) => selectedIds.includes(transaction.id));
-    const header = ['id', 'amount', 'type', 'category', 'date', 'title', 'description', 'paymentMethod'];
-    const rows = selected.map((transaction) => header.map((key) => JSON.stringify(transaction[key as keyof Transaction] ?? '')).join(','));
-    const blob = new Blob([[header.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `aura_selected_transactions_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast('Selected transactions exported', 'success');
-  };
 
   const rangeStart = useMemo(() => new Date(`${startDate}T00:00:00`), [startDate]);
   const rangeEnd = useMemo(() => new Date(`${endDate}T23:59:59.999`), [endDate]);
@@ -576,22 +530,11 @@ export const HistoryPage = () => {
         </div>
       </section>
 
-      <BatchToolbar
-        selectedCount={selectedIds.length}
-        categories={appCategories}
-        batchCategory={batchCategory}
-        onBatchCategoryChange={setBatchCategory}
-        onChangeCategory={changeSelectedCategory}
-        onExport={exportSelected}
-        onDelete={deleteSelected}
-        onClear={clearSelection}
-      />
+
 
       <TransactionHistoryList
         transactions={filteredTransactions}
-        selectedIds={selectedIds}
         hasBaseTransactions={hasBaseTransactions}
-        onToggleSelected={toggleSelected}
         onQuickEdit={setQuickEditTransaction}
         onDelete={setDeleteId}
       />
@@ -612,6 +555,10 @@ export const HistoryPage = () => {
         onAddCategory={addCategory}
         onClose={() => setQuickEditTransaction(null)}
         onSave={saveQuickEdit}
+        onDelete={(id) => {
+          setQuickEditTransaction(null);
+          setDeleteId(id);
+        }}
       />
 
       <FilterSheet
@@ -665,12 +612,7 @@ export const HistoryPage = () => {
                     )}
                   >
                     <span className="flex items-center gap-3">
-                      <span className={cn(
-                        'flex h-9 w-9 items-center justify-center rounded-xl text-primary',
-                        active ? 'bg-primary/15' : 'bg-surface-container-high',
-                      )}>
-                        <CategoryIcon category={category} className="h-4 w-4" />
-                      </span>
+                        <CategoryBadge category={category} size="sm" />
                       <span className="text-sm font-bold">{category}</span>
                     </span>
                     <span className={cn(

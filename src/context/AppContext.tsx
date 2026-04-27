@@ -16,8 +16,9 @@ import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { useCloudBackup } from '../hooks/useCloudBackup';
 import { STORAGE_KEYS } from '../data/storageKeys';
 import { APP_CONFIG, INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING, INITIAL_ACCOUNTS, INITIAL_CATEGORIES, INITIAL_SAVINGS_GOALS } from '../constants';
+import { buildDemoData } from '../data/demoData';
 import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } from '../types';
-import { ConfirmDialog } from '../components/ConfirmDialog';
+import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
 import * as Finance from '../domain/finance';
 import { normalizeRecurringExpenses, reconcileRecurringTransactions } from '../domain/recurring';
@@ -95,6 +96,7 @@ interface AppState {
 }
 
 const AppContext = createContext<AppState | null>(null);
+type InitialDataChoice = 'blank' | 'demo' | 'restored' | null;
 
 // ─── Provider ───────────────────────────────────────────────────────
 
@@ -115,6 +117,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useLocalStorage(STORAGE_KEYS.darkMode, false);
   const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage(STORAGE_KEYS.cloudBackupEnabled, false);
   const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
+  const [initialDataChoice, setInitialDataChoice] = useLocalStorage<InitialDataChoice>(STORAGE_KEYS.initialDataChoice, null);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -224,7 +227,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setMonthlyBudget(data.monthlyBudget);
   }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
 
-  const { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate } = useCloudBackup({
+  const { restoreFromCloud, backupAvailable, backupCheckComplete, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate } = useCloudBackup({
     uid: user?.id ?? null,
     enabled: cloudBackupEnabled,
     getData: getBackupData,
@@ -239,6 +242,45 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     }
     return false;
   }, [pushNow]);
+
+  const applyDemoData = useCallback(() => {
+    const demoData = buildDemoData();
+    setTransactions(demoData.transactions);
+    setBudgets(demoData.budgets);
+    setRecurring(demoData.recurring);
+    setAccounts(demoData.accounts);
+    setCategories(demoData.categories);
+    setArchivedCategories(demoData.archivedCategories);
+    setSavingsGoals(demoData.savingsGoals);
+    setMonthlyBudget(demoData.monthlyBudget);
+  }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
+
+  const handleRestoreBackup = useCallback(async () => {
+    const restored = await restoreFromCloud();
+    if (restored) {
+      setCloudBackupEnabled(true);
+      setInitialDataChoice('restored');
+      setOnboardingComplete(true);
+    }
+  }, [restoreFromCloud, setCloudBackupEnabled, setInitialDataChoice, setOnboardingComplete]);
+
+  const handleStartBlank = useCallback(() => {
+    if (backupAvailable) {
+      setCloudBackupEnabled(false);
+    }
+    setInitialDataChoice('blank');
+    dismissRestore();
+  }, [backupAvailable, dismissRestore, setCloudBackupEnabled, setInitialDataChoice]);
+
+  const handleUseDemoData = useCallback(() => {
+    if (backupAvailable) {
+      setCloudBackupEnabled(false);
+    }
+    applyDemoData();
+    setInitialDataChoice('demo');
+    setOnboardingComplete(true);
+    dismissRestore();
+  }, [applyDemoData, backupAvailable, dismissRestore, setCloudBackupEnabled, setInitialDataChoice, setOnboardingComplete]);
 
   // ─── Derived values (domain layer) ─────────────────────────────
 
@@ -271,6 +313,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     [transactions]
   );
 
+  const showInitialDataDialog = (
+    isLoggedIn &&
+    isHydrated &&
+    backupCheckComplete &&
+    isLocalEmpty() &&
+    initialDataChoice === null
+  );
+
   // ─── Context value ─────────────────────────────────────────────
 
   const value: AppState = {
@@ -299,17 +349,15 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AppContext.Provider value={value}>
       {children}
-      <ConfirmDialog
-        isOpen={backupAvailable}
-        title="Backup trovato"
-        message="Non ci sono dati in locale, ma è disponibile un backup dal cloud. Vuoi ripristinarlo?"
-        confirmLabel="Ripristina"
-        cancelLabel="No, ricomincia da zero"
-        onConfirm={() => { restoreFromCloud(); }}
-        onCancel={dismissRestore}
+      <InitialDataDialog
+        isOpen={showInitialDataDialog}
+        backupAvailable={backupAvailable}
+        onRestoreBackup={handleRestoreBackup}
+        onStartBlank={handleStartBlank}
+        onUseDemoData={handleUseDemoData}
       />
       <OnboardingDialog
-        isOpen={isLoggedIn && !onboardingComplete && isLocalEmpty()}
+        isOpen={isLoggedIn && !showInitialDataDialog && !onboardingComplete && initialDataChoice === 'blank' && isLocalEmpty()}
         monthlyBudget={monthlyBudget}
         onSetMonthlyBudget={setMonthlyBudget}
         onAddCategory={addCategory}

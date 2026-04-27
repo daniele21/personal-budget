@@ -31,9 +31,22 @@ interface UseCloudBackupOptions {
   applyData: (data: BackupPayload) => void;
 }
 
+function hasBackupData(data: BackupPayload | null): data is BackupPayload {
+  if (!data) return false;
+  return (
+    (data.transactions?.length ?? 0) > 0 ||
+    (data.budgets?.length ?? 0) > 0 ||
+    (data.recurring?.length ?? 0) > 0 ||
+    (data.savingsGoals?.length ?? 0) > 0 ||
+    (data.accounts?.length ?? 0) > 0
+  );
+}
+
 export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData }: UseCloudBackupOptions) {
   const backupInFlight = useRef(false);
+  const backupCheckUid = useRef<string | null>(null);
   const [backupAvailable, setBackupAvailable] = useState(false);
+  const [backupCheckComplete, setBackupCheckComplete] = useState(false);
   const [backupStatus, setBackupStatus] = useState<BackupStatus>('idle');
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => {
     try {
@@ -52,15 +65,37 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
 
   // ─── On login: check if local is empty & cloud backup exists ───
   useEffect(() => {
-    if (!uid) return;
-    if (!enabled) return;
-    if (!isLocalEmpty()) return;
+    if (!uid) {
+      backupCheckUid.current = null;
+      setBackupAvailable(false);
+      setBackupCheckComplete(true);
+      return;
+    }
 
+    if (!isLocalEmpty()) {
+      backupCheckUid.current = uid;
+      setBackupAvailable(false);
+      setBackupCheckComplete(true);
+      return;
+    }
+
+    if (backupCheckUid.current === uid) return;
+
+    let cancelled = false;
+    backupCheckUid.current = uid;
+    setBackupAvailable(false);
+    setBackupCheckComplete(false);
     pullBackup(uid).then((data) => {
-      if (data && (data.transactions?.length ?? 0) > 0) {
+      if (cancelled) return;
+      if (hasBackupData(data)) {
         setBackupAvailable(true);
       }
+      setBackupCheckComplete(true);
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [uid, enabled, isLocalEmpty]);
 
   // ─── Auto daily backup (non-blocking, only if data exists) ─────
@@ -93,13 +128,13 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
   // ─── Manual restore ─────────────────────────────────────────────
   const restoreFromCloud = useCallback(async (): Promise<boolean> => {
     if (!uid) return false;
-    if (!enabled) return false;
     const data = await pullBackup(uid);
     if (!data) return false;
     applyData(data);
     setBackupAvailable(false);
+    setBackupCheckComplete(true);
     return true;
-  }, [uid, enabled, applyData]);
+  }, [uid, applyData]);
 
   const dismissRestore = useCallback(() => setBackupAvailable(false), []);
 
@@ -143,5 +178,5 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
     return ok;
   }, [uid, enabled, getData, isLocalEmpty]);
 
-  return { restoreFromCloud, backupAvailable, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate };
+  return { restoreFromCloud, backupAvailable, backupCheckComplete, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate };
 }

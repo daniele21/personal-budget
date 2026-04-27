@@ -14,19 +14,19 @@ export const BottomNav = () => {
   ];
 
   return (
-    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pt-3 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
+    <nav aria-label="Main navigation" className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 py-2.5 bg-surface/90 backdrop-blur-2xl rounded-t-2xl border-t border-outline-variant/10 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] safe-area-bottom">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path;
         const Icon = item.icon;
 
         if (item.isSpecial) {
           return (
-            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-8">
+            <Link key={item.path} to={item.path} aria-label={item.label} className="relative -top-5">
               <div className={cn(
-                "w-14 h-14 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
+                "w-11 h-11 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transition-all active:scale-90 bg-primary text-on-primary",
                 isActive && "ring-4 ring-primary/20"
               )}>
-                <Plus className="w-8 h-8" />
+                <Plus className="w-6 h-6" />
               </div>
             </Link>
           );
@@ -44,13 +44,16 @@ export const BottomNav = () => {
             )}
           >
             <div className={cn(
-              "p-1 rounded-lg transition-colors",
+              "p-1.5 rounded-lg transition-colors",
               isActive ? "bg-primary/10" : "bg-transparent"
             )}>
-              <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
+              <Icon 
+                className="w-5 h-5" 
+                strokeWidth={isActive ? 2.5 : 2} 
+              />
             </div>
             <span className={cn(
-              "text-xs font-medium mt-0.5 transition-opacity",
+              "text-[10px] font-medium mt-1 transition-opacity",
               isActive ? "opacity-100" : "opacity-60"
             )}>
               {item.label}

@@ -4,12 +4,13 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, BarChart3, Trophy } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
-import { CategoryIcon } from '../components/CategoryIcon';
+import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { Card } from '../components/ui';
 import { cn } from '../lib/utils';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
 import { pageTransition } from '../utils/motion';
+import { getCategoryTheme } from '../config/categoryThemes';
 
 // ─── Range definitions ──────────────────────────────────────────────
 
@@ -253,39 +254,57 @@ export const InsightsPage = () => {
       </div>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1">Income</p>
-          <p className="text-base font-bold text-secondary">{formatCurrency(totals.income)}</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5">
+          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">Income</p>
+          <p className="text-lg font-headline font-bold text-secondary tabular-nums whitespace-nowrap">{formatCurrency(totals.income)}</p>
         </div>
-        <div className="bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1">Expenses</p>
-          <p className="text-base font-bold text-tertiary">{formatCurrency(totals.expenses)}</p>
+        <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5">
+          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">Expenses</p>
+          <p className="text-lg font-headline font-bold text-tertiary tabular-nums whitespace-nowrap">{formatCurrency(totals.expenses)}</p>
         </div>
-        <div className="bg-surface-container-lowest rounded-2xl p-3 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1">Net</p>
-          <p className={cn('text-base font-bold', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
+      </div>
+
+      <div className={cn(
+        "rounded-3xl p-5 border border-outline-variant/5 flex items-center justify-between transition-all",
+        totals.net >= 0 ? "bg-secondary/5" : "bg-tertiary/5"
+      )}>
+        <div className="min-w-0">
+          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">Net Flow</p>
+          <p className={cn(
+            'text-3xl font-headline font-extrabold tracking-tight tabular-nums whitespace-nowrap truncate',
+            totals.net >= 0 ? 'text-secondary' : 'text-tertiary'
+          )}>
             {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net)}
           </p>
+        </div>
+        <div className={cn(
+          "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm",
+          totals.net >= 0 ? "bg-secondary/20 text-secondary" : "bg-tertiary/20 text-tertiary"
+        )}>
+          {totals.net >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
         </div>
       </div>
 
       {/* Monthly average for multi-month ranges */}
       {rangeMonths > 1 && (
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-surface-container-low/50 rounded-2xl p-2.5 border border-outline-variant/5">
-            <p className="text-micro text-on-surface-variant font-bold mb-0.5">Avg/mo Income</p>
-            <p className="text-sm font-bold text-secondary">{formatCurrency(totals.income / rangeMonths)}</p>
-          </div>
-          <div className="bg-surface-container-low/50 rounded-2xl p-2.5 border border-outline-variant/5">
-            <p className="text-micro text-on-surface-variant font-bold mb-0.5">Avg/mo Expenses</p>
-            <p className="text-sm font-bold text-tertiary">{formatCurrency(totals.expenses / rangeMonths)}</p>
-          </div>
-          <div className="bg-surface-container-low/50 rounded-2xl p-2.5 border border-outline-variant/5">
-            <p className="text-micro text-on-surface-variant font-bold mb-0.5">Avg/mo Net</p>
-            <p className={cn('text-sm font-bold', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
-              {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net / rangeMonths)}
-            </p>
+        <div className="space-y-2 pt-2 border-t border-outline-variant/5">
+          <p className="text-micro text-on-surface-variant font-bold px-1 uppercase tracking-wider">Monthly Averages</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
+              <p className="text-[10px] text-on-surface-variant font-bold mb-1">Avg Income</p>
+              <p className="text-sm font-bold text-secondary whitespace-nowrap">{formatCurrency(totals.income / rangeMonths)}</p>
+            </div>
+            <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
+              <p className="text-[10px] text-on-surface-variant font-bold mb-1">Avg Expenses</p>
+              <p className="text-sm font-bold text-tertiary whitespace-nowrap">{formatCurrency(totals.expenses / rangeMonths)}</p>
+            </div>
+            <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
+              <p className="text-[10px] text-on-surface-variant font-bold mb-1">Avg Net</p>
+              <p className={cn('text-sm font-bold whitespace-nowrap', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
+                {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net / rangeMonths)}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -317,122 +336,202 @@ export const InsightsPage = () => {
         <Card className="space-y-3 p-4">
           <h3 className="text-xs font-bold text-on-surface-variant">Spending Breakdown</h3>
           <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-container-high">
-            {categorySpending.map((cat, i) => (
-              <div
-                key={cat.category}
-                className={cn('h-full transition-all', BAR_COLORS[i % BAR_COLORS.length])}
-                style={{ width: `${cat.percentage * 100}%` }}
-                title={`${cat.category}: ${(cat.percentage * 100).toFixed(1)}%`}
-              />
-            ))}
+            {categorySpending.map((cat) => {
+              const theme = getCategoryTheme(cat.category);
+              return (
+                <div
+                  key={cat.category}
+                  className="h-full transition-all"
+                  style={{ width: `${cat.percentage * 100}%`, backgroundColor: theme.color }}
+                  title={`${cat.category}: ${(cat.percentage * 100).toFixed(1)}%`}
+                />
+              );
+            })}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {categorySpending.map((cat, i) => (
-              <div key={cat.category} className="flex items-center gap-1.5">
-                <span className={cn('w-2 h-2 rounded-full', BAR_COLORS[i % BAR_COLORS.length])} />
-                <span className={cn('text-micro font-bold', TEXT_COLORS[i % TEXT_COLORS.length])}>{cat.category}</span>
-                <span className="text-micro text-on-surface-variant">{(cat.percentage * 100).toFixed(0)}%</span>
-              </div>
-            ))}
+            {categorySpending.map((cat) => {
+              const theme = getCategoryTheme(cat.category);
+              return (
+                <div key={cat.category} className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.color }} />
+                  <span className="text-micro font-bold" style={{ color: theme.color }}>{cat.category}</span>
+                  <span className="text-micro text-on-surface-variant">{(cat.percentage * 100).toFixed(0)}%</span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
 
       {/* Category cards */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-bold text-on-surface-variant px-1">By Category</h3>
+      <div className="space-y-6">
         {allCategories.length === 0 ? (
           <p className="text-xs text-on-surface-variant/60 py-8 text-center">No transactions in this period</p>
         ) : (
-          allCategories.map(cat => {
-            const isExpanded = expandedCat === cat.category;
-            // Scale budget limit by number of months in range
-            const scaledLimit = cat.budget ? cat.budget.limit * rangeMonths : null;
-            const budgetPercent = scaledLimit ? Math.min(100, (cat.expense / scaledLimit) * 100) : null;
-            const catTx = periodTx.filter(t => t.category === cat.category);
+          <>
+            {/* ── Expenses Section ────────────────────────────── */}
+            {allCategories.some(c => c.expense > 0) && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Expenses</h3>
+                {allCategories.filter(c => c.expense > 0).map(cat => {
+                  const isExpanded = expandedCat === cat.category;
+                  // Scale budget limit by number of months in range
+                  const scaledLimit = cat.budget ? cat.budget.limit * rangeMonths : null;
+                  const budgetPercent = scaledLimit ? Math.min(100, (cat.expense / scaledLimit) * 100) : null;
+                  const catTx = periodTx.filter(t => t.category === cat.category);
 
-            return (
-              <div key={cat.category}>
-                <button
-                  onClick={() => setExpandedCat(isExpanded ? null : cat.category)}
-                  className="w-full bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 transition-all hover:bg-surface-container-low"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center flex-shrink-0">
-                      <CategoryIcon category={cat.category} className="text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-bold text-on-surface truncate">{cat.category}</p>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {cat.expense > 0 && (
-                            <span className="text-sm font-bold text-tertiary">-{formatCurrency(cat.expense)}</span>
-                          )}
-                          {cat.income > 0 && (
-                            <span className="text-sm font-bold text-secondary">+{formatCurrency(cat.income)}</span>
-                          )}
+                  return (
+                    <div key={`expense-${cat.category}`}>
+                      <button
+                        onClick={() => setExpandedCat(isExpanded ? null : cat.category)}
+                        className="w-full bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 transition-all hover:bg-surface-container-low text-left"
+                      >
+                        {/* Row 1: Badge + Name + Amount */}
+                        <div className="flex items-center gap-3">
+                          <CategoryBadge category={cat.category} size="md" />
+                          <p className="flex-1 min-w-0 truncate text-sm font-bold text-on-surface">{cat.category}</p>
+                          <span className="text-sm font-extrabold text-tertiary tabular-nums shrink-0">
+                            -{formatCurrency(cat.expense)}
+                          </span>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-3 mt-1">
-                        {budgetPercent !== null && (
-                          <div className="flex-1">
-                            <div className="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                        {/* Row 2: Budget progress (full-width, under the header) */}
+                        {budgetPercent !== null && scaledLimit && (
+                          <div className="mt-3 space-y-1.5">
+                            <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
                               <div
                                 className={cn(
                                   'h-full rounded-full transition-all',
-                                  budgetPercent >= 100 ? 'bg-tertiary' : budgetPercent >= 80 ? 'bg-[#f59e0b]' : 'bg-primary',
+                                  budgetPercent >= 100 ? 'bg-tertiary' : budgetPercent >= 80 ? 'bg-accent-amber' : 'bg-primary',
                                 )}
                                 style={{ width: `${Math.min(100, budgetPercent)}%` }}
                               />
                             </div>
+                            <div className="flex items-center justify-between">
+                              <span className={cn(
+                                'text-micro font-extrabold tabular-nums',
+                                budgetPercent >= 100 ? 'text-tertiary' : budgetPercent >= 80 ? 'text-accent-amber' : 'text-on-surface-variant',
+                              )}>
+                                {budgetPercent.toFixed(0)}% of budget
+                              </span>
+                              <span className="text-micro font-semibold tabular-nums text-on-surface-variant">
+                                {formatCurrency(cat.expense)} / {formatCurrency(scaledLimit)}
+                              </span>
+                            </div>
                           </div>
                         )}
 
+                        {/* Row 3: Trend indicator */}
                         {cat.change !== null && (
-                          <span className={cn(
-                            'text-micro font-bold flex items-center gap-0.5',
-                            cat.change <= 0 ? 'text-secondary' : 'text-tertiary',
+                          <div className={cn(
+                            'mt-3 flex items-center gap-1.5 pt-2 border-t border-outline-variant/5',
                           )}>
-                            {cat.change <= 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-                            {Math.abs(cat.change).toFixed(0)}%
-                          </span>
+                            <span className={cn(
+                              'flex items-center gap-1 text-xs font-bold tabular-nums',
+                              cat.change <= 0 ? 'text-secondary' : 'text-tertiary',
+                            )}>
+                              {cat.change <= 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
+                              {Math.abs(cat.change).toFixed(0)}%
+                            </span>
+                            <span className="text-xs text-on-surface-variant/60">vs previous period</span>
+                          </div>
                         )}
+                      </button>
 
-                        {budgetPercent !== null && scaledLimit && (
-                          <span className="text-micro text-on-surface-variant font-bold">
-                            {formatCurrency(cat.expense)} / {formatCurrency(scaledLimit)}
-                          </span>
-                        )}
-                      </div>
+                      {/* Expanded transaction list */}
+                      {isExpanded && catTx.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="mt-1.5 ml-6 mr-1 space-y-1 overflow-hidden"
+                        >
+                          {Finance.sortByDateDesc(catTx).map(tx => (
+                            <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-surface-container-low/50">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
+                                <p className="text-micro text-on-surface-variant mt-0.5">
+                                  {new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: rangeMonths > 12 ? 'numeric' : undefined })}
+                                </p>
+                              </div>
+                              <span className={cn('text-xs font-bold tabular-nums', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
+                                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                              </span>
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
                     </div>
-                  </div>
-                </button>
-
-                {isExpanded && catTx.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="ml-4 mt-1 space-y-1 overflow-hidden"
-                  >
-                    {Finance.sortByDateDesc(catTx).map(tx => (
-                      <div key={tx.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-surface-container-low/50">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
-                          <p className="text-micro text-on-surface-variant">
-                            {new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: rangeMonths > 12 ? 'numeric' : undefined })}
-                          </p>
-                        </div>
-                        <span className={cn('text-xs font-bold', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
-                          {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
+                  );
+                })}
               </div>
-            );
-          })
+            )}
+
+            {/* ── Income Section ─────────────────────────────── */}
+            {allCategories.some(c => c.income > 0) && (
+              <div className="space-y-3 mt-6">
+                <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Income</h3>
+                {allCategories.filter(c => c.income > 0).map(cat => {
+                  const isExpanded = expandedCat === cat.category;
+                  const catTx = periodTx.filter(t => t.category === cat.category);
+
+                  return (
+                    <div key={`income-${cat.category}`}>
+                      <button
+                        onClick={() => setExpandedCat(isExpanded ? null : cat.category)}
+                        className="w-full bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 transition-all hover:bg-surface-container-low text-left"
+                      >
+                        {/* Row 1: Badge + Name + Amount */}
+                        <div className="flex items-center gap-3">
+                          <CategoryBadge category={cat.category} size="md" />
+                          <p className="flex-1 min-w-0 truncate text-sm font-bold text-on-surface">{cat.category}</p>
+                          <span className="text-sm font-extrabold text-secondary tabular-nums shrink-0">
+                            +{formatCurrency(cat.income)}
+                          </span>
+                        </div>
+
+                        {/* Row 2: Trend indicator */}
+                        {cat.change !== null && (
+                          <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-outline-variant/5">
+                            <span className={cn(
+                              'flex items-center gap-1 text-xs font-bold tabular-nums',
+                              cat.change >= 0 ? 'text-secondary' : 'text-tertiary',
+                            )}>
+                              {cat.change >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                              {Math.abs(cat.change).toFixed(0)}%
+                            </span>
+                            <span className="text-xs text-on-surface-variant/60">vs previous period</span>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Expanded transaction list */}
+                      {isExpanded && catTx.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="mt-1.5 ml-6 mr-1 space-y-1 overflow-hidden"
+                        >
+                          {Finance.sortByDateDesc(catTx).map(tx => (
+                            <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-surface-container-low/50">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
+                                <p className="text-micro text-on-surface-variant mt-0.5">
+                                  {new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: rangeMonths > 12 ? 'numeric' : undefined })}
+                                </p>
+                              </div>
+                              <span className={cn('text-xs font-bold tabular-nums', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
+                                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                              </span>
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
     </motion.div>

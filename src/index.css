@@ -104,5 +104,5 @@
 }
 
 @utility safe-area-bottom {
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
