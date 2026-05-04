@@ -117,11 +117,10 @@ export function analyzeBudgets(budgets: Budget[], monthlyTransactions: Transacti
  * Returns the % change in expenses compared to last month.
  * Positive = spending less (good). Null = no previous data.
  */
-export function monthOverMonthChange(transactions: Transaction[]): number | null {
-  const now = new Date();
-  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+export function monthOverMonthChange(transactions: Transaction[], date: Date = new Date()): number | null {
+  const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
 
-  const currentExpenses = calculateTotals(filterByMonth(transactions, now)).expenses;
+  const currentExpenses = calculateTotals(filterByMonth(transactions, date)).expenses;
   const prevExpenses = calculateTotals(filterByMonth(transactions, prevMonth)).expenses;
 
   if (prevExpenses === 0) return null;

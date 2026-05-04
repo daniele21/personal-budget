@@ -17,7 +17,7 @@ import { pageTransition } from '../utils/motion';
 
 export const BudgetsPage = () => {
   const { toast } = useToast();
-  const { budgets, setBudgets, categories, addCategory, monthlyTransactions } = useApp();
+  const { budgets, setBudgets, categories, addCategory, monthlyTransactions, selectedMonth } = useApp();
   
   const [isAdding, setIsAdding] = useState(false);
   const [newCategory, setNewCategory] = useState(categories[0]);
@@ -87,7 +87,7 @@ export const BudgetsPage = () => {
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-container opacity-20 rounded-full -mr-20 -mt-20 blur-3xl"></div>
         <div className="relative z-10">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-xs opacity-80 font-bold">{formatMonthLabel()} Expenditure</p>
+            <p className="text-xs opacity-80 font-bold">{formatMonthLabel(selectedMonth)} Expenditure</p>
             <button 
               onClick={() => setIsAdding(true)}
               className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors"

@@ -47,6 +47,7 @@ interface AppState {
   authError: string | null;
   isAdmin: boolean;
   isHydrated: boolean;
+  selectedMonth: Date;
 
   // Setters
   setTransactions: (txs: Transaction[]) => void;
@@ -62,6 +63,7 @@ interface AppState {
   setIsDarkMode: (v: boolean) => void;
   setCloudBackupEnabled: (v: boolean) => void;
   setOnboardingComplete: (v: boolean) => void;
+  setSelectedMonth: (date: Date) => void;
 
   // Auth actions
   signInWithGoogle: () => Promise<void>;
@@ -119,6 +121,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
   const [initialDataChoice, setInitialDataChoice] = useLocalStorage<InitialDataChoice>(STORAGE_KEYS.initialDataChoice, null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
 
   useEffect(() => {
     setIsHydrated(true);
@@ -284,7 +287,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ─── Derived values (domain layer) ─────────────────────────────
 
-  const monthlyTransactions = useMemo(() => Finance.filterByMonth(transactions), [transactions]);
+  const currentMonthTransactions = useMemo(() => Finance.filterByMonth(transactions, new Date()), [transactions]);
+  const monthlyTransactions = useMemo(() => Finance.filterByMonth(transactions, selectedMonth), [transactions, selectedMonth]);
   const monthlyTotals = useMemo(() => Finance.calculateTotals(monthlyTransactions), [monthlyTransactions]);
   const allTimeTotals = useMemo(() => Finance.calculateTotals(transactions), [transactions]);
 
@@ -297,8 +301,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const budgetStatuses = useMemo(
-    () => Finance.analyzeBudgets(budgets, monthlyTransactions),
-    [budgets, monthlyTransactions]
+    () => Finance.analyzeBudgets(budgets, currentMonthTransactions),
+    [budgets, currentMonthTransactions]
   );
 
   const categorySpending = useMemo(
@@ -306,7 +310,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     [monthlyTransactions]
   );
 
-  const momChange = useMemo(() => Finance.monthOverMonthChange(transactions), [transactions]);
+  const momChange = useMemo(() => Finance.monthOverMonthChange(transactions, selectedMonth), [transactions, selectedMonth]);
 
   const recentTransactions = useMemo(
     () => Finance.sortByDateDesc(transactions).slice(0, 5),
@@ -328,11 +332,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals,
     monthlyBudget, user, isLoggedIn, isDarkMode, cloudBackupEnabled, backupAvailable,
     backupStatus, lastBackupDate, onboardingComplete,
-    authLoading, authError, isAdmin, isHydrated,
+    authLoading, authError, isAdmin, isHydrated, selectedMonth,
     // Setters
     setTransactions, setBudgets, setRecurring, setAccounts,
     setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget, setUser, setIsLoggedIn, setIsDarkMode,
-    setCloudBackupEnabled, setOnboardingComplete,
+    setCloudBackupEnabled, setOnboardingComplete, setSelectedMonth,
     // Auth actions
     signInWithGoogle, signOut,
     // Actions

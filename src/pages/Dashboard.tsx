@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
@@ -34,7 +34,7 @@ export const Dashboard = () => {
     transactions, setTransactions, budgets, recurring,
     currentBalance, monthlyTotals, monthlyBudget,
     safeToSpend, categorySpending, momChange, recentTransactions, isHydrated,
-    categories, addCategory
+    categories, addCategory, selectedMonth, setSelectedMonth
   } = useApp();
   const { toast } = useToast();
 
@@ -57,8 +57,27 @@ export const Dashboard = () => {
     const frame = requestAnimationFrame(() => setBarsMounted(true));
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  const handlePrevMonth = () => {
+    const prev = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1);
+    setSelectedMonth(prev);
+  };
+
+  const handleNextMonth = () => {
+    const next = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
+    setSelectedMonth(next);
+  };
+
+  const getReferenceDate = () => {
+    const now = new Date();
+    if (selectedMonth.getFullYear() === now.getFullYear() && selectedMonth.getMonth() === now.getMonth()) {
+      return now;
+    }
+    return new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
+  };
+
   const weeklyIncome = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
+    const date = getReferenceDate();
     date.setDate(date.getDate() - (6 - index));
     const key = date.toISOString().slice(0, 10);
     return transactions
@@ -66,7 +85,7 @@ export const Dashboard = () => {
       .reduce((sum, transaction) => sum + transaction.amount, 0);
   });
   const weeklyExpenses = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
+    const date = getReferenceDate();
     date.setDate(date.getDate() - (6 - index));
     const key = date.toISOString().slice(0, 10);
     return transactions
@@ -142,7 +161,15 @@ export const Dashboard = () => {
               </div>
             )}
           </div>
-          <p className="text-on-surface-variant text-xs font-medium">{formatMonthLabel()}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <button onClick={handlePrevMonth} className="p-1 rounded-full hover:bg-surface-container-high transition-colors" aria-label="Previous month">
+              <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
+            </button>
+            <p className="text-on-surface-variant text-sm font-bold min-w-[100px] text-center">{formatMonthLabel(selectedMonth)}</p>
+            <button onClick={handleNextMonth} className="p-1 rounded-full hover:bg-surface-container-high transition-colors" aria-label="Next month">
+              <ChevronRight className="w-4 h-4 text-on-surface-variant" />
+            </button>
+          </div>
         </div>
 
         {/* Safe to Spend — promoted to primary position */}
@@ -215,7 +242,7 @@ export const Dashboard = () => {
       <Card>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
-          <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel()}</span>
+          <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
         </div>
         {categorySpending.length > 0 ? (
           <div className="flex flex-col gap-6">
