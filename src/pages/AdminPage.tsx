@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { getAllowedUsers, addAllowedEmail, removeAllowedUser, ADMIN_EMAIL, type CachedAllowedUser } from '../lib/allowedUsers';
 import { Shield, UserPlus, Trash2, Loader2, AlertCircle, WifiOff } from 'lucide-react';
+import { GeminiModelSelector } from '../components/admin/GeminiModelSelector';
+import { GeminiUsageDashboard } from '../components/admin/GeminiUsageDashboard';
 
 export const AdminPage = () => {
   const { user } = useApp();
@@ -184,6 +186,16 @@ export const AdminPage = () => {
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── Gemini Model Selector ──────────────────────────────── */}
+      <div className="border-t border-outline-variant/10 pt-6">
+        <GeminiModelSelector adminEmail={user?.email || ADMIN_EMAIL} />
+      </div>
+
+      {/* ── Gemini Usage Dashboard ─────────────────────────────── */}
+      <div className="border-t border-outline-variant/10 pt-6">
+        <GeminiUsageDashboard />
       </div>
     </div>
   );

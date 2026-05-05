@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
@@ -36,8 +36,6 @@ export const ProfilePage = () => {
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const transactionInputRef = useRef<HTMLInputElement>(null);
-  const budgetInputRef = useRef<HTMLInputElement>(null);
   const [showResetLocalDialog, setShowResetLocalDialog] = useState(false);
   const [showResetAllDialog, setShowResetAllDialog] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
@@ -188,53 +186,6 @@ export const ProfilePage = () => {
       budgetsLink.setAttribute('download', `aura_budgets_${new Date().toISOString().split('T')[0]}.csv`);
       budgetsLink.click();
     }, 500);
-  };
-
-  const handleImportTransactions = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      Papa.parse(file, {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          const imported = results.data as any[];
-          if (imported.length > 0 && imported[0].amount !== undefined) {
-            // Merge with existing, avoiding exact duplicates if possible (simple check)
-            const newTransactions = [...transactions];
-            imported.forEach(item => {
-              if (!newTransactions.find(t => t.id === item.id)) {
-                newTransactions.push(item);
-              }
-            });
-            setTransactions(newTransactions);
-            toast(`Imported ${imported.length} transactions!`, 'success');
-          } else {
-            toast('Invalid transaction CSV format.', 'error');
-          }
-        }
-      });
-    }
-  };
-
-  const handleImportBudgets = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      Papa.parse(file, {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          const imported = results.data as any[];
-          if (imported.length > 0 && imported[0].limit !== undefined) {
-            setBudgets(imported as Budget[]);
-            toast(`Imported ${imported.length} budgets!`, 'success');
-          } else {
-            toast('Invalid budget CSV format.', 'error');
-          }
-        }
-      });
-    }
   };
 
   return (
@@ -490,44 +441,22 @@ export const ProfilePage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={() => transactionInputRef.current?.click()}
-              className="flex flex-col items-center gap-3 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all"
+          <div className="bg-surface-container-low rounded-2xl border border-outline-variant/5 p-5 flex flex-col items-center gap-4 text-center">
+            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <Upload className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-on-surface">Importa transazioni</p>
+              <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                Usa il nuovo wizard intelligente con IA per caricare file Excel o CSV.
+              </p>
+            </div>
+            <Link
+              to="/history"
+              className="w-full py-3 bg-primary text-on-primary rounded-xl text-xs font-bold shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
             >
-              <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center">
-                <Upload className="w-5 h-5 text-secondary" />
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-bold text-on-surface">Import Transactions</p>
-              </div>
-              <input 
-                type="file" 
-                ref={transactionInputRef} 
-                className="hidden" 
-                accept=".csv" 
-                onChange={handleImportTransactions} 
-              />
-            </button>
-
-            <button 
-              onClick={() => budgetInputRef.current?.click()}
-              className="flex flex-col items-center gap-3 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high transition-all"
-            >
-              <div className="w-10 h-10 bg-tertiary/10 rounded-xl flex items-center justify-center">
-                <Upload className="w-5 h-5 text-tertiary" />
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-bold text-on-surface">Import Budgets</p>
-              </div>
-              <input 
-                type="file" 
-                ref={budgetInputRef} 
-                className="hidden" 
-                accept=".csv" 
-                onChange={handleImportBudgets} 
-              />
-            </button>
+              Vai alla cronologia per importare
+            </Link>
           </div>
         </div>
       </section>

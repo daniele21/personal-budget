@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Check,
   Filter,
+  FileUp,
   Search,
   SlidersHorizontal,
   X,
@@ -24,6 +25,7 @@ import { haptics } from '../utils/haptics';
 import { upsertRecurringOverride } from '../domain/recurring';
 import { FinancialTrajectoryCard } from '../components/history/FinancialTrajectoryCard';
 import { TransactionHistoryList } from '../components/history/TransactionHistoryList';
+import { ImportWizardDialog } from '../components/import/ImportWizardDialog';
 import { slidePageTransition } from '../utils/motion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
@@ -189,6 +191,7 @@ export const HistoryPage = () => {
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
+  const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
 
   const deleteTransaction = (id: string) => {
     const deleted = transactions.find((transaction) => transaction.id === id);
@@ -492,6 +495,14 @@ export const HistoryPage = () => {
             <span>Sort: {sortLabel}</span>
             <ChevronDown className="h-3.5 w-3.5 opacity-70" />
           </button>
+          <button
+            type="button"
+            onClick={() => setIsImportWizardOpen(true)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-outline-variant/10 bg-surface-container-lowest px-4 py-2 text-xs font-bold text-on-surface shadow-sm transition-all hover:bg-primary hover:text-on-primary hover:border-primary"
+          >
+            <FileUp className="h-3.5 w-3.5" />
+            <span>Import</span>
+          </button>
           {hasNonDefaultFilters && (
             <button
               type="button"
@@ -559,6 +570,11 @@ export const HistoryPage = () => {
           setQuickEditTransaction(null);
           setDeleteId(id);
         }}
+      />
+
+      <ImportWizardDialog
+        isOpen={isImportWizardOpen}
+        onClose={() => setIsImportWizardOpen(false)}
       />
 
       <FilterSheet

@@ -19,6 +19,24 @@ service cloud.firestore {
                          && request.auth.uid == userId;
     }
 
+    // ── geminiConfig ────────────────────────────────────────────────
+    // Admin can read/write the active model selection.
+    // All authenticated users can read (to know which model to use).
+    match /geminiConfig/{docId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'danielemoltisanti@gmail.com';
+    }
+
+    // ── geminiUsage ─────────────────────────────────────────────────
+    // Any authenticated user can create usage records (logged on AI calls).
+    // Only the admin can read all records (monitoring dashboard).
+    match /geminiUsage/{docId} {
+      allow create: if request.auth != null;
+      allow read:   if request.auth != null
+                    && request.auth.token.email == 'danielemoltisanti@gmail.com';
+    }
+
     // ── Default: deny everything else ─────────────────────────────
     match /{document=**} {
       allow read, write: if false;

@@ -71,6 +71,7 @@ interface AppState {
 
   // Actions
   addTransaction: (tx: Transaction) => void;
+  addTransactions: (txs: Transaction[]) => void;
   updateTransaction: (id: string, tx: Transaction) => void;
   deleteTransaction: (id: string) => void;
   addBudget: (budget: Budget) => void;
@@ -156,8 +157,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // ─── Actions ────────────────────────────────────────────────────
 
   const addTransaction = useCallback((tx: Transaction) => {
-    setTransactions([tx, ...transactions]);
-  }, [transactions, setTransactions]);
+    setTransactions(prev => [tx, ...prev]);
+  }, [setTransactions]);
+
+  const addTransactions = useCallback((txs: Transaction[]) => {
+    setTransactions(prev => [...txs, ...prev]);
+  }, [setTransactions]);
 
   const updateTransaction = useCallback((id: string, tx: Transaction) => {
     setTransactions(transactions.map(t => t.id === id ? tx : t));
@@ -340,7 +345,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     // Auth actions
     signInWithGoogle, signOut,
     // Actions
-    addTransaction, updateTransaction, deleteTransaction,
+    addTransaction, addTransactions, updateTransaction, deleteTransaction,
     addBudget, deleteBudget,
     addRecurring, updateRecurring, deleteRecurring,
     addCategory, resetAll, restoreFromCloud, dismissRestore, deleteCloudBackup, pushBackupNow,
