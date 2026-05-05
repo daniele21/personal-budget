@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Bell, Sun, Moon, Calendar as CalendarIcon, Search } from 'lucide-react';
+import { ArrowLeft, Bell, Calendar as CalendarIcon, Search } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationCenter } from './NotificationCenter';
+import { PwaInstallButton } from './PwaInstallButton';
 import { useNotifications } from '../hooks/useNotifications';
 
 interface TopBarProps {
@@ -13,20 +14,12 @@ interface TopBarProps {
 }
 
 export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarProps) => {
-  const { isDarkMode: isDark, setIsDarkMode: setIsDark, user } = useApp();
+  const { user } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const notifications = useNotifications();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -49,8 +42,8 @@ export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarPr
 
   return (
     <>
-      <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 py-3 h-16 border-b border-outline-variant/10">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md flex items-center gap-3 px-4 sm:px-6 py-3 h-16 border-b border-outline-variant/10">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {isSubPage || showMenu ? (
             <button
               type="button"
@@ -58,36 +51,30 @@ export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarPr
                 if (window.history.length > 1) navigate(-1);
                 else navigate('/');
               }}
-              className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-container-low"
               aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5 text-primary" />
             </button>
           ) : (
-            <CalendarIcon className="w-5 h-5 text-primary" />
+            <CalendarIcon className="h-5 w-5 shrink-0 text-primary" />
           )}
-          <h1 className="font-headline font-bold text-base sm:text-lg text-primary truncate flex-1 ml-1">{title}</h1>
+          <h1 className="min-w-0 truncate font-headline text-base font-bold text-primary sm:text-lg">{title}</h1>
         </div>
-        <div className="flex items-center gap-1 sm:gap-4">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <PwaInstallButton />
           <button
             type="button"
             onClick={() => setIsSearchOpen(true)}
-            className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-container-low"
             aria-label="Search"
           >
             <Search className="w-5 h-5 text-primary" />
           </button>
           <button
-            onClick={() => setIsDark(!isDark)}
-            className="p-2 hover:bg-surface-container-low rounded-full transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            {isDark ? <Sun className="w-5 h-5 text-primary" /> : <Moon className="w-5 h-5 text-primary" />}
-          </button>
-          <button
             type="button"
             onClick={() => setIsNotificationCenterOpen(true)}
-            className="p-2 hover:bg-surface-container-low rounded-full transition-colors relative"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-container-low"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5 text-primary" />
@@ -98,7 +85,7 @@ export const TopBar = ({ title, showMenu = false, showProfile = true }: TopBarPr
             )}
           </button>
           {showProfile && user && (
-            <Link to="/profile" className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-bold text-xs overflow-hidden border-2 border-surface shadow-sm ml-1 hover:ring-2 hover:ring-primary/30 transition-all" aria-label="Profile">
+            <Link to="/profile" className="ml-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-surface bg-primary-container text-xs font-bold text-on-primary shadow-sm transition-all hover:ring-2 hover:ring-primary/30 sm:ml-1" aria-label="Profile">
               <img
                 src={user.photoUrl}
                 alt={user.name}

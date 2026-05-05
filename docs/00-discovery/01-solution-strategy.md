@@ -46,6 +46,12 @@ Recurring items may carry their own reminder setting, including due-date reminde
 
 Known limitation: web notifications are browser and platform dependent. On iOS, reliable notification behavior requires the app to be installed as a PWA on supported versions.
 
+### Mobile PWA Install Action
+
+Chosen: show a mobile-only install button in the authenticated app header.
+
+Rationale: Aura Finance is mobile-first and already ships a manifest and service worker. The button appears on mobile browsers when the app is not already running in standalone mode. Android/Chrome can use the browser `beforeinstallprompt` event for a native install action when Chrome exposes it, with a fallback help panel when the event is not available. iOS requires concise manual guidance through Safari, Share, and Add to Home Screen because Chrome and Edge on iOS cannot open the native PWA install prompt.
+
 ### Admin
 
 Chosen: admin manages access allowlist only.
@@ -59,3 +65,4 @@ Rationale: the admin should decide who can access the app, not read personal fin
 - Category archive is simpler than a full category entity model; a future migration to category IDs may be needed for stronger rename semantics.
 - Local-only notifications are simpler and more private than cloud push, but they cannot guarantee delivery when the browser or installed PWA is not allowed to run.
 - Year-in-review sharing uses text summary sharing/copy in v1; PNG export remains a future option to avoid adding a heavy DOM capture dependency.
+- PWA install prompting depends on browser support. iOS cannot trigger native installation from JavaScript, so the app shows manual install instructions instead.

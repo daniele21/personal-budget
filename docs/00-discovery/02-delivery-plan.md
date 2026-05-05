@@ -23,6 +23,7 @@
 - Search indexes are computed in memory from local state and are not sent to any service.
 - Compare and year-review reports are computed locally from local transactions.
 - Notifications and reminders are stored locally and use browser notification permission; no Firebase Cloud Messaging or backend scheduler is introduced.
+- The mobile PWA install button does not store install, device, or usage state and does not send any data to a service.
 - No new subprocessors or cross-device transfers are introduced by the feature set.
 
 ## Feature Delivery Slices
@@ -35,7 +36,8 @@
 6. UX quality pass: contextual TopBar back navigation, consistent empty states, undo toasts for destructive actions, haptics, pull-to-refresh feedback, reduced-motion support, focus trap baseline, and ARIA fixes.
 7. Advanced UX pass: swipe-to-action transaction rows, inline quick-edit sheet, batch selection with category change/export/delete, edge swipe navigation between primary pages, and desktop shortcuts.
 8. Visual design pass: accent color tokens, typography tokens, stronger dark-mode containers, category icon theme configuration, animated counters, sparklines, radial safe-to-spend gauge, and replacement of hardcoded chart accents in new/updated surfaces.
-9. Verification and documentation sync: typecheck, unit tests, production build, strategy and delivery docs.
+9. Mobile PWA install action: authenticated header button, browser install event handling, iOS manual add-to-home-screen guidance, standalone suppression.
+10. Verification and documentation sync: typecheck, unit tests, production build, strategy and delivery docs.
 
 ## Follow-Up Candidates
 

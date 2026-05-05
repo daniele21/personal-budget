@@ -128,6 +128,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setIsHydrated(true);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
+
   const recurring = useMemo(
     () => normalizeRecurringExpenses(storedRecurring),
     [storedRecurring],

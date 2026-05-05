@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
+import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, Moon } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -32,6 +32,7 @@ export const ProfilePage = () => {
     savingsGoals, setSavingsGoals, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance,
     user, signOut, isAdmin, cloudBackupEnabled, setCloudBackupEnabled,
     backupStatus, lastBackupDate, deleteCloudBackup, pushBackupNow,
+    isDarkMode, setIsDarkMode,
   } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
@@ -240,6 +241,23 @@ export const ProfilePage = () => {
           <Settings className="w-5 h-5 text-on-surface-variant" />
         </div>
         <div className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-low text-primary">
+                <Moon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-on-surface">Dark mode</p>
+                <p className="text-xs text-on-surface-variant">Use a darker interface theme</p>
+              </div>
+            </div>
+            <Switch
+              checked={isDarkMode}
+              onChange={() => setIsDarkMode(!isDarkMode)}
+              label="Toggle dark mode"
+            />
+          </div>
+          <div className="h-px bg-outline-variant/10" />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-on-surface">Monthly Budget</p>

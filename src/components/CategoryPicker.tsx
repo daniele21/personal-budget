@@ -10,6 +10,7 @@ interface CategoryPickerProps {
   onChange: (category: string) => void;
   onAddCategory?: (name: string) => void;
   label?: string;
+  disabled?: boolean;
 }
 
 export const CategoryPicker = ({
@@ -18,6 +19,7 @@ export const CategoryPicker = ({
   onChange,
   onAddCategory,
   label = 'Category',
+  disabled = false,
 }: CategoryPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -63,7 +65,8 @@ export const CategoryPicker = ({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="w-full flex items-center gap-3 rounded-2xl bg-surface-container-high px-4 py-3 text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary"
+          disabled={disabled}
+          className="w-full flex items-center gap-3 rounded-2xl bg-surface-container-high px-4 py-3 text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface-container-high"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
         >
@@ -72,7 +75,7 @@ export const CategoryPicker = ({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-on-surface truncate">{selectedCategory || 'Select category'}</p>
-            <p className="text-micro font-bold text-on-surface-variant">Tap to choose</p>
+            <p className="text-micro font-bold text-on-surface-variant">{disabled ? 'Locked for this budget' : 'Tap to choose'}</p>
           </div>
           <ChevronRight className="w-4 h-4 text-on-surface-variant flex-shrink-0" />
         </button>
