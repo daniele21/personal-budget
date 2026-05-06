@@ -58,6 +58,9 @@ export interface ColumnMapping {
   dateFormat: string;
 }
 
+const EXCEL_SERIAL_DATE_EPOCH_OFFSET = 25569;
+const MS_PER_DAY = 86_400_000;
+
 // ─── Phase 1: Column Detection ────────────────────────────────────────
 
 function buildColumnDetectionPrompt(rawRowsSample: string): { systemInstruction: string; userPrompt: string } {
@@ -210,6 +213,56 @@ function parseAmountLocally(value: string, fallbackDecimal: ',' | '.'): number {
   return isNaN(parsed) ? 0 : parsed;
 }
 
+function toDateInputValue(year: number, month: number, day: number): string | undefined {
+  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Normalize bank-export dates to the YYYY-MM-DD format required by
+ * HTML date inputs. Returns undefined when the source value is empty
+ * or cannot be parsed safely.
+ */
+export function normalizeImportedDate(value: string | undefined, dateFormat?: string): string | undefined {
+  const rawValue = value?.trim();
+  if (!rawValue) return undefined;
+
+  const serialDate = Number(rawValue);
+  if (Number.isFinite(serialDate) && serialDate > 20_000 && serialDate < 80_000) {
+    const date = new Date((serialDate - EXCEL_SERIAL_DATE_EPOCH_OFFSET) * MS_PER_DAY);
+    return date.toISOString().slice(0, 10);
+  }
+
+  const isoMatch = rawValue.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (isoMatch) {
+    return toDateInputValue(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+  }
+
+  const localMatch = rawValue.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/);
+  if (!localMatch) return undefined;
+
+  const first = Number(localMatch[1]);
+  const second = Number(localMatch[2]);
+  const rawYear = Number(localMatch[3]);
+  const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+  const normalizedFormat = dateFormat?.toUpperCase() ?? '';
+  const monthFirst = normalizedFormat.startsWith('MM') || (first <= 12 && second > 12);
+  const day = monthFirst ? second : first;
+  const month = monthFirst ? first : second;
+
+  return toDateInputValue(year, month, day);
+}
+
 /**
  * Convert a 2D array of rows into a simple CSV-like text representation for the AI.
  */
@@ -260,7 +313,7 @@ export async function extractAndCategorizeTransactions(
   // Check cache first to save tokens if the exact same file is parsed again
   const cacheKeyStr = JSON.stringify({ rawRows, categories });
   const hash = await computeHash(cacheKeyStr);
-  const cacheKey = `gemini_import_cache_v2_${hash}`;
+  const cacheKey = `gemini_import_cache_v3_${hash}`;
 
   if (!forceFresh) {
     try {
@@ -335,7 +388,7 @@ export async function extractAndCategorizeTransactions(
         rawIndex: i,
         description: descRaw.trim(),
         amount: Math.abs(amount),
-        date: dateRaw?.trim()
+        date: normalizeImportedDate(dateRaw, colMapping.dateFormat)
       });
     }
   });
