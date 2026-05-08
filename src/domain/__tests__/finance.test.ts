@@ -503,6 +503,23 @@ describe('getRecurringDue', () => {
     expect(result[0].transaction.sourceMonthKey).toBe('2026-04');
   });
 
+  it('backfills monthly recurring transactions from the configured start date through today', () => {
+    const bill = recurring({
+      startDate: '2026-01-05T00:00:00.000Z',
+      endDate: '2026-12-31T00:00:00.000Z',
+      dayOfMonth: 5,
+    });
+
+    const result = getRecurringDue([bill], [], today);
+
+    expect(result.map((entry) => entry.transaction.sourceMonthKey)).toEqual([
+      '2026-01',
+      '2026-02',
+      '2026-03',
+      '2026-04',
+    ]);
+  });
+
   it('does not generate when a tagged recurring transaction already exists this month', () => {
     const bill = recurring();
     const result = getRecurringDue([bill], [{
@@ -563,6 +580,24 @@ describe('getRecurringDue', () => {
     ]);
   });
 
+  it('backfills weekly recurring transactions across months', () => {
+    const bill = recurring({
+      startDate: '2026-03-25T00:00:00.000Z',
+      endDate: '2026-04-30T00:00:00.000Z',
+      dayOfMonth: 25,
+      frequency: 'weekly',
+    });
+
+    const result = getRecurringDue([bill], [], today);
+
+    expect(result.map((entry) => entry.transaction.sourceMonthKey)).toEqual([
+      '2026-03-25',
+      '2026-04-01',
+      '2026-04-08',
+      '2026-04-15',
+    ]);
+  });
+
   it('dedupes daily recurring transactions by occurrence date', () => {
     const bill = recurring({
       startDate: '2026-04-14T00:00:00.000Z',
@@ -596,8 +631,10 @@ describe('getRecurringDue', () => {
     });
 
     const result = getRecurringDue([bill], [], today);
-    expect(result).toHaveLength(1);
-    expect(result[0].transaction.sourceMonthKey).toBe('2026-04-15');
+    expect(result.map((entry) => entry.transaction.sourceMonthKey)).toEqual([
+      '2025-04-15',
+      '2026-04-15',
+    ]);
   });
 
   it('handles multiple bills', () => {
@@ -610,12 +647,39 @@ describe('getRecurringDue', () => {
     expect(result).toHaveLength(2);
   });
 
-  it('does not generate outside the configured date range', () => {
+  it('backfills due transactions through the configured end date', () => {
     const bill = recurring({
       startDate: '2025-01-05T00:00:00.000Z',
       endDate: '2026-03-05T00:00:00.000Z',
       dayOfMonth: 5,
     });
+
+    expect(getRecurringDue([bill], [], today).map((entry) => entry.transaction.sourceMonthKey)).toEqual([
+      '2025-01',
+      '2025-02',
+      '2025-03',
+      '2025-04',
+      '2025-05',
+      '2025-06',
+      '2025-07',
+      '2025-08',
+      '2025-09',
+      '2025-10',
+      '2025-11',
+      '2025-12',
+      '2026-01',
+      '2026-02',
+      '2026-03',
+    ]);
+  });
+
+  it('does not generate before the configured start date', () => {
+    const bill = recurring({
+      startDate: '2026-04-20T00:00:00.000Z',
+      endDate: '2026-12-31T00:00:00.000Z',
+      dayOfMonth: 20,
+    });
+
     expect(getRecurringDue([bill], [], today)).toHaveLength(0);
   });
 

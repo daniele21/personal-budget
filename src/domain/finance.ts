@@ -5,7 +5,6 @@
 import { Transaction, Budget, RecurringExpense } from '../types';
 import {
   buildRecurringTransaction,
-  getMonthKey,
   getRecurringOccurrenceKey,
   getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
@@ -424,11 +423,11 @@ export interface GeneratedTransaction {
   monthKey: string;
 }
 
-function isSameMonth(date: string, target: Date): boolean {
+function isSameUtcMonth(date: string, target: Date): boolean {
   const parsed = new Date(date);
   return (
-    parsed.getUTCFullYear() === target.getFullYear() &&
-    parsed.getUTCMonth() === target.getMonth()
+    parsed.getUTCFullYear() === target.getUTCFullYear() &&
+    parsed.getUTCMonth() === target.getUTCMonth()
   );
 }
 
@@ -447,8 +446,28 @@ function matchesLegacyRecurringTransaction(transaction: Transaction, bill: Recur
     transaction.category === bill.category &&
     transaction.title === bill.name &&
     transaction.description === `Auto-generated from recurring: ${bill.name}` &&
-    isSameMonth(transaction.date, today)
+    isSameUtcMonth(transaction.date, today)
   );
+}
+
+function getRecurringCandidateMonths(bill: RecurringExpense, today: Date): Array<{ year: number; monthIndex: number }> {
+  const startDate = new Date(bill.startDate);
+  if (Number.isNaN(startDate.getTime())) return [];
+
+  const firstMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+  const lastMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
+  const months: Array<{ year: number; monthIndex: number }> = [];
+
+  let cursor = firstMonth;
+  while (cursor <= lastMonth) {
+    months.push({
+      year: cursor.getUTCFullYear(),
+      monthIndex: cursor.getUTCMonth(),
+    });
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+
+  return months;
 }
 
 /**
@@ -464,34 +483,30 @@ export function getRecurringDue(
   const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   recurring.forEach(bill => {
-    const monthKey = getMonthKey(todayNormalized);
-    const occurrenceDates = getRecurringOccurrencesInMonth(
-      bill,
-      todayNormalized.getFullYear(),
-      todayNormalized.getMonth(),
-    );
+    getRecurringCandidateMonths(bill, todayNormalized).forEach(({ year, monthIndex }) => {
+      const occurrenceDates = getRecurringOccurrencesInMonth(bill, year, monthIndex);
 
-    occurrenceDates.forEach((occurrenceDate) => {
-      if (getUtcDateInputValue(occurrenceDate.toISOString()) > formatLocalDateKey(todayNormalized)) {
-        return;
-      }
+      occurrenceDates.forEach((occurrenceDate) => {
+        if (getUtcDateInputValue(occurrenceDate.toISOString()) > formatLocalDateKey(todayNormalized)) {
+          return;
+        }
 
-      const occurrenceKey = getRecurringOccurrenceKey(bill, occurrenceDate);
-      const alreadyGenerated = existingTransactions.some((transaction) => (
-        transaction.sourceRecurringId === bill.id &&
-        transaction.sourceMonthKey === occurrenceKey
-      ) || (
-        (bill.frequency ?? 'monthly') === 'monthly' &&
-        occurrenceKey === monthKey &&
-        matchesLegacyRecurringTransaction(transaction, bill, today)
-      ));
+        const occurrenceKey = getRecurringOccurrenceKey(bill, occurrenceDate);
+        const alreadyGenerated = existingTransactions.some((transaction) => (
+          transaction.sourceRecurringId === bill.id &&
+          transaction.sourceMonthKey === occurrenceKey
+        ) || (
+          (bill.frequency ?? 'monthly') === 'monthly' &&
+          matchesLegacyRecurringTransaction(transaction, bill, occurrenceDate)
+        ));
 
-      if (alreadyGenerated) return;
+        if (alreadyGenerated) return;
 
-      const transaction = buildRecurringTransaction(bill, occurrenceKey, occurrenceDate);
-      if (!transaction) return;
+        const transaction = buildRecurringTransaction(bill, occurrenceKey, occurrenceDate);
+        if (!transaction) return;
 
-      result.push({ bill, transaction, monthKey: occurrenceKey });
+        result.push({ bill, transaction, monthKey: occurrenceKey });
+      });
     });
   });
 

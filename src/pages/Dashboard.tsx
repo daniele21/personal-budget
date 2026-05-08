@@ -10,7 +10,6 @@ import { Card, EmptyState, Skeleton } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
-import { useRecurringAutoGenerate } from '../hooks/useRecurringAutoGenerate';
 import { formatMonthLabel } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
@@ -31,15 +30,14 @@ const DONUT_COLORS = [
 
 export const Dashboard = () => {
   const {
-    transactions, setTransactions, budgets, recurring,
-    currentBalance, monthlyTotals, monthlyBudget,
+    transactions, setTransactions, budgets,
+    monthlyTotals, monthlyBudget,
     safeToSpend, categorySpending, momChange, recentTransactions, isHydrated,
     categories, addCategory, selectedMonth, setSelectedMonth
   } = useApp();
   const { toast } = useToast();
 
   // Side-effect hooks (UI-level orchestration)
-  useRecurringAutoGenerate(recurring, transactions, setTransactions);
   useBudgetAlerts(budgets, transactions);
 
   // Derived from context
@@ -47,7 +45,7 @@ export const Dashboard = () => {
   const monthlySavings = Math.max(0, monthlyTotals.net);
   const { remaining: safeAmount, usedPercent } = safeToSpend;
   const totalSpent = categorySpending.reduce((acc, c) => acc + c.amount, 0);
-  const animatedBalance = useAnimatedNumber(currentBalance);
+  const animatedBalance = useAnimatedNumber(monthlyTotals.net);
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const [barsMounted, setBarsMounted] = useState(false);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
@@ -137,7 +135,7 @@ export const Dashboard = () => {
       {/* Hero: Balance */}
       <section className="flex flex-col gap-4">
         <div className="space-y-0.5">
-          <p className="text-on-surface-variant text-xs font-bold">Total Balance</p>
+          <p className="text-on-surface-variant text-xs font-bold">Month Balance</p>
           <div className="flex items-baseline gap-2">
             {isHydrated ? (
               <h2 className="text-4xl sm:text-5xl font-headline font-extrabold tracking-tighter text-primary">

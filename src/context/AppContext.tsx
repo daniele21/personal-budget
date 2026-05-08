@@ -296,7 +296,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ─── Derived values (domain layer) ─────────────────────────────
 
-  const currentMonthTransactions = useMemo(() => Finance.filterByMonth(transactions, new Date()), [transactions]);
   const monthlyTransactions = useMemo(() => Finance.filterByMonth(transactions, selectedMonth), [transactions, selectedMonth]);
   const monthlyTotals = useMemo(() => Finance.calculateTotals(monthlyTransactions), [monthlyTransactions]);
   const allTimeTotals = useMemo(() => Finance.calculateTotals(transactions), [transactions]);
@@ -310,8 +309,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const budgetStatuses = useMemo(
-    () => Finance.analyzeBudgets(budgets, currentMonthTransactions),
-    [budgets, currentMonthTransactions]
+    () => Finance.analyzeBudgets(budgets, monthlyTransactions),
+    [budgets, monthlyTransactions]
   );
 
   const categorySpending = useMemo(
@@ -322,8 +321,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const momChange = useMemo(() => Finance.monthOverMonthChange(transactions, selectedMonth), [transactions, selectedMonth]);
 
   const recentTransactions = useMemo(
-    () => Finance.sortByDateDesc(transactions).slice(0, 5),
-    [transactions]
+    () => Finance.sortByDateDesc(monthlyTransactions).slice(0, 5),
+    [monthlyTransactions]
   );
 
   const showInitialDataDialog = (
