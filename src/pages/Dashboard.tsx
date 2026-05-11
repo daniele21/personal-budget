@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -10,7 +10,7 @@ import { Card, EmptyState, Skeleton } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
-import { formatMonthLabel } from '../domain/finance';
+import { filterByAnalyticsLens, formatMonthLabel, spendingByCategory } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Transaction } from '../types';
 import { haptics } from '../utils/haptics';
 import { useToast } from '../components/Toast';
+import { ExtraTransactionBadge } from '../components/ExtraTransactionBadge';
 
 const DONUT_COLORS = [
   'var(--color-primary)',
@@ -32,7 +33,7 @@ export const Dashboard = () => {
   const {
     transactions, setTransactions, budgets,
     monthlyTotals, monthlyBudget,
-    safeToSpend, categorySpending, momChange, recentTransactions, isHydrated,
+    safeToSpend, monthlyTransactions, momChange, recentTransactions, isHydrated,
     categories, addCategory, selectedMonth, setSelectedMonth
   } = useApp();
   const { toast } = useToast();
@@ -44,12 +45,17 @@ export const Dashboard = () => {
   const { income: monthlyIncome, expenses: monthlyExpenses } = monthlyTotals;
   const monthlySavings = Math.max(0, monthlyTotals.net);
   const { remaining: safeAmount, usedPercent } = safeToSpend;
-  const totalSpent = categorySpending.reduce((acc, c) => acc + c.amount, 0);
   const animatedBalance = useAnimatedNumber(monthlyTotals.net);
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const [barsMounted, setBarsMounted] = useState(false);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [spendingLens, setSpendingLens] = useState<'actual' | 'normalized'>('actual');
+  const visibleCategorySpending = useMemo(
+    () => spendingByCategory(filterByAnalyticsLens(monthlyTransactions, spendingLens)),
+    [monthlyTransactions, spendingLens],
+  );
+  const totalSpent = visibleCategorySpending.reduce((acc, c) => acc + c.amount, 0);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setBarsMounted(true));
@@ -92,7 +98,7 @@ export const Dashboard = () => {
   });
 
   // Donut segments
-  const donutSegments = categorySpending.map((cat, i) => ({
+  const donutSegments = visibleCategorySpending.map((cat, i) => ({
     ...cat,
     label: cat.category,
     color: DONUT_COLORS[i % DONUT_COLORS.length],
@@ -238,11 +244,33 @@ export const Dashboard = () => {
 
       {/* Spending by Category — multi-color donut */}
       <Card>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
-          <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
+            <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
+          </div>
+          <div className="flex shrink-0 rounded-full bg-surface-container-high p-1">
+            {[
+              { value: 'actual', label: 'With extras' },
+              { value: 'normalized', label: 'Net' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSpendingLens(option.value as 'actual' | 'normalized')}
+                className={cn(
+                  'h-7 rounded-full px-3 text-micro font-extrabold transition-colors',
+                  spendingLens === option.value
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'text-on-surface-variant hover:bg-surface-container-highest',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {categorySpending.length > 0 ? (
+        {visibleCategorySpending.length > 0 ? (
           <div className="flex flex-col gap-6">
             <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100" role="img" aria-label={`Spending by category total ${formatCurrency(totalSpent)}`}>
@@ -271,7 +299,7 @@ export const Dashboard = () => {
               </div>
             </div>
             <div className="space-y-1.5">
-              {categorySpending.slice(0, 6).map((cat, i) => (
+              {visibleCategorySpending.slice(0, 6).map((cat) => (
                 <div key={cat.category} className="flex items-center justify-between bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5">
                   <div className="flex items-center gap-3">
                     <CategoryBadge category={cat.category} size="md" className="flex-shrink-0" />
@@ -288,8 +316,12 @@ export const Dashboard = () => {
         ) : (
           <EmptyState
             icon={<PieChart className="w-10 h-10" />}
-            title="No expenses this month"
-            description="Add your first expense to see category breakdowns here."
+            title={spendingLens === 'normalized' ? 'No net expenses this month' : 'No expenses this month'}
+            description={
+              spendingLens === 'normalized'
+                ? 'Only extra expenses were found for this month.'
+                : 'Add your first expense to see category breakdowns here.'
+            }
             action={{ label: 'Add transaction', to: '/add' }}
           />
         )}
@@ -331,7 +363,10 @@ export const Dashboard = () => {
             >
               <CategoryBadge category={t.category} size="md" className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-on-surface truncate">{t.title}</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="min-w-0 truncate text-sm font-bold text-on-surface">{t.title}</p>
+                  <ExtraTransactionBadge transaction={t} className="shrink-0" />
+                </div>
                 <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{t.category} • {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">

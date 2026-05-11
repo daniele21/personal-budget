@@ -29,7 +29,7 @@ describe('TransactionHistoryList', () => {
       />,
     );
 
-    expect(screen.getByText('Extra: Furniture')).toBeInTheDocument();
+    expect(screen.getByLabelText('Extra: Furniture')).toBeInTheDocument();
   });
 
   it('does not show an extra badge for recurring-linked transactions even if stale data has the marker', () => {
@@ -50,4 +50,3 @@ describe('TransactionHistoryList', () => {
     expect(screen.queryByText(/extra/i)).not.toBeInTheDocument();
   });
 });
-

@@ -8,6 +8,7 @@ import { CategoryBadge } from '../ui/CategoryBadge';
 import { EmptyState } from '../ui';
 import { SwipeableRow } from '../SwipeableRow';
 import { staggerDelay } from '../../utils/motion';
+import { ExtraTransactionBadge } from '../ExtraTransactionBadge';
 
 interface TransactionHistoryListProps {
   transactions: Transaction[];
@@ -45,13 +46,11 @@ export function TransactionHistoryList({
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <CategoryBadge category={transaction.category} size="md" className="flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-on-surface truncate">{transaction.title}</h4>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <h4 className="min-w-0 truncate text-sm font-bold text-on-surface">{transaction.title}</h4>
+                        <ExtraTransactionBadge transaction={transaction} />
+                      </div>
                       <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{transaction.description}</p>
-                      {transaction.reportingClass === 'extra' && !transaction.sourceRecurringId && (
-                        <span className="mt-1 inline-flex w-fit rounded-full bg-accent-amber/10 px-2 py-0.5 text-micro font-extrabold text-accent-amber">
-                          Extra{transaction.reportingNote ? `: ${transaction.reportingNote}` : ''}
-                        </span>
-                      )}
                       <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">
                         {new Date(transaction.date).toLocaleDateString()} - {transaction.category}
                       </p>

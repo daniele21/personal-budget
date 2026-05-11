@@ -18,6 +18,7 @@ import { haptics } from '../utils/haptics';
 import { pageTransition } from '../utils/motion';
 import { CalendarGrid } from '../components/calendar/CalendarGrid';
 import { CalendarMonthSummary } from '../components/calendar/CalendarMonthSummary';
+import { ExtraTransactionBadge } from '../components/ExtraTransactionBadge';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   formatUtcDateLabel,
@@ -531,7 +532,10 @@ export const CalendarPage = () => {
                 >
                   <CategoryBadge category={tx.category} size="md" className="flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-on-surface truncate">{tx.title || tx.category}</p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="min-w-0 truncate text-sm font-bold text-on-surface">{tx.title || tx.category}</p>
+                      <ExtraTransactionBadge transaction={tx} className="shrink-0" />
+                    </div>
                     <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{tx.category}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-2">
