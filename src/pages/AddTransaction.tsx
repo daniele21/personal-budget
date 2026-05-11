@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { upsertRecurringOverride } from '../domain/recurring';
 import { Card } from '../components/ui';
+import { ExtraFlagToggle } from '../components/ExtraFlagToggle';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,8 +25,9 @@ export const AddTransaction = () => {
   const [category, setCategory] = useState(categories[0]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isExtra, setIsExtra] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paymentMethod, setPaymentMethod] = useState('Credit Card');
+  const [paymentMethod, setPaymentMethod] = useState('Debit Card');
   const [attachmentUrl, setAttachmentUrl] = useState<string | undefined>(undefined);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +41,7 @@ export const AddTransaction = () => {
         setCategory(transaction.category);
         setTitle(transaction.title);
         setDescription(transaction.description);
+        setIsExtra(!transaction.sourceRecurringId && transaction.reportingClass === 'extra');
         setDate(new Date(transaction.date).toISOString().split('T')[0]);
         setPaymentMethod(transaction.paymentMethod);
         
@@ -85,6 +88,8 @@ export const AddTransaction = () => {
       sourceRecurringId: existingTransaction?.sourceRecurringId,
       sourceMonthKey: existingTransaction?.sourceMonthKey,
       recurringEdited: existingTransaction?.sourceRecurringId ? true : existingTransaction?.recurringEdited,
+      reportingClass: existingTransaction?.sourceRecurringId ? undefined : isExtra ? 'extra' : undefined,
+      reportingNote: undefined,
     };
 
     if (attachmentUrl && attachmentUrl !== 'indexeddb') {
@@ -200,8 +205,21 @@ export const AddTransaction = () => {
       </section>
 
       <div className="space-y-4">
-        <Card className="p-6">
-          <label className="block text-on-surface-variant text-micro mb-4 font-bold">Transaction Title</label>
+        <Card
+          className={cn(
+            'p-6 transition-colors',
+            isExtra && !transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && 'border-accent-amber/35 bg-accent-amber/10',
+          )}
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <label className="block text-on-surface-variant text-micro font-bold">Transaction Title</label>
+            {!transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
+              <ExtraFlagToggle
+                checked={isExtra}
+                onChange={() => setIsExtra((current) => !current)}
+              />
+            )}
+          </div>
           {id && transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
             <p className="text-micro font-bold text-primary mb-3">
               This edit applies only to this recurring month

@@ -5,7 +5,7 @@ import {
   normalizeAppData,
   syncAppData,
 } from '../model';
-import { RecurringExpense } from '../../types';
+import { RecurringExpense, Transaction } from '../../types';
 
 function recurring(overrides: Partial<RecurringExpense> = {}): RecurringExpense {
   return {
@@ -47,6 +47,48 @@ describe('central app data model', () => {
       '2026-05',
     ]);
     expect(data.transactions.every((transaction) => transaction.sourceRecurringId === 'rent')).toBe(true);
+    expect(data.transactions.every((transaction) => transaction.reportingClass === undefined)).toBe(true);
+  });
+
+  it('normalizes reporting metadata and strips extras from recurring-linked transactions', () => {
+    const transactions: Transaction[] = [
+      {
+        id: 'manual-extra',
+        amount: 200,
+        type: 'expense',
+        category: 'Travel',
+        date: '2026-04-10T00:00:00.000Z',
+        title: 'Trip',
+        description: '',
+        paymentMethod: 'Card',
+        reportingClass: 'extra',
+        reportingNote: 'Vacation',
+      },
+      {
+        id: 'rec-extra',
+        amount: 900,
+        type: 'expense',
+        category: 'Housing',
+        date: '2026-04-01T00:00:00.000Z',
+        title: 'Rent',
+        description: 'Auto-generated from recurring: Rent',
+        paymentMethod: 'Bank Transfer',
+        sourceRecurringId: 'rent',
+        sourceMonthKey: '2026-04',
+        reportingClass: 'extra',
+        reportingNote: 'Should be stripped',
+      },
+    ];
+
+    const data = normalizeAppData({
+      ...INITIAL_APP_DATA,
+      transactions,
+      recurring: [recurring()],
+    });
+
+    expect(data.transactions.find((transaction) => transaction.id === 'manual-extra')?.reportingClass).toBe('extra');
+    expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingClass).toBeUndefined();
+    expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingNote).toBeUndefined();
   });
 
   it('checks financial emptiness from the canonical financial collections', () => {

@@ -26,6 +26,12 @@ const RANGES: { key: RangeKey; label: string }[] = [
   { key: 'ALL', label: 'All' },
 ];
 
+const ANALYTICS_LENSES: { key: Finance.AnalyticsLens; label: string }[] = [
+  { key: 'actual', label: 'Actual' },
+  { key: 'normalized', label: 'Net of extras' },
+  { key: 'extras', label: 'Extras' },
+];
+
 function getDateRange(range: RangeKey, anchorYear: number, anchorMonth: number): { start: Date; end: Date; prevStart: Date; prevEnd: Date; label: string } {
   const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59); // end of anchor month
 
@@ -121,6 +127,7 @@ export const InsightsPage = () => {
   const [anchorYear, setAnchorYear] = useState(today.getFullYear());
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
   const [range, setRange] = useState<RangeKey>('1M');
+  const [analyticsLens, setAnalyticsLens] = useState<Finance.AnalyticsLens>('actual');
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
   const { start, end, prevStart, prevEnd, label: periodLabel } = useMemo(
@@ -130,31 +137,34 @@ export const InsightsPage = () => {
 
   const periodTx = useMemo(() => filterByRange(transactions, start, end), [transactions, start, end]);
   const prevPeriodTx = useMemo(() => filterByRange(transactions, prevStart, prevEnd), [transactions, prevStart, prevEnd]);
+  const visiblePeriodTx = useMemo(() => Finance.filterByAnalyticsLens(periodTx, analyticsLens), [periodTx, analyticsLens]);
+  const visiblePrevPeriodTx = useMemo(() => Finance.filterByAnalyticsLens(prevPeriodTx, analyticsLens), [prevPeriodTx, analyticsLens]);
+  const extraImpact = useMemo(() => Finance.getExtraImpact(periodTx), [periodTx]);
 
-  const totals = useMemo(() => Finance.calculateTotals(periodTx), [periodTx]);
-  const prevTotals = useMemo(() => Finance.calculateTotals(prevPeriodTx), [prevPeriodTx]);
+  const totals = useMemo(() => Finance.calculateTotals(visiblePeriodTx), [visiblePeriodTx]);
+  const prevTotals = useMemo(() => Finance.calculateTotals(visiblePrevPeriodTx), [visiblePrevPeriodTx]);
 
   // Spending by category
   const categorySpending = useMemo(() => {
-    const expenses = Finance.filterByType(periodTx, 'expense');
+    const expenses = Finance.filterByType(visiblePeriodTx, 'expense');
     const cats = Array.from(new Set(expenses.map(t => t.category)));
     const total = expenses.reduce((s, t) => s + t.amount, 0);
     return cats.map(cat => {
       const amount = Finance.filterByCategory(expenses, cat).reduce((s, t) => s + t.amount, 0);
       return { category: cat, amount, percentage: total > 0 ? amount / total : 0 };
     }).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
-  }, [periodTx]);
+  }, [visiblePeriodTx]);
 
   // Income by category
   const categoryIncome = useMemo(() => {
-    const incomes = Finance.filterByType(periodTx, 'income');
+    const incomes = Finance.filterByType(visiblePeriodTx, 'income');
     const cats = Array.from(new Set(incomes.map(t => t.category)));
     const total = incomes.reduce((s, t) => s + t.amount, 0);
     return cats.map(cat => {
       const amount = Finance.filterByCategory(incomes, cat).reduce((s, t) => s + t.amount, 0);
       return { category: cat, amount, percentage: total > 0 ? amount / total : 0 };
     }).sort((a, b) => b.amount - a.amount);
-  }, [periodTx]);
+  }, [visiblePeriodTx]);
 
   // Merged category data
   const allCategories = useMemo(() => {
@@ -164,12 +174,12 @@ export const InsightsPage = () => {
       const income = categoryIncome.find(c => c.category === cat)?.amount || 0;
       const budget = budgets.find(b => b.category === cat);
 
-      const prevCatExpense = Finance.filterByCategory(Finance.filterByType(prevPeriodTx, 'expense'), cat).reduce((s, t) => s + t.amount, 0);
+      const prevCatExpense = Finance.filterByCategory(Finance.filterByType(visiblePrevPeriodTx, 'expense'), cat).reduce((s, t) => s + t.amount, 0);
       const change = prevCatExpense > 0 ? ((expense - prevCatExpense) / prevCatExpense) * 100 : null;
 
       return { category: cat, expense, income, net: income - expense, budget, change };
     }).sort((a, b) => (b.expense + b.income) - (a.expense + a.income));
-  }, [categorySpending, categoryIncome, budgets, prevPeriodTx]);
+  }, [categorySpending, categoryIncome, budgets, visiblePrevPeriodTx]);
 
   // Navigation
   const goBack = () => {
@@ -241,6 +251,30 @@ export const InsightsPage = () => {
           </button>
         ))}
       </div>
+
+      <div className="flex items-center gap-1 bg-surface-container-high rounded-2xl p-1">
+        {ANALYTICS_LENSES.map((lens) => (
+          <button
+            key={lens.key}
+            onClick={() => { setAnalyticsLens(lens.key); setExpandedCat(null); }}
+            className={cn(
+              'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
+              analyticsLens === lens.key ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low',
+            )}
+          >
+            {lens.label}
+          </button>
+        ))}
+      </div>
+
+      {extraImpact.count > 0 && analyticsLens !== 'extras' && (
+        <div className="rounded-2xl border border-accent-amber/15 bg-accent-amber/10 px-4 py-3">
+          <p className="text-xs font-bold text-on-surface">
+            Extras this period: {formatCurrency(extraImpact.expenses)} expenses
+            {extraImpact.income > 0 ? ` · ${formatCurrency(extraImpact.income)} income` : ''}
+          </p>
+        </div>
+      )}
 
       {/* Period nav (arrows shift the anchor month) */}
       <div className="flex items-center justify-between">
@@ -378,7 +412,7 @@ export const InsightsPage = () => {
                   // Scale budget limit by number of months in range
                   const scaledLimit = cat.budget ? cat.budget.limit * rangeMonths : null;
                   const budgetPercent = scaledLimit ? Math.min(100, (cat.expense / scaledLimit) * 100) : null;
-                  const catTx = periodTx.filter(t => t.category === cat.category);
+                  const catTx = visiblePeriodTx.filter(t => t.category === cat.category);
 
                   return (
                     <div key={`expense-${cat.category}`}>
@@ -472,7 +506,7 @@ export const InsightsPage = () => {
                 <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Income</h3>
                 {allCategories.filter(c => c.income > 0).map(cat => {
                   const isExpanded = expandedCat === cat.category;
-                  const catTx = periodTx.filter(t => t.category === cat.category);
+                  const catTx = visiblePeriodTx.filter(t => t.category === cat.category);
 
                   return (
                     <div key={`income-${cat.category}`}>

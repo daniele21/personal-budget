@@ -7,6 +7,10 @@ import {
   sortByDateDesc,
   sortTransactions,
   calculateTotals,
+  calculateTotalsByLens,
+  filterByAnalyticsLens,
+  getExtraImpact,
+  getTransactionReportingClass,
   analyzeBudget,
   analyzeBudgets,
   monthOverMonthChange,
@@ -118,6 +122,37 @@ describe('filterByType', () => {
 
   it('returns empty for empty input', () => {
     expect(filterByType([], 'expense')).toHaveLength(0);
+  });
+});
+
+describe('analytics lenses', () => {
+  const transactions = [
+    tx({ amount: 100, type: 'expense', category: 'Food' }),
+    tx({ amount: 250, type: 'expense', category: 'Travel', reportingClass: 'extra', reportingNote: 'Trip' }),
+    tx({ amount: 3000, type: 'income', category: 'Salary' }),
+    tx({ amount: 500, type: 'income', category: 'Bonus', reportingClass: 'extra' }),
+    tx({ amount: 80, type: 'expense', category: 'Subscriptions', sourceRecurringId: 'r1', reportingClass: 'extra' }),
+  ];
+
+  it('treats missing reporting class and recurring transactions as regular', () => {
+    expect(getTransactionReportingClass(transactions[0])).toBe('regular');
+    expect(getTransactionReportingClass(transactions[4])).toBe('regular');
+  });
+
+  it('filters actual, normalized, and extras lenses', () => {
+    expect(filterByAnalyticsLens(transactions, 'actual')).toHaveLength(5);
+    expect(filterByAnalyticsLens(transactions, 'normalized').map(item => item.amount)).toEqual([100, 3000, 80]);
+    expect(filterByAnalyticsLens(transactions, 'extras').map(item => item.amount)).toEqual([250, 500]);
+  });
+
+  it('calculates totals by analytics lens', () => {
+    expect(calculateTotalsByLens(transactions, 'actual')).toEqual({ income: 3500, expenses: 430, net: 3070 });
+    expect(calculateTotalsByLens(transactions, 'normalized')).toEqual({ income: 3000, expenses: 180, net: 2820 });
+    expect(calculateTotalsByLens(transactions, 'extras')).toEqual({ income: 500, expenses: 250, net: 250 });
+  });
+
+  it('summarizes extra impact', () => {
+    expect(getExtraImpact(transactions)).toEqual({ income: 500, expenses: 250, net: 250, count: 2 });
   });
 });
 

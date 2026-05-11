@@ -7,7 +7,7 @@ import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { formatMonthLabel } from '../domain/finance';
+import { filterByAnalyticsLens, formatMonthLabel } from '../domain/finance';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { Card, Button, Input, EmptyState } from '../components/ui';
@@ -35,6 +35,12 @@ export const BudgetsPage = () => {
 
   const getSpentForCategory = (category: string) => {
     return monthlyTransactions
+      .filter(t => t.category === category && t.type === 'expense')
+      .reduce((acc, t) => acc + t.amount, 0);
+  };
+
+  const getNormalizedSpentForCategory = (category: string) => {
+    return filterByAnalyticsLens(monthlyTransactions, 'normalized')
       .filter(t => t.category === category && t.type === 'expense')
       .reduce((acc, t) => acc + t.amount, 0);
   };
@@ -76,6 +82,8 @@ export const BudgetsPage = () => {
 
   const totalLimit = budgets.reduce((acc, b) => acc + b.limit, 0);
   const totalSpent = budgets.reduce((acc, b) => acc + getSpentForCategory(b.category), 0);
+  const totalNormalizedSpent = budgets.reduce((acc, b) => acc + getNormalizedSpentForCategory(b.category), 0);
+  const totalExtraSpent = totalSpent - totalNormalizedSpent;
   const progress = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
 
   return (
@@ -99,6 +107,11 @@ export const BudgetsPage = () => {
           <div className="flex flex-col gap-1">
             <h2 className="text-4xl font-extrabold tracking-tight">{formatCurrency(totalSpent)}</h2>
             <span className="text-xs opacity-80 font-medium">of {formatCurrency(totalLimit)} limit</span>
+            {totalExtraSpent > 0 && (
+              <span className="text-xs opacity-80 font-medium">
+                {formatCurrency(totalNormalizedSpent)} net of extras · +{formatCurrency(totalExtraSpent)} extras
+              </span>
+            )}
           </div>
           <div className="mt-8 space-y-3">
             <div className="flex justify-between text-micro font-bold">
@@ -181,7 +194,10 @@ export const BudgetsPage = () => {
       <div className="space-y-4">
         {budgets.length > 0 ? budgets.map(budget => {
           const spent = getSpentForCategory(budget.category);
+          const normalizedSpent = getNormalizedSpentForCategory(budget.category);
+          const extraSpent = spent - normalizedSpent;
           const budgetProgress = budget.limit > 0 ? Math.round((spent / budget.limit) * 100) : 0;
+          const normalizedProgress = budget.limit > 0 ? Math.round((normalizedSpent / budget.limit) * 100) : 0;
           
           return (
             <button
@@ -211,6 +227,11 @@ export const BudgetsPage = () => {
                     <div className="text-right">
                       <p className="text-sm font-extrabold text-on-surface">{formatCurrency(spent)}</p>
                       <p className="text-xs text-on-surface-variant font-medium">of {formatCurrency(budget.limit)}</p>
+                      {extraSpent > 0 && (
+                        <p className="text-micro font-bold text-accent-amber">
+                          {formatCurrency(normalizedSpent)} net · +{formatCurrency(extraSpent)} extras
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -227,7 +248,12 @@ export const BudgetsPage = () => {
                   <p className="text-xs text-accent-amber font-bold mt-2">Approaching limit</p>
                 )}
                 {budgetProgress > 100 && (
-                  <p className="text-xs text-tertiary font-bold mt-2">🚨 Budget exceeded!</p>
+                  <p className="text-xs text-tertiary font-bold mt-2">Budget exceeded!</p>
+                )}
+                {extraSpent > 0 && (
+                  <p className="text-xs text-on-surface-variant font-bold mt-2">
+                    Net of extras: {normalizedProgress}% used
+                  </p>
                 )}
               </Card>
             </button>

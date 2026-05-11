@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Pencil } from 'lucide-react';
 import { Transaction } from '../types';
-import { Button, Input } from './ui';
+import { Button } from './ui';
 import { CategoryPicker } from './CategoryPicker';
 import { NumericKeypadModal } from './NumericKeypadModal';
+import { ExtraFlagToggle } from './ExtraFlagToggle';
 import { APP_CONFIG } from '../constants';
 import { cn } from '../lib/utils';
 
@@ -32,6 +33,7 @@ export function TransactionQuickEditDialog({
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [description, setDescription] = useState('');
+  const [isExtra, setIsExtra] = useState(false);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export function TransactionQuickEditDialog({
     setType(transaction.type);
     setPaymentMethod(transaction.paymentMethod);
     setDescription(transaction.description || '');
+    setIsExtra(!transaction.sourceRecurringId && transaction.reportingClass === 'extra');
   }, [transaction]);
 
   const handleSave = () => {
@@ -59,6 +62,8 @@ export function TransactionQuickEditDialog({
       paymentMethod,
       description,
       recurringEdited: transaction.sourceRecurringId ? true : transaction.recurringEdited,
+      reportingClass: transaction.sourceRecurringId ? undefined : isExtra ? 'extra' : undefined,
+      reportingNote: undefined,
     });
   };
 
@@ -134,8 +139,23 @@ export function TransactionQuickEditDialog({
               </section>
 
               <div className="space-y-3 max-h-[50vh] overflow-y-auto px-1 pb-2">
-                <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
-                  <label className="text-micro font-bold text-on-surface-variant">Transaction Title</label>
+                <div
+                  className={cn(
+                    'rounded-2xl border p-4 transition-colors',
+                    isExtra && !transaction.sourceRecurringId
+                      ? 'border-accent-amber/35 bg-accent-amber/10'
+                      : 'border-transparent bg-surface-container-low',
+                  )}
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <label className="text-micro font-bold text-on-surface-variant">Transaction Title</label>
+                    {!transaction.sourceRecurringId && (
+                      <ExtraFlagToggle
+                        checked={isExtra}
+                        onChange={() => setIsExtra((current) => !current)}
+                      />
+                    )}
+                  </div>
                   <input 
                     className="w-full bg-transparent border-none p-0 text-sm font-bold text-on-surface focus:ring-0" 
                     placeholder="Title"

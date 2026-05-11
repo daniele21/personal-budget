@@ -1,11 +1,7 @@
 /**
- * Excel file parser — extracts raw rows from .xlsx / .xls / .csv files.
- *
- * Uses the SheetJS (xlsx) library for client-side parsing.
- * Returns parsed rows as arrays of key-value objects using the first
- * row as header names.
+ * Spreadsheet file parser — extracts raw rows from .xlsx / .csv files.
  */
-import * as XLSX from 'xlsx';
+import type ExcelJS from 'exceljs';
 
 /** A single parsed row from the spreadsheet, keyed by column header */
 export type SpreadsheetRow = Record<string, string | number | undefined>;
@@ -17,49 +13,96 @@ export interface ParsedSpreadsheet {
   rawRows: string[][];
 }
 
+function cellValueToString(value: ExcelJS.CellValue): string {
+  if (value == null) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') {
+    if ('text' in value && typeof value.text === 'string') return value.text;
+    if ('result' in value) return cellValueToString(value.result as ExcelJS.CellValue);
+    if ('richText' in value && Array.isArray(value.richText)) {
+      return value.richText.map((part) => part.text).join('');
+    }
+    if ('hyperlink' in value && 'text' in value && typeof value.text === 'string') return value.text;
+    return String(value);
+  }
+  return String(value);
+}
+
+function cleanRawRows(rawRows: string[][]): string[][] {
+  return rawRows
+    .filter((row) => row.some((cell) => cell.trim() !== ''))
+    .map((row) => row.map((cell) => cell.trim()));
+}
+
+async function parseCsvFile(file: File): Promise<ParsedSpreadsheet> {
+  const { default: Papa } = await import('papaparse');
+  const text = await file.text();
+  const result = Papa.parse<string[]>(text, {
+    skipEmptyLines: 'greedy',
+  });
+
+  if (result.errors.length > 0) {
+    throw new Error(`CSV non valido: ${result.errors[0]?.message ?? 'errore di parsing'}.`);
+  }
+
+  const cleanRows = cleanRawRows(result.data.map((row) => row.map((cell) => String(cell))));
+  if (cleanRows.length === 0) {
+    throw new Error('Il file è vuoto o non contiene dati validi.');
+  }
+
+  return {
+    sheetName: 'CSV',
+    rawRows: cleanRows,
+  };
+}
+
+async function parseXlsxFile(file: File): Promise<ParsedSpreadsheet> {
+  const { default: ExcelJS } = await import('exceljs');
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const sheet = workbook.worksheets[0];
+  if (!sheet) {
+    throw new Error('Il file non contiene fogli di lavoro.');
+  }
+
+  const rawRows: string[][] = [];
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    const values: string[] = [];
+    for (let column = 1; column <= sheet.actualColumnCount; column += 1) {
+      values.push(cellValueToString(row.getCell(column).value));
+    }
+    rawRows.push(values);
+  });
+
+  const cleanRows = cleanRawRows(rawRows);
+  if (cleanRows.length === 0) {
+    throw new Error('Il foglio è vuoto o non contiene dati validi.');
+  }
+
+  return {
+    sheetName: sheet.name,
+    rawRows: cleanRows,
+  };
+}
+
 /**
  * Parse an Excel or CSV file from a browser File object.
  * Extracts all non-empty rows as a 2D array of strings.
  * We do not attempt to guess the header row locally, as the AI handles it better.
  */
 export async function parseSpreadsheetFile(file: File): Promise<ParsedSpreadsheet> {
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: true });
-
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
-    throw new Error('Il file non contiene fogli di lavoro.');
-  }
-
-  const sheet = workbook.Sheets[sheetName];
-  
-  // Get raw arrays of cells
-  const rawData = XLSX.utils.sheet_to_json<any[]>(sheet, {
-    header: 1, 
-    defval: '',
-    blankrows: false,
-    raw: false,
-  });
-
-  // Filter out rows that are completely empty
-  const cleanRows = rawData
-    .filter(row => Array.isArray(row) && row.some(cell => String(cell).trim() !== ''))
-    .map(row => row.map(cell => String(cell).trim()));
-
-  if (cleanRows.length === 0) {
-    throw new Error('Il foglio è vuoto o non contiene dati validi.');
-  }
-
-  return {
-    sheetName,
-    rawRows: cleanRows,
-  };
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.csv')) return parseCsvFile(file);
+  if (lowerName.endsWith('.xlsx')) return parseXlsxFile(file);
+  throw new Error(`Formato file non supportato. Carica uno di questi formati: ${SUPPORTED_EXTENSIONS.join(', ')}.`);
 }
 
 /**
  * Supported file extensions for import.
  */
-export const SUPPORTED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
+export const SUPPORTED_EXTENSIONS = ['.xlsx', '.csv'];
 
 /**
  * Check if a filename has a supported extension.

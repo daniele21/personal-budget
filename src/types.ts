@@ -1,4 +1,5 @@
 export type TransactionType = 'expense' | 'income';
+export type TransactionReportingClass = 'regular' | 'extra';
 
 export interface Transaction {
   id: string;
@@ -14,6 +15,8 @@ export interface Transaction {
   sourceRecurringId?: string;
   sourceMonthKey?: string;
   recurringEdited?: boolean;
+  reportingClass?: TransactionReportingClass;
+  reportingNote?: string;
 }
 
 export interface Budget {

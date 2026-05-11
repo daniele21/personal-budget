@@ -47,6 +47,11 @@ export function TransactionHistoryList({
                     <div className="min-w-0 flex-1">
                       <h4 className="text-sm font-bold text-on-surface truncate">{transaction.title}</h4>
                       <p className="text-xs font-medium text-on-surface-variant line-clamp-1">{transaction.description}</p>
+                      {transaction.reportingClass === 'extra' && !transaction.sourceRecurringId && (
+                        <span className="mt-1 inline-flex w-fit rounded-full bg-accent-amber/10 px-2 py-0.5 text-micro font-extrabold text-accent-amber">
+                          Extra{transaction.reportingNote ? `: ${transaction.reportingNote}` : ''}
+                        </span>
+                      )}
                       <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">
                         {new Date(transaction.date).toLocaleDateString()} - {transaction.category}
                       </p>

@@ -68,14 +68,31 @@ function numberOrDefault(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function normalizeTransaction(transaction: Transaction): Transaction {
+  const reportingClass = transaction.sourceRecurringId
+    ? undefined
+    : transaction.reportingClass === 'extra'
+      ? 'extra'
+      : undefined;
+  const reportingNote = reportingClass === 'extra' && typeof transaction.reportingNote === 'string'
+    ? transaction.reportingNote.trim()
+    : '';
+
+  return {
+    ...transaction,
+    reportingClass,
+    reportingNote: reportingNote || undefined,
+  };
+}
+
 export function normalizeAppData(input: AppDataInput = {}): AppData {
   const recurring = normalizeRecurringExpenses(
     arrayOrDefault<RecurringExpense>(input.recurring, INITIAL_APP_DATA.recurring),
   );
-  const transactions = arrayOrDefault<Transaction>(input.transactions, INITIAL_APP_DATA.transactions);
+  const transactions = arrayOrDefault<Transaction>(input.transactions, INITIAL_APP_DATA.transactions).map(normalizeTransaction);
 
   return {
-    transactions: syncRecurringTransactions(recurring, transactions),
+    transactions: syncRecurringTransactions(recurring, transactions).map(normalizeTransaction),
     budgets: arrayOrDefault<Budget>(input.budgets, INITIAL_APP_DATA.budgets),
     recurring,
     accounts: arrayOrDefault<Account>(input.accounts, INITIAL_APP_DATA.accounts),
@@ -91,7 +108,7 @@ export function syncAppData(data: AppData, today: Date = new Date()): AppData {
   return {
     ...data,
     recurring,
-    transactions: syncRecurringTransactions(recurring, data.transactions, today),
+    transactions: syncRecurringTransactions(recurring, data.transactions, today).map(normalizeTransaction),
   };
 }
 

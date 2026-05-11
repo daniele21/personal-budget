@@ -475,6 +475,8 @@ export function reconcileRecurringTransactions(
       description: expected.description,
       paymentMethod: expected.paymentMethod,
       recurringEdited: expected.recurringEdited,
+      reportingClass: undefined,
+      reportingNote: undefined,
     }];
   });
 }

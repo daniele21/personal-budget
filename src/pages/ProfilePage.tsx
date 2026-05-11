@@ -169,7 +169,23 @@ export const ProfilePage = () => {
 
   const handleExport = () => {
     // Export Transactions
-    const transactionsCsv = Papa.unparse(transactions);
+    const transactionsCsv = Papa.unparse(transactions.map((transaction) => ({
+      id: transaction.id,
+      amount: transaction.amount,
+      type: transaction.type,
+      category: transaction.category,
+      date: transaction.date,
+      title: transaction.title,
+      description: transaction.description,
+      paymentMethod: transaction.paymentMethod,
+      attachmentUrl: transaction.attachmentUrl,
+      verified: transaction.verified,
+      sourceRecurringId: transaction.sourceRecurringId,
+      sourceMonthKey: transaction.sourceMonthKey,
+      recurringEdited: transaction.recurringEdited,
+      reportingClass: transaction.reportingClass ?? 'regular',
+      reportingNote: transaction.reportingNote ?? '',
+    })));
     const transactionsBlob = new Blob([transactionsCsv], { type: 'text/csv;charset=utf-8;' });
     const transactionsUrl = URL.createObjectURL(transactionsBlob);
     const transactionsLink = document.createElement('a');

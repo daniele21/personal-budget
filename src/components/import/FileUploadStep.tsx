@@ -1,7 +1,7 @@
 /**
  * FileUploadStep — First step of the import wizard.
  *
- * Allows the user to upload an Excel (.xlsx, .xls) or CSV file
+ * Allows the user to upload an Excel (.xlsx) or CSV file
  * via drag-and-drop or file picker.
  *
  * Includes a prominent privacy notice informing the user that the
@@ -164,7 +164,7 @@ export function FileUploadStep({ onFileSelected, isProcessing }: FileUploadStepP
               {isDragOver ? 'Drop your file here' : 'Drag & drop your file'}
             </p>
             <p className="text-micro text-on-surface-variant mt-1">
-              or click to browse · .xlsx, .xls, .csv
+              or click to browse · .xlsx, .csv
             </p>
           </div>
         )}
@@ -173,7 +173,7 @@ export function FileUploadStep({ onFileSelected, isProcessing }: FileUploadStepP
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
           onChange={handleInputChange}
           disabled={isProcessing}
         />

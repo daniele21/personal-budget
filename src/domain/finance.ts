@@ -2,7 +2,7 @@
  * Domain logic — pure functions for financial calculations.
  * No React, no side effects, no UI concerns. Fully testable.
  */
-import { Transaction, Budget, RecurringExpense } from '../types';
+import { Transaction, Budget, RecurringExpense, TransactionReportingClass } from '../types';
 import {
   buildRecurringTransaction,
   getRecurringOccurrenceKey,
@@ -12,6 +12,21 @@ import {
 } from './recurring';
 
 // ─── Transaction Filtering ──────────────────────────────────────────
+
+export type AnalyticsLens = 'actual' | 'normalized' | 'extras';
+
+export function getTransactionReportingClass(transaction: Transaction): TransactionReportingClass {
+  if (transaction.sourceRecurringId) return 'regular';
+  return transaction.reportingClass === 'extra' ? 'extra' : 'regular';
+}
+
+export function filterByAnalyticsLens(transactions: Transaction[], lens: AnalyticsLens): Transaction[] {
+  if (lens === 'actual') return transactions;
+  return transactions.filter((transaction) => {
+    const reportingClass = getTransactionReportingClass(transaction);
+    return lens === 'extras' ? reportingClass === 'extra' : reportingClass !== 'extra';
+  });
+}
 
 export function filterByMonth(transactions: Transaction[], date: Date = new Date()): Transaction[] {
   const year = date.getFullYear();
@@ -80,6 +95,23 @@ export function calculateTotals(transactions: Transaction[]): TransactionTotals 
   const income = filterByType(transactions, 'income').reduce((acc, t) => acc + t.amount, 0);
   const expenses = filterByType(transactions, 'expense').reduce((acc, t) => acc + t.amount, 0);
   return { income, expenses, net: income - expenses };
+}
+
+export function calculateTotalsByLens(transactions: Transaction[], lens: AnalyticsLens): TransactionTotals {
+  return calculateTotals(filterByAnalyticsLens(transactions, lens));
+}
+
+export interface ExtraImpact {
+  income: number;
+  expenses: number;
+  net: number;
+  count: number;
+}
+
+export function getExtraImpact(transactions: Transaction[]): ExtraImpact {
+  const extras = filterByAnalyticsLens(transactions, 'extras');
+  const totals = calculateTotals(extras);
+  return { ...totals, count: extras.length };
 }
 
 // ─── Budget Analysis ────────────────────────────────────────────────

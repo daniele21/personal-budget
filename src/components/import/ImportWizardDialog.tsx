@@ -41,6 +41,37 @@ const STEPS: { key: WizardStep; label: string }[] = [
   { key: 'summary', label: 'Done' },
 ];
 
+function parseAuraExportRows(rawRows: string[][]): Transaction[] | null {
+  const headerIndex = rawRows.findIndex((row) => row.some((cell) => cell.trim() === 'reportingClass'));
+  if (headerIndex === -1) return null;
+
+  const headers = rawRows[headerIndex].map((cell) => cell.trim());
+  const required = ['amount', 'type', 'category', 'date', 'title', 'description', 'paymentMethod'];
+  if (!required.every((key) => headers.includes(key))) return null;
+
+  const indexOf = (key: string) => headers.indexOf(key);
+  return rawRows.slice(headerIndex + 1)
+    .filter((row) => row.some((cell) => cell.trim()))
+    .map((row, index) => {
+      const amount = parseFloat(row[indexOf('amount')] ?? '');
+      const type = row[indexOf('type')] === 'income' ? 'income' : 'expense';
+      const reportingClass = row[indexOf('reportingClass')] === 'extra' ? 'extra' : undefined;
+      return {
+        id: row[indexOf('id')] || `import_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+        amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
+        type,
+        category: row[indexOf('category')] || 'Uncategorized',
+        date: row[indexOf('date')] || new Date().toISOString(),
+        title: row[indexOf('title')] || row[indexOf('description')] || 'Imported transaction',
+        description: row[indexOf('description')] || '',
+        paymentMethod: row[indexOf('paymentMethod')] || 'Bank Transfer',
+        reportingClass,
+        reportingNote: reportingClass === 'extra' ? row[indexOf('reportingNote')] || undefined : undefined,
+      } satisfies Transaction;
+    })
+    .filter((transaction) => transaction.amount > 0);
+}
+
 interface ImportWizardDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -94,6 +125,14 @@ export function ImportWizardDialog({ isOpen, onClose }: ImportWizardDialogProps)
     try {
       // 1. Parse the spreadsheet client-side
       const parsed = await parseSpreadsheetFile(selectedFile);
+      const auraExportTransactions = parseAuraExportRows(parsed.rawRows);
+      if (auraExportTransactions) {
+        addTransactions(auraExportTransactions);
+        setImportedTxs(auraExportTransactions);
+        setStep('summary');
+        toast(`${auraExportTransactions.length} Aura transactions imported!`, 'success');
+        return;
+      }
 
       // 2. Send raw data to Gemini for extraction + categorization
       const results = await extractAndCategorizeTransactions(
@@ -123,7 +162,7 @@ export function ImportWizardDialog({ isOpen, onClose }: ImportWizardDialogProps)
       setStep('upload');
       toast(message, 'error');
     }
-  }, [categories, toast, user]);
+  }, [addTransactions, categories, toast, user]);
 
   // ── Step 3: Review confirmed → Import ─────────────────────────────
 
