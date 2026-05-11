@@ -10,6 +10,9 @@
  */
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import type { BackupPayload } from '../data/model';
+
+export type { BackupPayload };
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -71,19 +74,6 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes.buffer;
-}
-
-// ─── Backup payload shape ───────────────────────────────────────────
-
-export interface BackupPayload {
-  transactions: unknown[];
-  budgets: unknown[];
-  recurring: unknown[];
-  accounts: unknown[];
-  categories: string[];
-  archivedCategories?: string[];
-  savingsGoals?: unknown[];
-  monthlyBudget: number;
 }
 
 // ─── Public API ─────────────────────────────────────────────────────

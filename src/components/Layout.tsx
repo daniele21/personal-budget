@@ -4,7 +4,6 @@ import { TopBar } from './TopBar';
 import { BottomNav } from './BottomNav';
 import { useApp } from '../context/AppContext';
 import { useNotificationScheduler } from '../hooks/useNotificationScheduler';
-import { useRecurringAutoGenerate } from '../hooks/useRecurringAutoGenerate';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 import { useToast } from './Toast';
@@ -16,9 +15,8 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, title }: LayoutProps) => {
-  const { transactions, setTransactions, recurring, budgetStatuses } = useApp();
+  const { transactions, recurring, budgetStatuses } = useApp();
   const { toast } = useToast();
-  useRecurringAutoGenerate(recurring, transactions, setTransactions);
   useNotificationScheduler({ transactions, recurring, budgetStatuses });
   useSwipeNavigation();
   const pull = usePullToRefresh({

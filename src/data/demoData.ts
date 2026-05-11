@@ -1,16 +1,8 @@
 import { APP_CONFIG, INITIAL_CATEGORIES } from '../constants';
 import { Account, Budget, RecurringExpense, SavingsGoal, Transaction } from '../types';
+import type { AppData } from './model';
 
-export interface DemoDataSet {
-  transactions: Transaction[];
-  budgets: Budget[];
-  recurring: RecurringExpense[];
-  accounts: Account[];
-  categories: string[];
-  archivedCategories: string[];
-  savingsGoals: SavingsGoal[];
-  monthlyBudget: number;
-}
+export type DemoDataSet = AppData;
 
 function isoDate(year: number, monthIndex: number, day: number): string {
   return new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10);

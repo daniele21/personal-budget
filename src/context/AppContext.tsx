@@ -15,13 +15,18 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { useCloudBackup } from '../hooks/useCloudBackup';
 import { STORAGE_KEYS } from '../data/storageKeys';
-import { APP_CONFIG, INITIAL_TRANSACTIONS, INITIAL_BUDGETS, INITIAL_RECURRING, INITIAL_ACCOUNTS, INITIAL_CATEGORIES, INITIAL_SAVINGS_GOALS } from '../constants';
 import { buildDemoData } from '../data/demoData';
 import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } from '../types';
 import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
 import * as Finance from '../domain/finance';
-import { normalizeRecurringExpenses, reconcileRecurringTransactions } from '../domain/recurring';
+import {
+  AppData,
+  INITIAL_APP_DATA,
+  isFinancialDataEmpty,
+  normalizeAppData,
+  syncAppData,
+} from '../data/model';
 
 // ─── Context Shape ──────────────────────────────────────────────────
 
@@ -109,14 +114,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const isLoggedIn = user !== null;
 
   // Persisted state
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>(STORAGE_KEYS.transactions, INITIAL_TRANSACTIONS);
-  const [budgets, setBudgets] = useLocalStorage<Budget[]>(STORAGE_KEYS.budgets, INITIAL_BUDGETS);
-  const [storedRecurring, setStoredRecurring] = useLocalStorage<RecurringExpense[]>(STORAGE_KEYS.recurring, INITIAL_RECURRING);
-  const [accounts, setAccounts] = useLocalStorage<Account[]>(STORAGE_KEYS.accounts, INITIAL_ACCOUNTS);
-  const [categories, setCategories] = useLocalStorage<string[]>(STORAGE_KEYS.categories, INITIAL_CATEGORIES);
-  const [archivedCategories, setArchivedCategories] = useLocalStorage<string[]>(STORAGE_KEYS.archivedCategories, []);
-  const [savingsGoals, setSavingsGoals] = useLocalStorage<SavingsGoal[]>(STORAGE_KEYS.savingsGoals, INITIAL_SAVINGS_GOALS);
-  const [monthlyBudget, setMonthlyBudget] = useLocalStorage<number>(STORAGE_KEYS.monthlyBudget, APP_CONFIG.defaultMonthlyBudget);
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>(STORAGE_KEYS.transactions, INITIAL_APP_DATA.transactions);
+  const [budgets, setBudgets] = useLocalStorage<Budget[]>(STORAGE_KEYS.budgets, INITIAL_APP_DATA.budgets);
+  const [recurring, setRecurringState] = useLocalStorage<RecurringExpense[]>(STORAGE_KEYS.recurring, INITIAL_APP_DATA.recurring);
+  const [accounts, setAccounts] = useLocalStorage<Account[]>(STORAGE_KEYS.accounts, INITIAL_APP_DATA.accounts);
+  const [categories, setCategories] = useLocalStorage<string[]>(STORAGE_KEYS.categories, INITIAL_APP_DATA.categories);
+  const [archivedCategories, setArchivedCategories] = useLocalStorage<string[]>(STORAGE_KEYS.archivedCategories, INITIAL_APP_DATA.archivedCategories);
+  const [savingsGoals, setSavingsGoals] = useLocalStorage<SavingsGoal[]>(STORAGE_KEYS.savingsGoals, INITIAL_APP_DATA.savingsGoals);
+  const [monthlyBudget, setMonthlyBudget] = useLocalStorage<number>(STORAGE_KEYS.monthlyBudget, INITIAL_APP_DATA.monthlyBudget);
   const [isDarkMode, setIsDarkMode] = useLocalStorage(STORAGE_KEYS.darkMode, false);
   const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage(STORAGE_KEYS.cloudBackupEnabled, false);
   const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
@@ -132,27 +137,38 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
-  const recurring = useMemo(
-    () => normalizeRecurringExpenses(storedRecurring),
-    [storedRecurring],
-  );
-
   const setRecurring = useCallback((nextRecurring: RecurringExpense[]) => {
-    setStoredRecurring(normalizeRecurringExpenses(nextRecurring));
-  }, [setStoredRecurring]);
+    setRecurringState(syncAppData({
+      transactions,
+      budgets,
+      recurring: nextRecurring,
+      accounts,
+      categories,
+      archivedCategories,
+      savingsGoals,
+      monthlyBudget,
+    }).recurring);
+  }, [accounts, archivedCategories, budgets, categories, monthlyBudget, savingsGoals, setRecurringState, transactions]);
 
   useEffect(() => {
-    if (JSON.stringify(storedRecurring) !== JSON.stringify(recurring)) {
-      setStoredRecurring(recurring);
-    }
-  }, [storedRecurring, recurring, setStoredRecurring]);
+    const syncedData = syncAppData({
+      transactions,
+      budgets,
+      recurring,
+      accounts,
+      categories,
+      archivedCategories,
+      savingsGoals,
+      monthlyBudget,
+    });
 
-  useEffect(() => {
-    const reconciledTransactions = reconcileRecurringTransactions(transactions, recurring);
-    if (JSON.stringify(reconciledTransactions) !== JSON.stringify(transactions)) {
-      setTransactions(reconciledTransactions);
+    if (JSON.stringify(syncedData.transactions) !== JSON.stringify(transactions)) {
+      setTransactions(syncedData.transactions);
     }
-  }, [transactions, recurring, setTransactions]);
+    if (JSON.stringify(syncedData.recurring) !== JSON.stringify(recurring)) {
+      setRecurringState(syncedData.recurring);
+    }
+  }, [accounts, archivedCategories, budgets, categories, monthlyBudget, recurring, savingsGoals, setRecurringState, setTransactions, transactions]);
 
   // Compat setters (kept for existing code that calls setUser/setIsLoggedIn)
   const setUser = useCallback((_u: User | null) => { /* managed by Firebase */ }, []);
@@ -219,25 +235,26 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ─── Cloud backup (non-blocking daily sync) ────────────────────
 
-  const getBackupData = useCallback(() => ({
+  const getBackupData = useCallback((): AppData => syncAppData({
     transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals, monthlyBudget,
   }), [transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals, monthlyBudget]);
 
   const isLocalEmpty = useCallback(
-    () => transactions.length === 0 && budgets.length === 0 && recurring.length === 0,
+    () => isFinancialDataEmpty({ transactions, budgets, recurring }),
     [transactions, budgets, recurring],
   );
 
   const applyBackupData = useCallback((data: import('../lib/backup').BackupPayload) => {
-    setTransactions(data.transactions as typeof transactions);
-    setBudgets(data.budgets as typeof budgets);
-    setRecurring(normalizeRecurringExpenses(data.recurring as typeof recurring));
-    setAccounts(data.accounts as typeof accounts);
-    setCategories(data.categories);
-    setArchivedCategories(data.archivedCategories ?? []);
-    setSavingsGoals((data.savingsGoals ?? []) as typeof savingsGoals);
-    setMonthlyBudget(data.monthlyBudget);
-  }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
+    const normalizedData = normalizeAppData(data);
+    setTransactions(normalizedData.transactions);
+    setBudgets(normalizedData.budgets);
+    setRecurringState(normalizedData.recurring);
+    setAccounts(normalizedData.accounts);
+    setCategories(normalizedData.categories);
+    setArchivedCategories(normalizedData.archivedCategories);
+    setSavingsGoals(normalizedData.savingsGoals);
+    setMonthlyBudget(normalizedData.monthlyBudget);
+  }, [setTransactions, setBudgets, setRecurringState, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
 
   const { restoreFromCloud, backupAvailable, backupCheckComplete, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate } = useCloudBackup({
     uid: user?.id ?? null,
@@ -300,7 +317,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const monthlyTotals = useMemo(() => Finance.calculateTotals(monthlyTransactions), [monthlyTransactions]);
   const allTimeTotals = useMemo(() => Finance.calculateTotals(transactions), [transactions]);
 
-  const initialBalance = INITIAL_ACCOUNTS.reduce((acc, curr) => acc + curr.balance, 0);
+  const initialBalance = INITIAL_APP_DATA.accounts.reduce((acc, curr) => acc + curr.balance, 0);
   const currentBalance = initialBalance + allTimeTotals.net;
 
   const safeToSpendData = useMemo(

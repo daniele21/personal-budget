@@ -8,6 +8,7 @@ import {
   getRecurringOccurrenceKey,
   getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
+  reconcileRecurringTransactions,
 } from './recurring';
 
 // ─── Transaction Filtering ──────────────────────────────────────────
@@ -511,6 +512,26 @@ export function getRecurringDue(
   });
 
   return result;
+}
+
+/**
+ * Builds the canonical transaction ledger after recurring changes.
+ *
+ * First reconciles already materialized recurring transactions with their
+ * source template, then generates any due occurrences missing from history.
+ */
+export function syncRecurringTransactions(
+  recurring: RecurringExpense[],
+  existingTransactions: Transaction[],
+  today: Date = new Date(),
+): Transaction[] {
+  const reconciledTransactions = reconcileRecurringTransactions(existingTransactions, recurring);
+  const generatedTransactions = getRecurringDue(recurring, reconciledTransactions, today)
+    .map(({ transaction }) => transaction);
+
+  return generatedTransactions.length > 0
+    ? [...generatedTransactions, ...reconciledTransactions]
+    : reconciledTransactions;
 }
 
 // ─── Formatting ─────────────────────────────────────────────────────
