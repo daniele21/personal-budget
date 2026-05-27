@@ -129,6 +129,7 @@ export const InsightsPage = () => {
   const [range, setRange] = useState<RangeKey>('1M');
   const [analyticsLens, setAnalyticsLens] = useState<Finance.AnalyticsLens>('actual');
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [showAverage, setShowAverage] = useState(false);
 
   const { start, end, prevStart, prevEnd, label: periodLabel } = useMemo(
     () => getDateRange(range, anchorYear, anchorMonth),
@@ -197,11 +198,28 @@ export const InsightsPage = () => {
     ? ((totals.expenses - prevTotals.expenses) / prevTotals.expenses * 100)
     : null;
 
-  // How many months in the range (for budget scaling)
+  // How many months in the range (for budget scaling and averaging)
   const rangeMonths = useMemo(() => {
     if (range === '1W') return 1;
+    if (range === '1M') return 1;
+    if (range === 'ALL') {
+      if (transactions.length === 0) return 1;
+      const dates = transactions.map(t => new Date(t.date).getTime());
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+      const m = (maxDate.getFullYear() - minDate.getFullYear()) * 12 + (maxDate.getMonth() - minDate.getMonth()) + 1;
+      return Math.max(1, m);
+    }
     return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-  }, [range, start, end]);
+  }, [range, start, end, transactions]);
+
+  // Derived state to determine if monthly average view is currently displayed
+  const isAverageActive = showAverage && rangeMonths > 1;
+
+  // Averages calculations for Overview cards
+  const displayIncome = isAverageActive ? totals.income / rangeMonths : totals.income;
+  const displayExpenses = isAverageActive ? totals.expenses / rangeMonths : totals.expenses;
+  const displayNet = isAverageActive ? totals.net / rangeMonths : totals.net;
 
   return (
     <motion.div
@@ -267,6 +285,31 @@ export const InsightsPage = () => {
         ))}
       </div>
 
+      {rangeMonths > 1 && (
+        <div className="flex items-center justify-between bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 shadow-sm">
+          <div className="space-y-0.5">
+            <p className="text-xs font-bold text-on-surface">Visualizza Media Mensile</p>
+            <p className="text-[10px] text-on-surface-variant/70">Mostra la media mensile invece del totale per il periodo</p>
+          </div>
+          <button
+            onClick={() => setShowAverage(prev => !prev)}
+            className={cn(
+              "w-11 h-6 rounded-full p-1 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+              showAverage ? "bg-primary" : "bg-surface-container-highest"
+            )}
+            role="switch"
+            aria-checked={showAverage}
+          >
+            <div
+              className={cn(
+                "w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200",
+                showAverage ? "translate-x-5" : "translate-x-0"
+              )}
+            />
+          </button>
+        </div>
+      )}
+
       {extraImpact.count > 0 && analyticsLens !== 'extras' && (
         <div className="rounded-2xl border border-accent-amber/15 bg-accent-amber/10 px-4 py-3">
           <p className="text-xs font-bold text-on-surface">
@@ -290,38 +333,44 @@ export const InsightsPage = () => {
       {/* Overview cards */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">Income</p>
-          <p className="text-lg font-headline font-bold text-secondary tabular-nums whitespace-nowrap">{formatCurrency(totals.income)}</p>
+          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">
+            {isAverageActive ? "Avg Income" : "Income"}
+          </p>
+          <p className="text-lg font-headline font-bold text-secondary tabular-nums whitespace-nowrap">{formatCurrency(displayIncome)}</p>
         </div>
         <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">Expenses</p>
-          <p className="text-lg font-headline font-bold text-tertiary tabular-nums whitespace-nowrap">{formatCurrency(totals.expenses)}</p>
+          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">
+            {isAverageActive ? "Avg Expenses" : "Expenses"}
+          </p>
+          <p className="text-lg font-headline font-bold text-tertiary tabular-nums whitespace-nowrap">{formatCurrency(displayExpenses)}</p>
         </div>
       </div>
 
       <div className={cn(
         "rounded-3xl p-5 border border-outline-variant/5 flex items-center justify-between transition-all",
-        totals.net >= 0 ? "bg-secondary/5" : "bg-tertiary/5"
+        displayNet >= 0 ? "bg-secondary/5" : "bg-tertiary/5"
       )}>
         <div className="min-w-0">
-          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">Net Flow</p>
+          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">
+            {isAverageActive ? "Avg Net Flow" : "Net Flow"}
+          </p>
           <p className={cn(
             'text-3xl font-headline font-extrabold tracking-tight tabular-nums whitespace-nowrap truncate',
-            totals.net >= 0 ? 'text-secondary' : 'text-tertiary'
+            displayNet >= 0 ? 'text-secondary' : 'text-tertiary'
           )}>
-            {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net)}
+            {displayNet >= 0 ? '+' : ''}{formatCurrency(displayNet)}
           </p>
         </div>
         <div className={cn(
           "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm",
-          totals.net >= 0 ? "bg-secondary/20 text-secondary" : "bg-tertiary/20 text-tertiary"
+          displayNet >= 0 ? "bg-secondary/20 text-secondary" : "bg-tertiary/20 text-tertiary"
         )}>
-          {totals.net >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+          {displayNet >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
         </div>
       </div>
 
       {/* Monthly average for multi-month ranges */}
-      {rangeMonths > 1 && (
+      {rangeMonths > 1 && !isAverageActive && (
         <div className="space-y-2 pt-2 border-t border-outline-variant/5">
           <p className="text-micro text-on-surface-variant font-bold px-1 uppercase tracking-wider">Monthly Averages</p>
           <div className="grid grid-cols-3 gap-2">
@@ -409,9 +458,10 @@ export const InsightsPage = () => {
                 <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Expenses</h3>
                 {allCategories.filter(c => c.expense > 0).map(cat => {
                   const isExpanded = expandedCat === cat.category;
-                  // Scale budget limit by number of months in range
-                  const scaledLimit = cat.budget ? cat.budget.limit * rangeMonths : null;
-                  const budgetPercent = scaledLimit ? Math.min(100, (cat.expense / scaledLimit) * 100) : null;
+                  // Dynamic averaging values
+                  const displayExpense = isAverageActive ? cat.expense / rangeMonths : cat.expense;
+                  const displayLimit = isAverageActive ? (cat.budget ? cat.budget.limit : null) : (cat.budget ? cat.budget.limit * rangeMonths : null);
+                  const budgetPercent = displayLimit ? Math.min(100, (displayExpense / displayLimit) * 100) : null;
                   const catTx = visiblePeriodTx.filter(t => t.category === cat.category);
 
                   return (
@@ -425,12 +475,12 @@ export const InsightsPage = () => {
                           <CategoryBadge category={cat.category} size="md" />
                           <p className="flex-1 min-w-0 truncate text-sm font-bold text-on-surface">{cat.category}</p>
                           <span className="text-sm font-extrabold text-tertiary tabular-nums shrink-0">
-                            -{formatCurrency(cat.expense)}
+                            -{formatCurrency(displayExpense)}
                           </span>
                         </div>
 
                         {/* Row 2: Budget progress (full-width, under the header) */}
-                        {budgetPercent !== null && scaledLimit && (
+                        {budgetPercent !== null && displayLimit && (
                           <div className="mt-3 space-y-1.5">
                             <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
                               <div
@@ -449,7 +499,7 @@ export const InsightsPage = () => {
                                 {budgetPercent.toFixed(0)}% of budget
                               </span>
                               <span className="text-micro font-semibold tabular-nums text-on-surface-variant">
-                                {formatCurrency(cat.expense)} / {formatCurrency(scaledLimit)}
+                                {formatCurrency(displayExpense)} / {formatCurrency(displayLimit)}
                               </span>
                             </div>
                           </div>
@@ -506,6 +556,7 @@ export const InsightsPage = () => {
                 <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Income</h3>
                 {allCategories.filter(c => c.income > 0).map(cat => {
                   const isExpanded = expandedCat === cat.category;
+                  const displayIncomeVal = isAverageActive ? cat.income / rangeMonths : cat.income;
                   const catTx = visiblePeriodTx.filter(t => t.category === cat.category);
 
                   return (
@@ -519,7 +570,7 @@ export const InsightsPage = () => {
                           <CategoryBadge category={cat.category} size="md" />
                           <p className="flex-1 min-w-0 truncate text-sm font-bold text-on-surface">{cat.category}</p>
                           <span className="text-sm font-extrabold text-secondary tabular-nums shrink-0">
-                            +{formatCurrency(cat.income)}
+                            +{formatCurrency(displayIncomeVal)}
                           </span>
                         </div>
 
