@@ -52,6 +52,14 @@ Rationale: the dashboard should not show spendable room based only on expenses w
 
 The dashboard lets users switch Safe to Spend between `With extras` and `Net`, matching the category spending lens so one-off income and expenses can either be included in cash-pressure decisions or excluded from normalized planning.
 
+Safe to Spend uses cash inflow for the effective limit, not reportable income. This means reimbursements can fund available cash in the period where they are recorded even though they are excluded from income reports.
+
+### Reimbursements
+
+Chosen: income transactions can be marked as `reimbursement`; reimbursements are mutually exclusive with `extra`.
+
+Rationale: a reimbursement is a real cash inflow, but it is not income for reporting purposes. It should increase net cash position by reducing expenses in the period where it is recorded instead of inflating income totals. Reimbursements remain category-aware so a medical refund, travel refund, or purchase return can offset the matching expense category when categorized consistently. Expense totals are floored at zero so reimbursements cannot create negative spending or inflate Safe to Spend above the effective budget or income cap.
+
 ### Notifications
 
 Chosen: local-only web notifications using browser permission, local preferences, local reminders, and the existing service worker.

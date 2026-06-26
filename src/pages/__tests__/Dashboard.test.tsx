@@ -76,4 +76,12 @@ describe('Dashboard safe-to-spend lens', () => {
     expect(screen.getByText('€2,900.00')).toBeInTheDocument();
     expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
   });
+
+  it('uses reimbursement cash inflow for safe-to-spend without counting it as income', () => {
+    renderDashboard([
+      transaction({ id: 'refund', amount: 100, type: 'income', category: 'Food', title: 'Refund', reportingClass: 'reimbursement' }),
+    ]);
+
+    expect(screen.getByText('of €100.00 safe limit')).toBeInTheDocument();
+  });
 });

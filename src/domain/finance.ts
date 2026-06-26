@@ -17,7 +17,9 @@ export type AnalyticsLens = 'actual' | 'normalized' | 'extras';
 
 export function getTransactionReportingClass(transaction: Transaction): TransactionReportingClass {
   if (transaction.sourceRecurringId) return 'regular';
-  return transaction.reportingClass === 'extra' ? 'extra' : 'regular';
+  if (transaction.reportingClass === 'extra') return 'extra';
+  if (transaction.type === 'income' && transaction.reportingClass === 'reimbursement') return 'reimbursement';
+  return 'regular';
 }
 
 export function filterByAnalyticsLens(transactions: Transaction[], lens: AnalyticsLens): Transaction[] {
@@ -92,13 +94,29 @@ export interface TransactionTotals {
 }
 
 export function calculateTotals(transactions: Transaction[]): TransactionTotals {
-  const income = filterByType(transactions, 'income').reduce((acc, t) => acc + t.amount, 0);
-  const expenses = filterByType(transactions, 'expense').reduce((acc, t) => acc + t.amount, 0);
-  return { income, expenses, net: income - expenses };
+  const incomeTransactions = filterByType(transactions, 'income');
+  const income = incomeTransactions
+    .filter((transaction) => getTransactionReportingClass(transaction) !== 'reimbursement')
+    .reduce((acc, t) => acc + t.amount, 0);
+  const reimbursements = incomeTransactions
+    .filter((transaction) => getTransactionReportingClass(transaction) === 'reimbursement')
+    .reduce((acc, t) => acc + t.amount, 0);
+  const grossExpenses = filterByType(transactions, 'expense').reduce((acc, t) => acc + t.amount, 0);
+  const expenses = Math.max(0, grossExpenses - reimbursements);
+  const net = income + reimbursements - grossExpenses;
+  return { income, expenses, net };
 }
 
 export function calculateTotalsByLens(transactions: Transaction[], lens: AnalyticsLens): TransactionTotals {
   return calculateTotals(filterByAnalyticsLens(transactions, lens));
+}
+
+export function calculateCashInflow(transactions: Transaction[]): number {
+  return filterByType(transactions, 'income').reduce((acc, transaction) => acc + transaction.amount, 0);
+}
+
+export function calculateCashInflowByLens(transactions: Transaction[], lens: AnalyticsLens): number {
+  return calculateCashInflow(filterByAnalyticsLens(transactions, lens));
 }
 
 export interface ExtraImpact {
@@ -126,8 +144,8 @@ export interface BudgetStatus {
 }
 
 export function analyzeBudget(budget: Budget, monthlyTransactions: Transaction[]): BudgetStatus {
-  const spent = filterByCategory(filterByType(monthlyTransactions, 'expense'), budget.category)
-    .reduce((acc, t) => acc + t.amount, 0);
+  const categoryTransactions = filterByCategory(monthlyTransactions, budget.category);
+  const spent = Math.max(0, calculateTotals(categoryTransactions).expenses);
 
   const remaining = Math.max(0, budget.limit - spent);
   const percent = budget.limit > 0 ? (spent / budget.limit) * 100 : 0;
@@ -173,8 +191,9 @@ export function safeToSpend(
   monthlyIncome: number = monthlyBudget,
 ): SafeToSpendStatus {
   const effectiveLimit = Math.max(0, Math.min(monthlyBudget, monthlyIncome));
-  const remaining = Math.max(0, effectiveLimit - monthlyExpenses);
-  const usedPercent = effectiveLimit > 0 ? Math.round((monthlyExpenses / effectiveLimit) * 100) : 0;
+  const expenses = Math.max(0, monthlyExpenses);
+  const remaining = Math.max(0, effectiveLimit - expenses);
+  const usedPercent = effectiveLimit > 0 ? Math.round((expenses / effectiveLimit) * 100) : 0;
   return { remaining, usedPercent, effectiveLimit };
 }
 
@@ -187,20 +206,23 @@ export interface CategorySpending {
 }
 
 export function spendingByCategory(monthlyTransactions: Transaction[]): CategorySpending[] {
-  const expenses = filterByType(monthlyTransactions, 'expense');
-  const categories = Array.from(new Set(expenses.map(t => t.category)));
-  const total = expenses.reduce((acc, t) => acc + t.amount, 0);
+  const relevantTransactions = monthlyTransactions.filter((transaction) => (
+    transaction.type === 'expense' || getTransactionReportingClass(transaction) === 'reimbursement'
+  ));
+  const categories = Array.from(new Set(relevantTransactions.map(t => t.category)));
+  const categoryAmounts = categories
+    .map((category) => ({
+      category,
+      amount: Math.max(0, calculateTotals(filterByCategory(relevantTransactions, category)).expenses),
+    }))
+    .filter((category) => category.amount > 0);
+  const total = categoryAmounts.reduce((acc, item) => acc + item.amount, 0);
 
-  return categories
-    .map(cat => {
-      const amount = filterByCategory(expenses, cat).reduce((acc, t) => acc + t.amount, 0);
-      return {
-        category: cat,
-        amount,
-        percentage: total > 0 ? amount / total : 0,
-      };
-    })
-    .filter(c => c.amount > 0)
+  return categoryAmounts
+    .map((category) => ({
+      ...category,
+      percentage: total > 0 ? category.amount / total : 0,
+    }))
     .sort((a, b) => b.amount - a.amount);
 }
 

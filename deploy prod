@@ -1,0 +1,6 @@
+deploy prod
+firebase use aura-personal-budget
+firebase deploy --only hosting
+
+deploy preview
+firebase hosting:channel:deploy temp-preview --expires 7d --project aura-personal-budget

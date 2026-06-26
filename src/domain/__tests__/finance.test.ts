@@ -7,6 +7,8 @@ import {
   sortByDateDesc,
   sortTransactions,
   calculateTotals,
+  calculateCashInflow,
+  calculateCashInflowByLens,
   calculateTotalsByLens,
   filterByAnalyticsLens,
   getExtraImpact,
@@ -131,23 +133,28 @@ describe('analytics lenses', () => {
     tx({ amount: 250, type: 'expense', category: 'Travel', reportingClass: 'extra', reportingNote: 'Trip' }),
     tx({ amount: 3000, type: 'income', category: 'Salary' }),
     tx({ amount: 500, type: 'income', category: 'Bonus', reportingClass: 'extra' }),
+    tx({ amount: 40, type: 'income', category: 'Food', reportingClass: 'reimbursement' }),
     tx({ amount: 80, type: 'expense', category: 'Subscriptions', sourceRecurringId: 'r1', reportingClass: 'extra' }),
   ];
 
   it('treats missing reporting class and recurring transactions as regular', () => {
     expect(getTransactionReportingClass(transactions[0])).toBe('regular');
-    expect(getTransactionReportingClass(transactions[4])).toBe('regular');
+    expect(getTransactionReportingClass(transactions[5])).toBe('regular');
+  });
+
+  it('recognizes reimbursement income as its own reporting class', () => {
+    expect(getTransactionReportingClass(transactions[4])).toBe('reimbursement');
   });
 
   it('filters actual, normalized, and extras lenses', () => {
-    expect(filterByAnalyticsLens(transactions, 'actual')).toHaveLength(5);
-    expect(filterByAnalyticsLens(transactions, 'normalized').map(item => item.amount)).toEqual([100, 3000, 80]);
+    expect(filterByAnalyticsLens(transactions, 'actual')).toHaveLength(6);
+    expect(filterByAnalyticsLens(transactions, 'normalized').map(item => item.amount)).toEqual([100, 3000, 40, 80]);
     expect(filterByAnalyticsLens(transactions, 'extras').map(item => item.amount)).toEqual([250, 500]);
   });
 
   it('calculates totals by analytics lens', () => {
-    expect(calculateTotalsByLens(transactions, 'actual')).toEqual({ income: 3500, expenses: 430, net: 3070 });
-    expect(calculateTotalsByLens(transactions, 'normalized')).toEqual({ income: 3000, expenses: 180, net: 2820 });
+    expect(calculateTotalsByLens(transactions, 'actual')).toEqual({ income: 3500, expenses: 390, net: 3110 });
+    expect(calculateTotalsByLens(transactions, 'normalized')).toEqual({ income: 3000, expenses: 140, net: 2860 });
     expect(calculateTotalsByLens(transactions, 'extras')).toEqual({ income: 500, expenses: 250, net: 250 });
   });
 
@@ -295,6 +302,35 @@ describe('calculateTotals', () => {
     expect(totals.net).toBe(-300);
     expect(totals.income).toBe(0);
   });
+
+  it('treats reimbursement income as expense reduction instead of income', () => {
+    const totals = calculateTotals([
+      tx({ amount: 1000, type: 'income', category: 'Salary' }),
+      tx({ amount: 300, type: 'expense', category: 'Medical' }),
+      tx({ amount: 75, type: 'income', category: 'Medical', reportingClass: 'reimbursement' }),
+    ]);
+    expect(totals).toEqual({ income: 1000, expenses: 225, net: 775 });
+  });
+
+  it('does not expose negative expenses when reimbursements exceed expenses', () => {
+    const totals = calculateTotals([
+      tx({ amount: 1000, type: 'income', category: 'Salary' }),
+      tx({ amount: 100, type: 'expense', category: 'Medical' }),
+      tx({ amount: 150, type: 'income', category: 'Medical', reportingClass: 'reimbursement' }),
+    ]);
+    expect(totals).toEqual({ income: 1000, expenses: 0, net: 1050 });
+  });
+
+  it('keeps reimbursement in cash inflow for cash-pressure decisions', () => {
+    const transactions = [
+      tx({ amount: 100, type: 'income', category: 'Medical', reportingClass: 'reimbursement' }),
+      tx({ amount: 250, type: 'income', category: 'Bonus', reportingClass: 'extra' }),
+    ];
+
+    expect(calculateTotals(transactions)).toEqual({ income: 250, expenses: 0, net: 350 });
+    expect(calculateCashInflow(transactions)).toBe(350);
+    expect(calculateCashInflowByLens(transactions, 'normalized')).toBe(100);
+  });
 });
 
 // ─── comparison and annual review ──────────────────────────────────
@@ -369,13 +405,14 @@ describe('analyzeBudget', () => {
     tx({ amount: 150, type: 'expense', category: 'Food' }),
     tx({ amount: 50, type: 'expense', category: 'Food' }),
     tx({ amount: 300, type: 'income', category: 'Food' }), // income should be ignored
+    tx({ amount: 25, type: 'income', category: 'Food', reportingClass: 'reimbursement' }),
     tx({ amount: 100, type: 'expense', category: 'Transport' }), // different category
   ];
 
-  it('calculates spent from expenses only for matching category', () => {
+  it('calculates spent from expenses minus reimbursements for matching category', () => {
     const result = analyzeBudget(budget('Food', 500), monthlyTxs);
-    expect(result.spent).toBe(200);
-    expect(result.remaining).toBe(300);
+    expect(result.spent).toBe(175);
+    expect(result.remaining).toBe(325);
   });
 
   it('returns ok status under 80%', () => {
@@ -383,14 +420,14 @@ describe('analyzeBudget', () => {
   });
 
   it('returns warning status at 80-99%', () => {
-    const result = analyzeBudget(budget('Food', 240), monthlyTxs);
-    expect(result.percent).toBeCloseTo(83.33, 1);
+    const result = analyzeBudget(budget('Food', 200), monthlyTxs);
+    expect(result.percent).toBeCloseTo(87.5, 1);
     expect(result.status).toBe('warning');
   });
 
   it('returns exceeded status at 100%+', () => {
     const result = analyzeBudget(budget('Food', 150), monthlyTxs);
-    expect(result.percent).toBeCloseTo(133.33, 1);
+    expect(result.percent).toBeCloseTo(116.67, 1);
     expect(result.status).toBe('exceeded');
     expect(result.remaining).toBe(0);
   });
@@ -466,6 +503,13 @@ describe('safeToSpend', () => {
     expect(result.usedPercent).toBe(0);
     expect(result.effectiveLimit).toBe(2000);
   });
+
+  it('does not let negative expenses inflate safe spending above the effective limit', () => {
+    const result = safeToSpend(2000, -100, 2000);
+    expect(result.remaining).toBe(2000);
+    expect(result.usedPercent).toBe(0);
+    expect(result.effectiveLimit).toBe(2000);
+  });
 });
 
 // ─── spendingByCategory ─────────────────────────────────────────────
@@ -475,6 +519,7 @@ describe('spendingByCategory', () => {
     tx({ amount: 200, type: 'expense', category: 'Food' }),
     tx({ amount: 100, type: 'expense', category: 'Transport' }),
     tx({ amount: 100, type: 'expense', category: 'Food' }),
+    tx({ amount: 50, type: 'income', category: 'Food', reportingClass: 'reimbursement' }),
     tx({ amount: 500, type: 'income', category: 'Salary' }), // income ignored
   ];
 
@@ -482,11 +527,11 @@ describe('spendingByCategory', () => {
     const result = spendingByCategory(transactions);
     expect(result).toHaveLength(2);
     expect(result[0].category).toBe('Food');
-    expect(result[0].amount).toBe(300);
-    expect(result[0].percentage).toBeCloseTo(0.75);
+    expect(result[0].amount).toBe(250);
+    expect(result[0].percentage).toBeCloseTo(0.714);
     expect(result[1].category).toBe('Transport');
     expect(result[1].amount).toBe(100);
-    expect(result[1].percentage).toBeCloseTo(0.25);
+    expect(result[1].percentage).toBeCloseTo(0.286);
   });
 
   it('sorts by amount descending', () => {

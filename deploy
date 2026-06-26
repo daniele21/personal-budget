@@ -1,0 +1,2 @@
+firebase use aura-personal-budget
+firebase deploy --only hosting

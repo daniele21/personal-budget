@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Pencil } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction, TransactionReportingClass } from '../types';
 import { Button } from './ui';
 import { CategoryPicker } from './CategoryPicker';
 import { NumericKeypadModal } from './NumericKeypadModal';
-import { ExtraFlagToggle } from './ExtraFlagToggle';
+import { ReportingTreatmentToggle } from './ExtraFlagToggle';
 import { APP_CONFIG } from '../constants';
 import { cn } from '../lib/utils';
 
@@ -33,7 +33,7 @@ export function TransactionQuickEditDialog({
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [description, setDescription] = useState('');
-  const [isExtra, setIsExtra] = useState(false);
+  const [reportingClass, setReportingClass] = useState<TransactionReportingClass | undefined>(undefined);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
   useEffect(() => {
@@ -45,8 +45,14 @@ export function TransactionQuickEditDialog({
     setType(transaction.type);
     setPaymentMethod(transaction.paymentMethod);
     setDescription(transaction.description || '');
-    setIsExtra(!transaction.sourceRecurringId && transaction.reportingClass === 'extra');
+    setReportingClass(!transaction.sourceRecurringId && transaction.reportingClass !== 'regular' ? transaction.reportingClass : undefined);
   }, [transaction]);
+
+  useEffect(() => {
+    if (type !== 'income' && reportingClass === 'reimbursement') {
+      setReportingClass(undefined);
+    }
+  }, [reportingClass, type]);
 
   const handleSave = () => {
     if (!transaction) return;
@@ -62,7 +68,7 @@ export function TransactionQuickEditDialog({
       paymentMethod,
       description,
       recurringEdited: transaction.sourceRecurringId ? true : transaction.recurringEdited,
-      reportingClass: transaction.sourceRecurringId ? undefined : isExtra ? 'extra' : undefined,
+      reportingClass: transaction.sourceRecurringId ? undefined : reportingClass,
       reportingNote: undefined,
     });
   };
@@ -142,17 +148,20 @@ export function TransactionQuickEditDialog({
                 <div
                   className={cn(
                     'rounded-2xl border p-4 transition-colors',
-                    isExtra && !transaction.sourceRecurringId
+                    reportingClass === 'extra' && !transaction.sourceRecurringId
                       ? 'border-accent-amber/35 bg-accent-amber/10'
+                      : reportingClass === 'reimbursement' && !transaction.sourceRecurringId
+                        ? 'border-secondary/30 bg-secondary-container/15'
                       : 'border-transparent bg-surface-container-low',
                   )}
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-3">
                     <label className="text-micro font-bold text-on-surface-variant">Transaction Title</label>
                     {!transaction.sourceRecurringId && (
-                      <ExtraFlagToggle
-                        checked={isExtra}
-                        onChange={() => setIsExtra((current) => !current)}
+                      <ReportingTreatmentToggle
+                        value={reportingClass}
+                        type={type}
+                        onChange={setReportingClass}
                       />
                     )}
                   </div>

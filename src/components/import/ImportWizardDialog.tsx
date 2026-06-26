@@ -55,7 +55,12 @@ function parseAuraExportRows(rawRows: string[][]): Transaction[] | null {
     .map((row, index) => {
       const amount = parseFloat(row[indexOf('amount')] ?? '');
       const type = row[indexOf('type')] === 'income' ? 'income' : 'expense';
-      const reportingClass = row[indexOf('reportingClass')] === 'extra' ? 'extra' : undefined;
+      const rawReportingClass = row[indexOf('reportingClass')];
+      const reportingClass = rawReportingClass === 'extra'
+        ? 'extra'
+        : type === 'income' && rawReportingClass === 'reimbursement'
+          ? 'reimbursement'
+          : undefined;
       return {
         id: row[indexOf('id')] || `import_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
         amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
@@ -66,7 +71,7 @@ function parseAuraExportRows(rawRows: string[][]): Transaction[] | null {
         description: row[indexOf('description')] || '',
         paymentMethod: row[indexOf('paymentMethod')] || 'Bank Transfer',
         reportingClass,
-        reportingNote: reportingClass === 'extra' ? row[indexOf('reportingNote')] || undefined : undefined,
+        reportingNote: reportingClass ? row[indexOf('reportingNote')] || undefined : undefined,
       } satisfies Transaction;
     })
     .filter((transaction) => transaction.amount > 0);

@@ -5,7 +5,7 @@ import { Pencil, Check, X, Camera } from 'lucide-react';
 import { get, set, del } from 'idb-keyval';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
-import { Transaction } from '../types';
+import { Transaction, TransactionReportingClass } from '../types';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
@@ -13,7 +13,7 @@ import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { upsertRecurringOverride } from '../domain/recurring';
 import { Card } from '../components/ui';
-import { ExtraFlagToggle } from '../components/ExtraFlagToggle';
+import { ReportingTreatmentToggle } from '../components/ExtraFlagToggle';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +25,7 @@ export const AddTransaction = () => {
   const [category, setCategory] = useState(categories[0]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [isExtra, setIsExtra] = useState(false);
+  const [reportingClass, setReportingClass] = useState<TransactionReportingClass | undefined>(undefined);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState('Debit Card');
   const [attachmentUrl, setAttachmentUrl] = useState<string | undefined>(undefined);
@@ -41,7 +41,7 @@ export const AddTransaction = () => {
         setCategory(transaction.category);
         setTitle(transaction.title);
         setDescription(transaction.description);
-        setIsExtra(!transaction.sourceRecurringId && transaction.reportingClass === 'extra');
+        setReportingClass(!transaction.sourceRecurringId && transaction.reportingClass !== 'regular' ? transaction.reportingClass : undefined);
         setDate(new Date(transaction.date).toISOString().split('T')[0]);
         setPaymentMethod(transaction.paymentMethod);
         
@@ -52,6 +52,12 @@ export const AddTransaction = () => {
       }
     }
   }, [id, transactions]);
+
+  useEffect(() => {
+    if (type !== 'income' && reportingClass === 'reimbursement') {
+      setReportingClass(undefined);
+    }
+  }, [reportingClass, type]);
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
@@ -88,7 +94,7 @@ export const AddTransaction = () => {
       sourceRecurringId: existingTransaction?.sourceRecurringId,
       sourceMonthKey: existingTransaction?.sourceMonthKey,
       recurringEdited: existingTransaction?.sourceRecurringId ? true : existingTransaction?.recurringEdited,
-      reportingClass: existingTransaction?.sourceRecurringId ? undefined : isExtra ? 'extra' : undefined,
+      reportingClass: existingTransaction?.sourceRecurringId ? undefined : reportingClass,
       reportingNote: undefined,
     };
 
@@ -208,15 +214,17 @@ export const AddTransaction = () => {
         <Card
           className={cn(
             'p-6 transition-colors',
-            isExtra && !transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && 'border-accent-amber/35 bg-accent-amber/10',
+            reportingClass === 'extra' && !transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && 'border-accent-amber/35 bg-accent-amber/10',
+            reportingClass === 'reimbursement' && !transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && 'border-secondary/30 bg-secondary-container/15',
           )}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <label className="block text-on-surface-variant text-micro font-bold">Transaction Title</label>
             {!transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
-              <ExtraFlagToggle
-                checked={isExtra}
-                onChange={() => setIsExtra((current) => !current)}
+              <ReportingTreatmentToggle
+                value={reportingClass}
+                type={type}
+                onChange={setReportingClass}
               />
             )}
           </div>

@@ -44,6 +44,31 @@ describe('TransactionQuickEditDialog', () => {
     }));
   });
 
+  it('saves income transactions with reimbursement instead of extra when selected', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+
+    render(
+      <TransactionQuickEditDialog
+        transaction={transaction({ type: 'income', category: 'Medical' })}
+        categories={['Medical', 'Food']}
+        onAddCategory={vi.fn()}
+        onClose={vi.fn()}
+        onSave={onSave}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByLabelText(/mark as extra/i));
+    await user.click(screen.getByLabelText(/mark as reimbursement/i));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      reportingClass: 'reimbursement',
+      reportingNote: undefined,
+    }));
+  });
+
   it('does not expose or save extra reporting metadata for recurring-linked transactions', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();

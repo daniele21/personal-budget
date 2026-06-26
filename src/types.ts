@@ -1,5 +1,5 @@
 export type TransactionType = 'expense' | 'income';
-export type TransactionReportingClass = 'regular' | 'extra';
+export type TransactionReportingClass = 'regular' | 'extra' | 'reimbursement';
 
 export interface Transaction {
   id: string;

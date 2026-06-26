@@ -73,8 +73,10 @@ function normalizeTransaction(transaction: Transaction): Transaction {
     ? undefined
     : transaction.reportingClass === 'extra'
       ? 'extra'
+      : transaction.type === 'income' && transaction.reportingClass === 'reimbursement'
+        ? 'reimbursement'
       : undefined;
-  const reportingNote = reportingClass === 'extra' && typeof transaction.reportingNote === 'string'
+  const reportingNote = reportingClass && typeof transaction.reportingNote === 'string'
     ? transaction.reportingNote.trim()
     : '';
 

@@ -78,6 +78,28 @@ describe('central app data model', () => {
         reportingClass: 'extra',
         reportingNote: 'Should be stripped',
       },
+      {
+        id: 'income-reimbursement',
+        amount: 75,
+        type: 'income',
+        category: 'Medical',
+        date: '2026-04-12T00:00:00.000Z',
+        title: 'Insurance refund',
+        description: '',
+        paymentMethod: 'Bank Transfer',
+        reportingClass: 'reimbursement',
+      },
+      {
+        id: 'expense-reimbursement',
+        amount: 75,
+        type: 'expense',
+        category: 'Medical',
+        date: '2026-04-12T00:00:00.000Z',
+        title: 'Bad refund',
+        description: '',
+        paymentMethod: 'Bank Transfer',
+        reportingClass: 'reimbursement',
+      },
     ];
 
     const data = normalizeAppData({
@@ -87,6 +109,8 @@ describe('central app data model', () => {
     });
 
     expect(data.transactions.find((transaction) => transaction.id === 'manual-extra')?.reportingClass).toBe('extra');
+    expect(data.transactions.find((transaction) => transaction.id === 'income-reimbursement')?.reportingClass).toBe('reimbursement');
+    expect(data.transactions.find((transaction) => transaction.id === 'expense-reimbursement')?.reportingClass).toBeUndefined();
     expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingClass).toBeUndefined();
     expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingNote).toBeUndefined();
   });

@@ -48,7 +48,8 @@ This keeps category and reporting intent separate:
 ## Confirmed Decisions
 
 - Budget progress should show both actual and net-of-extras values. The default budget progress view includes extras so the user sees full cash impact first.
-- The extra marker applies to both expenses and income. One-off income, bonuses, and reimbursements can also be excluded from normalized analytics.
+- The extra marker applies to both expenses and income. One-off income and bonuses can be excluded from normalized analytics.
+- Reimbursements use a separate `reimbursement` reporting class on income transactions. They are mutually exclusive with `extra`, are not counted as income, and reduce expenses in the period where they are recorded.
 - Recurring-generated transactions should not be marked as extra. Recurring items represent baseline financial activity in this model.
 - Import and export must preserve `reportingClass` and `reportingNote` so report semantics survive backup, restore, and CSV round trips.
 
