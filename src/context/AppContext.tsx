@@ -95,7 +95,7 @@ interface AppState {
   monthlyTransactions: Transaction[];
   monthlyTotals: Finance.TransactionTotals;
   allTimeTotals: Finance.TransactionTotals;
-  safeToSpend: { remaining: number; usedPercent: number };
+  safeToSpend: Finance.SafeToSpendStatus;
   budgetStatuses: Finance.BudgetStatus[];
   categorySpending: Finance.CategorySpending[];
   momChange: number | null;
@@ -321,8 +321,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const currentBalance = initialBalance + allTimeTotals.net;
 
   const safeToSpendData = useMemo(
-    () => Finance.safeToSpend(monthlyBudget, monthlyTotals.expenses),
-    [monthlyBudget, monthlyTotals.expenses]
+    () => Finance.safeToSpend(monthlyBudget, monthlyTotals.expenses, monthlyTotals.income),
+    [monthlyBudget, monthlyTotals.expenses, monthlyTotals.income]
   );
 
   const budgetStatuses = useMemo(

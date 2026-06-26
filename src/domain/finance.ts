@@ -161,10 +161,21 @@ export function monthOverMonthChange(transactions: Transaction[], date: Date = n
 
 // ─── Safe to Spend ──────────────────────────────────────────────────
 
-export function safeToSpend(monthlyBudget: number, monthlyExpenses: number) {
-  const remaining = Math.max(0, monthlyBudget - monthlyExpenses);
-  const usedPercent = monthlyBudget > 0 ? Math.round((monthlyExpenses / monthlyBudget) * 100) : 0;
-  return { remaining, usedPercent };
+export interface SafeToSpendStatus {
+  remaining: number;
+  usedPercent: number;
+  effectiveLimit: number;
+}
+
+export function safeToSpend(
+  monthlyBudget: number,
+  monthlyExpenses: number,
+  monthlyIncome: number = monthlyBudget,
+): SafeToSpendStatus {
+  const effectiveLimit = Math.max(0, Math.min(monthlyBudget, monthlyIncome));
+  const remaining = Math.max(0, effectiveLimit - monthlyExpenses);
+  const usedPercent = effectiveLimit > 0 ? Math.round((monthlyExpenses / effectiveLimit) * 100) : 0;
+  return { remaining, usedPercent, effectiveLimit };
 }
 
 // ─── Spending by Category ───────────────────────────────────────────

@@ -429,24 +429,42 @@ describe('safeToSpend', () => {
     const result = safeToSpend(2000, 800);
     expect(result.remaining).toBe(1200);
     expect(result.usedPercent).toBe(40);
+    expect(result.effectiveLimit).toBe(2000);
+  });
+
+  it('limits safe spending by monthly income when income is below budget', () => {
+    const result = safeToSpend(2000, 800, 1200);
+    expect(result.remaining).toBe(400);
+    expect(result.usedPercent).toBe(67);
+    expect(result.effectiveLimit).toBe(1200);
+  });
+
+  it('keeps the monthly budget as the cap when income is above budget', () => {
+    const result = safeToSpend(2000, 800, 3000);
+    expect(result.remaining).toBe(1200);
+    expect(result.usedPercent).toBe(40);
+    expect(result.effectiveLimit).toBe(2000);
   });
 
   it('clamps remaining to zero when overspent', () => {
     const result = safeToSpend(1000, 1500);
     expect(result.remaining).toBe(0);
     expect(result.usedPercent).toBe(150);
+    expect(result.effectiveLimit).toBe(1000);
   });
 
   it('handles zero budget', () => {
     const result = safeToSpend(0, 100);
     expect(result.remaining).toBe(0);
     expect(result.usedPercent).toBe(0);
+    expect(result.effectiveLimit).toBe(0);
   });
 
   it('handles zero expenses', () => {
     const result = safeToSpend(2000, 0);
     expect(result.remaining).toBe(2000);
     expect(result.usedPercent).toBe(0);
+    expect(result.effectiveLimit).toBe(2000);
   });
 });
 

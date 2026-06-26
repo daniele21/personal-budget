@@ -44,6 +44,14 @@ Chosen: add local-only global search, period comparison, and year-in-review repo
 
 Rationale: these features increase navigation and analysis value without changing the storage model, adding external processors, or exposing financial records to an admin or backend.
 
+### Safe To Spend
+
+Chosen: calculate safe-to-spend against the lower value between the configured monthly budget and the current month's income, then subtract current-month expenses.
+
+Rationale: the dashboard should not show spendable room based only on expenses when the monthly net flow cannot support it. The configured budget remains the spending cap, while current income prevents overstating safe cash pressure in low-income or partial-income months.
+
+The dashboard lets users switch Safe to Spend between `With extras` and `Net`, matching the category spending lens so one-off income and expenses can either be included in cash-pressure decisions or excluded from normalized planning.
+
 ### Notifications
 
 Chosen: local-only web notifications using browser permission, local preferences, local reminders, and the existing service worker.

@@ -10,7 +10,7 @@ import { Card, EmptyState, Skeleton } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
-import { filterByAnalyticsLens, formatMonthLabel, spendingByCategory } from '../domain/finance';
+import { calculateTotalsByLens, filterByAnalyticsLens, formatMonthLabel, safeToSpend as calculateSafeToSpend, spendingByCategory } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
@@ -33,7 +33,7 @@ export const Dashboard = () => {
   const {
     transactions, setTransactions, budgets,
     monthlyTotals, monthlyBudget,
-    safeToSpend, monthlyTransactions, momChange, recentTransactions, isHydrated,
+    monthlyTransactions, momChange, recentTransactions, isHydrated,
     categories, addCategory, selectedMonth, setSelectedMonth
   } = useApp();
   const { toast } = useToast();
@@ -44,13 +44,22 @@ export const Dashboard = () => {
   // Derived from context
   const { income: monthlyIncome, expenses: monthlyExpenses } = monthlyTotals;
   const monthlySavings = Math.max(0, monthlyTotals.net);
-  const { remaining: safeAmount, usedPercent } = safeToSpend;
   const animatedBalance = useAnimatedNumber(monthlyTotals.net);
-  const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const [barsMounted, setBarsMounted] = useState(false);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [safeToSpendLens, setSafeToSpendLens] = useState<'actual' | 'normalized'>('actual');
   const [spendingLens, setSpendingLens] = useState<'actual' | 'normalized'>('actual');
+  const safeToSpendTotals = useMemo(
+    () => calculateTotalsByLens(monthlyTransactions, safeToSpendLens),
+    [monthlyTransactions, safeToSpendLens],
+  );
+  const safeToSpendData = useMemo(
+    () => calculateSafeToSpend(monthlyBudget, safeToSpendTotals.expenses, safeToSpendTotals.income),
+    [monthlyBudget, safeToSpendTotals.expenses, safeToSpendTotals.income],
+  );
+  const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
+  const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const visibleCategorySpending = useMemo(
     () => spendingByCategory(filterByAnalyticsLens(monthlyTransactions, spendingLens)),
     [monthlyTransactions, spendingLens],
@@ -179,8 +188,30 @@ export const Dashboard = () => {
         {/* Safe to Spend — promoted to primary position */}
         <Card className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <h3 className="text-on-surface-variant text-xs mb-2 font-bold">Safe to Spend</h3>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-on-surface-variant text-xs font-bold">Safe to Spend</h3>
+                <div className="flex rounded-full bg-surface-container-high p-1">
+                  {[
+                    { value: 'actual', label: 'With extras' },
+                    { value: 'normalized', label: 'Net' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSafeToSpendLens(option.value as 'actual' | 'normalized')}
+                      className={cn(
+                        'h-7 rounded-full px-3 text-micro font-extrabold transition-colors',
+                        safeToSpendLens === option.value
+                          ? 'bg-primary text-on-primary shadow-sm'
+                          : 'text-on-surface-variant hover:bg-surface-container-highest',
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {isHydrated ? (
                 <p className={cn(
                   "text-3xl font-headline font-bold",
@@ -191,7 +222,7 @@ export const Dashboard = () => {
               ) : (
                 <Skeleton className="h-9 w-36" />
               )}
-              <p className="text-on-surface-variant text-xs">of {formatCurrency(monthlyBudget)} monthly budget</p>
+              <p className="text-on-surface-variant text-xs">of {formatCurrency(effectiveLimit)} safe limit</p>
             </div>
             <div className="mx-auto sm:mx-0">
               <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" />

@@ -13,12 +13,16 @@ vi.mock('../../context/AppContext', () => ({
 }));
 
 function transaction(overrides: Partial<Transaction> = {}): Transaction {
+  const currentMonthDate = new Date();
+  currentMonthDate.setDate(5);
+  currentMonthDate.setHours(0, 0, 0, 0);
+
   return {
     id: 'tx-1',
     amount: 100,
     type: 'expense',
     category: 'Food',
-    date: '2026-05-05T00:00:00.000Z',
+    date: currentMonthDate.toISOString(),
     title: 'Groceries',
     description: '',
     paymentMethod: 'Card',
