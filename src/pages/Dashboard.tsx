@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
-import { Card, EmptyState, Skeleton } from '../components/ui';
+import { Card, EmptyState, Skeleton, LensSelector } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
@@ -48,15 +48,18 @@ export const Dashboard = () => {
   const [barsMounted, setBarsMounted] = useState(false);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
-  const [safeToSpendLens, setSafeToSpendLens] = useState<'actual' | 'normalized'>('actual');
-  const [spendingLens, setSpendingLens] = useState<'actual' | 'normalized'>('actual');
+  const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
+  const filteredTransactions = useMemo(
+    () => filterByAnalyticsLens(transactions, lens),
+    [transactions, lens],
+  );
   const safeToSpendTotals = useMemo(
-    () => calculateTotalsByLens(monthlyTransactions, safeToSpendLens),
-    [monthlyTransactions, safeToSpendLens],
+    () => calculateTotalsByLens(monthlyTransactions, lens),
+    [monthlyTransactions, lens],
   );
   const safeToSpendCashInflow = useMemo(
-    () => calculateCashInflowByLens(monthlyTransactions, safeToSpendLens),
-    [monthlyTransactions, safeToSpendLens],
+    () => calculateCashInflowByLens(monthlyTransactions, lens),
+    [monthlyTransactions, lens],
   );
   const safeToSpendData = useMemo(
     () => calculateSafeToSpend(monthlyBudget, safeToSpendTotals.expenses, safeToSpendCashInflow),
@@ -65,8 +68,8 @@ export const Dashboard = () => {
   const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const visibleCategorySpending = useMemo(
-    () => spendingByCategory(filterByAnalyticsLens(monthlyTransactions, spendingLens)),
-    [monthlyTransactions, spendingLens],
+    () => spendingByCategory(filterByAnalyticsLens(monthlyTransactions, lens)),
+    [monthlyTransactions, lens],
   );
   const totalSpent = visibleCategorySpending.reduce((acc, c) => acc + c.amount, 0);
 
@@ -97,7 +100,7 @@ export const Dashboard = () => {
     const date = getReferenceDate();
     date.setDate(date.getDate() - (6 - index));
     const key = date.toISOString().slice(0, 10);
-    return transactions
+    return filteredTransactions
       .filter((transaction) => transaction.date.slice(0, 10) === key && transaction.type === 'income')
       .reduce((sum, transaction) => sum + transaction.amount, 0);
   });
@@ -105,7 +108,7 @@ export const Dashboard = () => {
     const date = getReferenceDate();
     date.setDate(date.getDate() - (6 - index));
     const key = date.toISOString().slice(0, 10);
-    return transactions
+    return filteredTransactions
       .filter((transaction) => transaction.date.slice(0, 10) === key && transaction.type === 'expense')
       .reduce((sum, transaction) => sum + transaction.amount, 0);
   });
@@ -189,51 +192,36 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {/* Centralized Lens Selector */}
+        <div className="w-full flex justify-center py-1">
+          <LensSelector value={lens} onChange={setLens} />
+        </div>
+
         {/* Safe to Spend — promoted to primary position */}
-        <Card className="space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-on-surface-variant text-xs font-bold">Safe to Spend</h3>
-                <div className="flex rounded-full bg-surface-container-high p-1">
-                  {[
-                    { value: 'actual', label: 'With extras' },
-                    { value: 'normalized', label: 'Net' },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSafeToSpendLens(option.value as 'actual' | 'normalized')}
-                      className={cn(
-                        'h-7 rounded-full px-3 text-micro font-extrabold transition-colors',
-                        safeToSpendLens === option.value
-                          ? 'bg-primary text-on-primary shadow-sm'
-                          : 'text-on-surface-variant hover:bg-surface-container-highest',
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+        <Card className="p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-on-surface-variant text-xs font-bold">Safe to Spend</h3>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                {isHydrated ? (
+                  <p className={cn(
+                    "text-2xl font-headline font-extrabold",
+                    usedPercent > 90 ? "text-tertiary" : "text-secondary"
+                  )}>
+                    {formatCurrency(animatedSafeAmount)}
+                  </p>
+                ) : (
+                  <Skeleton className="h-8 w-24" />
+                )}
+                <span className="text-on-surface-variant text-xs">of {formatCurrency(effectiveLimit)} safe limit</span>
               </div>
-              {isHydrated ? (
-                <p className={cn(
-                  "text-3xl font-headline font-bold",
-                  usedPercent > 90 ? "text-tertiary" : "text-secondary"
-                )}>
-                  {formatCurrency(animatedSafeAmount)}
-                </p>
-              ) : (
-                <Skeleton className="h-9 w-36" />
-              )}
-              <p className="text-on-surface-variant text-xs">of {formatCurrency(effectiveLimit)} safe limit</p>
             </div>
-            <div className="mx-auto sm:mx-0">
+            <div className="flex-shrink-0 -my-4 flex justify-center items-center scale-85 origin-right">
               <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" />
             </div>
           </div>
-          <div className="space-y-2">
-            <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+          <div className="space-y-1">
+            <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
               <div
                 className={cn(
                   "h-full rounded-full transition-all duration-1000",
@@ -262,7 +250,7 @@ export const Dashboard = () => {
             <Sparkline values={weeklyIncome} color="var(--color-secondary)" label="Income over the last 7 days" />
           </div>
           <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Income</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyIncome)}</p>
+          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(safeToSpendTotals.income)}</p>
         </div>
 
         <div className="bg-surface-container-low p-5 rounded-3xl border-none">
@@ -273,37 +261,15 @@ export const Dashboard = () => {
             <Sparkline values={weeklyExpenses} color="var(--color-tertiary)" label="Expenses over the last 7 days" />
           </div>
           <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Expenses</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(monthlyExpenses)}</p>
+          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(safeToSpendTotals.expenses)}</p>
         </div>
       </div>
 
       {/* Spending by Category — multi-color donut */}
       <Card>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
-            <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
-          </div>
-          <div className="flex shrink-0 rounded-full bg-surface-container-high p-1">
-            {[
-              { value: 'actual', label: 'With extras' },
-              { value: 'normalized', label: 'Net' },
-            ].map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setSpendingLens(option.value as 'actual' | 'normalized')}
-                className={cn(
-                  'h-7 rounded-full px-3 text-micro font-extrabold transition-colors',
-                  spendingLens === option.value
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-on-surface-variant hover:bg-surface-container-highest',
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div className="mb-4">
+          <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
+          <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
         </div>
         {visibleCategorySpending.length > 0 ? (
           <div className="flex flex-col gap-6">
@@ -351,9 +317,9 @@ export const Dashboard = () => {
         ) : (
           <EmptyState
             icon={<PieChart className="w-10 h-10" />}
-            title={spendingLens === 'normalized' ? 'No net expenses this month' : 'No expenses this month'}
+            title={lens === 'normalized' ? 'No net expenses this month' : 'No expenses this month'}
             description={
-              spendingLens === 'normalized'
+              lens === 'normalized'
                 ? 'Only extra expenses were found for this month.'
                 : 'Add your first expense to see category breakdowns here.'
             }
