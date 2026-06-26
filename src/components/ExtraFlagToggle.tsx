@@ -49,7 +49,7 @@ export function ReportingTreatmentToggle({ value, type, onChange, className }: R
   const options: Array<{ value: TransactionReportingClass; label: string; ariaLabel: string }> = [
     { value: 'extra', label: 'Extra', ariaLabel: 'Mark as extra' },
     ...(canReimburse
-      ? [{ value: 'reimbursement' as const, label: 'Rimborso', ariaLabel: 'Mark as reimbursement' }]
+      ? [{ value: 'reimbursement' as const, label: 'Refund', ariaLabel: 'Mark as refund' }]
       : []),
   ];
 

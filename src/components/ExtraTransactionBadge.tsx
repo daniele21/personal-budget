@@ -14,7 +14,7 @@ export function ExtraTransactionBadge({ transaction, className }: ExtraTransacti
   if (reportingClass === 'regular') return null;
 
   const isReimbursement = reportingClass === 'reimbursement';
-  const labelPrefix = isReimbursement ? 'Rimborso' : 'Extra';
+  const labelPrefix = isReimbursement ? 'Refund' : 'Extra';
   const label = transaction.reportingNote ? `${labelPrefix}: ${transaction.reportingNote}` : labelPrefix;
   const Icon = isReimbursement ? ReceiptText : Sparkles;
 

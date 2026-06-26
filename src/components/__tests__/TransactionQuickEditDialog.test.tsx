@@ -60,7 +60,7 @@ describe('TransactionQuickEditDialog', () => {
     );
 
     await user.click(screen.getByLabelText(/mark as extra/i));
-    await user.click(screen.getByLabelText(/mark as reimbursement/i));
+    await user.click(screen.getByLabelText(/mark as refund/i));
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
