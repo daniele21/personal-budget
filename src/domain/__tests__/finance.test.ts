@@ -7,6 +7,8 @@ import {
   sortByDateDesc,
   sortTransactions,
   calculateTotals,
+  calculateBudgetableCashInflow,
+  calculateBudgetableCashInflowByLens,
   calculateCashInflow,
   calculateCashInflowByLens,
   calculateTotalsByLens,
@@ -321,7 +323,7 @@ describe('calculateTotals', () => {
     expect(totals).toEqual({ income: 1000, expenses: 0, net: 1050 });
   });
 
-  it('keeps reimbursement in cash inflow for cash-pressure decisions', () => {
+  it('keeps reimbursement in total cash inflow while excluding it from income totals', () => {
     const transactions = [
       tx({ amount: 100, type: 'income', category: 'Medical', reportingClass: 'reimbursement' }),
       tx({ amount: 250, type: 'income', category: 'Bonus', reportingClass: 'extra' }),
@@ -330,6 +332,16 @@ describe('calculateTotals', () => {
     expect(calculateTotals(transactions)).toEqual({ income: 250, expenses: 0, net: 350 });
     expect(calculateCashInflow(transactions)).toBe(350);
     expect(calculateCashInflowByLens(transactions, 'normalized')).toBe(100);
+  });
+
+  it('excludes reimbursements from the income cap used by safe-to-spend', () => {
+    const transactions = [
+      tx({ amount: 100, type: 'income', category: 'Medical', reportingClass: 'reimbursement' }),
+      tx({ amount: 250, type: 'income', category: 'Bonus', reportingClass: 'extra' }),
+    ];
+
+    expect(calculateBudgetableCashInflow(transactions)).toBe(250);
+    expect(calculateBudgetableCashInflowByLens(transactions, 'normalized')).toBe(0);
   });
 });
 
@@ -364,6 +376,24 @@ describe('getCategoryDeltas', () => {
       [],
     );
     expect(deltas[0]).toMatchObject({ category: 'Health', delta: 50, deltaPercent: null });
+  });
+
+  it('compares category spend net of reimbursements', () => {
+    const deltas = getCategoryDeltas(
+      [
+        tx({ amount: 302, type: 'expense', category: 'Health' }),
+        tx({ amount: 14, type: 'expense', category: 'Health' }),
+        tx({ amount: 240, type: 'income', category: 'Health', reportingClass: 'reimbursement' }),
+      ],
+      [tx({ amount: 100, type: 'expense', category: 'Health' })],
+    );
+
+    expect(deltas[0]).toMatchObject({
+      category: 'Health',
+      amountA: 76,
+      amountB: 100,
+      delta: -24,
+    });
   });
 });
 
@@ -510,6 +540,13 @@ describe('safeToSpend', () => {
     expect(result.usedPercent).toBe(0);
     expect(result.effectiveLimit).toBe(2000);
   });
+
+  it('falls back to the configured budget when no budgetable income is recorded', () => {
+    const result = safeToSpend(2000, 800, 0);
+    expect(result.remaining).toBe(1200);
+    expect(result.usedPercent).toBe(40);
+    expect(result.effectiveLimit).toBe(2000);
+  });
 });
 
 // ─── spendingByCategory ─────────────────────────────────────────────
@@ -532,6 +569,15 @@ describe('spendingByCategory', () => {
     expect(result[1].category).toBe('Transport');
     expect(result[1].amount).toBe(100);
     expect(result[1].percentage).toBeCloseTo(0.286);
+  });
+
+  it('floors a category at zero when reimbursements exceed category expenses', () => {
+    const result = spendingByCategory([
+      tx({ amount: 120, type: 'expense', category: 'Health' }),
+      tx({ amount: 200, type: 'income', category: 'Health', reportingClass: 'reimbursement' }),
+    ]);
+
+    expect(result).toEqual([]);
   });
 
   it('sorts by amount descending', () => {

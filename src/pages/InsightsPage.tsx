@@ -6,11 +6,16 @@ import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { Card } from '../components/ui';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { cn } from '../lib/utils';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
+import { upsertRecurringOverride } from '../domain/recurring';
 import { pageTransition } from '../utils/motion';
 import { getCategoryTheme } from '../config/categoryThemes';
+import { haptics } from '../utils/haptics';
+import { useToast } from '../components/Toast';
 
 // ─── Range definitions ──────────────────────────────────────────────
 
@@ -97,11 +102,6 @@ function filterByRange(transactions: Transaction[], start: Date, end: Date): Tra
   });
 }
 
-// ─── Colors ─────────────────────────────────────────────────────────
-
-const BAR_COLORS = ['bg-primary', 'bg-secondary', 'bg-tertiary', 'bg-[#8b5cf6]', 'bg-[#f59e0b]', 'bg-[#06b6d4]', 'bg-[#ec4899]', 'bg-[#10b981]'];
-const TEXT_COLORS = ['text-primary', 'text-secondary', 'text-tertiary', 'text-[#8b5cf6]', 'text-[#f59e0b]', 'text-[#06b6d4]', 'text-[#ec4899]', 'text-[#10b981]'];
-
 const DEEPER_ANALYSIS_LINKS = [
   {
     to: '/compare',
@@ -122,7 +122,16 @@ const DEEPER_ANALYSIS_LINKS = [
 // ─── Component ──────────────────────────────────────────────────────
 
 export const InsightsPage = () => {
-  const { transactions, budgets } = useApp();
+  const {
+    transactions,
+    setTransactions,
+    budgets,
+    recurring,
+    setRecurring,
+    categories,
+    addCategory,
+  } = useApp();
+  const { toast } = useToast();
   const today = new Date();
   const [anchorYear, setAnchorYear] = useState(today.getFullYear());
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
@@ -130,6 +139,8 @@ export const InsightsPage = () => {
   const [analyticsLens, setAnalyticsLens] = useState<Finance.AnalyticsLens>('actual');
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const [showAverage, setShowAverage] = useState(false);
+  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
   const { start, end, prevStart, prevEnd, label: periodLabel } = useMemo(
     () => getDateRange(range, anchorYear, anchorMonth),
@@ -145,20 +156,13 @@ export const InsightsPage = () => {
   const totals = useMemo(() => Finance.calculateTotals(visiblePeriodTx), [visiblePeriodTx]);
   const prevTotals = useMemo(() => Finance.calculateTotals(visiblePrevPeriodTx), [visiblePrevPeriodTx]);
 
-  // Spending by category
-  const categorySpending = useMemo(() => {
-    const expenses = Finance.filterByType(visiblePeriodTx, 'expense');
-    const cats = Array.from(new Set(expenses.map(t => t.category)));
-    const total = expenses.reduce((s, t) => s + t.amount, 0);
-    return cats.map(cat => {
-      const amount = Finance.filterByCategory(expenses, cat).reduce((s, t) => s + t.amount, 0);
-      return { category: cat, amount, percentage: total > 0 ? amount / total : 0 };
-    }).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
-  }, [visiblePeriodTx]);
+  const categorySpending = useMemo(() => Finance.spendingByCategory(visiblePeriodTx), [visiblePeriodTx]);
 
   // Income by category
   const categoryIncome = useMemo(() => {
-    const incomes = Finance.filterByType(visiblePeriodTx, 'income');
+    const incomes = Finance
+      .filterByType(visiblePeriodTx, 'income')
+      .filter((transaction) => Finance.getTransactionReportingClass(transaction) !== 'reimbursement');
     const cats = Array.from(new Set(incomes.map(t => t.category)));
     const total = incomes.reduce((s, t) => s + t.amount, 0);
     return cats.map(cat => {
@@ -175,7 +179,7 @@ export const InsightsPage = () => {
       const income = categoryIncome.find(c => c.category === cat)?.amount || 0;
       const budget = budgets.find(b => b.category === cat);
 
-      const prevCatExpense = Finance.filterByCategory(Finance.filterByType(visiblePrevPeriodTx, 'expense'), cat).reduce((s, t) => s + t.amount, 0);
+      const prevCatExpense = Math.max(0, Finance.calculateTotals(Finance.filterByCategory(visiblePrevPeriodTx, cat)).expenses);
       const change = prevCatExpense > 0 ? ((expense - prevCatExpense) / prevCatExpense) * 100 : null;
 
       return { category: cat, expense, income, net: income - expense, budget, change };
@@ -220,6 +224,49 @@ export const InsightsPage = () => {
   const displayIncome = isAverageActive ? totals.income / rangeMonths : totals.income;
   const displayExpenses = isAverageActive ? totals.expenses / rangeMonths : totals.expenses;
   const displayNet = isAverageActive ? totals.net / rangeMonths : totals.net;
+
+  const saveQuickEdit = (nextTransaction: Transaction) => {
+    const existingTransaction = transactions.find((transaction) => transaction.id === nextTransaction.id);
+    setTransactions(transactions.map((transaction) => (
+      transaction.id === nextTransaction.id ? nextTransaction : transaction
+    )));
+
+    if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
+      setRecurring(recurring.map((bill) => (
+        bill.id === existingTransaction.sourceRecurringId
+          ? upsertRecurringOverride(bill, {
+            monthKey: existingTransaction.sourceMonthKey,
+            occurrenceKey: existingTransaction.sourceMonthKey,
+            amount: nextTransaction.amount,
+            type: nextTransaction.type,
+            category: nextTransaction.category,
+            title: nextTransaction.title,
+            description: nextTransaction.description,
+            paymentMethod: nextTransaction.paymentMethod,
+            date: nextTransaction.date,
+          })
+          : bill
+      )));
+    }
+
+    setQuickEditTransaction(null);
+    haptics.success();
+    toast('Transaction updated', 'success');
+  };
+
+  const deleteTransaction = (id: string) => {
+    const deleted = transactions.find((transaction) => transaction.id === id);
+    setTransactions(transactions.filter((transaction) => transaction.id !== id));
+    setTransactionToDelete(null);
+    haptics.warning();
+    toast('Transaction deleted', 'info', 5000, deleted ? {
+      label: 'Undo',
+      onClick: () => {
+        setTransactions([deleted, ...transactions]);
+        haptics.success();
+      },
+    } : undefined);
+  };
 
   return (
     <motion.div
@@ -530,7 +577,13 @@ export const InsightsPage = () => {
                           className="mt-1.5 ml-6 mr-1 space-y-1 overflow-hidden"
                         >
                           {Finance.sortByDateDesc(catTx).map(tx => (
-                            <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-surface-container-low/50">
+                            <button
+                              key={tx.id}
+                              type="button"
+                              onClick={() => setQuickEditTransaction(tx)}
+                              className="flex w-full items-center justify-between rounded-xl bg-surface-container-low/50 px-3 py-2.5 text-left transition-all hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.99]"
+                              aria-label={`Open transaction ${tx.title || tx.description || tx.category}`}
+                            >
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
                                 <p className="text-micro text-on-surface-variant mt-0.5">
@@ -540,7 +593,7 @@ export const InsightsPage = () => {
                               <span className={cn('text-xs font-bold tabular-nums', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
                                 {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                               </span>
-                            </div>
+                            </button>
                           ))}
                         </motion.div>
                       )}
@@ -597,7 +650,13 @@ export const InsightsPage = () => {
                           className="mt-1.5 ml-6 mr-1 space-y-1 overflow-hidden"
                         >
                           {Finance.sortByDateDesc(catTx).map(tx => (
-                            <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-surface-container-low/50">
+                            <button
+                              key={tx.id}
+                              type="button"
+                              onClick={() => setQuickEditTransaction(tx)}
+                              className="flex w-full items-center justify-between rounded-xl bg-surface-container-low/50 px-3 py-2.5 text-left transition-all hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.99]"
+                              aria-label={`Open transaction ${tx.title || tx.description || tx.category}`}
+                            >
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
                                 <p className="text-micro text-on-surface-variant mt-0.5">
@@ -607,7 +666,7 @@ export const InsightsPage = () => {
                               <span className={cn('text-xs font-bold tabular-nums', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
                                 {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                               </span>
-                            </div>
+                            </button>
                           ))}
                         </motion.div>
                       )}
@@ -619,6 +678,27 @@ export const InsightsPage = () => {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={transactionToDelete !== null}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction?"
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => transactionToDelete && deleteTransaction(transactionToDelete)}
+        onCancel={() => setTransactionToDelete(null)}
+      />
+      <TransactionQuickEditDialog
+        transaction={quickEditTransaction}
+        categories={categories}
+        onAddCategory={addCategory}
+        onClose={() => setQuickEditTransaction(null)}
+        onSave={saveQuickEdit}
+        onDelete={(id) => {
+          setQuickEditTransaction(null);
+          setTransactionToDelete(id);
+        }}
+      />
     </motion.div>
   );
 };

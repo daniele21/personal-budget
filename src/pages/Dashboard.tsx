@@ -10,7 +10,7 @@ import { Card, EmptyState, Skeleton, LensSelector } from '../components/ui';
 import { Sparkline } from '../components/Sparkline';
 import { RadialGauge } from '../components/RadialGauge';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
-import { calculateCashInflowByLens, calculateTotalsByLens, filterByAnalyticsLens, formatMonthLabel, safeToSpend as calculateSafeToSpend, spendingByCategory } from '../domain/finance';
+import { calculateBudgetableCashInflowByLens, calculateTotalsByLens, filterByAnalyticsLens, formatMonthLabel, safeToSpend as calculateSafeToSpend, spendingByCategory } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
@@ -57,13 +57,13 @@ export const Dashboard = () => {
     () => calculateTotalsByLens(monthlyTransactions, lens),
     [monthlyTransactions, lens],
   );
-  const safeToSpendCashInflow = useMemo(
-    () => calculateCashInflowByLens(monthlyTransactions, lens),
+  const safeToSpendIncomeCap = useMemo(
+    () => calculateBudgetableCashInflowByLens(monthlyTransactions, lens),
     [monthlyTransactions, lens],
   );
   const safeToSpendData = useMemo(
-    () => calculateSafeToSpend(monthlyBudget, safeToSpendTotals.expenses, safeToSpendCashInflow),
-    [monthlyBudget, safeToSpendTotals.expenses, safeToSpendCashInflow],
+    () => calculateSafeToSpend(monthlyBudget, safeToSpendTotals.expenses, safeToSpendIncomeCap),
+    [monthlyBudget, safeToSpendTotals.expenses, safeToSpendIncomeCap],
   );
   const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
   const animatedSafeAmount = useAnimatedNumber(safeAmount);

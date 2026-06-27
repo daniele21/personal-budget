@@ -47,7 +47,12 @@ describe('InsightsPage analytics lenses', () => {
         transaction({ id: 'trip', amount: 600, type: 'expense', category: 'Travel', title: 'Holiday', reportingClass: 'extra' }),
         transaction({ id: 'bonus', amount: 500, type: 'income', category: 'Bonus', title: 'Bonus', reportingClass: 'extra' }),
       ],
+      setTransactions: vi.fn(),
       budgets: [{ category: 'Food', limit: 500, spent: 0, currency: '€' }],
+      recurring: [],
+      setRecurring: vi.fn(),
+      categories: ['Food', 'Travel', 'Salary', 'Bonus'],
+      addCategory: vi.fn(),
     });
   });
 
@@ -86,5 +91,16 @@ describe('InsightsPage analytics lenses', () => {
     expect(screen.getAllByText('Bonus').length).toBeGreaterThan(0);
 
     expect(screen.queryByText('Food')).not.toBeInTheDocument();
+  });
+
+  it('opens transaction details from an expanded category item', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: /food/i }));
+    await user.click(screen.getByRole('button', { name: /open transaction groceries/i }));
+
+    expect(screen.getByRole('dialog', { name: /quick edit transaction/i })).toBeInTheDocument();
+    expect(screen.getByText('Transaction details')).toBeInTheDocument();
   });
 });

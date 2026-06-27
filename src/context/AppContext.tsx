@@ -324,7 +324,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     () => Finance.safeToSpend(
       monthlyBudget,
       monthlyTotals.expenses,
-      Finance.calculateCashInflow(monthlyTransactions),
+      Finance.calculateBudgetableCashInflow(monthlyTransactions),
     ),
     [monthlyBudget, monthlyTotals.expenses, monthlyTransactions]
   );
