@@ -17,48 +17,11 @@ import { formatCurrency } from '../utils/formatters';
 import * as Finance from '../domain/finance';
 import { Transaction } from '../types';
 import { pageTransition } from '../utils/motion';
-import { LensSelector } from '../components/ui';
+import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, SegmentedControl } from '../components/ui';
 
-// ─── Period helpers ──────────────────────────────────────────────────
-
-type RangeKey = '1M' | '3M' | '6M' | '12M';
 type InsightsLens = 'actual' | 'normalized';
 
-const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
-  { key: '1M', label: 'This month' },
-  { key: '3M', label: '3M' },
-  { key: '6M', label: '6M' },
-  { key: '12M', label: '12M' },
-];
-
-function getRangeDates(key: RangeKey, anchorYear: number, anchorMonth: number) {
-  const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59);
-  let start: Date;
-  let prevStart: Date;
-  let prevEnd: Date;
-  let months: number;
-
-  if (key === '1M') {
-    start = new Date(anchorYear, anchorMonth, 1);
-    prevEnd = new Date(anchorYear, anchorMonth, 0, 23, 59, 59);
-    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
-    months = 1;
-  } else {
-    months = key === '3M' ? 3 : key === '6M' ? 6 : 12;
-    start = new Date(anchorYear, anchorMonth - months + 1, 1);
-    prevEnd = new Date(start.getTime() - 1);
-    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth() - months + 1, 1);
-  }
-
-  const startLabel = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const endLabel = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const periodLabel = `${startLabel} – ${endLabel}`;
-  const comparisonLabel = months === 1
-    ? prevStart.toLocaleDateString('en-US', { month: 'short' })
-    : `${prevStart.toLocaleDateString('en-US', { month: 'short' })} – ${prevEnd.toLocaleDateString('en-US', { month: 'short' })}`;
-
-  return { start, end, prevStart, prevEnd, periodLabel, comparisonLabel };
-}
+// ─── Period helpers ──────────────────────────────────────────────────
 
 /** Build weekly buckets for the overview chart */
 function buildWeeklyData(
@@ -88,18 +51,58 @@ function buildWeeklyData(
   return data;
 }
 
-// ─── Custom tooltip ───────────────────────────────────────────────────
+function calculate30DayMovingAverage(transactions: Transaction[], start: Date, end: Date) {
+  const data: { dateLabel: string; value: number }[] = [];
+  const cursor = new Date(start);
+  const expenseTx = transactions.filter(t => t.type === 'expense');
+
+  while (cursor <= end) {
+    const dayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 0, 0, 0);
+    const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59);
+
+    const windowStart = new Date(dayStart);
+    windowStart.setDate(windowStart.getDate() - 29);
+
+    const windowTx = expenseTx.filter(t => {
+      const d = new Date(t.date);
+      return d >= windowStart && d <= dayEnd;
+    });
+
+    const sum = windowTx.reduce((acc, t) => acc + t.amount, 0);
+    const avg = sum / 30;
+
+    data.push({
+      dateLabel: cursor.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      value: avg
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return data;
+}
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-2.5 shadow-md text-xs">
-      <p className="mb-1 font-bold text-on-surface-variant">{label}</p>
-      {payload.map((entry: any) => (
-        <p key={entry.name} className="font-bold" style={{ color: entry.color }}>
-          {entry.name}: {formatCurrency(entry.value)}
-        </p>
-      ))}
+    <div className="glass-card rounded-2xl p-3 shadow-lg shadow-primary/5 text-xs min-w-[130px] transition-all duration-150">
+      <p className="mb-1.5 font-headline font-bold text-on-surface">{label}</p>
+      <div className="space-y-1">
+        {payload.map((entry: any) => {
+          const displayColor = entry.name === 'Income' 
+            ? 'var(--color-secondary)' 
+            : entry.name === 'Expenses' 
+            ? 'var(--color-tertiary)' 
+            : entry.color;
+          return (
+            <div key={entry.name} className="flex items-center justify-between gap-3 font-semibold">
+              <span className="text-on-surface-variant">{entry.name}</span>
+              <span className="font-extrabold" style={{ color: displayColor }}>
+                {formatCurrency(entry.value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -114,9 +117,10 @@ interface KpiCardProps {
   sub?: string;
   icon: React.ReactNode;
   iconBg: string;
+  valueClassName?: string;
 }
 
-function KpiCard({ label, value, change, positive, sub, icon, iconBg }: KpiCardProps) {
+function KpiCard({ label, value, change, positive, sub, icon, iconBg, valueClassName }: KpiCardProps) {
   return (
     <div className="aura-card space-y-1.5 p-3.5">
       <div className="flex items-center gap-2">
@@ -125,7 +129,7 @@ function KpiCard({ label, value, change, positive, sub, icon, iconBg }: KpiCardP
         </span>
         <span className="text-xs font-bold text-on-surface-variant">{label}</span>
       </div>
-      <p className="font-headline text-xl font-extrabold tabular-nums text-on-surface leading-tight">
+      <p className={cn("font-headline text-xl font-extrabold tabular-nums leading-tight", valueClassName || "text-on-surface")}>
         {value}
       </p>
       {change && (
@@ -184,11 +188,40 @@ export const InsightsPage = () => {
   const { transactions, selectedMonth, monthlyBudget } = useApp();
   const [lens, setLens] = useState<InsightsLens>('actual');
   const [range, setRange] = useState<RangeKey>('1M');
+
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(1); // Default to start of this month
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [isAvgTrendOpen, setIsAvgTrendOpen] = useState(false);
+  const [movingAvgScale, setMovingAvgScale] = useState<'daily' | 'monthly'>('daily');
   
   const { start, end, prevStart, prevEnd, periodLabel, comparisonLabel } = useMemo(() => {
+    if (range === 'CUSTOM') {
+      const s = new Date(customStartDate + 'T00:00:00');
+      const e = new Date(customEndDate + 'T23:59:59');
+      
+      const durationMs = e.getTime() - s.getTime();
+      const pEnd = new Date(s.getTime() - 1);
+      const pStart = new Date(pEnd.getTime() - durationMs);
+      
+      const startLabel = s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const endLabel = e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const periodLabel = `${startLabel} – ${endLabel}`;
+      
+      const prevStartLabel = pStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const prevEndLabel = pEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const comparisonLabel = `${prevStartLabel} – ${prevEndLabel}`;
+      
+      return { start: s, end: e, prevStart: pStart, prevEnd: pEnd, periodLabel, comparisonLabel };
+    }
     const today = new Date();
     return getRangeDates(range, today.getFullYear(), today.getMonth());
-  }, [range]);
+  }, [range, customStartDate, customEndDate]);
 
   const filteredTransactions = useMemo(
     () => Finance.filterByAnalyticsLens(transactions, lens),
@@ -234,36 +267,54 @@ export const InsightsPage = () => {
   // Cash flow goal: use total income from prev period as soft target
   const cashFlowGoal = prevTotals.income > 0 ? prevTotals.income : null;
 
+  const daysCount = useMemo(() => {
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    return Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+  }, [start, end]);
+
+  const isMultiMonth = range === '3M' || range === '6M' || range === '12M' || daysCount > 30;
+
+  const dailyAverage = totals.expenses / daysCount;
+  const monthlyAverage = totals.expenses / (
+    range === '3M' ? 3 :
+    range === '6M' ? 6 :
+    range === '12M' ? 12 :
+    (daysCount / 30.4375)
+  );
+
+  const expenseSub = isMultiMonth
+    ? `Avg: ${formatCurrency(monthlyAverage)}/mo · ${formatCurrency(dailyAverage)}/day`
+    : `Avg: ${formatCurrency(dailyAverage)}/day`;
+
+  const movingAverageData = useMemo(() => {
+    if (!isAvgTrendOpen) return [];
+    const raw = calculate30DayMovingAverage(filteredTransactions, start, end);
+    if (movingAvgScale === 'monthly') {
+      return raw.map(d => ({
+        ...d,
+        value: d.value * 30
+      }));
+    }
+    return raw;
+  }, [isAvgTrendOpen, filteredTransactions, start, end, movingAvgScale]);
+
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
 
       {/* ── Period, lens, and selected range controls ── */}
-      <div className="grid grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] items-center gap-2">
-        <label className="relative min-w-0">
-          <span className="sr-only">Select insights period</span>
-          <select
-            value={range}
-            onChange={(event) => setRange(event.target.value as RangeKey)}
-            className={cn(
-              'block h-8 w-full min-w-0 appearance-none rounded-full border border-outline-variant/20 bg-surface-container-lowest',
-              'py-1 pl-3 pr-8 text-xs font-bold text-primary shadow-sm',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
-            )}
-          >
-            {RANGE_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
-        </label>
-
-        <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
-
-        <div className="ml-auto flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-full border border-outline-variant/25 bg-surface-container-lowest px-2.5 py-1">
-          <CalendarDays className="h-3 w-3 shrink-0 text-on-surface-variant" />
-          <span className="truncate text-[10px] font-bold text-on-surface-variant">{periodLabel}</span>
-        </div>
-      </div>
+      <PeriodSelector
+        range={range}
+        lens={lens}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+        periodLabel={periodLabel}
+        onRangeChange={setRange}
+        onLensChange={setLens}
+        onCustomDatesChange={(start, end) => {
+          setCustomStartDate(start);
+          setCustomEndDate(end);
+        }}
+      />
 
       {extraImpact.count > 0 && (
         <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-2 text-xs font-bold text-on-surface-variant">
@@ -280,6 +331,7 @@ export const InsightsPage = () => {
           positive={incomeChange !== null && incomeChange >= 0}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           iconBg="bg-secondary"
+          valueClassName="text-secondary"
         />
         <KpiCard
           label="Expenses"
@@ -287,7 +339,8 @@ export const InsightsPage = () => {
           change={expenseChange !== null ? `${expenseChange >= 0 ? '+' : ''}${expenseChange.toFixed(0)}% vs ${comparisonLabel}` : null}
           positive={expenseChange !== null && expenseChange <= 0}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>}
-          iconBg="bg-primary"
+          iconBg="bg-tertiary"
+          valueClassName="text-tertiary"
         />
         <KpiCard
           label="Net Cash Flow"
@@ -296,6 +349,7 @@ export const InsightsPage = () => {
           positive={netChange !== null && netChange >= 0}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M3 12h18M12 3l9 9-9 9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           iconBg="bg-accent-cyan"
+          valueClassName={totals.net >= 0 ? "text-secondary" : "text-tertiary"}
         />
         <KpiCard
           label="Safe to Spend"
@@ -308,6 +362,45 @@ export const InsightsPage = () => {
         />
       </div>
 
+      {/* ── Average Daily & Monthly callout ── */}
+      <button
+        onClick={() => setIsAvgTrendOpen(true)}
+        className="relative text-left w-full overflow-hidden rounded-3xl border border-tertiary/15 bg-gradient-to-br from-tertiary/[0.04] to-tertiary/[0.01] p-4 flex items-center justify-between gap-4 transition-all duration-300 hover:border-tertiary/30 hover:shadow-md hover:shadow-tertiary/5 active:scale-[0.99]"
+      >
+        {/* Subtle decorative glow */}
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-tertiary/5 blur-2xl pointer-events-none" />
+        
+        <div className="space-y-1.5 z-10">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-tertiary text-white">
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Average Spending</span>
+          </div>
+          
+          <div className="flex items-baseline gap-6 mt-1 flex-wrap">
+            {isMultiMonth && (
+              <div>
+                <p className="text-[9px] font-bold text-on-surface-variant/80 uppercase">Monthly Average</p>
+                <p className="font-headline text-lg font-black text-tertiary mt-0.5">{formatCurrency(monthlyAverage)}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-[9px] font-bold text-on-surface-variant/80 uppercase">Daily Average</p>
+              <p className="font-headline text-lg font-black text-tertiary mt-0.5">{formatCurrency(dailyAverage)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sparkline trend arrow icon signalling clickability */}
+        <div className="text-tertiary/30 hover:text-tertiary/60 transition-colors shrink-0 z-10 flex flex-col items-center gap-1">
+          <svg className="h-6 w-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span className="text-[8px] font-bold uppercase tracking-wider text-tertiary/60">Trend</span>
+        </div>
+      </button>
+
       {/* ── Overview chart: bars (Income, Expenses) + line (Net Cash Flow) ── */}
       <div className="aura-card space-y-3 p-4">
         <div className="flex items-center justify-between">
@@ -317,11 +410,11 @@ export const InsightsPage = () => {
         {/* Legend */}
         <div className="flex items-center gap-4 text-[10px] font-bold text-on-surface-variant">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-secondary" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-secondary to-[#34d399]" />
             Income
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-tertiary to-[#f87171]" />
             Expenses
           </span>
           <span className="flex items-center gap-1.5">
@@ -333,6 +426,16 @@ export const InsightsPage = () => {
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="incomeComposedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#34d399" />
+                  <stop offset="100%" stopColor="var(--color-secondary)" />
+                </linearGradient>
+                <linearGradient id="expenseComposedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f87171" />
+                  <stop offset="100%" stopColor="var(--color-tertiary)" />
+                </linearGradient>
+              </defs>
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
@@ -349,23 +452,23 @@ export const InsightsPage = () => {
               <Bar
                 dataKey="income"
                 name="Income"
-                fill="var(--color-secondary)"
-                radius={[3, 3, 0, 0]}
-                maxBarSize={20}
+                fill="url(#incomeComposedGrad)"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={16}
               />
               <Bar
                 dataKey="expenses"
                 name="Expenses"
-                fill="var(--color-primary)"
-                radius={[3, 3, 0, 0]}
-                maxBarSize={20}
+                fill="url(#expenseComposedGrad)"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={16}
               />
               <Line
                 type="monotone"
                 dataKey="net"
                 name="Net Cash Flow"
                 stroke="var(--color-accent-cyan)"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 4 }}
               />
@@ -391,6 +494,81 @@ export const InsightsPage = () => {
           comparisonLabel={comparisonLabel}
         />
       </div>
+
+      <BottomSheet
+        isOpen={isAvgTrendOpen}
+        title="30-Day Moving Average"
+        subtitle={`Average spending trend (${movingAvgScale === 'daily' ? 'daily' : 'monthly'}) from ${periodLabel}`}
+        onClose={() => setIsAvgTrendOpen(false)}
+      >
+        <div className="space-y-4 pt-2">
+          <SegmentedControl
+            value={movingAvgScale}
+            options={[
+              { value: 'daily', label: 'Daily Average' },
+              { value: 'monthly', label: 'Monthly Equivalent' },
+            ]}
+            onChange={(val) => setMovingAvgScale(val as 'daily' | 'monthly')}
+            ariaLabel="Moving average scale selector"
+            className="w-full"
+          />
+
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={movingAverageData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis
+                  dataKey="dateLabel"
+                  tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `€${Math.round(v)}`}
+                />
+                <Tooltip
+                  content={({ active, payload, label }: any) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="glass-card rounded-2xl p-3 shadow-lg shadow-primary/5 text-xs min-w-[130px]">
+                        <p className="mb-1 font-bold text-on-surface">{label}</p>
+                        <div className="flex items-center justify-between gap-3 font-semibold text-tertiary">
+                          <span>30d Moving Avg</span>
+                          <span className="font-extrabold">
+                            {formatCurrency(payload[0].value)}
+                            {movingAvgScale === 'daily' ? '/day' : '/mo'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--color-tertiary)"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          
+          <div className="rounded-2xl bg-surface-container-low p-3.5 text-xs font-semibold text-on-surface-variant leading-relaxed">
+            <p>
+              The <strong>30-Day Moving Average</strong> smooths out short-term fluctuations in your spending. 
+              {movingAvgScale === 'daily' ? (
+                <span> Each point represents the average daily expense computed over the preceding 30 days.</span>
+              ) : (
+                <span> Each point represents the average monthly equivalent spending, computed as the daily average multiplied by 30.</span>
+              )}
+            </p>
+          </div>
+        </div>
+      </BottomSheet>
     </motion.div>
   );
 };

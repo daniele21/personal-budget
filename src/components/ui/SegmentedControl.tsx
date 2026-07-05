@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 
 interface SegmentedControlOption<T extends string> {
@@ -26,16 +27,8 @@ interface SegmentedControlProps<T extends string> {
 /**
  * Pill-shaped segmented control matching the Aura Finance mockup tab style.
  *
- * Active tab: dark pill (bg-primary, white text)
+ * Active tab: sliding pill (bg-primary, white text)
  * Inactive tabs: no background, muted text
- *
- * Usage:
- *   <SegmentedControl
- *     value={tab}
- *     options={[{ value: 'all', label: 'All' }, ...]}
- *     onChange={setTab}
- *     ariaLabel="Filter transactions"
- *   />
  */
 export function SegmentedControl<T extends string>({
   value,
@@ -46,12 +39,14 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   size = 'default',
 }: SegmentedControlProps<T>) {
+  const activeLayoutId = React.useId();
+
   return (
     <div
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full bg-surface-container-high p-1',
+        'inline-flex items-center gap-0.5 rounded-full bg-surface-container-low p-1 border border-outline-variant/15',
         className,
       )}
     >
@@ -67,18 +62,25 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               // Base
-              'flex-1 rounded-full px-4 font-bold transition-all',
+              'relative flex-1 rounded-full px-4 font-bold transition-all duration-200 active:scale-[0.96]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
               // Size
               size === 'default' ? 'min-h-8 py-1.5 text-xs' : 'min-h-6 py-1 text-[10px]',
-              // Active / inactive
+              // Active / inactive text colors
               isActive
-                ? 'bg-primary text-on-primary shadow-sm shadow-primary/20'
-                : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface',
+                ? 'text-on-primary'
+                : 'text-on-surface-variant hover:text-on-surface',
               optionClassName,
             )}
           >
-            <span className="inline-flex min-w-0 items-center justify-center gap-1.5">
+            {isActive && (
+              <motion.span
+                layoutId={activeLayoutId}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="absolute inset-0 rounded-full bg-primary shadow-sm shadow-primary/12"
+              />
+            )}
+            <span className="relative z-10 inline-flex min-w-0 items-center justify-center gap-1.5">
               {option.icon}
               <span className="truncate">{option.label}</span>
             </span>

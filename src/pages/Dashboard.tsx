@@ -170,35 +170,37 @@ export const Dashboard = () => {
   return (
     <motion.div {...pageTransition} className="space-y-3 pb-24">
       {/* ── 1. Safe to Spend Hero ─────────────────────────────────────── */}
-      <Card variant="elevated" className="space-y-2 py-3 overflow-hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <h2 className="font-headline text-xs font-bold text-on-surface-variant">Safe to spend</h2>
-              <Info className="h-3.5 w-3.5 text-on-surface-variant/60" />
-            </div>
-            {isHydrated ? (
-              <p
-                className={cn(
-                  'font-headline text-3xl font-extrabold leading-none tabular-nums',
-                  usedPercent > 90 ? 'text-tertiary' : 'text-primary',
-                )}
-              >
-                {formatCurrency(animatedSafeAmount)}
+      <Link to="/budgets" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-3xl transition-transform active:scale-[0.99]">
+        <Card variant="elevated" className="space-y-2 py-3 overflow-hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-headline text-xs font-bold text-on-surface-variant">Safe to spend</h2>
+                <Info className="h-3.5 w-3.5 text-on-surface-variant/60" />
+              </div>
+              {isHydrated ? (
+                <p
+                  className={cn(
+                    'font-headline text-3xl font-extrabold leading-none tabular-nums',
+                    usedPercent > 90 ? 'text-tertiary' : 'text-primary',
+                  )}
+                >
+                  {formatCurrency(animatedSafeAmount)}
+                </p>
+              ) : (
+                <Skeleton className="h-10 w-32" />
+              )}
+              <p className="text-[10px] font-bold text-on-surface-variant">
+                of {formatCurrency(effectiveLimit)}
               </p>
-            ) : (
-              <Skeleton className="h-10 w-32" />
-            )}
-            <p className="text-[10px] font-bold text-on-surface-variant">
-              of {formatCurrency(effectiveLimit)}
-            </p>
+            </div>
+            {/* Gauge with hidden text labels below it for mockup matching */}
+            <div className="shrink-0 scale-95 origin-right">
+              <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" hideText />
+            </div>
           </div>
-          {/* Gauge with hidden text labels below it for mockup matching */}
-          <div className="shrink-0 scale-95 origin-right">
-            <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" hideText />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* ── 2. Month navigator ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface-container-low px-3 py-2">
@@ -229,58 +231,38 @@ export const Dashboard = () => {
 
       {/* ── 3. Income / Spent / Remaining row ─────────────────────────── */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px]">
-          <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Income this month</p>
-          <div className="flex items-center justify-between mt-1 gap-1">
-            <span className="text-sm font-extrabold text-on-surface truncate">
-              {isHydrated ? formatCurrency(safeToSpendTotals.income) : <Skeleton className="h-4 w-12" />}
-            </span>
-            <TrendingUp className="h-3 w-3 text-secondary shrink-0" />
+        <Link to="/history" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
+          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
+            <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Income this month</p>
+            <div className="flex items-center justify-between mt-1 gap-1">
+              <span className="text-sm font-extrabold text-secondary truncate">
+                {isHydrated ? formatCurrency(safeToSpendTotals.income) : <Skeleton className="h-4 w-12" />}
+              </span>
+              <TrendingUp className="h-3 w-3 text-secondary shrink-0" />
+            </div>
           </div>
-        </div>
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px]">
-          <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Spent</p>
-          <div className="mt-1">
-            <span className="text-sm font-extrabold text-on-surface truncate">
-              {isHydrated ? formatCurrency(safeToSpendTotals.expenses) : <Skeleton className="h-4 w-12" />}
-            </span>
+        </Link>
+        <Link to="/history" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
+          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
+            <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Spent</p>
+            <div className="mt-1">
+              <span className="text-sm font-extrabold text-tertiary truncate">
+                {isHydrated ? formatCurrency(safeToSpendTotals.expenses) : <Skeleton className="h-4 w-12" />}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px]">
-          <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Remaining</p>
-          <div className="mt-1">
-            <span className="text-sm font-extrabold text-on-surface truncate">
-              {isHydrated ? formatCurrency(safeAmount) : <Skeleton className="h-4 w-12" />}
-            </span>
+        </Link>
+        <Link to="/budgets" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
+          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
+            <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Remaining</p>
+            <div className="mt-1">
+              <span className="text-sm font-extrabold text-on-surface truncate">
+                {isHydrated ? formatCurrency(safeAmount) : <Skeleton className="h-4 w-12" />}
+              </span>
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
-
-      {/* ── 4. Quick actions ───────────────────────────────────────────── */}
-      <section
-        className="grid grid-cols-4 gap-1 rounded-2xl bg-surface-container-low p-2"
-        aria-label="Quick actions"
-      >
-        <IconAction icon={<Plus className="h-5 w-5" />} label="Add" to="/add" ariaLabel="Add transaction" />
-        <IconAction
-          icon={<WalletCards className="h-5 w-5" />}
-          label="Budget"
-          to="/budgets"
-          ariaLabel="Plan budget"
-        />
-        <IconAction
-          icon={<BarChart3 className="h-5 w-5" />}
-          label="Analyze"
-          to="/insights"
-          ariaLabel="Analyze spending"
-        />
-        <IconAction
-          icon={<CalendarDays className="h-5 w-5" />}
-          label="Plan"
-          to="/calendar"
-          ariaLabel="Open calendar and recurring planning"
-        />
-      </section>
 
       {/* ── 5. Cash flow chart ─────────────────────────────────────────── */}
       <Card variant="elevated" className="space-y-3 p-4">
@@ -388,7 +370,7 @@ export const Dashboard = () => {
                       <p
                         className={cn(
                           'shrink-0 text-sm font-extrabold tabular-nums',
-                          t.type === 'income' ? 'text-secondary' : 'text-on-surface',
+                          t.type === 'income' ? 'text-secondary' : 'text-tertiary',
                         )}
                       >
                         {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, ShieldCheck } from 'lucide-react';
+import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 
 interface LensSelectorProps {
@@ -17,7 +18,7 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
   return (
     <fieldset
       aria-label="Analytics lens"
-      className={cn("grid h-8 w-full max-w-[10rem] grid-cols-2 items-center gap-1 rounded-full border border-outline-variant/20 bg-surface-container-low p-1 mx-auto", className)}
+      className={cn("grid h-8 w-full max-w-[10rem] grid-cols-2 items-center gap-1 rounded-full border border-outline-variant/15 bg-surface-container-low p-1 mx-auto", className)}
     >
       <legend className="sr-only">Analytics lens</legend>
       <input
@@ -34,15 +35,22 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
         aria-label="Net"
         aria-pressed={normalizedSelected}
         className={cn(
-          "inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.98]",
+          "relative inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.96]",
           "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/25",
           normalizedSelected
-            ? "border border-outline-variant/20 bg-surface-container-lowest text-primary shadow-sm"
-            : "text-on-surface-variant hover:bg-surface-container-lowest/60 hover:text-on-surface"
+            ? "text-primary font-bold"
+            : "text-on-surface-variant hover:text-on-surface"
         )}
       >
-        <ShieldCheck className={cn("h-3.5 w-3.5 shrink-0 transition-colors", normalizedSelected ? "text-primary" : "text-on-surface-variant/70")} />
-        <span>Net</span>
+        {normalizedSelected && (
+          <motion.span
+            layoutId="active-lens"
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute inset-0 rounded-full border border-outline-variant/20 bg-surface-container-lowest shadow-sm"
+          />
+        )}
+        <ShieldCheck className={cn("h-3.5 w-3.5 shrink-0 transition-colors z-10", normalizedSelected ? "text-primary" : "text-on-surface-variant/70")} />
+        <span className="z-10">Net</span>
         <span className="sr-only">Regular budget</span>
       </label>
 
@@ -60,15 +68,22 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
         aria-label="Actual"
         aria-pressed={!normalizedSelected}
         className={cn(
-          "inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.98]",
+          "relative inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.96]",
           "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/25",
           normalizedSelected
-            ? "text-on-surface-variant hover:bg-surface-container-lowest/60 hover:text-on-surface"
-            : "border border-outline-variant/20 bg-surface-container-lowest text-accent-amber shadow-sm"
+            ? "text-on-surface-variant hover:text-on-surface"
+            : "text-accent-amber font-bold"
         )}
       >
-        <Sparkles className={cn("h-3.5 w-3.5 shrink-0 transition-colors", normalizedSelected ? "text-on-surface-variant/70" : "text-accent-amber")} />
-        <span>Actual</span>
+        {!normalizedSelected && (
+          <motion.span
+            layoutId="active-lens"
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute inset-0 rounded-full border border-outline-variant/20 bg-surface-container-lowest shadow-sm"
+          />
+        )}
+        <Sparkles className={cn("h-3.5 w-3.5 shrink-0 transition-colors z-10", normalizedSelected ? "text-on-surface-variant/70" : "text-accent-amber")} />
+        <span className="z-10">Actual</span>
         <span className="sr-only">Total spend</span>
       </label>
     </fieldset>

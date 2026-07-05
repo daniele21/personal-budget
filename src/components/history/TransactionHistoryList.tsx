@@ -67,7 +67,7 @@ export function TransactionHistoryList({
             <span
               className={cn(
                 'tabular-nums',
-                group.netTotal >= 0 ? 'text-secondary' : 'text-on-surface-variant/70',
+                group.netTotal >= 0 ? 'text-secondary' : 'text-tertiary',
               )}
             >
               {group.netTotal >= 0 ? '+' : '-'}
@@ -119,7 +119,7 @@ export function TransactionHistoryList({
                       <p
                         className={cn(
                           'text-sm font-extrabold tabular-nums',
-                          transaction.type === 'income' ? 'text-secondary' : 'text-on-surface',
+                          transaction.type === 'income' ? 'text-secondary' : 'text-tertiary',
                         )}
                       >
                         {transaction.type === 'income' ? '+' : '-'}

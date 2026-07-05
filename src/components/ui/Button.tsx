@@ -18,16 +18,16 @@ interface ButtonProps {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-on-primary shadow-md shadow-primary/15 hover:bg-primary-container',
-  secondary: 'bg-surface-container-lowest text-primary border border-outline-variant/25 shadow-sm hover:bg-surface-container-low',
-  ghost: 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary',
-  danger: 'bg-tertiary text-on-primary shadow-md shadow-tertiary/15 hover:bg-tertiary-container',
+  primary: 'bg-gradient-to-b from-primary-container to-primary text-on-primary shadow-md shadow-primary/12 hover:brightness-105 active:brightness-95 border border-primary/20',
+  secondary: 'bg-surface-container-lowest text-primary border border-outline-variant/25 shadow-sm hover:bg-surface-container-low hover:text-primary-container active:bg-surface-container-high',
+  ghost: 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary active:bg-surface-container-high',
+  danger: 'bg-gradient-to-b from-tertiary to-[color-mix(in_srgb,var(--color-tertiary)_85%,#000)] text-on-primary shadow-md shadow-tertiary/12 hover:brightness-105 active:brightness-95 border border-tertiary/20',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'min-h-8 px-2.5 text-xs rounded-lg',
-  md: 'min-h-10 px-3.5 text-sm rounded-xl',
-  lg: 'min-h-11 px-4 text-sm rounded-xl',
+  sm: 'min-h-8 px-3 text-xs rounded-lg',
+  md: 'min-h-10 px-4 text-sm rounded-xl',
+  lg: 'min-h-11 px-5 text-sm rounded-xl',
 };
 
 /**
@@ -49,7 +49,7 @@ export function Button({
         onClick?.(event);
       }}
       className={cn(
-        'inline-flex items-center justify-center gap-2 text-center font-headline font-bold leading-tight transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 text-center font-headline font-bold leading-tight transition-all duration-200 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-50',
         variantStyles[variant],
         sizeStyles[size],
         fullWidth && 'w-full',

@@ -11,3 +11,5 @@ export { BottomSheet } from './BottomSheet';
 export { CompactMetricCard } from './CompactMetricCard';
 export { ProgressRow } from './ProgressRow';
 export { IconAction } from './IconAction';
+export { PeriodSelector, getRangeDates } from './PeriodSelector';
+export type { RangeKey } from './PeriodSelector';

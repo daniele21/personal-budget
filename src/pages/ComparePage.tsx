@@ -22,50 +22,9 @@ import { Transaction } from '../types';
 import { getCategoryTheme } from '../config/categoryThemes';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { pageTransition } from '../utils/motion';
-import { SegmentedControl, LensSelector } from '../components/ui';
+import { SegmentedControl, PeriodSelector, getRangeDates, RangeKey } from '../components/ui';
 
 // ─── Period helpers ────────────────────────────────────────────────────
-
-type RangeKey = '1M' | '3M' | '6M' | '12M';
-
-const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
-  { key: '1M', label: 'This month' },
-  { key: '3M', label: '3M' },
-  { key: '6M', label: '6M' },
-  { key: '12M', label: '12M' },
-];
-
-function getRangeDates(key: RangeKey, anchorYear: number, anchorMonth: number) {
-  const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59);
-  let start: Date;
-  let prevStart: Date;
-  let prevEnd: Date;
-
-  if (key === '1M') {
-    start = new Date(anchorYear, anchorMonth, 1);
-    prevEnd = new Date(anchorYear, anchorMonth, 0, 23, 59, 59);
-    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
-  } else {
-    const months = key === '3M' ? 3 : key === '6M' ? 6 : 12;
-    start = new Date(anchorYear, anchorMonth - months + 1, 1);
-    prevEnd = new Date(start.getTime() - 1);
-    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth() - months + 1, 1);
-  }
-
-  const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const fmtMonth = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-
-  return {
-    start,
-    end,
-    prevStart,
-    prevEnd,
-    labelA: `${fmtDate(start)} – ${fmtDate(end)}`,
-    labelB: `${fmtDate(prevStart)} – ${fmtDate(prevEnd)}`,
-    monthLabelA: fmtMonth(start),
-    monthLabelB: fmtMonth(prevStart),
-  };
-}
 
 function formatDate(date: Date) {
   return [
@@ -116,13 +75,25 @@ const PieTooltip = ({ active, payload }: any) => {
 const BarTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-2.5 text-xs shadow-md">
-      <p className="mb-1 font-bold text-on-surface-variant">{label}</p>
-      {payload.map((entry: any) => (
-        <p key={entry.dataKey} className="font-bold" style={{ color: entry.fill }}>
-          {entry.name}: {formatCurrency(entry.value)}
-        </p>
-      ))}
+    <div className="glass-card rounded-2xl p-3 shadow-lg shadow-primary/5 text-xs min-w-[130px] transition-all duration-150">
+      <p className="mb-1.5 font-headline font-bold text-on-surface">{label}</p>
+      <div className="space-y-1">
+        {payload.map((entry: any) => {
+          const displayColor = entry.dataKey === 'current' 
+            ? 'var(--color-tertiary)' 
+            : entry.dataKey === 'prev' 
+            ? '#f87171' 
+            : entry.fill;
+          return (
+            <div key={entry.dataKey} className="flex items-center justify-between gap-3 font-semibold">
+              <span className="text-on-surface-variant truncate max-w-[120px]">{entry.name}</span>
+              <span className="font-extrabold" style={{ color: displayColor }}>
+                {formatCurrency(entry.value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -552,6 +523,16 @@ function CompareTab({
           {activeChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={activeChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="compareCurrentGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f87171" />
+                    <stop offset="100%" stopColor="var(--color-tertiary)" />
+                  </linearGradient>
+                  <linearGradient id="comparePrevGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#fca5a5" />
+                    <stop offset="100%" stopColor="#f87171" stopOpacity={0.6} />
+                  </linearGradient>
+                </defs>
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 8, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
@@ -568,15 +549,15 @@ function CompareTab({
                 <Bar
                   dataKey="current"
                   name={labelA}
-                  fill="var(--color-primary)"
-                  radius={[3, 3, 0, 0]}
+                  fill="url(#compareCurrentGrad)"
+                  radius={[4, 4, 0, 0]}
                   maxBarSize={16}
                 />
                 <Bar
                   dataKey="prev"
                   name={labelB}
-                  fill="var(--color-secondary)"
-                  radius={[3, 3, 0, 0]}
+                  fill="url(#comparePrevGrad)"
+                  radius={[4, 4, 0, 0]}
                   maxBarSize={16}
                 />
               </BarChart>
@@ -590,11 +571,11 @@ function CompareTab({
         {/* Legend */}
         <div className="mt-2 flex items-center gap-4 text-[10px] font-bold text-on-surface-variant">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-tertiary to-[#f87171]" />
             {labelA}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-secondary" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-[#f87171]/55 to-[#fca5a5]" />
             {labelB}
           </span>
         </div>
@@ -665,9 +646,18 @@ export function ComparePage() {
   const [tab, setTab] = useState<Tab>('spending');
   const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
 
-  const { start, end, prevStart, prevEnd, labelA, labelB } = useMemo(
-    () => getRangeDates(range, anchorYear, anchorMonth),
-    [range, anchorYear, anchorMonth],
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(1); // Default to start of this month
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  const { start, end, prevStart, prevEnd, periodLabel: labelA, comparisonLabel: labelB } = useMemo(
+    () => getRangeDates(range, anchorYear, anchorMonth, customStartDate, customEndDate),
+    [range, anchorYear, anchorMonth, customStartDate, customEndDate],
   );
 
   const filteredTransactions = useMemo(
@@ -688,32 +678,19 @@ export function ComparePage() {
     <motion.div {...pageTransition} className="space-y-4 pb-24">
 
       {/* ── Period, lens, and selected range controls ── */}
-      <div className="grid grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] items-center gap-2">
-        <label className="relative min-w-0">
-          <span className="sr-only">Select reports period</span>
-          <select
-            value={range}
-            onChange={(event) => setRange(event.target.value as RangeKey)}
-            className={cn(
-              'block h-8 w-full min-w-0 appearance-none rounded-full border border-outline-variant/20 bg-surface-container-lowest',
-              'py-1 pl-3 pr-8 text-xs font-bold text-primary shadow-sm',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
-            )}
-          >
-            {RANGE_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
-        </label>
-
-        <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
-
-        <div className="ml-auto flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-full border border-outline-variant/25 bg-surface-container-lowest px-2.5 py-1">
-          <CalendarDays className="h-3 w-3 shrink-0 text-on-surface-variant" />
-          <span className="truncate text-[10px] font-bold text-on-surface-variant">{labelA}</span>
-        </div>
-      </div>
+      <PeriodSelector
+        range={range}
+        lens={lens}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+        periodLabel={labelA}
+        onRangeChange={setRange}
+        onLensChange={setLens}
+        onCustomDatesChange={(start, end) => {
+          setCustomStartDate(start);
+          setCustomEndDate(end);
+        }}
+      />
 
       {/* ── Tab switcher ── */}
       <SegmentedControl

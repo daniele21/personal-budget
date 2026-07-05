@@ -73,6 +73,17 @@ export function CashFlowChart({
       {/* Custom Rounded-Pill Bar Chart */}
       <div className="relative">
         <svg viewBox="0 0 320 100" className="w-full h-24 overflow-visible">
+          <defs>
+            <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#34d399" />
+              <stop offset="100%" stopColor="var(--color-secondary)" />
+            </linearGradient>
+            <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f87171" />
+              <stop offset="100%" stopColor="var(--color-tertiary)" />
+            </linearGradient>
+          </defs>
+
           {/* Dashed Threshold Line */}
           <line
             x1="0"
@@ -116,26 +127,26 @@ export function CashFlowChart({
                   height={chartHeight}
                   rx={6}
                   fill="var(--color-surface-container-high)"
-                  opacity="0.5"
+                  opacity="0.35"
                 />
 
                 {/* Color Fills inside clipPath */}
                 <g clipPath={`url(#bar-clip-${idx})`}>
-                  {/* Income Fill (Green) */}
+                  {/* Income Fill (Green gradient) */}
                   <rect
                     x={x}
                     y={chartHeight - cappedExpenseHeight - cappedIncomeHeight}
                     width={width}
                     height={cappedIncomeHeight}
-                    fill="var(--color-secondary)"
+                    fill="url(#incomeGrad)"
                   />
-                  {/* Expense Fill (Blue) */}
+                  {/* Expense Fill (Blue gradient) */}
                   <rect
                     x={x}
                     y={chartHeight - cappedExpenseHeight}
                     width={width}
                     height={cappedExpenseHeight}
-                    fill="var(--color-primary)"
+                    fill="url(#expenseGrad)"
                   />
                 </g>
               </g>
