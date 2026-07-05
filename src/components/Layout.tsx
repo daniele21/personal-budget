@@ -30,7 +30,7 @@ export const Layout = ({ children, title }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-surface transition-colors duration-300">
       <div
-        className="fixed left-1/2 top-16 z-[60] -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-micro font-bold text-on-primary shadow-lg transition-opacity"
+        className="fixed left-1/2 top-14 z-[60] -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-micro font-bold text-on-primary shadow-lg transition-opacity"
         style={{ opacity: pull.distance > 16 ? 1 : 0, transform: `translate(-50%, ${Math.min(28, pull.distance / 4)}px)` }}
         aria-hidden="true"
       >
@@ -40,7 +40,7 @@ export const Layout = ({ children, title }: LayoutProps) => {
         Skip to content
       </a>
       <TopBar title={title} />
-      <main id="main-content" className="pt-18 px-4 max-w-md mx-auto sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+      <main id="main-content" className="pt-16 px-3 max-w-md mx-auto sm:px-4 sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
         <AnimatePresence mode="wait">
           {children}
         </AnimatePresence>

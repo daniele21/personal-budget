@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
@@ -152,56 +152,61 @@ export const Dashboard = () => {
   return (
     <motion.div 
       {...pageTransition}
-      className="space-y-4 pb-24"
+      className="space-y-3 pb-20"
     >
-      {/* Hero: Balance */}
-      <section className="flex flex-col gap-4">
-        <div className="space-y-0.5">
-          <p className="text-on-surface-variant text-xs font-bold">Month Balance</p>
-          <div className="flex items-baseline gap-2">
+      <section className="flex flex-col gap-3">
+        <div className="rounded-3xl bg-surface-container-low p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] sm:p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-bold text-on-surface-variant">Month Balance</p>
+            <div className="flex items-center gap-1 rounded-full bg-surface-container-lowest px-2 py-0.5 text-micro font-bold text-primary shadow-sm">
+              <ShieldCheck className="h-3 w-3 text-secondary" />
+              Local first
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             {isHydrated ? (
-              <h2 className="text-4xl sm:text-5xl font-headline font-extrabold tracking-tighter text-primary">
+              <h2 className="font-headline text-3xl font-extrabold leading-none tracking-tight text-primary sm:text-4xl">
                 {formatCurrency(animatedBalance)}
               </h2>
             ) : (
-              <Skeleton className="h-12 w-56" />
+              <Skeleton className="h-9 w-44" />
             )}
             {momChange !== null && (
               <div className={cn(
-                "px-2 py-0.5 rounded-full flex items-center gap-1",
+                "px-1.5 py-0.5 rounded-full flex items-center gap-1",
                 momChange >= 0 ? "bg-secondary-container/20" : "bg-tertiary/10"
               )}>
                 {momChange >= 0
                   ? <TrendingDown className="w-3 h-3 text-secondary" />
                   : <TrendingUp className="w-3 h-3 text-tertiary" />
                 }
-                <span className={cn("font-bold text-xs", momChange >= 0 ? "text-secondary" : "text-tertiary")}>
+                <span className={cn("font-bold text-micro", momChange >= 0 ? "text-secondary" : "text-tertiary")}>
                   {momChange >= 0 ? '-' : '+'}{Math.abs(momChange).toFixed(1)}%
                 </span>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <button onClick={handlePrevMonth} className="p-1 rounded-full hover:bg-surface-container-high transition-colors" aria-label="Previous month">
-              <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
+          <div className="mt-2 flex items-center gap-1.5">
+            <button onClick={handlePrevMonth} className="rounded-full p-0.5 transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Previous month">
+              <ChevronLeft className="h-4 w-4 text-on-surface-variant" />
             </button>
-            <p className="text-on-surface-variant text-sm font-bold min-w-[100px] text-center">{formatMonthLabel(selectedMonth)}</p>
-            <button onClick={handleNextMonth} className="p-1 rounded-full hover:bg-surface-container-high transition-colors" aria-label="Next month">
-              <ChevronRight className="w-4 h-4 text-on-surface-variant" />
+            <p className="min-w-[92px] text-center text-sm font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</p>
+            <button onClick={handleNextMonth} className="rounded-full p-0.5 transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Next month">
+              <ChevronRight className="h-4 w-4 text-on-surface-variant" />
             </button>
           </div>
         </div>
 
         {/* Centralized Lens Selector */}
-        <div className="w-full flex justify-center py-1">
+        <div className="flex w-full justify-center">
           <LensSelector value={lens} onChange={setLens} />
         </div>
 
         {/* Safe to Spend — promoted to primary position */}
-        <Card className="p-4 sm:p-5 space-y-3">
-          <div className="flex items-center justify-between gap-4">
+        <Card variant="elevated" className="space-y-2 overflow-hidden p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
-              <h3 className="text-on-surface-variant text-xs font-bold">Safe to Spend</h3>
+              <h3 className="text-xs font-bold text-primary">Safe to Spend</h3>
               <div className="flex items-baseline gap-2 flex-wrap">
                 {isHydrated ? (
                   <p className={cn(
@@ -216,7 +221,7 @@ export const Dashboard = () => {
                 <span className="text-on-surface-variant text-xs">of {formatCurrency(effectiveLimit)} safe limit</span>
               </div>
             </div>
-            <div className="flex-shrink-0 -my-4 flex justify-center items-center scale-85 origin-right">
+            <div className="flex shrink-0 origin-right scale-90 items-center justify-center">
               <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" />
             </div>
           </div>
@@ -241,39 +246,39 @@ export const Dashboard = () => {
       </section>
 
       {/* Income / Expenses grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-surface-container-low p-5 rounded-3xl border-none">
-          <div className="flex justify-between items-start mb-3">
-            <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-sm">
-              <TrendingUp className="w-5 h-5 text-secondary rotate-180" />
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-3.5 shadow-[0_8px_24px_rgba(0,52,97,0.035)]">
+          <div className="mb-2 flex items-start justify-between">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-container-lowest shadow-sm">
+              <TrendingUp className="h-4 w-4 text-secondary rotate-180" />
             </div>
             <Sparkline values={weeklyIncome} color="var(--color-secondary)" label="Income over the last 7 days" />
           </div>
           <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Income</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(safeToSpendTotals.income)}</p>
+          <p className="font-headline text-xl font-bold text-on-surface">{formatCurrency(safeToSpendTotals.income)}</p>
         </div>
 
-        <div className="bg-surface-container-low p-5 rounded-3xl border-none">
-          <div className="flex justify-between items-start mb-3">
-            <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center shadow-sm">
-              <TrendingUp className="w-5 h-5 text-tertiary" />
+        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-3.5 shadow-[0_8px_24px_rgba(0,52,97,0.035)]">
+          <div className="mb-2 flex items-start justify-between">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-container-lowest shadow-sm">
+              <TrendingUp className="h-4 w-4 text-tertiary" />
             </div>
             <Sparkline values={weeklyExpenses} color="var(--color-tertiary)" label="Expenses over the last 7 days" />
           </div>
           <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Expenses</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface">{formatCurrency(safeToSpendTotals.expenses)}</p>
+          <p className="font-headline text-xl font-bold text-on-surface">{formatCurrency(safeToSpendTotals.expenses)}</p>
         </div>
       </div>
 
       {/* Spending by Category — multi-color donut */}
       <Card>
-        <div className="mb-4">
+        <div className="mb-3">
           <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
           <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
         </div>
         {visibleCategorySpending.length > 0 ? (
-          <div className="flex flex-col gap-6">
-            <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
+          <div className="flex flex-col gap-4">
+            <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100" role="img" aria-label={`Spending by category total ${formatCurrency(totalSpent)}`}>
                 <circle cx="50" cy="50" fill="transparent" r="40" stroke="var(--color-surface-container-highest)" strokeWidth="12" />
                 {donutSegments.map((seg) => {
@@ -301,8 +306,8 @@ export const Dashboard = () => {
             </div>
             <div className="space-y-1.5">
               {visibleCategorySpending.slice(0, 6).map((cat) => (
-                <div key={cat.category} className="flex items-center justify-between bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5">
-                  <div className="flex items-center gap-3">
+                <div key={cat.category} className="flex items-center justify-between rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-3 shadow-sm shadow-primary/5">
+                  <div className="flex items-center gap-2.5">
                     <CategoryBadge category={cat.category} size="md" className="flex-shrink-0" />
                     <span className="text-sm text-on-surface font-bold">{cat.category}</span>
                   </div>
@@ -330,8 +335,8 @@ export const Dashboard = () => {
 
       {/* Savings insight — compact, moved below */}
       {monthlySavings > 0 && (
-        <div className="bg-secondary/5 border border-secondary/10 p-4 rounded-2xl flex items-center gap-3">
-          <Lightbulb className="w-5 h-5 text-secondary flex-shrink-0" />
+        <div className="flex items-center gap-2.5 rounded-xl border border-secondary/10 bg-secondary/5 p-3">
+          <Lightbulb className="h-4 w-4 text-secondary flex-shrink-0" />
           <p className="text-sm text-on-surface font-medium">
             You've saved <span className="text-secondary font-bold">{formatCurrency(monthlySavings)}</span> this month!
           </p>
@@ -339,18 +344,18 @@ export const Dashboard = () => {
       )}
 
       {/* Recent Transactions — sorted by date */}
-      <section className="bg-surface-container-low rounded-3xl p-5">
-        <div className="flex justify-between items-end mb-4">
+      <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 shadow-[0_8px_24px_rgba(0,52,97,0.035)]">
+        <div className="mb-3 flex items-end justify-between">
           <div>
             <h3 className="text-base font-headline font-bold text-primary">Recent Transactions</h3>
             <p className="text-on-surface-variant text-xs">Latest movements</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/add" className="inline-flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all">
+            <Link to="/add" className="inline-flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-primary-container hover:shadow-md transition-all">
               <Plus className="w-3.5 h-3.5" />
               Add
             </Link>
-            <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all">
+            <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-surface-container-high hover:shadow-md transition-all">
               View All
             </Link>
           </div>
@@ -360,7 +365,7 @@ export const Dashboard = () => {
             <button
               key={t.id}
               onClick={() => setQuickEditTransaction(t)}
-              className="flex w-full items-center gap-3 bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 text-left active:scale-[0.98] transition-all"
+              className="flex w-full items-center gap-2.5 rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-3 text-left shadow-sm shadow-primary/5 transition-all hover:border-primary/20 active:scale-[0.98]"
             >
               <CategoryBadge category={t.category} size="md" className="flex-shrink-0" />
               <div className="flex-1 min-w-0">

@@ -85,6 +85,14 @@
     @apply font-headline;
   }
 
+  :root.dark .aura-logo-light {
+    display: none;
+  }
+
+  :root:not(.dark) .aura-logo-dark {
+    display: none;
+  }
+
 }
 
 .hero-gradient {

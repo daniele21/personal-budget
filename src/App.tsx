@@ -19,6 +19,7 @@ import { YearReviewPage } from './pages/YearReviewPage';
 // Components
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { BrandMark } from './components/BrandMark';
 
 export default function App() {
   const { isLoggedIn, authLoading, authError, signInWithGoogle, isAdmin } = useApp();
@@ -27,10 +28,8 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-xl">
-            <img src="/logo.png" alt="Aura Finance" className="w-full h-full object-cover" />
-          </div>
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <BrandMark wordmark={false} iconClassName="h-16 w-16 shadow-xl shadow-primary/15" />
+          <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
         </div>
       </div>
     );

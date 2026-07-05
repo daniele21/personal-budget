@@ -23,7 +23,7 @@ export function Input({ label, className, ...props }: InputProps) {
       )}
       <input
         className={cn(
-          'w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary',
+          'w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface shadow-sm shadow-primary/5 outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20',
           className,
         )}
         {...props}
@@ -53,7 +53,7 @@ export function Select({ label, options, className, ...props }: SelectProps) {
       )}
       <select
         className={cn(
-          'w-full bg-surface-container-high border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary',
+          'w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface shadow-sm shadow-primary/5 outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20',
           className,
         )}
         {...props}

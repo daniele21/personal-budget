@@ -264,7 +264,7 @@ export function ReviewStep({
                   <button 
                     onClick={() => updateType(editingTx.index, 'expense')}
                     className={cn(
-                      "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-[10px] transition-all",
+                      "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-micro transition-all",
                       editingTx.type === 'expense' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
                     )}
                   >
@@ -273,7 +273,7 @@ export function ReviewStep({
                   <button 
                     onClick={() => updateType(editingTx.index, 'income')}
                     className={cn(
-                      "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-[10px] transition-all",
+                      "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-micro transition-all",
                       editingTx.type === 'income' ? "bg-secondary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
                     )}
                   >

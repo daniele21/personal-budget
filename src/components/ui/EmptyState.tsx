@@ -22,13 +22,13 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
     : action;
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      {icon && <div className="text-on-surface-variant/40 mb-4">{icon}</div>}
-      <h3 className="font-headline font-bold text-on-surface-variant mb-1">{title}</h3>
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      {icon && <div className="mb-3 rounded-xl bg-surface-container-low p-2.5 text-primary">{icon}</div>}
+      <h3 className="font-headline font-bold text-primary mb-1">{title}</h3>
       {description && (
-        <p className="text-sm text-on-surface-variant/60 max-w-xs">{description}</p>
+        <p className="text-sm text-on-surface-variant/70 max-w-xs">{description}</p>
       )}
-      {actionNode && <div className="mt-4">{actionNode}</div>}
+      {actionNode && <div className="mt-3">{actionNode}</div>}
     </div>
   );
 }

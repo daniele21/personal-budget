@@ -336,7 +336,7 @@ export const InsightsPage = () => {
         <div className="flex items-center justify-between bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 shadow-sm">
           <div className="space-y-0.5">
             <p className="text-xs font-bold text-on-surface">Visualizza Media Mensile</p>
-            <p className="text-[10px] text-on-surface-variant/70">Mostra la media mensile invece del totale per il periodo</p>
+            <p className="text-micro text-on-surface-variant/70">Mostra la media mensile invece del totale per il periodo</p>
           </div>
           <button
             onClick={() => setShowAverage(prev => !prev)}
@@ -422,15 +422,15 @@ export const InsightsPage = () => {
           <p className="text-micro text-on-surface-variant font-bold px-1 uppercase tracking-wider">Monthly Averages</p>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
-              <p className="text-[10px] text-on-surface-variant font-bold mb-1">Avg Income</p>
+              <p className="text-micro text-on-surface-variant font-bold mb-1">Avg Income</p>
               <p className="text-sm font-bold text-secondary whitespace-nowrap">{formatCurrency(totals.income / rangeMonths)}</p>
             </div>
             <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
-              <p className="text-[10px] text-on-surface-variant font-bold mb-1">Avg Expenses</p>
+              <p className="text-micro text-on-surface-variant font-bold mb-1">Avg Expenses</p>
               <p className="text-sm font-bold text-tertiary whitespace-nowrap">{formatCurrency(totals.expenses / rangeMonths)}</p>
             </div>
             <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
-              <p className="text-[10px] text-on-surface-variant font-bold mb-1">Avg Net</p>
+              <p className="text-micro text-on-surface-variant font-bold mb-1">Avg Net</p>
               <p className={cn('text-sm font-bold whitespace-nowrap', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
                 {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net / rangeMonths)}
               </p>

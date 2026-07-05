@@ -106,7 +106,7 @@ export function TransactionQuickEditDialog({
                 <button 
                   onClick={() => setType('expense')}
                   className={cn(
-                    "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-[10px] transition-all",
+                    "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-micro transition-all",
                     type === 'expense' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
                   )}
                 >
@@ -115,7 +115,7 @@ export function TransactionQuickEditDialog({
                 <button 
                   onClick={() => setType('income')}
                   className={cn(
-                    "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-[10px] transition-all",
+                    "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-micro transition-all",
                     type === 'income' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
                   )}
                 >

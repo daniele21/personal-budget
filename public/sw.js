@@ -1,9 +1,12 @@
-const CACHE_NAME = 'aura-finance-v6';
+const CACHE_NAME = 'aura-finance-v8';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
   '/logo.png',
+  '/logo-dark.png',
+  '/aura-logo-light.png',
+  '/aura-logo-dark.png',
   '/favicon.png',
   '/icon-192.png',
   '/icon-512.png',

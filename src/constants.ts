@@ -2,8 +2,8 @@ import { Transaction, Budget, Account, RecurringExpense, SavingsGoal } from './t
 
 export const APP_CONFIG = {
   name: 'Aura',
-  tagline: 'Financial Intelligence',
-  description: 'The architectural ledger for the modern architect of wealth.',
+  tagline: 'Clarity today. Confidence tomorrow.',
+  description: 'Your private budget companion, built around your data.',
   currency: '€',
   defaultMonthlyBudget: 5000,
 };

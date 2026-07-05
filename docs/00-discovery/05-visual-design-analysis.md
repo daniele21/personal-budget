@@ -2,7 +2,7 @@
 
 > **Scope**: Audit e piano di miglioramento del sistema grafico per portare Aura a un livello visivo premium  
 > **Baseline**: Material Design 3 tokens · Tailwind 4 `@theme` · Manrope + Inter · Lucide Icons  
-> **Last Updated**: 2026-04-26 — aggiornato dopo implementazione token, accent colors, category themes, visualizzazioni
+> **Last Updated**: 2026-07-05 — aggiornato dopo applicazione brand kit PNG, shell Aura, login, PWA assets e densità UI compatta
 
 ---
 
@@ -14,6 +14,8 @@
 | Item | Stato | Note |
 |---|---|---|
 | Token tipografici semantici | ✅ Implementato | `--font-size-micro` fino a `--font-size-hero` in `@theme` |
+| Brand kit PNG applicato | ✅ Implementato | Logo, wordmark light/dark, favicon e PWA icons derivano dai PNG in `brand-kit/` |
+| Densità UI compatta | ✅ Implementato | Header, nav, card, input, button, dashboard summary e liste usano padding e scale più contenute |
 | Accent colors tokenizzati | ✅ Implementato | 5 accent colors (`purple`, `amber`, `cyan`, `pink`, `lime`) in `@theme` |
 | Dark mode tuning | ✅ Implementato | Container con maggiore separazione + `outline-variant` più visibile |
 | Category themes config-driven | ✅ Implementato | `src/config/categoryThemes.ts` — 10 categorie + fallback hash-based |
