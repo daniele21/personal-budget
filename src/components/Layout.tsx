@@ -29,13 +29,15 @@ export const Layout = ({ children, title }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-surface transition-colors duration-300">
-      <div
-        className="fixed left-1/2 top-14 z-[60] -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-micro font-bold text-on-primary shadow-lg transition-opacity"
-        style={{ opacity: pull.distance > 16 ? 1 : 0, transform: `translate(-50%, ${Math.min(28, pull.distance / 4)}px)` }}
-        aria-hidden="true"
-      >
-        {pull.isArmed ? 'Release to refresh' : 'Pull to refresh'}
-      </div>
+      {pull.distance > 16 && (
+        <div
+          className="pointer-events-none fixed left-1/2 top-14 z-[60] -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-micro font-bold text-on-primary shadow-lg transition-opacity"
+          style={{ transform: `translate(-50%, ${Math.min(28, pull.distance / 4)}px)` }}
+          aria-hidden="true"
+        >
+          {pull.isArmed ? 'Release to refresh' : 'Pull to refresh'}
+        </div>
+      )}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:bg-primary focus:text-on-primary focus:px-4 focus:py-2 focus:rounded-xl focus:font-bold focus:text-sm">
         Skip to content
       </a>

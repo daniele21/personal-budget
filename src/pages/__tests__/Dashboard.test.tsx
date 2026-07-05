@@ -40,6 +40,8 @@ function renderDashboard(transactions: Transaction[]) {
     transactions,
     setTransactions: vi.fn(),
     budgets: [],
+    recurring: [],
+    accounts: [],
     monthlyTotals: calculateTotals(transactions),
     monthlyBudget: 3000,
     monthlyTransactions: transactions,
@@ -69,12 +71,12 @@ describe('Dashboard safe-to-spend lens', () => {
       transaction({ id: 'bonus', amount: 500, type: 'income', category: 'Bonus', title: 'Bonus', reportingClass: 'extra' }),
     ]);
 
-    expect(screen.getByText('€2,300.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€2,300.00')).toHaveLength(2);
 
-    await user.click(screen.getAllByRole('button', { name: 'Net' })[0]);
+    await user.click(screen.getAllByRole('radio', { name: 'Net' })[0]);
 
-    expect(screen.getByText('€2,900.00')).toBeInTheDocument();
-    expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
+    expect(screen.getAllByText('€2,900.00')).toHaveLength(2);
+    expect(screen.getByText('of €3,000.00')).toBeInTheDocument();
   });
 
   it('does not use a reimbursement-only inflow as the safe-to-spend limit', () => {
@@ -82,7 +84,17 @@ describe('Dashboard safe-to-spend lens', () => {
       transaction({ id: 'refund', amount: 100, type: 'income', category: 'Food', title: 'Refund', reportingClass: 'reimbursement' }),
     ]);
 
-    expect(screen.getByText('€3,000.00')).toBeInTheDocument();
-    expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
+    expect(screen.getAllByText('€3,000.00')).toHaveLength(2);
+    expect(screen.getByText('of €3,000.00')).toBeInTheDocument();
+  });
+
+  it('shows remaining safe-to-spend room even when no income is recorded for the month', () => {
+    renderDashboard([
+      transaction({ id: 'expense', amount: 1737.96, type: 'expense', category: 'Food', title: 'Monthly spend' }),
+    ]);
+
+    expect(screen.getByText('Income this month')).toBeInTheDocument();
+    expect(screen.getByText('€0.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€1,262.04')).toHaveLength(2);
   });
 });

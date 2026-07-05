@@ -8,23 +8,17 @@ import { MonthlyTrendChart } from '../components/year-review/MonthlyTrendChart';
 import { AnnualHighlights } from '../components/year-review/AnnualHighlights';
 import { SpendingHeatmap } from '../components/year-review/SpendingHeatmap';
 import { CategoryShift } from '../components/year-review/CategoryShift';
-import { Button } from '../components/ui';
+import { Button, LensSelector } from '../components/ui';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../utils/formatters';
 import { pageTransition } from '../utils/motion';
 import { cn } from '../lib/utils';
 
-const ANALYTICS_LENSES: { key: AnalyticsLens; label: string }[] = [
-  { key: 'actual', label: 'Actual' },
-  { key: 'normalized', label: 'Net of extras' },
-  { key: 'extras', label: 'Extras' },
-];
-
 export function YearReviewPage() {
   const { transactions } = useApp();
   const { toast } = useToast();
   const [year, setYear] = useState(new Date().getFullYear());
-  const [analyticsLens, setAnalyticsLens] = useState<AnalyticsLens>('actual');
+  const [analyticsLens, setAnalyticsLens] = useState<'actual' | 'normalized'>('actual');
   const visibleTransactions = useMemo(() => filterByAnalyticsLens(transactions, analyticsLens), [transactions, analyticsLens]);
   const review = useMemo(() => getAnnualReview(visibleTransactions, year), [visibleTransactions, year]);
 
@@ -40,32 +34,25 @@ export function YearReviewPage() {
 
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
-      <section className="space-y-3">
-        <p className="text-micro font-bold text-on-surface-variant">Year in Review</p>
-        <div className="flex items-center justify-between gap-3">
-          <button type="button" onClick={() => setYear((current) => current - 1)} className="w-10 h-10 rounded-xl hover:bg-surface-container-low flex items-center justify-center" aria-label="Previous year">
-            <ChevronLeft className="w-5 h-5 text-primary" />
-          </button>
-          <h2 className="font-headline text-3xl font-extrabold text-primary">{year}</h2>
-          <button type="button" onClick={() => setYear((current) => current + 1)} className="w-10 h-10 rounded-xl hover:bg-surface-container-low flex items-center justify-center" aria-label="Next year">
-            <ChevronRight className="w-5 h-5 text-primary" />
-          </button>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-micro font-bold text-on-surface-variant">Year in Review</p>
+          <div className="flex items-center gap-2 mt-1">
+            <button type="button" onClick={() => setYear((current) => current - 1)} className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center" aria-label="Previous year">
+              <ChevronLeft className="w-4 h-4 text-primary" />
+            </button>
+            <h2 className="font-headline text-xl font-extrabold text-primary">{year}</h2>
+            <button type="button" onClick={() => setYear((current) => current + 1)} className="w-8 h-8 rounded-lg hover:bg-surface-container-low flex items-center justify-center" aria-label="Next year">
+              <ChevronRight className="w-4 h-4 text-primary" />
+            </button>
+          </div>
         </div>
-      </section>
 
-      <div className="flex items-center gap-1 bg-surface-container-high rounded-2xl p-1">
-        {ANALYTICS_LENSES.map((lens) => (
-          <button
-            key={lens.key}
-            onClick={() => setAnalyticsLens(lens.key)}
-            className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
-              analyticsLens === lens.key ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low',
-            )}
-          >
-            {lens.label}
-          </button>
-        ))}
+        <LensSelector
+          value={analyticsLens}
+          onChange={setAnalyticsLens}
+          className="mx-0 max-w-[9.25rem] shrink-0"
+        />
       </div>
 
       <AnnualSummaryCards review={review} />

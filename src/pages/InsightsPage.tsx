@@ -1,704 +1,396 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
-import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, BarChart3, Trophy } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  Line,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+} from 'recharts';
+import { CalendarDays, ChevronDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { formatCurrency } from '../utils/formatters';
-import { CategoryBadge } from '../components/ui/CategoryBadge';
-import { Card } from '../components/ui';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { cn } from '../lib/utils';
-import { Transaction } from '../types';
+import { formatCurrency } from '../utils/formatters';
 import * as Finance from '../domain/finance';
-import { upsertRecurringOverride } from '../domain/recurring';
+import { Transaction } from '../types';
 import { pageTransition } from '../utils/motion';
-import { getCategoryTheme } from '../config/categoryThemes';
-import { haptics } from '../utils/haptics';
-import { useToast } from '../components/Toast';
+import { LensSelector } from '../components/ui';
 
-// ─── Range definitions ──────────────────────────────────────────────
+// ─── Period helpers ──────────────────────────────────────────────────
 
-type RangeKey = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
+type RangeKey = '1M' | '3M' | '6M' | '12M';
+type InsightsLens = 'actual' | 'normalized';
 
-const RANGES: { key: RangeKey; label: string }[] = [
-  { key: '1W', label: '1W' },
-  { key: '1M', label: '1M' },
+const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
+  { key: '1M', label: 'This month' },
   { key: '3M', label: '3M' },
   { key: '6M', label: '6M' },
-  { key: 'YTD', label: 'YTD' },
-  { key: '1Y', label: '1Y' },
-  { key: 'ALL', label: 'All' },
+  { key: '12M', label: '12M' },
 ];
 
-const ANALYTICS_LENSES: { key: Finance.AnalyticsLens; label: string }[] = [
-  { key: 'actual', label: 'Actual' },
-  { key: 'normalized', label: 'Net of extras' },
-  { key: 'extras', label: 'Extras' },
-];
-
-function getDateRange(range: RangeKey, anchorYear: number, anchorMonth: number): { start: Date; end: Date; prevStart: Date; prevEnd: Date; label: string } {
-  const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59); // end of anchor month
-
-  if (range === '1W') {
-    const today = new Date();
-    const anchor = anchorYear === today.getFullYear() && anchorMonth === today.getMonth()
-      ? today
-      : new Date(anchorYear, anchorMonth + 1, 0);
-    const start = new Date(anchor);
-    start.setDate(anchor.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(anchor);
-    weekEnd.setHours(23, 59, 59, 999);
-    const prevEnd = new Date(start.getTime() - 1);
-    const prevStart = new Date(prevEnd);
-    prevStart.setDate(prevEnd.getDate() - 6);
-    prevStart.setHours(0, 0, 0, 0);
-    const label = `${start.toLocaleDateString('default', { day: 'numeric', month: 'short' })} — ${weekEnd.toLocaleDateString('default', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-    return { start, end: weekEnd, prevStart, prevEnd, label };
-  }
-
-  if (range === '1M') {
-    const start = new Date(anchorYear, anchorMonth, 1);
-    const prevEnd = new Date(anchorYear, anchorMonth, 0, 23, 59, 59);
-    const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
-    const label = start.toLocaleString('default', { month: 'long', year: 'numeric' });
-    return { start, end, prevStart, prevEnd, label };
-  }
-
-  let months: number;
+function getRangeDates(key: RangeKey, anchorYear: number, anchorMonth: number) {
+  const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59);
   let start: Date;
-  if (range === '3M') { months = 3; start = new Date(anchorYear, anchorMonth - 2, 1); }
-  else if (range === '6M') { months = 6; start = new Date(anchorYear, anchorMonth - 5, 1); }
-  else if (range === '1Y') { months = 12; start = new Date(anchorYear, anchorMonth - 11, 1); }
-  else if (range === 'YTD') {
-    start = new Date(anchorYear, 0, 1);
-    months = anchorMonth + 1;
+  let prevStart: Date;
+  let prevEnd: Date;
+  let months: number;
+
+  if (key === '1M') {
+    start = new Date(anchorYear, anchorMonth, 1);
+    prevEnd = new Date(anchorYear, anchorMonth, 0, 23, 59, 59);
+    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
+    months = 1;
   } else {
-    // ALL
-    start = new Date(2000, 0, 1);
-    months = 0;
+    months = key === '3M' ? 3 : key === '6M' ? 6 : 12;
+    start = new Date(anchorYear, anchorMonth - months + 1, 1);
+    prevEnd = new Date(start.getTime() - 1);
+    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth() - months + 1, 1);
   }
 
-  const prevEnd = new Date(start.getTime() - 1);
-  const prevStart = months > 0 ? new Date(start.getFullYear(), start.getMonth() - months, 1) : new Date(2000, 0, 1);
+  const startLabel = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const endLabel = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const periodLabel = `${startLabel} – ${endLabel}`;
+  const comparisonLabel = months === 1
+    ? prevStart.toLocaleDateString('en-US', { month: 'short' })
+    : `${prevStart.toLocaleDateString('en-US', { month: 'short' })} – ${prevEnd.toLocaleDateString('en-US', { month: 'short' })}`;
 
-  let label: string;
-  if (range === 'ALL') label = 'All Time';
-  else if (range === 'YTD') label = `YTD ${anchorYear}`;
-  else {
-    const s = start.toLocaleString('default', { month: 'short', year: 'numeric' });
-    const e = end.toLocaleString('default', { month: 'short', year: 'numeric' });
-    label = `${s} — ${e}`;
+  return { start, end, prevStart, prevEnd, periodLabel, comparisonLabel };
+}
+
+/** Build weekly buckets for the overview chart */
+function buildWeeklyData(
+  transactions: Transaction[],
+  start: Date,
+  end: Date,
+): { label: string; income: number; expenses: number; net: number }[] {
+  const data: { label: string; income: number; expenses: number; net: number }[] = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    const weekEnd = new Date(cursor);
+    weekEnd.setDate(cursor.getDate() + 6);
+    if (weekEnd > end) weekEnd.setTime(end.getTime());
+
+    const label = cursor.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const weekTx = transactions.filter((t) => {
+      const d = new Date(t.date);
+      return d >= cursor && d <= weekEnd;
+    });
+    const income = weekTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expenses = weekTx.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    data.push({ label, income, expenses, net: income - expenses });
+
+    cursor.setDate(cursor.getDate() + 7);
   }
-
-  return { start, end, prevStart, prevEnd, label };
+  return data;
 }
 
-function filterByRange(transactions: Transaction[], start: Date, end: Date): Transaction[] {
-  return transactions.filter(t => {
-    const d = new Date(t.date);
-    return d >= start && d <= end;
-  });
-}
+// ─── Custom tooltip ───────────────────────────────────────────────────
 
-const DEEPER_ANALYSIS_LINKS = [
-  {
-    to: '/compare',
-    label: 'Compare periods',
-    ariaLabel: 'Open period comparison report',
-    icon: BarChart3,
-    iconClassName: 'bg-accent-cyan/10 text-accent-cyan',
-  },
-  {
-    to: '/year-review',
-    label: 'Year in Review',
-    ariaLabel: 'Open year in review report',
-    icon: Trophy,
-    iconClassName: 'bg-accent-amber/10 text-accent-amber',
-  },
-];
-
-// ─── Component ──────────────────────────────────────────────────────
-
-export const InsightsPage = () => {
-  const {
-    transactions,
-    setTransactions,
-    budgets,
-    recurring,
-    setRecurring,
-    categories,
-    addCategory,
-  } = useApp();
-  const { toast } = useToast();
-  const today = new Date();
-  const [anchorYear, setAnchorYear] = useState(today.getFullYear());
-  const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
-  const [range, setRange] = useState<RangeKey>('1M');
-  const [analyticsLens, setAnalyticsLens] = useState<Finance.AnalyticsLens>('actual');
-  const [expandedCat, setExpandedCat] = useState<string | null>(null);
-  const [showAverage, setShowAverage] = useState(false);
-  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
-  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
-
-  const { start, end, prevStart, prevEnd, label: periodLabel } = useMemo(
-    () => getDateRange(range, anchorYear, anchorMonth),
-    [range, anchorYear, anchorMonth],
-  );
-
-  const periodTx = useMemo(() => filterByRange(transactions, start, end), [transactions, start, end]);
-  const prevPeriodTx = useMemo(() => filterByRange(transactions, prevStart, prevEnd), [transactions, prevStart, prevEnd]);
-  const visiblePeriodTx = useMemo(() => Finance.filterByAnalyticsLens(periodTx, analyticsLens), [periodTx, analyticsLens]);
-  const visiblePrevPeriodTx = useMemo(() => Finance.filterByAnalyticsLens(prevPeriodTx, analyticsLens), [prevPeriodTx, analyticsLens]);
-  const extraImpact = useMemo(() => Finance.getExtraImpact(periodTx), [periodTx]);
-
-  const totals = useMemo(() => Finance.calculateTotals(visiblePeriodTx), [visiblePeriodTx]);
-  const prevTotals = useMemo(() => Finance.calculateTotals(visiblePrevPeriodTx), [visiblePrevPeriodTx]);
-
-  const categorySpending = useMemo(() => Finance.spendingByCategory(visiblePeriodTx), [visiblePeriodTx]);
-
-  // Income by category
-  const categoryIncome = useMemo(() => {
-    const incomes = Finance
-      .filterByType(visiblePeriodTx, 'income')
-      .filter((transaction) => Finance.getTransactionReportingClass(transaction) !== 'reimbursement');
-    const cats = Array.from(new Set(incomes.map(t => t.category)));
-    const total = incomes.reduce((s, t) => s + t.amount, 0);
-    return cats.map(cat => {
-      const amount = Finance.filterByCategory(incomes, cat).reduce((s, t) => s + t.amount, 0);
-      return { category: cat, amount, percentage: total > 0 ? amount / total : 0 };
-    }).sort((a, b) => b.amount - a.amount);
-  }, [visiblePeriodTx]);
-
-  // Merged category data
-  const allCategories = useMemo(() => {
-    const catSet = new Set([...categorySpending.map(c => c.category), ...categoryIncome.map(c => c.category)]);
-    return Array.from(catSet).map(cat => {
-      const expense = categorySpending.find(c => c.category === cat)?.amount || 0;
-      const income = categoryIncome.find(c => c.category === cat)?.amount || 0;
-      const budget = budgets.find(b => b.category === cat);
-
-      const prevCatExpense = Math.max(0, Finance.calculateTotals(Finance.filterByCategory(visiblePrevPeriodTx, cat)).expenses);
-      const change = prevCatExpense > 0 ? ((expense - prevCatExpense) / prevCatExpense) * 100 : null;
-
-      return { category: cat, expense, income, net: income - expense, budget, change };
-    }).sort((a, b) => (b.expense + b.income) - (a.expense + a.income));
-  }, [categorySpending, categoryIncome, budgets, visiblePrevPeriodTx]);
-
-  // Navigation
-  const goBack = () => {
-    if (anchorMonth === 0) { setAnchorMonth(11); setAnchorYear(y => y - 1); }
-    else setAnchorMonth(m => m - 1);
-    setExpandedCat(null);
-  };
-  const goForward = () => {
-    if (anchorMonth === 11) { setAnchorMonth(0); setAnchorYear(y => y + 1); }
-    else setAnchorMonth(m => m + 1);
-    setExpandedCat(null);
-  };
-
-  const expenseChange = prevTotals.expenses > 0
-    ? ((totals.expenses - prevTotals.expenses) / prevTotals.expenses * 100)
-    : null;
-
-  // How many months in the range (for budget scaling and averaging)
-  const rangeMonths = useMemo(() => {
-    if (range === '1W') return 1;
-    if (range === '1M') return 1;
-    if (range === 'ALL') {
-      if (transactions.length === 0) return 1;
-      const dates = transactions.map(t => new Date(t.date).getTime());
-      const minDate = new Date(Math.min(...dates));
-      const maxDate = new Date(Math.max(...dates));
-      const m = (maxDate.getFullYear() - minDate.getFullYear()) * 12 + (maxDate.getMonth() - minDate.getMonth()) + 1;
-      return Math.max(1, m);
-    }
-    return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-  }, [range, start, end, transactions]);
-
-  // Derived state to determine if monthly average view is currently displayed
-  const isAverageActive = showAverage && rangeMonths > 1;
-
-  // Averages calculations for Overview cards
-  const displayIncome = isAverageActive ? totals.income / rangeMonths : totals.income;
-  const displayExpenses = isAverageActive ? totals.expenses / rangeMonths : totals.expenses;
-  const displayNet = isAverageActive ? totals.net / rangeMonths : totals.net;
-
-  const saveQuickEdit = (nextTransaction: Transaction) => {
-    const existingTransaction = transactions.find((transaction) => transaction.id === nextTransaction.id);
-    setTransactions(transactions.map((transaction) => (
-      transaction.id === nextTransaction.id ? nextTransaction : transaction
-    )));
-
-    if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
-      setRecurring(recurring.map((bill) => (
-        bill.id === existingTransaction.sourceRecurringId
-          ? upsertRecurringOverride(bill, {
-            monthKey: existingTransaction.sourceMonthKey,
-            occurrenceKey: existingTransaction.sourceMonthKey,
-            amount: nextTransaction.amount,
-            type: nextTransaction.type,
-            category: nextTransaction.category,
-            title: nextTransaction.title,
-            description: nextTransaction.description,
-            paymentMethod: nextTransaction.paymentMethod,
-            date: nextTransaction.date,
-          })
-          : bill
-      )));
-    }
-
-    setQuickEditTransaction(null);
-    haptics.success();
-    toast('Transaction updated', 'success');
-  };
-
-  const deleteTransaction = (id: string) => {
-    const deleted = transactions.find((transaction) => transaction.id === id);
-    setTransactions(transactions.filter((transaction) => transaction.id !== id));
-    setTransactionToDelete(null);
-    haptics.warning();
-    toast('Transaction deleted', 'info', 5000, deleted ? {
-      label: 'Undo',
-      onClick: () => {
-        setTransactions([deleted, ...transactions]);
-        haptics.success();
-      },
-    } : undefined);
-  };
-
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
   return (
-    <motion.div
-      {...pageTransition}
-      className="space-y-4 pb-24"
-    >
-      <section className="space-y-1">
-        <p className="text-micro font-bold text-on-surface-variant">Reports</p>
-        <h2 className="font-headline text-2xl font-extrabold text-primary">Weekly and monthly analysis</h2>
-      </section>
+    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-2.5 shadow-md text-xs">
+      <p className="mb-1 font-bold text-on-surface-variant">{label}</p>
+      {payload.map((entry: any) => (
+        <p key={entry.name} className="font-bold" style={{ color: entry.color }}>
+          {entry.name}: {formatCurrency(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
 
-      <section className="space-y-2">
-        <h3 className="text-xs font-bold text-on-surface-variant px-1">Deeper analysis</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {DEEPER_ANALYSIS_LINKS.map((item) => {
-            const Icon = item.icon;
+// ─── 2x2 KPI Card ─────────────────────────────────────────────────────
 
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                aria-label={item.ariaLabel}
-                className="flex min-h-14 items-center gap-2 rounded-2xl border border-outline-variant/5 bg-surface-container-lowest px-3 py-2 transition-all hover:bg-surface-container-low active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                <span className={cn('flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl', item.iconClassName)}>
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 text-sm font-bold leading-tight text-on-surface">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+interface KpiCardProps {
+  label: string;
+  value: string;
+  change: string | null;
+  positive: boolean;
+  sub?: string;
+  icon: React.ReactNode;
+  iconBg: string;
+}
 
-      {/* Range selector */}
-      <div className="flex items-center gap-1 bg-surface-container-high rounded-2xl p-1">
-        {RANGES.map(r => (
-          <button
-            key={r.key}
-            onClick={() => { setRange(r.key); setExpandedCat(null); }}
-            className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
-              range === r.key ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low',
-            )}
-          >
-            {r.label}
-          </button>
-        ))}
+function KpiCard({ label, value, change, positive, sub, icon, iconBg }: KpiCardProps) {
+  return (
+    <div className="aura-card space-y-1.5 p-3.5">
+      <div className="flex items-center gap-2">
+        <span className={cn('flex h-7 w-7 items-center justify-center rounded-xl text-white', iconBg)}>
+          {icon}
+        </span>
+        <span className="text-xs font-bold text-on-surface-variant">{label}</span>
       </div>
-
-      <div className="flex items-center gap-1 bg-surface-container-high rounded-2xl p-1">
-        {ANALYTICS_LENSES.map((lens) => (
-          <button
-            key={lens.key}
-            onClick={() => { setAnalyticsLens(lens.key); setExpandedCat(null); }}
-            className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
-              analyticsLens === lens.key ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low',
-            )}
-          >
-            {lens.label}
-          </button>
-        ))}
-      </div>
-
-      {rangeMonths > 1 && (
-        <div className="flex items-center justify-between bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 shadow-sm">
-          <div className="space-y-0.5">
-            <p className="text-xs font-bold text-on-surface">Visualizza Media Mensile</p>
-            <p className="text-micro text-on-surface-variant/70">Mostra la media mensile invece del totale per il periodo</p>
-          </div>
-          <button
-            onClick={() => setShowAverage(prev => !prev)}
-            className={cn(
-              "w-11 h-6 rounded-full p-1 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-              showAverage ? "bg-primary" : "bg-surface-container-highest"
-            )}
-            role="switch"
-            aria-checked={showAverage}
-          >
-            <div
-              className={cn(
-                "w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200",
-                showAverage ? "translate-x-5" : "translate-x-0"
-              )}
-            />
-          </button>
-        </div>
+      <p className="font-headline text-xl font-extrabold tabular-nums text-on-surface leading-tight">
+        {value}
+      </p>
+      {change && (
+        <p className={cn('text-[10px] font-bold', positive ? 'text-secondary' : 'text-tertiary')}>
+          {change}
+        </p>
       )}
+      {sub && <p className="text-[10px] font-semibold text-on-surface-variant">{sub}</p>}
+    </div>
+  );
+}
 
-      {extraImpact.count > 0 && analyticsLens !== 'extras' && (
-        <div className="rounded-2xl border border-accent-amber/15 bg-accent-amber/10 px-4 py-3">
-          <p className="text-xs font-bold text-on-surface">
-            Extras this period: {formatCurrency(extraImpact.expenses)} expenses
-            {extraImpact.income > 0 ? ` · ${formatCurrency(extraImpact.income)} income` : ''}
-          </p>
-        </div>
-      )}
+// ─── Cash flow progress bar ────────────────────────────────────────────
 
-      {/* Period nav (arrows shift the anchor month) */}
-      <div className="flex items-center justify-between">
-        <button onClick={goBack} className="p-2 hover:bg-surface-container-low rounded-full transition-colors" aria-label="Previous period">
-          <ChevronLeft className="w-5 h-5 text-primary" />
-        </button>
-        <h2 className="font-headline font-bold text-sm text-primary text-center">{periodLabel}</h2>
-        <button onClick={goForward} className="p-2 hover:bg-surface-container-low rounded-full transition-colors" aria-label="Next period">
-          <ChevronRight className="w-5 h-5 text-primary" />
-        </button>
-      </div>
-
-      {/* Overview cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">
-            {isAverageActive ? "Avg Income" : "Income"}
-          </p>
-          <p className="text-lg font-headline font-bold text-secondary tabular-nums whitespace-nowrap">{formatCurrency(displayIncome)}</p>
-        </div>
-        <div className="bg-surface-container-lowest rounded-3xl p-4 border border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">
-            {isAverageActive ? "Avg Expenses" : "Expenses"}
-          </p>
-          <p className="text-lg font-headline font-bold text-tertiary tabular-nums whitespace-nowrap">{formatCurrency(displayExpenses)}</p>
-        </div>
-      </div>
-
-      <div className={cn(
-        "rounded-3xl p-5 border border-outline-variant/5 flex items-center justify-between transition-all",
-        displayNet >= 0 ? "bg-secondary/5" : "bg-tertiary/5"
-      )}>
-        <div className="min-w-0">
-          <p className="text-micro text-on-surface-variant font-bold mb-1 uppercase tracking-wider">
-            {isAverageActive ? "Avg Net Flow" : "Net Flow"}
-          </p>
-          <p className={cn(
-            'text-3xl font-headline font-extrabold tracking-tight tabular-nums whitespace-nowrap truncate',
-            displayNet >= 0 ? 'text-secondary' : 'text-tertiary'
-          )}>
-            {displayNet >= 0 ? '+' : ''}{formatCurrency(displayNet)}
-          </p>
-        </div>
-        <div className={cn(
-          "w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm",
-          displayNet >= 0 ? "bg-secondary/20 text-secondary" : "bg-tertiary/20 text-tertiary"
-        )}>
-          {displayNet >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
-        </div>
-      </div>
-
-      {/* Monthly average for multi-month ranges */}
-      {rangeMonths > 1 && !isAverageActive && (
-        <div className="space-y-2 pt-2 border-t border-outline-variant/5">
-          <p className="text-micro text-on-surface-variant font-bold px-1 uppercase tracking-wider">Monthly Averages</p>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
-              <p className="text-micro text-on-surface-variant font-bold mb-1">Avg Income</p>
-              <p className="text-sm font-bold text-secondary whitespace-nowrap">{formatCurrency(totals.income / rangeMonths)}</p>
-            </div>
-            <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
-              <p className="text-micro text-on-surface-variant font-bold mb-1">Avg Expenses</p>
-              <p className="text-sm font-bold text-tertiary whitespace-nowrap">{formatCurrency(totals.expenses / rangeMonths)}</p>
-            </div>
-            <div className="bg-surface-container-low/50 rounded-2xl p-3 border border-outline-variant/5">
-              <p className="text-micro text-on-surface-variant font-bold mb-1">Avg Net</p>
-              <p className={cn('text-sm font-bold whitespace-nowrap', totals.net >= 0 ? 'text-secondary' : 'text-tertiary')}>
-                {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net / rangeMonths)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Period-over-period change */}
-      {expenseChange !== null && (
-        <div className={cn(
-          'flex items-center gap-3 rounded-2xl p-3 border',
-          expenseChange <= 0
-            ? 'bg-secondary-container/10 border-secondary/20'
-            : 'bg-tertiary-container/10 border-tertiary/20',
-        )}>
-          {expenseChange <= 0 ? (
-            <ArrowDownRight className="w-5 h-5 text-secondary flex-shrink-0" />
-          ) : (
-            <ArrowUpRight className="w-5 h-5 text-tertiary flex-shrink-0" />
-          )}
-          <p className="text-xs font-bold text-on-surface">
-            {expenseChange <= 0
-              ? `Expenses down ${Math.abs(expenseChange).toFixed(1)}% vs previous period`
-              : `Expenses up ${expenseChange.toFixed(1)}% vs previous period`
-            }
-          </p>
-        </div>
-      )}
-
-      {/* Spending breakdown bar */}
-      {categorySpending.length > 0 && (
-        <Card className="space-y-3 p-4">
-          <h3 className="text-xs font-bold text-on-surface-variant">Spending Breakdown</h3>
-          <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-container-high">
-            {categorySpending.map((cat) => {
-              const theme = getCategoryTheme(cat.category);
-              return (
-                <div
-                  key={cat.category}
-                  className="h-full transition-all"
-                  style={{ width: `${cat.percentage * 100}%`, backgroundColor: theme.color }}
-                  title={`${cat.category}: ${(cat.percentage * 100).toFixed(1)}%`}
-                />
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {categorySpending.map((cat) => {
-              const theme = getCategoryTheme(cat.category);
-              return (
-                <div key={cat.category} className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.color }} />
-                  <span className="text-micro font-bold" style={{ color: theme.color }}>{cat.category}</span>
-                  <span className="text-micro text-on-surface-variant">{(cat.percentage * 100).toFixed(0)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* Category cards */}
-      <div className="space-y-6">
-        {allCategories.length === 0 ? (
-          <p className="text-xs text-on-surface-variant/60 py-8 text-center">No transactions in this period</p>
-        ) : (
-          <>
-            {/* ── Expenses Section ────────────────────────────── */}
-            {allCategories.some(c => c.expense > 0) && (
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Expenses</h3>
-                {allCategories.filter(c => c.expense > 0).map(cat => {
-                  const isExpanded = expandedCat === cat.category;
-                  // Dynamic averaging values
-                  const displayExpense = isAverageActive ? cat.expense / rangeMonths : cat.expense;
-                  const displayLimit = isAverageActive ? (cat.budget ? cat.budget.limit : null) : (cat.budget ? cat.budget.limit * rangeMonths : null);
-                  const budgetPercent = displayLimit ? Math.min(100, (displayExpense / displayLimit) * 100) : null;
-                  const catTx = visiblePeriodTx.filter(t => t.category === cat.category);
-
-                  return (
-                    <div key={`expense-${cat.category}`}>
-                      <button
-                        onClick={() => setExpandedCat(isExpanded ? null : cat.category)}
-                        className="w-full bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 transition-all hover:bg-surface-container-low text-left"
-                      >
-                        {/* Row 1: Badge + Name + Amount */}
-                        <div className="flex items-center gap-3">
-                          <CategoryBadge category={cat.category} size="md" />
-                          <p className="flex-1 min-w-0 truncate text-sm font-bold text-on-surface">{cat.category}</p>
-                          <span className="text-sm font-extrabold text-tertiary tabular-nums shrink-0">
-                            -{formatCurrency(displayExpense)}
-                          </span>
-                        </div>
-
-                        {/* Row 2: Budget progress (full-width, under the header) */}
-                        {budgetPercent !== null && displayLimit && (
-                          <div className="mt-3 space-y-1.5">
-                            <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-                              <div
-                                className={cn(
-                                  'h-full rounded-full transition-all',
-                                  budgetPercent >= 100 ? 'bg-tertiary' : budgetPercent >= 80 ? 'bg-accent-amber' : 'bg-primary',
-                                )}
-                                style={{ width: `${Math.min(100, budgetPercent)}%` }}
-                              />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className={cn(
-                                'text-micro font-extrabold tabular-nums',
-                                budgetPercent >= 100 ? 'text-tertiary' : budgetPercent >= 80 ? 'text-accent-amber' : 'text-on-surface-variant',
-                              )}>
-                                {budgetPercent.toFixed(0)}% of budget
-                              </span>
-                              <span className="text-micro font-semibold tabular-nums text-on-surface-variant">
-                                {formatCurrency(displayExpense)} / {formatCurrency(displayLimit)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Row 3: Trend indicator */}
-                        {cat.change !== null && (
-                          <div className={cn(
-                            'mt-3 flex items-center gap-1.5 pt-2 border-t border-outline-variant/5',
-                          )}>
-                            <span className={cn(
-                              'flex items-center gap-1 text-xs font-bold tabular-nums',
-                              cat.change <= 0 ? 'text-secondary' : 'text-tertiary',
-                            )}>
-                              {cat.change <= 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                              {Math.abs(cat.change).toFixed(0)}%
-                            </span>
-                            <span className="text-xs text-on-surface-variant/60">vs previous period</span>
-                          </div>
-                        )}
-                      </button>
-
-                      {/* Expanded transaction list */}
-                      {isExpanded && catTx.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="mt-1.5 ml-6 mr-1 space-y-1 overflow-hidden"
-                        >
-                          {Finance.sortByDateDesc(catTx).map(tx => (
-                            <button
-                              key={tx.id}
-                              type="button"
-                              onClick={() => setQuickEditTransaction(tx)}
-                              className="flex w-full items-center justify-between rounded-xl bg-surface-container-low/50 px-3 py-2.5 text-left transition-all hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.99]"
-                              aria-label={`Open transaction ${tx.title || tx.description || tx.category}`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
-                                <p className="text-micro text-on-surface-variant mt-0.5">
-                                  {new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: rangeMonths > 12 ? 'numeric' : undefined })}
-                                </p>
-                              </div>
-                              <span className={cn('text-xs font-bold tabular-nums', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
-                                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                              </span>
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ── Income Section ─────────────────────────────── */}
-            {allCategories.some(c => c.income > 0) && (
-              <div className="space-y-3 mt-6">
-                <h3 className="text-xs font-bold text-on-surface-variant px-1 border-b border-outline-variant/10 pb-1">Income</h3>
-                {allCategories.filter(c => c.income > 0).map(cat => {
-                  const isExpanded = expandedCat === cat.category;
-                  const displayIncomeVal = isAverageActive ? cat.income / rangeMonths : cat.income;
-                  const catTx = visiblePeriodTx.filter(t => t.category === cat.category);
-
-                  return (
-                    <div key={`income-${cat.category}`}>
-                      <button
-                        onClick={() => setExpandedCat(isExpanded ? null : cat.category)}
-                        className="w-full bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 transition-all hover:bg-surface-container-low text-left"
-                      >
-                        {/* Row 1: Badge + Name + Amount */}
-                        <div className="flex items-center gap-3">
-                          <CategoryBadge category={cat.category} size="md" />
-                          <p className="flex-1 min-w-0 truncate text-sm font-bold text-on-surface">{cat.category}</p>
-                          <span className="text-sm font-extrabold text-secondary tabular-nums shrink-0">
-                            +{formatCurrency(displayIncomeVal)}
-                          </span>
-                        </div>
-
-                        {/* Row 2: Trend indicator */}
-                        {cat.change !== null && (
-                          <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-outline-variant/5">
-                            <span className={cn(
-                              'flex items-center gap-1 text-xs font-bold tabular-nums',
-                              cat.change >= 0 ? 'text-secondary' : 'text-tertiary',
-                            )}>
-                              {cat.change >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                              {Math.abs(cat.change).toFixed(0)}%
-                            </span>
-                            <span className="text-xs text-on-surface-variant/60">vs previous period</span>
-                          </div>
-                        )}
-                      </button>
-
-                      {/* Expanded transaction list */}
-                      {isExpanded && catTx.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="mt-1.5 ml-6 mr-1 space-y-1 overflow-hidden"
-                        >
-                          {Finance.sortByDateDesc(catTx).map(tx => (
-                            <button
-                              key={tx.id}
-                              type="button"
-                              onClick={() => setQuickEditTransaction(tx)}
-                              className="flex w-full items-center justify-between rounded-xl bg-surface-container-low/50 px-3 py-2.5 text-left transition-all hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.99]"
-                              aria-label={`Open transaction ${tx.title || tx.description || tx.category}`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-on-surface truncate">{tx.title || tx.description || tx.category}</p>
-                                <p className="text-micro text-on-surface-variant mt-0.5">
-                                  {new Date(tx.date).toLocaleDateString('default', { day: 'numeric', month: 'short', year: rangeMonths > 12 ? 'numeric' : undefined })}
-                                </p>
-                              </div>
-                              <span className={cn('text-xs font-bold tabular-nums', tx.type === 'income' ? 'text-secondary' : 'text-tertiary')}>
-                                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                              </span>
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+function CashFlowBar({
+  current,
+  goal,
+  change,
+  comparisonLabel,
+}: {
+  current: number;
+  goal: number | null;
+  change: number | null;
+  comparisonLabel: string;
+}) {
+  const pct = goal && goal > 0 ? Math.min(100, (current / goal) * 100) : 0;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-semibold text-on-surface-variant">This month</span>
+        {change !== null && (
+          <span className={cn('font-bold', change >= 0 ? 'text-secondary' : 'text-tertiary')}>
+            {change >= 0 ? '+' : ''}{change.toFixed(0)}% vs {comparisonLabel}
+          </span>
         )}
       </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
+        <div
+          className="h-full rounded-full bg-secondary transition-all duration-1000"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {goal && (
+        <div className="flex justify-between text-[10px] font-semibold text-on-surface-variant">
+          <span>{formatCurrency(current)}</span>
+          <span>Goal {formatCurrency(goal)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
-      <ConfirmDialog
-        isOpen={transactionToDelete !== null}
-        title="Delete Transaction"
-        message="Are you sure you want to delete this transaction?"
-        confirmLabel="Delete"
-        variant="danger"
-        onConfirm={() => transactionToDelete && deleteTransaction(transactionToDelete)}
-        onCancel={() => setTransactionToDelete(null)}
-      />
-      <TransactionQuickEditDialog
-        transaction={quickEditTransaction}
-        categories={categories}
-        onAddCategory={addCategory}
-        onClose={() => setQuickEditTransaction(null)}
-        onSave={saveQuickEdit}
-        onDelete={(id) => {
-          setQuickEditTransaction(null);
-          setTransactionToDelete(id);
-        }}
-      />
+// ─── InsightsPage ─────────────────────────────────────────────────────
+
+export const InsightsPage = () => {
+  const { transactions, selectedMonth, monthlyBudget } = useApp();
+  const [lens, setLens] = useState<InsightsLens>('actual');
+  const [range, setRange] = useState<RangeKey>('1M');
+  
+  const { start, end, prevStart, prevEnd, periodLabel, comparisonLabel } = useMemo(() => {
+    const today = new Date();
+    return getRangeDates(range, today.getFullYear(), today.getMonth());
+  }, [range]);
+
+  const filteredTransactions = useMemo(
+    () => Finance.filterByAnalyticsLens(transactions, lens),
+    [transactions, lens],
+  );
+
+  const periodTx = useMemo(
+    () => Finance.filterByDateRange(filteredTransactions, start, end),
+    [filteredTransactions, start, end],
+  );
+  const prevTx = useMemo(
+    () => Finance.filterByDateRange(filteredTransactions, prevStart, prevEnd),
+    [filteredTransactions, prevStart, prevEnd],
+  );
+  const extraImpact = useMemo(
+    () => Finance.getExtraImpact(Finance.filterByDateRange(transactions, start, end)),
+    [transactions, start, end],
+  );
+
+  const totals = useMemo(() => Finance.calculateTotals(periodTx), [periodTx]);
+  const prevTotals = useMemo(() => Finance.calculateTotals(prevTx), [prevTx]);
+  const safeToSpendIncomeCap = useMemo(
+    () => Finance.calculateBudgetableCashInflowByLens(Finance.filterByDateRange(transactions, start, end), lens),
+    [transactions, start, end, lens],
+  );
+  const safeToSpend = useMemo(
+    () => Finance.safeToSpend(monthlyBudget, totals.expenses, safeToSpendIncomeCap),
+    [monthlyBudget, totals.expenses, safeToSpendIncomeCap],
+  );
+
+  const incomeChange = prevTotals.income > 0
+    ? ((totals.income - prevTotals.income) / prevTotals.income) * 100
+    : null;
+  const expenseChange = prevTotals.expenses > 0
+    ? ((totals.expenses - prevTotals.expenses) / prevTotals.expenses) * 100
+    : null;
+  const netChange = prevTotals.net !== 0
+    ? ((totals.net - prevTotals.net) / Math.abs(prevTotals.net)) * 100
+    : null;
+
+  const chartData = useMemo(() => buildWeeklyData(periodTx, start, end), [periodTx, start, end]);
+
+  // Cash flow goal: use total income from prev period as soft target
+  const cashFlowGoal = prevTotals.income > 0 ? prevTotals.income : null;
+
+  return (
+    <motion.div {...pageTransition} className="space-y-4 pb-24">
+
+      {/* ── Period, lens, and selected range controls ── */}
+      <div className="grid grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] items-center gap-2">
+        <label className="relative min-w-0">
+          <span className="sr-only">Select insights period</span>
+          <select
+            value={range}
+            onChange={(event) => setRange(event.target.value as RangeKey)}
+            className={cn(
+              'block h-8 w-full min-w-0 appearance-none rounded-full border border-outline-variant/20 bg-surface-container-lowest',
+              'py-1 pl-3 pr-8 text-xs font-bold text-primary shadow-sm',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
+            )}
+          >
+            {RANGE_OPTIONS.map((opt) => (
+              <option key={opt.key} value={opt.key}>{opt.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
+        </label>
+
+        <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
+
+        <div className="ml-auto flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-full border border-outline-variant/25 bg-surface-container-lowest px-2.5 py-1">
+          <CalendarDays className="h-3 w-3 shrink-0 text-on-surface-variant" />
+          <span className="truncate text-[10px] font-bold text-on-surface-variant">{periodLabel}</span>
+        </div>
+      </div>
+
+      {extraImpact.count > 0 && (
+        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-2 text-xs font-bold text-on-surface-variant">
+          {lens === 'actual' ? 'Extras this period' : 'Excluded from Net'}: {formatCurrency(extraImpact.expenses)} expenses · {formatCurrency(extraImpact.income)} income
+        </div>
+      )}
+
+      {/* ── 2×2 KPI grid ── */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <KpiCard
+          label="Income"
+          value={formatCurrency(totals.income)}
+          change={incomeChange !== null ? `${incomeChange >= 0 ? '+' : ''}${incomeChange.toFixed(0)}% vs ${comparisonLabel}` : null}
+          positive={incomeChange !== null && incomeChange >= 0}
+          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          iconBg="bg-secondary"
+        />
+        <KpiCard
+          label="Expenses"
+          value={formatCurrency(totals.expenses)}
+          change={expenseChange !== null ? `${expenseChange >= 0 ? '+' : ''}${expenseChange.toFixed(0)}% vs ${comparisonLabel}` : null}
+          positive={expenseChange !== null && expenseChange <= 0}
+          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>}
+          iconBg="bg-primary"
+        />
+        <KpiCard
+          label="Net Cash Flow"
+          value={formatCurrency(totals.net)}
+          change={netChange !== null ? `${netChange >= 0 ? '+' : ''}${netChange.toFixed(0)}% vs ${comparisonLabel}` : null}
+          positive={netChange !== null && netChange >= 0}
+          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M3 12h18M12 3l9 9-9 9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          iconBg="bg-accent-cyan"
+        />
+        <KpiCard
+          label="Safe to Spend"
+          value={formatCurrency(safeToSpend.remaining)}
+          change={null}
+          positive={true}
+          sub={`of ${formatCurrency(safeToSpend.effectiveLimit)} safe limit`}
+          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          iconBg="bg-accent-purple"
+        />
+      </div>
+
+      {/* ── Overview chart: bars (Income, Expenses) + line (Net Cash Flow) ── */}
+      <div className="aura-card space-y-3 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-on-surface">Overview</h3>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 text-[10px] font-bold text-on-surface-variant">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-secondary" />
+            Income
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+            Expenses
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded bg-accent-cyan" />
+            Net Cash Flow
+          </span>
+        </div>
+
+        <div className="h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)' }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `€${Math.round(v / 1000)}k`}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Bar
+                dataKey="income"
+                name="Income"
+                fill="var(--color-secondary)"
+                radius={[3, 3, 0, 0]}
+                maxBarSize={20}
+              />
+              <Bar
+                dataKey="expenses"
+                name="Expenses"
+                fill="var(--color-primary)"
+                radius={[3, 3, 0, 0]}
+                maxBarSize={20}
+              />
+              <Line
+                type="monotone"
+                dataKey="net"
+                name="Net Cash Flow"
+                stroke="var(--color-accent-cyan)"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Cash flow this month ── */}
+      <div className="aura-card space-y-3 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-on-surface">Cash flow this month</h3>
+          {netChange !== null && (
+            <span className={cn('text-xs font-bold', netChange >= 0 ? 'text-secondary' : 'text-tertiary')}>
+              {netChange >= 0 ? '+' : ''}{netChange.toFixed(0)}% vs {comparisonLabel}
+            </span>
+          )}
+        </div>
+        <CashFlowBar
+          current={totals.net}
+          goal={cashFlowGoal}
+          change={netChange}
+          comparisonLabel={comparisonLabel}
+        />
+      </div>
     </motion.div>
   );
 };

@@ -15,6 +15,7 @@ import { AdminPage } from './pages/AdminPage';
 import { Login } from './pages/Login';
 import { ComparePage } from './pages/ComparePage';
 import { YearReviewPage } from './pages/YearReviewPage';
+import { MorePage } from './pages/MorePage';
 
 // Components
 import { Layout } from './components/Layout';
@@ -43,7 +44,8 @@ export default function App() {
         ) : (
           <Routes>
             <Route path="/" element={<Layout title="Dashboard"><ErrorBoundary><Dashboard /></ErrorBoundary></Layout>} />
-            <Route path="/history" element={<Layout title="History"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
+            <Route path="/transactions" element={<Layout title="Transactions"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
+            <Route path="/history" element={<Layout title="Transactions"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
             <Route path="/add" element={<Layout title="Add Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
             <Route path="/edit/:id" element={<Layout title="Edit Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
             <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
@@ -51,8 +53,9 @@ export default function App() {
             <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
             <Route path="/calendar" element={<Layout title="Calendar"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
             <Route path="/insights" element={<Layout title="Reports"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
-            <Route path="/compare" element={<Layout title="Compare"><ErrorBoundary><ComparePage /></ErrorBoundary></Layout>} />
+            <Route path="/compare" element={<Layout title="Compare & Trends"><ErrorBoundary><ComparePage /></ErrorBoundary></Layout>} />
             <Route path="/year-review" element={<Layout title="Year in Review"><ErrorBoundary><YearReviewPage /></ErrorBoundary></Layout>} />
+            <Route path="/more" element={<Layout title="More"><ErrorBoundary><MorePage /></ErrorBoundary></Layout>} />
             {isAdmin && (
               <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
             )}

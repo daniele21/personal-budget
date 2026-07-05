@@ -9,7 +9,7 @@ import { CategoryPicker } from '../components/CategoryPicker';
 import { cn } from '../lib/utils';
 import { RecurringExpense, RecurringFrequency, TransactionType, Transaction } from '../types';
 import { APP_CONFIG } from '../constants';
-import { Button, EmptyState, Input, Switch } from '../components/ui';
+import { Button, EmptyState, Input, SegmentedControl, Switch } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
@@ -428,6 +428,18 @@ export const CalendarPage = () => {
       {...pageTransition}
       className="space-y-4 pb-24"
     >
+      <SegmentedControl
+        ariaLabel="Planning view"
+        value="calendar"
+        onChange={(value) => {
+          if (value === 'recurring') navigate('/recurring');
+        }}
+        options={[
+          { value: 'calendar', label: 'Calendar' },
+          { value: 'recurring', label: 'Recurring' },
+        ]}
+      />
+
       <div className="flex items-center justify-between">
         <button onClick={goBack} className="p-2 hover:bg-surface-container-low rounded-full transition-colors" aria-label="Previous month">
           <ChevronLeft className="w-5 h-5 text-primary" />

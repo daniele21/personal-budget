@@ -4,22 +4,41 @@ import { cn } from '../../lib/utils';
 interface CardProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
   key?: React.Key;
-  /** Elevated variant adds extra shadow for hero/summary cards */
-  variant?: 'default' | 'elevated';
+  /**
+   * Visual variant:
+   * - `default`  — standard surface card (soft border + shadow)
+   * - `elevated` — hero / summary card (stronger shadow for primary metrics)
+   * - `flat`     — section sub-area card (no border, tinted bg)
+   */
+  variant?: 'default' | 'elevated' | 'flat';
   className?: string;
   as?: 'div' | 'section' | 'article';
 }
 
 /**
- * Reusable card container matching the app's compact Aura surface style.
+ * Reusable card container matching the Aura Finance design system.
+ *
+ * Usage:
+ *   <Card>…</Card>
+ *   <Card variant="elevated">…</Card>
+ *   <Card variant="flat">…</Card>
  */
-export function Card({ children, variant = 'default', className, as: Component = 'div', ...props }: CardProps) {
+export function Card({
+  children,
+  variant = 'default',
+  className,
+  as: Component = 'div',
+  ...props
+}: CardProps) {
   return (
     <Component
       className={cn(
-        'bg-surface-container-lowest rounded-2xl border border-outline-variant/25',
-        variant === 'default' && 'p-4 shadow-[0_8px_24px_rgba(0,52,97,0.045)]',
-        variant === 'elevated' && 'p-4 sm:p-5 shadow-[0_14px_38px_rgba(0,52,97,0.09)] border-outline-variant/30',
+        // Base padding shared across all variants
+        'p-4',
+        // Per-variant surface style
+        variant === 'default' && 'aura-card',
+        variant === 'elevated' && 'aura-card-elevated sm:p-5',
+        variant === 'flat' && 'aura-card-flat',
         className,
       )}
       {...props}

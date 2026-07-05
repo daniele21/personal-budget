@@ -24,6 +24,7 @@ describe('TransactionHistoryList', () => {
       <TransactionHistoryList
         transactions={[transaction({ reportingClass: 'extra', reportingNote: 'Furniture' })]}
         hasBaseTransactions
+        onOpenDetails={vi.fn()}
         onQuickEdit={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -42,6 +43,7 @@ describe('TransactionHistoryList', () => {
           reportingNote: 'Should be hidden',
         })]}
         hasBaseTransactions
+        onOpenDetails={vi.fn()}
         onQuickEdit={vi.fn()}
         onDelete={vi.fn()}
       />,

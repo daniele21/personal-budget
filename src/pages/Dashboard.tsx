@@ -1,54 +1,84 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, Lightbulb, Plus, Wallet, PieChart, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Lightbulb,
+  Plus,
+  ReceiptText,
+  TrendingUp,
+  Wallet,
+  WalletCards,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
-import { Card, EmptyState, Skeleton, LensSelector } from '../components/ui';
-import { Sparkline } from '../components/Sparkline';
+import {
+  Card,
+  CompactMetricCard,
+  EmptyState,
+  IconAction,
+  LensSelector,
+  Skeleton,
+} from '../components/ui';
 import { RadialGauge } from '../components/RadialGauge';
+import { CashFlowChart } from '../components/dashboard/CashFlowChart';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
-import { calculateBudgetableCashInflowByLens, calculateTotalsByLens, filterByAnalyticsLens, formatMonthLabel, safeToSpend as calculateSafeToSpend, spendingByCategory } from '../domain/finance';
+import {
+  calculateBudgetableCashInflowByLens,
+  calculateTotalsByLens,
+  filterByAnalyticsLens,
+  formatMonthLabel,
+  safeToSpend as calculateSafeToSpend,
+} from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TransactionDetailSheet } from '../components/transactions/TransactionDetailSheet';
 import { Transaction } from '../types';
 import { haptics } from '../utils/haptics';
 import { useToast } from '../components/Toast';
 import { ExtraTransactionBadge } from '../components/ExtraTransactionBadge';
 
-const DONUT_COLORS = [
-  'var(--color-primary)',
-  'var(--color-secondary)',
-  'var(--color-tertiary)',
-  'var(--color-accent-purple)',
-  'var(--color-accent-amber)',
-  'var(--color-accent-cyan)',
-];
+// ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export const Dashboard = () => {
   const {
-    transactions, setTransactions, budgets,
-    monthlyTotals, monthlyBudget,
-    monthlyTransactions, momChange, recentTransactions, isHydrated,
-    categories, addCategory, selectedMonth, setSelectedMonth
+    transactions,
+    setTransactions,
+    budgets,
+    monthlyTotals,
+    monthlyBudget,
+    monthlyTransactions,
+    momChange,
+    recentTransactions,
+    isHydrated,
+    categories,
+    addCategory,
+    selectedMonth,
+    setSelectedMonth,
   } = useApp();
   const { toast } = useToast();
 
-  // Side-effect hooks (UI-level orchestration)
+  // Side-effect hooks (budget alerts)
   useBudgetAlerts(budgets, transactions);
 
-  // Derived from context
+  // ── Derived state ─────────────────────────────────────────────────
   const { income: monthlyIncome, expenses: monthlyExpenses } = monthlyTotals;
-  const monthlySavings = Math.max(0, monthlyTotals.net);
   const animatedBalance = useAnimatedNumber(monthlyTotals.net);
   const [barsMounted, setBarsMounted] = useState(false);
+  const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
+
   const filteredTransactions = useMemo(
     () => filterByAnalyticsLens(transactions, lens),
     [transactions, lens],
@@ -67,17 +97,13 @@ export const Dashboard = () => {
   );
   const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
-  const visibleCategorySpending = useMemo(
-    () => spendingByCategory(filterByAnalyticsLens(monthlyTransactions, lens)),
-    [monthlyTransactions, lens],
-  );
-  const totalSpent = visibleCategorySpending.reduce((acc, c) => acc + c.amount, 0);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setBarsMounted(true));
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // ── Month navigation ───────────────────────────────────────────────
   const handlePrevMonth = () => {
     const prev = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1);
     setSelectedMonth(prev);
@@ -88,52 +114,18 @@ export const Dashboard = () => {
     setSelectedMonth(next);
   };
 
-  const getReferenceDate = () => {
-    const now = new Date();
-    if (selectedMonth.getFullYear() === now.getFullYear() && selectedMonth.getMonth() === now.getMonth()) {
-      return now;
-    }
-    return new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
-  };
-
-  const weeklyIncome = Array.from({ length: 7 }, (_, index) => {
-    const date = getReferenceDate();
-    date.setDate(date.getDate() - (6 - index));
-    const key = date.toISOString().slice(0, 10);
-    return filteredTransactions
-      .filter((transaction) => transaction.date.slice(0, 10) === key && transaction.type === 'income')
-      .reduce((sum, transaction) => sum + transaction.amount, 0);
-  });
-  const weeklyExpenses = Array.from({ length: 7 }, (_, index) => {
-    const date = getReferenceDate();
-    date.setDate(date.getDate() - (6 - index));
-    const key = date.toISOString().slice(0, 10);
-    return filteredTransactions
-      .filter((transaction) => transaction.date.slice(0, 10) === key && transaction.type === 'expense')
-      .reduce((sum, transaction) => sum + transaction.amount, 0);
-  });
-
-  // Donut segments
-  const donutSegments = visibleCategorySpending.map((cat, i) => ({
-    ...cat,
-    label: cat.category,
-    color: DONUT_COLORS[i % DONUT_COLORS.length],
-  }));
-
+  // ── Transaction handlers ───────────────────────────────────────────
   const saveQuickEdit = (nextTransaction: Transaction) => {
-    setTransactions(transactions.map((transaction) => (
-      transaction.id === nextTransaction.id ? nextTransaction : transaction
-    )));
+    setTransactions(transactions.map((t) => (t.id === nextTransaction.id ? nextTransaction : t)));
     setQuickEditTransaction(null);
     haptics.success();
     toast('Transaction updated', 'success');
   };
 
   const handleDeleteTransaction = (id: string) => {
-    const deleted = transactions.find(t => t.id === id);
+    const deleted = transactions.find((t) => t.id === id);
     if (!deleted) return;
-    
-    setTransactions(transactions.filter(t => t.id !== id));
+    setTransactions(transactions.filter((t) => t.id !== id));
     setTransactionToDelete(null);
     haptics.warning();
     toast('Transaction deleted', 'info', 5000, {
@@ -141,259 +133,283 @@ export const Dashboard = () => {
       onClick: () => {
         setTransactions([...transactions, deleted]);
         haptics.success();
-      }
+      },
     });
   };
 
-  // Build donut arcs
-  let cumulativeOffset = 0;
-  const CIRCUMFERENCE = 251.2;
+  // ── Compute MoM trend numbers for cards ───────────────────────────
+  const incomeTrend = momChange !== null ? momChange : null;
+  const expenseTrend = momChange !== null ? -momChange : null;
 
+  // ── Group recent transactions by date label ────────────────────────
+  const groupedRecent = useMemo(() => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    const groups: { label: string; transactions: Transaction[] }[] = [];
+    const seen = new Map<string, number>();
+
+    for (const t of recentTransactions) {
+      const txDate = new Date(`${t.date.slice(0, 10)}T00:00:00`);
+      let label: string;
+      if (txDate.toDateString() === today.toDateString()) label = 'Today';
+      else if (txDate.toDateString() === yesterday.toDateString()) label = 'Yesterday';
+      else label = txDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      if (!seen.has(label)) {
+        seen.set(label, groups.length);
+        groups.push({ label, transactions: [] });
+      }
+      groups[seen.get(label)!].transactions.push(t);
+    }
+    return groups;
+  }, [recentTransactions]);
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <motion.div 
-      {...pageTransition}
-      className="space-y-3 pb-20"
-    >
-      <section className="flex flex-col gap-3">
-        <div className="rounded-3xl bg-surface-container-low p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] sm:p-4">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-bold text-on-surface-variant">Month Balance</p>
-            <div className="flex items-center gap-1 rounded-full bg-surface-container-lowest px-2 py-0.5 text-micro font-bold text-primary shadow-sm">
-              <ShieldCheck className="h-3 w-3 text-secondary" />
-              Local first
+    <motion.div {...pageTransition} className="space-y-3 pb-24">
+      {/* ── 1. Safe to Spend Hero ─────────────────────────────────────── */}
+      <Card variant="elevated" className="space-y-2 py-3 overflow-hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-headline text-xs font-bold text-on-surface-variant">Safe to spend</h2>
+              <Info className="h-3.5 w-3.5 text-on-surface-variant/60" />
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
             {isHydrated ? (
-              <h2 className="font-headline text-3xl font-extrabold leading-none tracking-tight text-primary sm:text-4xl">
-                {formatCurrency(animatedBalance)}
-              </h2>
-            ) : (
-              <Skeleton className="h-9 w-44" />
-            )}
-            {momChange !== null && (
-              <div className={cn(
-                "px-1.5 py-0.5 rounded-full flex items-center gap-1",
-                momChange >= 0 ? "bg-secondary-container/20" : "bg-tertiary/10"
-              )}>
-                {momChange >= 0
-                  ? <TrendingDown className="w-3 h-3 text-secondary" />
-                  : <TrendingUp className="w-3 h-3 text-tertiary" />
-                }
-                <span className={cn("font-bold text-micro", momChange >= 0 ? "text-secondary" : "text-tertiary")}>
-                  {momChange >= 0 ? '-' : '+'}{Math.abs(momChange).toFixed(1)}%
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="mt-2 flex items-center gap-1.5">
-            <button onClick={handlePrevMonth} className="rounded-full p-0.5 transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Previous month">
-              <ChevronLeft className="h-4 w-4 text-on-surface-variant" />
-            </button>
-            <p className="min-w-[92px] text-center text-sm font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</p>
-            <button onClick={handleNextMonth} className="rounded-full p-0.5 transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Next month">
-              <ChevronRight className="h-4 w-4 text-on-surface-variant" />
-            </button>
-          </div>
-        </div>
-
-        {/* Centralized Lens Selector */}
-        <div className="flex w-full justify-center">
-          <LensSelector value={lens} onChange={setLens} />
-        </div>
-
-        {/* Safe to Spend — promoted to primary position */}
-        <Card variant="elevated" className="space-y-2 overflow-hidden p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-primary">Safe to Spend</h3>
-              <div className="flex items-baseline gap-2 flex-wrap">
-                {isHydrated ? (
-                  <p className={cn(
-                    "text-2xl font-headline font-extrabold",
-                    usedPercent > 90 ? "text-tertiary" : "text-secondary"
-                  )}>
-                    {formatCurrency(animatedSafeAmount)}
-                  </p>
-                ) : (
-                  <Skeleton className="h-8 w-24" />
-                )}
-                <span className="text-on-surface-variant text-xs">of {formatCurrency(effectiveLimit)} safe limit</span>
-              </div>
-            </div>
-            <div className="flex shrink-0 origin-right scale-90 items-center justify-center">
-              <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
-              <div
+              <p
                 className={cn(
-                  "h-full rounded-full transition-all duration-1000",
-                  usedPercent > 90 ? "bg-tertiary shadow-[0_0_10px_rgba(220,38,38,0.3)]" :
-                  usedPercent > 75 ? "bg-accent-amber shadow-[0_0_10px_rgba(245,158,11,0.3)]" :
-                  "bg-secondary shadow-[0_0_10px_rgba(74,222,128,0.3)]"
+                  'font-headline text-3xl font-extrabold leading-none tabular-nums',
+                  usedPercent > 90 ? 'text-tertiary' : 'text-primary',
                 )}
-                style={{ width: barsMounted ? `${Math.min(100, usedPercent)}%` : '0%' }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-xs font-bold text-on-surface-variant">
-              <span>{usedPercent}% used</span>
-              <span>{100 - Math.min(100, usedPercent)}% remaining</span>
-            </div>
+              >
+                {formatCurrency(animatedSafeAmount)}
+              </p>
+            ) : (
+              <Skeleton className="h-10 w-32" />
+            )}
+            <p className="text-[10px] font-bold text-on-surface-variant">
+              of {formatCurrency(effectiveLimit)}
+            </p>
           </div>
-        </Card>
-      </section>
-
-      {/* Income / Expenses grid */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-3.5 shadow-[0_8px_24px_rgba(0,52,97,0.035)]">
-          <div className="mb-2 flex items-start justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-container-lowest shadow-sm">
-              <TrendingUp className="h-4 w-4 text-secondary rotate-180" />
-            </div>
-            <Sparkline values={weeklyIncome} color="var(--color-secondary)" label="Income over the last 7 days" />
+          {/* Gauge with hidden text labels below it for mockup matching */}
+          <div className="shrink-0 scale-95 origin-right">
+            <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" hideText />
           </div>
-          <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Income</h3>
-          <p className="font-headline text-xl font-bold text-on-surface">{formatCurrency(safeToSpendTotals.income)}</p>
         </div>
+      </Card>
 
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-3.5 shadow-[0_8px_24px_rgba(0,52,97,0.035)]">
-          <div className="mb-2 flex items-start justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-container-lowest shadow-sm">
-              <TrendingUp className="h-4 w-4 text-tertiary" />
-            </div>
-            <Sparkline values={weeklyExpenses} color="var(--color-tertiary)" label="Expenses over the last 7 days" />
+      {/* ── 2. Month navigator ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface-container-low px-3 py-2">
+        <button
+          onClick={handlePrevMonth}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="h-4 w-4 text-primary" />
+        </button>
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-2">
+          <div className="shrink-0 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
+              Monthly snapshot
+            </p>
+            <p className="text-sm font-extrabold text-primary">{formatMonthLabel(selectedMonth)}</p>
           </div>
-          <h3 className="text-on-surface-variant text-xs mb-1 font-bold">Expenses</h3>
-          <p className="font-headline text-xl font-bold text-on-surface">{formatCurrency(safeToSpendTotals.expenses)}</p>
+          <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
+        </div>
+        <button
+          onClick={handleNextMonth}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+          aria-label="Next month"
+        >
+          <ChevronRight className="h-4 w-4 text-primary" />
+        </button>
+      </div>
+
+      {/* ── 3. Income / Spent / Remaining row ─────────────────────────── */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px]">
+          <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Income this month</p>
+          <div className="flex items-center justify-between mt-1 gap-1">
+            <span className="text-sm font-extrabold text-on-surface truncate">
+              {isHydrated ? formatCurrency(safeToSpendTotals.income) : <Skeleton className="h-4 w-12" />}
+            </span>
+            <TrendingUp className="h-3 w-3 text-secondary shrink-0" />
+          </div>
+        </div>
+        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px]">
+          <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Spent</p>
+          <div className="mt-1">
+            <span className="text-sm font-extrabold text-on-surface truncate">
+              {isHydrated ? formatCurrency(safeToSpendTotals.expenses) : <Skeleton className="h-4 w-12" />}
+            </span>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px]">
+          <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Remaining</p>
+          <div className="mt-1">
+            <span className="text-sm font-extrabold text-on-surface truncate">
+              {isHydrated ? formatCurrency(safeAmount) : <Skeleton className="h-4 w-12" />}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Spending by Category — multi-color donut */}
-      <Card>
-        <div className="mb-3">
-          <h3 className="text-on-surface font-headline font-bold text-base">Spending by Category</h3>
-          <span className="text-xs font-bold text-on-surface-variant">{formatMonthLabel(selectedMonth)}</span>
+      {/* ── 4. Quick actions ───────────────────────────────────────────── */}
+      <section
+        className="grid grid-cols-4 gap-1 rounded-2xl bg-surface-container-low p-2"
+        aria-label="Quick actions"
+      >
+        <IconAction icon={<Plus className="h-5 w-5" />} label="Add" to="/add" ariaLabel="Add transaction" />
+        <IconAction
+          icon={<WalletCards className="h-5 w-5" />}
+          label="Budget"
+          to="/budgets"
+          ariaLabel="Plan budget"
+        />
+        <IconAction
+          icon={<BarChart3 className="h-5 w-5" />}
+          label="Analyze"
+          to="/insights"
+          ariaLabel="Analyze spending"
+        />
+        <IconAction
+          icon={<CalendarDays className="h-5 w-5" />}
+          label="Plan"
+          to="/calendar"
+          ariaLabel="Open calendar and recurring planning"
+        />
+      </section>
+
+      {/* ── 5. Cash flow chart ─────────────────────────────────────────── */}
+      <Card variant="elevated" className="space-y-3 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-headline text-sm font-bold text-on-surface">Cash flow overview</h3>
+          <span className="text-[10px] font-bold text-on-surface-variant">
+            {formatMonthLabel(selectedMonth)}
+          </span>
         </div>
-        {visibleCategorySpending.length > 0 ? (
-          <div className="flex flex-col gap-4">
-            <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100" role="img" aria-label={`Spending by category total ${formatCurrency(totalSpent)}`}>
-                <circle cx="50" cy="50" fill="transparent" r="40" stroke="var(--color-surface-container-highest)" strokeWidth="12" />
-                {donutSegments.map((seg) => {
-                  const dashLength = CIRCUMFERENCE * seg.percentage;
-                  const offset = CIRCUMFERENCE - cumulativeOffset;
-                  cumulativeOffset += dashLength;
-                  return (
-                    <circle
-                      key={seg.label}
-                      cx="50" cy="50" fill="transparent" r="40"
-                      stroke={seg.color}
-                      strokeWidth="12"
-                      strokeDasharray={`${dashLength} ${CIRCUMFERENCE - dashLength}`}
-                      strokeDashoffset={offset}
-                      strokeLinecap="round"
-                      className="transition-all duration-1000"
-                    />
-                  );
-                })}
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-micro text-on-surface-variant font-bold">Total</span>
-                <span className="text-base font-headline font-bold text-on-surface">{formatCurrency(totalSpent)}</span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              {visibleCategorySpending.slice(0, 6).map((cat) => (
-                <div key={cat.category} className="flex items-center justify-between rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-3 shadow-sm shadow-primary/5">
-                  <div className="flex items-center gap-2.5">
-                    <CategoryBadge category={cat.category} size="md" className="flex-shrink-0" />
-                    <span className="text-sm text-on-surface font-bold">{cat.category}</span>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-headline font-extrabold text-sm text-on-surface">{formatCurrency(cat.amount)}</span>
-                    <span className="text-xs font-medium text-on-surface-variant/60">{totalSpent > 0 ? Math.round((cat.amount / totalSpent) * 100) : 0}% of total</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            icon={<PieChart className="w-10 h-10" />}
-            title={lens === 'normalized' ? 'No net expenses this month' : 'No expenses this month'}
-            description={
-              lens === 'normalized'
-                ? 'Only extra expenses were found for this month.'
-                : 'Add your first expense to see category breakdowns here.'
-            }
-            action={{ label: 'Add transaction', to: '/add' }}
-          />
-        )}
+        <CashFlowChart
+          transactions={filteredTransactions}
+          month={selectedMonth}
+          netAmount={monthlyTotals.net}
+          momChange={momChange}
+        />
+        <div className="border-t border-outline-variant/20 pt-3 mt-1 flex justify-end">
+          <Link
+            to="/insights"
+            className="flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline"
+          >
+            See insights
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M3 3v18h18M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
       </Card>
 
-      {/* Savings insight — compact, moved below */}
-      {monthlySavings > 0 && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-secondary/10 bg-secondary/5 p-3">
-          <Lightbulb className="h-4 w-4 text-secondary flex-shrink-0" />
-          <p className="text-sm text-on-surface font-medium">
-            You've saved <span className="text-secondary font-bold">{formatCurrency(monthlySavings)}</span> this month!
+      {/* ── 7. Savings insight ─────────────────────────────────────────── */}
+      {monthlyTotals.net > 0 && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-secondary/15 bg-secondary/5 p-3">
+          <Lightbulb className="h-4 w-4 shrink-0 text-secondary" />
+          <p className="text-sm font-medium text-on-surface">
+            You saved{' '}
+            <span className="font-bold text-secondary">{formatCurrency(monthlyTotals.net)}</span>{' '}
+            this month.
           </p>
         </div>
       )}
 
-      {/* Recent Transactions — sorted by date */}
-      <section className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 shadow-[0_8px_24px_rgba(0,52,97,0.035)]">
+      {/* ── 8. Recent transactions ─────────────────────────────────────── */}
+      <section className="aura-card p-4" aria-label="Recent transactions">
         <div className="mb-3 flex items-end justify-between">
           <div>
-            <h3 className="text-base font-headline font-bold text-primary">Recent Transactions</h3>
-            <p className="text-on-surface-variant text-xs">Latest movements</p>
+            <h3 className="font-headline text-base font-bold text-primary">Recent Transactions</h3>
+            <p className="text-xs font-medium text-on-surface-variant">Latest movements</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/add" className="inline-flex items-center gap-1.5 bg-primary text-on-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-primary-container hover:shadow-md transition-all">
-              <Plus className="w-3.5 h-3.5" />
+            <Link
+              to="/add"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-on-primary shadow-sm transition-all hover:bg-primary-container hover:shadow-md"
+            >
+              <Plus className="h-3.5 w-3.5" />
               Add
             </Link>
-            <Link to="/history" className="bg-surface-container-lowest text-primary px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-surface-container-high hover:shadow-md transition-all">
+            <Link
+              to="/history"
+              className="rounded-full bg-surface-container-low px-3 py-1.5 text-xs font-bold text-primary shadow-sm transition-all hover:bg-surface-container-high hover:shadow-md"
+            >
               View All
             </Link>
           </div>
         </div>
-        <div className="space-y-1.5">
-          {recentTransactions.length > 0 ? recentTransactions.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setQuickEditTransaction(t)}
-              className="flex w-full items-center gap-2.5 rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-3 text-left shadow-sm shadow-primary/5 transition-all hover:border-primary/20 active:scale-[0.98]"
-            >
-              <CategoryBadge category={t.category} size="md" className="flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <p className="min-w-0 truncate text-sm font-bold text-on-surface">{t.title}</p>
-                  <ExtraTransactionBadge transaction={t} className="shrink-0" />
+
+        {groupedRecent.length > 0 ? (
+          <div className="space-y-1">
+            {groupedRecent.map((group) => (
+              <div key={group.label}>
+                {/* Date group header */}
+                <div className="tx-date-group">
+                  <span>{group.label}</span>
+                  <span className="text-on-surface-variant/60">
+                    {formatCurrency(
+                      group.transactions.reduce(
+                        (sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount),
+                        0,
+                      ),
+                    )}
+                  </span>
                 </div>
-                <p className="text-xs font-medium text-on-surface-variant/60 mt-0.5">{t.category} • {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+
+                {/* Transactions — hairline divider on wrapper, flex layout on button */}
+                {group.transactions.map((t) => (
+                  <div
+                    key={t.id}
+                    className="border-b border-outline-variant/20 last:border-b-0"
+                  >
+                    <button
+                      onClick={() => setDetailTransaction(t)}
+                      className="flex w-full items-center gap-2.5 bg-surface px-1 py-2.5 text-left transition-colors active:bg-surface-container-low"
+                    >
+                      <CategoryBadge category={t.category} size="md" className="shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <p className="min-w-0 truncate text-sm font-bold text-on-surface">
+                            {t.title}
+                          </p>
+                          <ExtraTransactionBadge transaction={t} className="shrink-0" />
+                        </div>
+                        <p className="text-[10px] font-medium text-on-surface-variant">
+                          {t.category}
+                        </p>
+                      </div>
+                      <p
+                        className={cn(
+                          'shrink-0 text-sm font-extrabold tabular-nums',
+                          t.type === 'income' ? 'text-secondary' : 'text-on-surface',
+                        )}
+                      >
+                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                      </p>
+                    </button>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <div className="flex flex-col items-end">
-                  <p className={cn('text-sm font-extrabold', t.type === 'income' ? 'text-secondary' : 'text-on-surface')}>
-                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                  </p>
-                </div>
-              </div>
-            </button>
-          )) : (
-            <EmptyState
-              icon={<Wallet className="w-10 h-10" />}
-              title="No transactions yet"
-              description="Start with an income or expense to populate your dashboard."
-              action={{ label: 'Add transaction', to: '/add' }}
-            />
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Wallet className="h-10 w-10" />}
+            title="No transactions yet"
+            description="Start with an income or expense to populate your dashboard."
+            action={{ label: 'Add transaction', to: '/add' }}
+          />
+        )}
       </section>
 
+      {/* ── Dialogs ───────────────────────────────────────────────────── */}
       <ConfirmDialog
         isOpen={transactionToDelete !== null}
         title="Delete Transaction"
@@ -411,6 +427,18 @@ export const Dashboard = () => {
         onSave={saveQuickEdit}
         onDelete={(id) => {
           setQuickEditTransaction(null);
+          setTransactionToDelete(id);
+        }}
+      />
+      <TransactionDetailSheet
+        transaction={detailTransaction}
+        onClose={() => setDetailTransaction(null)}
+        onEdit={(transaction) => {
+          setDetailTransaction(null);
+          setQuickEditTransaction(transaction);
+        }}
+        onDelete={(id) => {
+          setDetailTransaction(null);
           setTransactionToDelete(id);
         }}
       />

@@ -1,73 +1,756 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
+import { CalendarDays, ChevronDown, ChevronRight, Link as LinkIcon, TrendingDown, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Legend,
+} from 'recharts';
 import { useApp } from '../context/AppContext';
-import { AnalyticsLens, comparePeriods, createMonthRange, filterByAnalyticsLens, normalizeDateRange } from '../domain/finance';
-import { PeriodSelector } from '../components/compare/PeriodSelector';
-import { ComparisonSummary } from '../components/compare/ComparisonSummary';
-import { OverlayChart } from '../components/compare/OverlayChart';
-import { CategoryDelta } from '../components/compare/CategoryDelta';
-import { CompareInsights } from '../components/compare/CompareInsights';
-import { pageTransition } from '../utils/motion';
 import { cn } from '../lib/utils';
+import { formatCurrency } from '../utils/formatters';
+import * as Finance from '../domain/finance';
+import { Transaction } from '../types';
+import { getCategoryTheme } from '../config/categoryThemes';
+import { CategoryBadge } from '../components/ui/CategoryBadge';
+import { pageTransition } from '../utils/motion';
+import { SegmentedControl, LensSelector } from '../components/ui';
 
-const ANALYTICS_LENSES: { key: AnalyticsLens; label: string }[] = [
-  { key: 'actual', label: 'Actual' },
-  { key: 'normalized', label: 'Net of extras' },
-  { key: 'extras', label: 'Extras' },
+// ─── Period helpers ────────────────────────────────────────────────────
+
+type RangeKey = '1M' | '3M' | '6M' | '12M';
+
+const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
+  { key: '1M', label: 'This month' },
+  { key: '3M', label: '3M' },
+  { key: '6M', label: '6M' },
+  { key: '12M', label: '12M' },
 ];
+
+function getRangeDates(key: RangeKey, anchorYear: number, anchorMonth: number) {
+  const end = new Date(anchorYear, anchorMonth + 1, 0, 23, 59, 59);
+  let start: Date;
+  let prevStart: Date;
+  let prevEnd: Date;
+
+  if (key === '1M') {
+    start = new Date(anchorYear, anchorMonth, 1);
+    prevEnd = new Date(anchorYear, anchorMonth, 0, 23, 59, 59);
+    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
+  } else {
+    const months = key === '3M' ? 3 : key === '6M' ? 6 : 12;
+    start = new Date(anchorYear, anchorMonth - months + 1, 1);
+    prevEnd = new Date(start.getTime() - 1);
+    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth() - months + 1, 1);
+  }
+
+  const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const fmtMonth = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+  return {
+    start,
+    end,
+    prevStart,
+    prevEnd,
+    labelA: `${fmtDate(start)} – ${fmtDate(end)}`,
+    labelB: `${fmtDate(prevStart)} – ${fmtDate(prevEnd)}`,
+    monthLabelA: fmtMonth(start),
+    monthLabelB: fmtMonth(prevStart),
+  };
+}
+
+function formatDate(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+// ─── Custom donut centre label ─────────────────────────────────────────
+
+const DonutCentreLabel = ({
+  cx,
+  cy,
+  total,
+  periodLabel,
+}: {
+  cx: number;
+  cy: number;
+  total: number;
+  periodLabel: string;
+}) => (
+  <g>
+    <text x={cx} y={cy - 12} textAnchor="middle" dominantBaseline="middle" className="fill-on-surface-variant" style={{ fontSize: 10, fontWeight: 700, fontFamily: 'Inter' }}>
+      Total Expenses
+    </text>
+    <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className="fill-on-surface" style={{ fontSize: 18, fontWeight: 800, fontFamily: 'Manrope' }}>
+      {formatCurrency(total)}
+    </text>
+    <text x={cx} y={cy + 26} textAnchor="middle" dominantBaseline="middle" className="fill-on-surface-variant" style={{ fontSize: 9, fontWeight: 600, fontFamily: 'Inter' }}>
+      {periodLabel}
+    </text>
+  </g>
+);
+
+const PieTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  return (
+    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-2.5 text-xs shadow-md">
+      <p className="font-bold" style={{ color: item.payload.color }}>{item.name}</p>
+      <p className="font-bold text-on-surface">{formatCurrency(item.value)}</p>
+      <p className="text-on-surface-variant">{(item.payload.percentage * 100).toFixed(1)}%</p>
+    </div>
+  );
+};
+
+const BarTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-2.5 text-xs shadow-md">
+      <p className="mb-1 font-bold text-on-surface-variant">{label}</p>
+      {payload.map((entry: any) => (
+        <p key={entry.dataKey} className="font-bold" style={{ color: entry.fill }}>
+          {entry.name}: {formatCurrency(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+};
+
+// ─── Tab A: Spending by Category ─────────────────────────────────────
+
+function SpendingByCategoryTab({
+  transactions,
+  periodLabel,
+  labelA,
+  start,
+  end,
+  lens,
+}: {
+  transactions: Transaction[];
+  periodLabel: string;
+  labelA: string;
+  start: Date;
+  end: Date;
+  lens: 'actual' | 'normalized';
+}) {
+  const expenseTx = useMemo(
+    () => transactions.filter((t) => t.type === 'expense'),
+    [transactions],
+  );
+  const totalExpenses = useMemo(
+    () => expenseTx.reduce((s, t) => s + t.amount, 0),
+    [expenseTx],
+  );
+  const categorySpending = useMemo(
+    () => Finance.spendingByCategory(expenseTx),
+    [expenseTx],
+  );
+
+  // Assign a colour to each category using getCategoryTheme
+  const slices = useMemo(
+    () =>
+      categorySpending.map((cat) => ({
+        ...cat,
+        color: getCategoryTheme(cat.category).color,
+      })),
+    [categorySpending],
+  );
+
+  if (totalExpenses === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant">
+        <p className="text-sm font-bold">No expenses in this period</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* ── Donut chart ── */}
+      <div className="flex items-center justify-center">
+        <div style={{ width: 240, height: 240 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={slices}
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={110}
+                paddingAngle={2}
+                dataKey="amount"
+                nameKey="category"
+                strokeWidth={0}
+              >
+                {slices.map((entry) => (
+                  <Cell key={entry.category} fill={entry.color} />
+                ))}
+                <DonutCentreLabel
+                  cx={120}
+                  cy={120}
+                  total={totalExpenses}
+                  periodLabel={labelA}
+                />
+              </Pie>
+              <Tooltip content={<PieTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Ranked category list ── */}
+      <div className="aura-card divide-y divide-outline-variant/20 p-0 overflow-hidden">
+        {slices.map((cat, i) => (
+          <Link
+            key={cat.category}
+            to={`/transactions?category=${encodeURIComponent(cat.category)}&startDate=${formatDate(start)}&endDate=${formatDate(end)}&preset=custom&lens=${lens}`}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors duration-150"
+          >
+            {/* Rank */}
+            <span className="w-4 shrink-0 text-xs font-bold text-on-surface-variant">
+              {i + 1}
+            </span>
+            {/* Category icon */}
+            <CategoryBadge category={cat.category} size="sm" />
+            {/* Name + coloured bar */}
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-sm font-bold text-on-surface">{cat.category}</p>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-highest">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${cat.percentage * 100}%`,
+                    background: cat.color,
+                  }}
+                />
+              </div>
+            </div>
+            {/* Amount + % */}
+            <div className="shrink-0 text-right flex items-center gap-2">
+              <div>
+                <p className="text-sm font-extrabold text-on-surface tabular-nums">
+                  {formatCurrency(cat.amount)}
+                </p>
+                <p className="text-[10px] font-bold text-on-surface-variant">
+                  {(cat.percentage * 100).toFixed(0)}%
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-on-surface-variant/40 shrink-0" />
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* ── View all transactions CTA ── */}
+      <Link
+        to="/transactions"
+        className="flex w-full items-center justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-surface-container-low"
+      >
+        View all transactions
+        <ChevronRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
+// ─── Tab B: Compare & Trends ───────────────────────────────────────────
+
+type CompareView = 'total' | 'category' | 'merchant';
+
+const COMPARE_VIEWS: { key: CompareView; label: string }[] = [
+  { key: 'total', label: 'Total Expenses' },
+  { key: 'category', label: 'By Category' },
+  { key: 'merchant', label: 'By Merchant' },
+];
+
+function CompareTab({
+  txA,
+  txB,
+  labelA,
+  labelB,
+  start,
+  end,
+  prevStart,
+  prevEnd,
+  lens,
+  range,
+}: {
+  txA: Transaction[];
+  txB: Transaction[];
+  labelA: string;
+  labelB: string;
+  start: Date;
+  end: Date;
+  prevStart: Date;
+  prevEnd: Date;
+  lens: 'actual' | 'normalized';
+  range: RangeKey;
+}) {
+  const [view, setView] = useState<CompareView>('total');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  const totalsA = useMemo(() => Finance.calculateTotals(txA), [txA]);
+  const totalsB = useMemo(() => Finance.calculateTotals(txB), [txB]);
+  const delta = totalsA.expenses - totalsB.expenses;
+  const deltaPercent = totalsB.expenses > 0
+    ? ((totalsA.expenses - totalsB.expenses) / totalsB.expenses) * 100
+    : null;
+
+  const catA = useMemo(() => Finance.spendingByCategory(txA.filter((t) => t.type === 'expense')), [txA]);
+  const catB = useMemo(() => Finance.spendingByCategory(txB.filter((t) => t.type === 'expense')), [txB]);
+
+  const availableCategories = useMemo(() => {
+    return Array.from(new Set([...catA.map((c) => c.category), ...catB.map((c) => c.category)]));
+  }, [catA, catB]);
+
+  // Set default category
+  useEffect(() => {
+    if (availableCategories.length > 0 && !selectedCategory) {
+      setSelectedCategory(availableCategories[0]);
+    }
+  }, [availableCategories, selectedCategory]);
+
+  // 1. Total Expenses (Compare categories)
+  const categoryBarData = useMemo(() => {
+    return availableCategories
+      .map((cat) => ({
+        name: cat,
+        current: catA.find((c) => c.category === cat)?.amount ?? 0,
+        prev: catB.find((c) => c.category === cat)?.amount ?? 0,
+      }))
+      .sort((a, b) => b.current - a.current)
+      .slice(0, 6);
+  }, [availableCategories, catA, catB]);
+
+  // 2. By Category trend (weekly for 1M, monthly for 3M/6M/12M)
+  const categoryTrendData = useMemo(() => {
+    if (!selectedCategory) return [];
+
+    if (range === '1M') {
+      const lenA = end.getTime() - start.getTime();
+      const lenB = prevEnd.getTime() - prevStart.getTime();
+
+      const intervalLenA = lenA / 5;
+      const intervalLenB = lenB / 5;
+
+      return Array.from({ length: 5 }, (_, idx) => {
+        const sA = new Date(start.getTime() + idx * intervalLenA);
+        const eA = new Date(start.getTime() + (idx + 1) * intervalLenA);
+
+        const sB = new Date(prevStart.getTime() + idx * intervalLenB);
+        const eB = new Date(prevStart.getTime() + (idx + 1) * intervalLenB);
+
+        const valA = txA
+          .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const valB = txB
+          .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        return {
+          name: `Week ${idx + 1}`,
+          current: valA,
+          prev: valB,
+        };
+      });
+    }
+
+    // For 3M, 6M, 12M: Group by calendar month
+    const monthsCount = range === '3M' ? 3 : range === '6M' ? 6 : 12;
+
+    return Array.from({ length: monthsCount }, (_, idx) => {
+      const tempDateA = new Date(start.getFullYear(), start.getMonth() + idx, 1);
+      const sA = new Date(tempDateA.getFullYear(), tempDateA.getMonth(), 1);
+      const eA = new Date(tempDateA.getFullYear(), tempDateA.getMonth() + 1, 1);
+
+      const tempDateB = new Date(prevStart.getFullYear(), prevStart.getMonth() + idx, 1);
+      const sB = new Date(tempDateB.getFullYear(), tempDateB.getMonth(), 1);
+      const eB = new Date(tempDateB.getFullYear(), tempDateB.getMonth() + 1, 1);
+
+      const valA = txA
+        .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const valB = txB
+        .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const monthName = sA.toLocaleDateString('en-US', { month: 'short' });
+      return {
+        name: monthName,
+        current: valA,
+        prev: valB,
+      };
+    });
+  }, [selectedCategory, txA, txB, start, end, prevStart, prevEnd, range]);
+
+  // 3. By Merchant top comparison
+  const merchantBarData = useMemo(() => {
+    const expA = txA.filter((t) => t.type === 'expense');
+    const expB = txB.filter((t) => t.type === 'expense');
+
+    const merchantMapA = new Map<string, number>();
+    expA.forEach((t) => {
+      const name = t.title || t.description || 'Unknown';
+      merchantMapA.set(name, (merchantMapA.get(name) || 0) + t.amount);
+    });
+
+    let topMerchants = Array.from(merchantMapA.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map((entry) => entry[0]);
+
+    if (topMerchants.length === 0) {
+      const merchantMapB = new Map<string, number>();
+      expB.forEach((t) => {
+        const name = t.title || t.description || 'Unknown';
+        merchantMapB.set(name, (merchantMapB.get(name) || 0) + t.amount);
+      });
+      topMerchants = Array.from(merchantMapB.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map((entry) => entry[0]);
+    }
+
+    return topMerchants.map((merchant) => {
+      const current = expA.filter((t) => (t.title || t.description || 'Unknown') === merchant).reduce((s, t) => s + t.amount, 0);
+      const prev = expB.filter((t) => (t.title || t.description || 'Unknown') === merchant).reduce((s, t) => s + t.amount, 0);
+      return { name: merchant, current, prev };
+    });
+  }, [txA, txB]);
+
+  const activeChartData = useMemo(() => {
+    if (view === 'category') return categoryTrendData;
+    if (view === 'merchant') return merchantBarData;
+    return categoryBarData;
+  }, [view, categoryTrendData, merchantBarData, categoryBarData]);
+
+  const topChanges = useMemo(() => {
+    const cats = Array.from(new Set([...catA.map((c) => c.category), ...catB.map((c) => c.category)]));
+    return cats
+      .map((cat) => {
+        const cur = catA.find((c) => c.category === cat)?.amount ?? 0;
+        const prev = catB.find((c) => c.category === cat)?.amount ?? 0;
+        const diff = cur - prev;
+        const pct = prev > 0 ? (diff / prev) * 100 : null;
+        return { category: cat, diff, pct, cur, prev };
+      })
+      .filter((c) => c.prev > 0 || c.cur > 0)
+      .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+      .slice(0, 5);
+  }, [catA, catB]);
+
+  return (
+    <div className="space-y-4">
+      {/* ── Period comparison header ── */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Period A (current) */}
+        <Link
+          to={`/transactions?startDate=${formatDate(start)}&endDate=${formatDate(end)}&preset=custom&lens=${lens}`}
+          className="space-y-1 rounded-2xl bg-surface-container-lowest p-3 text-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors duration-150 block"
+        >
+          <p className="text-[10px] font-bold text-on-surface-variant">{labelA}</p>
+          <p className="font-headline text-2xl font-extrabold text-primary tabular-nums">
+            {formatCurrency(totalsA.expenses)}
+          </p>
+          <p className="text-[10px] font-semibold text-on-surface-variant">Expenses</p>
+          {/* Active indicator */}
+          <div className="mx-auto mt-1 h-0.5 w-8 rounded-full bg-primary" />
+        </Link>
+        {/* Period B (previous) */}
+        <Link
+          to={`/transactions?startDate=${formatDate(prevStart)}&endDate=${formatDate(prevEnd)}&preset=custom&lens=${lens}`}
+          className="space-y-1 rounded-2xl bg-surface-container-lowest p-3 text-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors duration-150 block"
+        >
+          <p className="text-[10px] font-bold text-on-surface-variant">{labelB}</p>
+          <p className="font-headline text-2xl font-extrabold text-on-surface tabular-nums">
+            {formatCurrency(totalsB.expenses)}
+          </p>
+          <p className="text-[10px] font-semibold text-on-surface-variant">Expenses</p>
+          {/* Previous indicator */}
+          <div className="mx-auto mt-1 h-0.5 w-8 rounded-full bg-secondary" />
+        </Link>
+      </div>
+
+      {/* ── Delta banner ── */}
+      {deltaPercent !== null && (
+        <div
+          className={cn(
+            'flex items-center gap-2.5 rounded-xl px-4 py-3',
+            delta > 0
+              ? 'border border-accent-amber/20 bg-accent-amber/8'
+              : 'border border-secondary/20 bg-secondary/8',
+          )}
+        >
+          {delta > 0 ? (
+            <TrendingUp className="h-4 w-4 shrink-0 text-accent-amber" />
+          ) : (
+            <TrendingDown className="h-4 w-4 shrink-0 text-secondary" />
+          )}
+          <p className="text-xs font-bold text-on-surface">
+            <span className={delta > 0 ? 'text-accent-amber' : 'text-secondary'}>
+              {delta > 0 ? '▲' : '▼'} {formatCurrency(Math.abs(delta))} ({deltaPercent >= 0 ? '+' : ''}{deltaPercent.toFixed(1)}%)
+            </span>{' '}
+            {delta > 0 ? 'more' : 'less'} than {labelB}
+          </p>
+        </div>
+      )}
+
+      {/* ── View selector ── */}
+      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar rounded-full bg-surface-container-high p-1">
+        {COMPARE_VIEWS.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className={cn(
+              'shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-all',
+              view === v.key
+                ? 'bg-primary text-on-primary shadow-sm'
+                : 'text-on-surface-variant hover:bg-surface-container-low',
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Category drilldown selector ── */}
+      {view === 'category' && availableCategories.length > 0 && (
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
+          {availableCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={cn(
+                'shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold transition-all border border-outline-variant/30',
+                selectedCategory === cat
+                  ? 'bg-primary text-on-primary border-primary'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low',
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Grouped bar chart ── */}
+      <div className="aura-card p-4">
+        <div className="h-48">
+          {activeChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={activeChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 8, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 8, fill: 'var(--color-on-surface-variant)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `€${Math.round(v)}`}
+                />
+                <Tooltip content={<BarTooltip />} />
+                <Bar
+                  dataKey="current"
+                  name={labelA}
+                  fill="var(--color-primary)"
+                  radius={[3, 3, 0, 0]}
+                  maxBarSize={16}
+                />
+                <Bar
+                  dataKey="prev"
+                  name={labelB}
+                  fill="var(--color-secondary)"
+                  radius={[3, 3, 0, 0]}
+                  maxBarSize={16}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs font-semibold text-on-surface-variant">
+              No chart data available for selection
+            </div>
+          )}
+        </div>
+        {/* Legend */}
+        <div className="mt-2 flex items-center gap-4 text-[10px] font-bold text-on-surface-variant">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+            {labelA}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-secondary" />
+            {labelB}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Top changes by category ── */}
+      <div className="aura-card overflow-hidden p-0">
+        <div className="flex items-center justify-between border-b border-outline-variant/20 px-4 py-3">
+          <h3 className="text-sm font-bold text-on-surface">Top changes by category</h3>
+        </div>
+        <div className="divide-y divide-outline-variant/15">
+          {topChanges.map((item) => (
+            <Link
+              key={item.category}
+              to={`/transactions?category=${encodeURIComponent(item.category)}&startDate=${formatDate(start)}&endDate=${formatDate(end)}&preset=custom&lens=${lens}`}
+              className="flex items-start gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors duration-150"
+            >
+              <CategoryBadge category={item.category} size="sm" className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-on-surface">{item.category}</p>
+              </div>
+              <div className="shrink-0 text-right flex items-center gap-2">
+                <div>
+                  <p
+                    className={cn(
+                      'text-sm font-extrabold tabular-nums',
+                      item.diff > 0 ? 'text-tertiary' : 'text-secondary',
+                    )}
+                  >
+                    {item.diff > 0 ? '+' : ''}{formatCurrency(item.diff)}
+                  </p>
+                  {item.pct !== null && (
+                    <p
+                      className={cn(
+                        'text-[10px] font-bold',
+                        item.diff > 0 ? 'text-tertiary' : 'text-secondary',
+                      )}
+                    >
+                      {item.diff > 0 ? '+' : ''}{item.pct.toFixed(0)}%
+                    </p>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-on-surface-variant/40 shrink-0 mt-0.5" />
+              </div>
+            </Link>
+          ))}
+          {topChanges.length === 0 && (
+            <p className="py-8 text-center text-xs font-medium text-on-surface-variant">
+              No category data for this comparison
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ComparePage (main) ────────────────────────────────────────────────
+
+type Tab = 'spending' | 'compare';
 
 export function ComparePage() {
   const { transactions } = useApp();
   const today = new Date();
-  const [monthA, setMonthA] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [monthB, setMonthB] = useState(new Date(today.getFullYear(), today.getMonth() - 1, 1));
-  const [preset, setPreset] = useState<'month' | 'quarter' | 'year'>('month');
-  const [analyticsLens, setAnalyticsLens] = useState<AnalyticsLens>('actual');
+  const [anchorYear, setAnchorYear] = useState(today.getFullYear());
+  const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
+  const [range, setRange] = useState<RangeKey>('1M');
+  const [tab, setTab] = useState<Tab>('spending');
+  const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
 
-  const ranges = useMemo(() => {
-    if (preset === 'quarter') {
-      return {
-        a: normalizeDateRange(new Date(monthA.getFullYear(), monthA.getMonth() - 2, 1), new Date(monthA.getFullYear(), monthA.getMonth() + 1, 0), 'Period A quarter'),
-        b: normalizeDateRange(new Date(monthB.getFullYear(), monthB.getMonth() - 2, 1), new Date(monthB.getFullYear(), monthB.getMonth() + 1, 0), 'Period B quarter'),
-      };
-    }
-    if (preset === 'year') {
-      return {
-        a: normalizeDateRange(new Date(monthA.getFullYear(), 0, 1), new Date(monthA.getFullYear(), 11, 31), String(monthA.getFullYear())),
-        b: normalizeDateRange(new Date(monthB.getFullYear(), 0, 1), new Date(monthB.getFullYear(), 11, 31), String(monthB.getFullYear())),
-      };
-    }
-    return { a: createMonthRange(monthA.getFullYear(), monthA.getMonth()), b: createMonthRange(monthB.getFullYear(), monthB.getMonth()) };
-  }, [monthA, monthB, preset]);
+  const { start, end, prevStart, prevEnd, labelA, labelB } = useMemo(
+    () => getRangeDates(range, anchorYear, anchorMonth),
+    [range, anchorYear, anchorMonth],
+  );
 
-  const visibleTransactions = useMemo(() => filterByAnalyticsLens(transactions, analyticsLens), [transactions, analyticsLens]);
-  const comparison = useMemo(() => comparePeriods(visibleTransactions, ranges.a, ranges.b), [visibleTransactions, ranges]);
+  const filteredTransactions = useMemo(
+    () => Finance.filterByAnalyticsLens(transactions, lens),
+    [transactions, lens],
+  );
+
+  const txA = useMemo(
+    () => filteredTransactions.filter((t) => { const d = new Date(t.date); return d >= start && d <= end; }),
+    [filteredTransactions, start, end],
+  );
+  const txB = useMemo(
+    () => filteredTransactions.filter((t) => { const d = new Date(t.date); return d >= prevStart && d <= prevEnd; }),
+    [filteredTransactions, prevStart, prevEnd],
+  );
 
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
-      <section className="space-y-1">
-        <p className="text-micro font-bold text-on-surface-variant">Compare</p>
-        <h2 className="font-headline text-2xl font-extrabold text-primary">Period comparison</h2>
-      </section>
-      <div className="flex items-center gap-1 bg-surface-container-high rounded-2xl p-1">
-        {ANALYTICS_LENSES.map((lens) => (
-          <button
-            key={lens.key}
-            onClick={() => setAnalyticsLens(lens.key)}
+
+      {/* ── Period, lens, and selected range controls ── */}
+      <div className="grid grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] items-center gap-2">
+        <label className="relative min-w-0">
+          <span className="sr-only">Select reports period</span>
+          <select
+            value={range}
+            onChange={(event) => setRange(event.target.value as RangeKey)}
             className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
-              analyticsLens === lens.key ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low',
+              'block h-8 w-full min-w-0 appearance-none rounded-full border border-outline-variant/20 bg-surface-container-lowest',
+              'py-1 pl-3 pr-8 text-xs font-bold text-primary shadow-sm',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
             )}
           >
-            {lens.label}
-          </button>
-        ))}
+            {RANGE_OPTIONS.map((opt) => (
+              <option key={opt.key} value={opt.key}>{opt.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
+        </label>
+
+        <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
+
+        <div className="ml-auto flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-full border border-outline-variant/25 bg-surface-container-lowest px-2.5 py-1">
+          <CalendarDays className="h-3 w-3 shrink-0 text-on-surface-variant" />
+          <span className="truncate text-[10px] font-bold text-on-surface-variant">{labelA}</span>
+        </div>
       </div>
-      <PeriodSelector monthA={monthA} monthB={monthB} onMonthAChange={setMonthA} onMonthBChange={setMonthB} onPreset={setPreset} />
-      <ComparisonSummary comparison={comparison} />
-      <OverlayChart transactions={visibleTransactions} rangeA={comparison.rangeA} rangeB={comparison.rangeB} />
-      <CategoryDelta deltas={comparison.categoryDeltas} />
-      <CompareInsights insights={comparison.insights} />
+
+      {/* ── Tab switcher ── */}
+      <SegmentedControl
+        value={tab}
+        options={[
+          { value: 'spending', label: 'Spending by Category' },
+          { value: 'compare', label: 'Compare & Trends' },
+        ]}
+        onChange={setTab}
+        ariaLabel="Reports view"
+        className="w-full"
+      />
+
+      {/* ── Tab content ── */}
+      {tab === 'spending' ? (
+        <SpendingByCategoryTab
+          transactions={txA}
+          periodLabel={labelA}
+          labelA={labelA}
+          start={start}
+          end={end}
+          lens={lens}
+        />
+      ) : (
+        <CompareTab
+          txA={txA}
+          txB={txB}
+          labelA={labelA}
+          labelB={labelB}
+          start={start}
+          end={end}
+          prevStart={prevStart}
+          prevEnd={prevEnd}
+          lens={lens}
+          range={range}
+        />
+      )}
     </motion.div>
   );
 }

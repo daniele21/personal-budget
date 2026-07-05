@@ -5,9 +5,10 @@ interface RadialGaugeProps {
   percent: number;
   label: string;
   value: string;
+  hideText?: boolean;
 }
 
-export function RadialGauge({ percent, label, value }: RadialGaugeProps) {
+export function RadialGauge({ percent, label, value, hideText = false }: RadialGaugeProps) {
   const clamped = Math.max(0, Math.min(100, percent));
   const centerX = 80;
   const centerY = 76;
@@ -31,8 +32,8 @@ export function RadialGauge({ percent, label, value }: RadialGaugeProps) {
   const stateColor = clamped > 90 ? 'text-tertiary' : clamped > 75 ? 'text-accent-amber' : 'text-secondary';
 
   return (
-    <div className="flex h-28 w-40 flex-col items-center justify-start" role="img" aria-label={`${label}: ${value}, ${Math.round(clamped)} percent used`}>
-      <svg viewBox="0 0 160 108" className="h-20 w-full shrink-0 overflow-visible">
+    <div className="flex flex-col items-center justify-start" role="img" aria-label={`${label}: ${value}, ${Math.round(clamped)} percent used`}>
+      <svg viewBox="0 0 160 88" className="h-16 w-32 shrink-0 overflow-visible">
         <path
           d={arc(180, 0)}
           fill="none"
@@ -47,24 +48,26 @@ export function RadialGauge({ percent, label, value }: RadialGaugeProps) {
           strokeWidth="14"
           strokeLinecap="round"
         />
-        <path d={arc(113, 48)} fill="none" stroke="var(--color-secondary)" strokeWidth="14" strokeLinecap="round" />
-        <path d={arc(35, 0)} fill="none" stroke="var(--color-accent-amber)" strokeWidth="14" strokeLinecap="round" />
+        <path d={arc(126, 48)} fill="none" stroke="var(--color-secondary)" strokeWidth="14" strokeLinecap="round" />
+        <path d={arc(48, 0)} fill="none" stroke="var(--color-accent-amber)" strokeWidth="14" strokeLinecap="round" />
         <line
           x1={centerX}
           y1={centerY}
           x2={needleX}
           y2={needleY}
           stroke="var(--color-primary)"
-          strokeWidth="5"
+          strokeWidth="6"
           strokeLinecap="round"
           className="transition-all duration-700"
         />
-        <circle cx={centerX} cy={centerY} r="7" fill="var(--color-surface-container-lowest)" stroke="var(--color-primary)" strokeWidth="5" />
+        <circle cx={centerX} cy={centerY} r="6" fill="var(--color-primary)" />
       </svg>
-      <div className="-mt-0.5 text-center">
-        <p className={cn('font-headline text-base font-extrabold leading-none', stateColor)}>{value}</p>
-        <p className="mt-1 text-micro font-bold leading-none text-on-surface-variant">{label}</p>
-      </div>
+      {!hideText && (
+        <div className="-mt-0.5 text-center">
+          <p className={cn('font-headline text-base font-extrabold leading-none', stateColor)}>{value}</p>
+          <p className="mt-1 text-micro font-bold leading-none text-on-surface-variant">{label}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -28,39 +28,42 @@
   --font-size-headline: 1.5rem;   /* 24px — page headlines */
   --font-size-hero: 2.25rem;      /* 36px — balance, key metrics */
 
-
-  --color-surface: #f3faff;
+  /* --- Brand color palette (Aura Finance) --- */
+  --color-surface: #f8fbff;
   --color-on-surface: #071e27;
-  --color-on-surface-variant: #424750;
+  --color-on-surface-variant: #5a6470;
   --color-primary: #003461;
   --color-primary-container: #004b87;
   --color-on-primary: #ffffff;
   --color-secondary: #1b6d24;
-  --color-secondary-container: #a0f399;
-  --color-on-secondary-container: #217128;
-  --color-tertiary: #6e0009;
-  --color-tertiary-container: #990011;
+  --color-secondary-container: #d4f5d6;
+  --color-on-secondary-container: #1b6d24;
+  --color-tertiary: #b91c1c;
+  --color-tertiary-container: #fee2e2;
   --color-accent-purple: #8b5cf6;
   --color-accent-amber: #f59e0b;
   --color-accent-cyan: #06b6d4;
   --color-accent-pink: #ec4899;
   --color-accent-lime: #84cc16;
-  --color-surface-container-low: #e6f6ff;
+  --color-surface-container-low: #f3f7fb;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-high: #d5ecf8;
-  --color-surface-container-highest: #cfe6f2;
-  --color-outline-variant: #c2c6d1;
+  --color-surface-container-high: #eaeff6;
+  --color-surface-container-highest: #dde5f0;
+  --color-outline-variant: #d0dae8;
 
+  /* --- Border radius scale --- */
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
   --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 }
 
+/* ─── Dark mode tokens ─────────────────────────────────────────────── */
 @layer base {
   :root.dark {
     --color-surface: #0c1a24;
-    --color-on-surface: #f3faff;
-    --color-on-surface-variant: #94a3b8;
+    --color-on-surface: #f0f6ff;
+    --color-on-surface-variant: #8ea5ba;
     --color-primary: #60a5fa;
     --color-primary-container: #1e3a8a;
     --color-on-primary: #0a1921;
@@ -77,32 +80,38 @@
   }
 }
 
+/* ─── Base styles ──────────────────────────────────────────────────── */
 @layer base {
   body {
     @apply bg-surface text-on-surface font-sans antialiased;
   }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
 
+  /* Brand logo toggling between light/dark variants */
   :root.dark .aura-logo-light {
     display: none;
   }
-
   :root:not(.dark) .aura-logo-dark {
     display: none;
   }
-
 }
 
+/* ─── Utility classes ──────────────────────────────────────────────── */
+
+/** Hero gradient for login / splash screens */
 .hero-gradient {
   background: linear-gradient(135deg, #003461 0%, #004b87 100%);
 }
 
+/** Glassmorphism surface */
 .glass-card {
   @apply bg-white/70 backdrop-blur-xl;
 }
 
+/** Scrollbar suppression (mobile, no-scrollbar areas) */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -111,6 +120,112 @@
   scrollbar-width: none;
 }
 
+/** Safe area bottom padding for PWA/mobile */
 @utility safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── Aura card variants ───────────────────────────────────────────── */
+
+/**
+ * aura-card — standard surface card.
+ * White bg, very subtle border, soft elevation shadow.
+ */
+.aura-card {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  border-radius: var(--radius-3xl);
+  box-shadow: 0 2px 12px 0 rgba(0, 52, 97, 0.05), 0 1px 3px 0 rgba(0, 52, 97, 0.04);
+}
+
+/**
+ * aura-card-elevated — hero/summary card with stronger presence.
+ */
+.aura-card-elevated {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+  border-radius: var(--radius-3xl);
+  box-shadow: 0 4px 24px 0 rgba(0, 52, 97, 0.08), 0 1px 6px 0 rgba(0, 52, 97, 0.05);
+}
+
+/**
+ * aura-card-flat — section sub-area card, no border.
+ */
+.aura-card-flat {
+  background: var(--color-surface-container-low);
+  border-radius: var(--radius-2xl);
+}
+
+/* ─── Section header micro-label ───────────────────────────────────── */
+
+/**
+ * section-eyebrow — small uppercase label above section titles
+ */
+.section-eyebrow {
+  font-size: var(--font-size-micro);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-cyan);
+}
+
+/* ─── Safe-to-spend gauge area ─────────────────────────────────────── */
+
+/**
+ * gauge-container — wrapper that positions needle + arcs correctly
+ */
+.gauge-container {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* ─── Progress bar color variants (per-category) ───────────────────── */
+.progress-bar-primary   { background: var(--color-primary); }
+.progress-bar-secondary { background: var(--color-secondary); }
+.progress-bar-amber     { background: var(--color-accent-amber); }
+.progress-bar-cyan      { background: var(--color-accent-cyan); }
+.progress-bar-danger    { background: var(--color-tertiary); }
+.progress-bar-purple    { background: var(--color-accent-purple); }
+
+/* ─── Transaction row styles ────────────────────────────────────────── */
+
+/**
+ * Note: transaction rows use inline Tailwind classes, not a shared `.tx-row` class,
+ * to avoid conflicts with the SwipeableRow gesture layer (which uses absolute positioning).
+ * The divider between rows is applied on the wrapping div: `border-b border-outline-variant/20`.
+ */
+
+/* ─── Date group header for transaction lists ───────────────────────── */
+.tx-date-group {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.5rem 0 0.25rem;
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  color: var(--color-on-surface-variant);
+}
+
+/* ─── Budget progress rows ──────────────────────────────────────────── */
+.budget-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+}
+
+.budget-row:last-child {
+  border-bottom: none;
+}
+
+/* ─── Insight summary cards ─────────────────────────────────────────── */
+.insight-kpi-card {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+  border-radius: var(--radius-2xl);
+  padding: 0.875rem;
+  box-shadow: 0 2px 8px 0 rgba(0, 52, 97, 0.04);
 }

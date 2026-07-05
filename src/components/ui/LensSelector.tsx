@@ -9,49 +9,68 @@ interface LensSelectorProps {
 }
 
 export function LensSelector({ value, onChange, className }: LensSelectorProps) {
-  return (
-    <div className={cn("relative flex items-center p-0.5 bg-surface-container-high rounded-full border border-outline-variant/10 shadow-inner w-full max-w-xs mx-auto", className)}>
-      {/* Sliding background indicator */}
-      <div 
-        className={cn(
-          "absolute top-0.5 bottom-0.5 rounded-full bg-surface-container-lowest shadow-sm transition-all duration-300 ease-out",
-          value === 'normalized' ? "left-0.5 w-[calc(50%-2px)]" : "left-[calc(50%+1px)] w-[calc(50%-2px)]"
-        )}
-      />
-      
-      {/* Net Button */}
-      <button
-        type="button"
-        aria-label="Net"
-        onClick={() => onChange('normalized')}
-        className={cn(
-          "relative flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-full transition-all duration-200 z-10 cursor-pointer active:scale-95 focus:outline-none",
-          value === 'normalized' ? "text-primary font-bold" : "text-on-surface-variant hover:text-on-surface font-medium"
-        )}
-      >
-        <ShieldCheck className={cn("h-3 w-3 transition-transform", value === 'normalized' ? "scale-110 text-primary" : "text-on-surface-variant/70")} />
-        <div className="text-left flex flex-col">
-          <span className="text-xs font-bold leading-none">Net</span>
-          <span className="text-micro text-on-surface-variant/60 font-semibold mt-0.5 leading-none">Regular budget</span>
-        </div>
-      </button>
+  const normalizedSelected = value === 'normalized';
+  const groupName = React.useId();
+  const netId = React.useId();
+  const actualId = React.useId();
 
-      {/* With Extras Button */}
-      <button
-        type="button"
-        aria-label="With Extras"
-        onClick={() => onChange('actual')}
+  return (
+    <fieldset
+      aria-label="Analytics lens"
+      className={cn("grid h-8 w-full max-w-[10rem] grid-cols-2 items-center gap-1 rounded-full border border-outline-variant/20 bg-surface-container-low p-1 mx-auto", className)}
+    >
+      <legend className="sr-only">Analytics lens</legend>
+      <input
+        id={netId}
+        name={groupName}
+        type="radio"
+        value="normalized"
+        checked={normalizedSelected}
+        onChange={() => onChange('normalized')}
+        className="sr-only"
+      />
+      <label
+        htmlFor={netId}
+        aria-label="Net"
+        aria-pressed={normalizedSelected}
         className={cn(
-          "relative flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-full transition-all duration-200 z-10 cursor-pointer active:scale-95 focus:outline-none",
-          value === 'actual' ? "text-accent-amber font-bold" : "text-on-surface-variant hover:text-on-surface font-medium"
+          "inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.98]",
+          "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/25",
+          normalizedSelected
+            ? "border border-outline-variant/20 bg-surface-container-lowest text-primary shadow-sm"
+            : "text-on-surface-variant hover:bg-surface-container-lowest/60 hover:text-on-surface"
         )}
       >
-        <Sparkles className={cn("h-3 w-3 transition-transform", value === 'actual' ? "scale-110 text-accent-amber" : "text-on-surface-variant/70")} />
-        <div className="text-left flex flex-col">
-          <span className="text-xs font-bold leading-none">With Extras</span>
-          <span className="text-micro text-on-surface-variant/60 font-semibold mt-0.5 leading-none">Total spend</span>
-        </div>
-      </button>
-    </div>
+        <ShieldCheck className={cn("h-3.5 w-3.5 shrink-0 transition-colors", normalizedSelected ? "text-primary" : "text-on-surface-variant/70")} />
+        <span>Net</span>
+        <span className="sr-only">Regular budget</span>
+      </label>
+
+      <input
+        id={actualId}
+        name={groupName}
+        type="radio"
+        value="actual"
+        checked={!normalizedSelected}
+        onChange={() => onChange('actual')}
+        className="sr-only"
+      />
+      <label
+        htmlFor={actualId}
+        aria-label="Actual"
+        aria-pressed={!normalizedSelected}
+        className={cn(
+          "inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.98]",
+          "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/25",
+          normalizedSelected
+            ? "text-on-surface-variant hover:bg-surface-container-lowest/60 hover:text-on-surface"
+            : "border border-outline-variant/20 bg-surface-container-lowest text-accent-amber shadow-sm"
+        )}
+      >
+        <Sparkles className={cn("h-3.5 w-3.5 shrink-0 transition-colors", normalizedSelected ? "text-on-surface-variant/70" : "text-accent-amber")} />
+        <span>Actual</span>
+        <span className="sr-only">Total spend</span>
+      </label>
+    </fieldset>
   );
 }

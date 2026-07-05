@@ -18,7 +18,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { Button, Input } from '../components/ui';
+import { AccordionSection, Button, Input, SegmentedControl } from '../components/ui';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
 import { haptics } from '../utils/haptics';
@@ -28,9 +28,12 @@ import { TransactionHistoryList } from '../components/history/TransactionHistory
 import { ImportWizardDialog } from '../components/import/ImportWizardDialog';
 import { slidePageTransition } from '../utils/motion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { TransactionDetailSheet } from '../components/transactions/TransactionDetailSheet';
+import { useLocation } from 'react-router-dom';
 
 type PeriodPreset = 'current-month' | 'last-month' | '3-months' | 'all' | 'custom';
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
+type TransactionTypeFilter = 'all' | 'income' | 'expense';
 
 function formatDateInputValue(date: Date) {
   return [
@@ -180,18 +183,65 @@ export const HistoryPage = () => {
   const currentMonthRange = useMemo(() => getCurrentMonthRange(), []);
   const lastMonthRange = useMemo(() => getLastMonthRange(), []);
   const lastThreeMonthsRange = useMemo(() => getLastThreeMonthsRange(), []);
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+
   const [search, setSearch] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
+    const cat = searchParams.get('category');
+    return cat ? [cat] : [];
+  });
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<TransactionTypeFilter>('all');
   const [sortKey, setSortKey] = useState<Finance.TransactionSortKey>('date');
   const [sortDirection, setSortDirection] = useState<Finance.SortDirection>('desc');
-  const [startDate, setStartDate] = useState(formatDateInputValue(currentMonthRange.start));
-  const [endDate, setEndDate] = useState(formatDateInputValue(currentMonthRange.end));
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('current-month');
+  const [startDate, setStartDate] = useState(() => {
+    const startStr = searchParams.get('startDate');
+    return startStr || formatDateInputValue(currentMonthRange.start);
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const endStr = searchParams.get('endDate');
+    return endStr || formatDateInputValue(currentMonthRange.end);
+  });
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>(() => {
+    const presetStr = searchParams.get('preset') as PeriodPreset | null;
+    if (searchParams.has('startDate') && searchParams.has('endDate')) {
+      return presetStr || 'custom';
+    }
+    return 'current-month';
+  });
+  const [lens, setLens] = useState<'actual' | 'normalized'>(() => {
+    const l = searchParams.get('lens');
+    return (l === 'normalized' || l === 'actual') ? l : 'actual';
+  });
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    
+    const category = params.get('category');
+    if (category) {
+      setSelectedCategories([category]);
+    }
+    
+    const startStr = params.get('startDate');
+    const endStr = params.get('endDate');
+    const presetStr = params.get('preset') as PeriodPreset | null;
+    if (startStr && endStr) {
+      setStartDate(startStr);
+      setEndDate(endStr);
+      setPeriodPreset(presetStr || 'custom');
+    }
+    
+    const lensStr = params.get('lens');
+    if (lensStr === 'normalized' || lensStr === 'actual') {
+      setLens(lensStr);
+    }
+  }, [location.search]);
 
   const deleteTransaction = (id: string) => {
     const deleted = transactions.find((transaction) => transaction.id === id);
@@ -242,7 +292,8 @@ export const HistoryPage = () => {
   const rangeEnd = useMemo(() => new Date(`${endDate}T23:59:59.999`), [endDate]);
 
   const filteredTransactions = useMemo(() => {
-    const periodTransactions = Finance.filterByDateRange(transactions, rangeStart, rangeEnd);
+    const lensTransactions = Finance.filterByAnalyticsLens(transactions, lens);
+    const periodTransactions = Finance.filterByDateRange(lensTransactions, rangeStart, rangeEnd);
 
     const searchFilteredTransactions = periodTransactions.filter(t => {
       const normalizedSearch = search.toLowerCase();
@@ -252,16 +303,20 @@ export const HistoryPage = () => {
         t.category.toLowerCase().includes(normalizedSearch)
       );
       const matchesFilter = selectedCategories.length === 0 || selectedCategories.includes(t.category);
+      const matchesType = transactionTypeFilter === 'all' || t.type === transactionTypeFilter;
 
-      return matchesSearch && matchesFilter;
+      return matchesSearch && matchesFilter && matchesType;
     });
 
     return Finance.sortTransactions(searchFilteredTransactions, sortKey, sortDirection);
-  }, [transactions, rangeStart, rangeEnd, search, selectedCategories, sortKey, sortDirection]);
+  }, [transactions, lens, rangeStart, rangeEnd, search, selectedCategories, transactionTypeFilter, sortKey, sortDirection]);
 
   const categories = useMemo(
-    () => Array.from(new Set(transactions.map(t => t.category))).sort((left, right) => left.localeCompare(right)),
-    [transactions],
+    () => {
+      const lensTransactions = Finance.filterByAnalyticsLens(transactions, lens);
+      return Array.from(new Set(lensTransactions.map(t => t.category))).sort((left, right) => left.localeCompare(right));
+    },
+    [transactions, lens],
   );
 
   const allTimeRange = useMemo(() => getAllTimeRange(transactions), [transactions]);
@@ -304,6 +359,7 @@ export const HistoryPage = () => {
 
   const hasNonDefaultFilters = (
     search.trim().length > 0 ||
+    transactionTypeFilter !== 'all' ||
     selectedCategories.length > 0 ||
     sortKey !== 'date' ||
     sortDirection !== 'desc' ||
@@ -371,12 +427,14 @@ export const HistoryPage = () => {
 
   const resetFilters = () => {
     setSearch('');
+    setTransactionTypeFilter('all');
     setSelectedCategories([]);
     setSortKey('date');
     setSortDirection('desc');
     setPeriodPreset('current-month');
     setStartDate(formatDateInputValue(currentMonthRange.start));
     setEndDate(formatDateInputValue(currentMonthRange.end));
+    setLens('actual');
   };
 
   useEffect(() => {
@@ -424,6 +482,14 @@ export const HistoryPage = () => {
       });
     }
 
+    if (transactionTypeFilter !== 'all') {
+      chips.push({
+        key: 'type',
+        label: transactionTypeFilter === 'income' ? 'Income' : 'Expenses',
+        onRemove: () => setTransactionTypeFilter('all'),
+      });
+    }
+
     if (periodPreset !== 'current-month') {
       chips.push({
         key: 'period',
@@ -440,8 +506,16 @@ export const HistoryPage = () => {
       });
     }
 
+    if (lens !== 'actual') {
+      chips.push({
+        key: 'lens',
+        label: 'Net of extras',
+        onRemove: () => setLens('actual'),
+      });
+    }
+
     return chips;
-  }, [applyPeriodPreset, applySortOption, categoriesLabel, periodLabel, search, selectedCategories.length, sortLabel, sortOption]);
+  }, [applyPeriodPreset, applySortOption, categoriesLabel, periodLabel, search, selectedCategories.length, sortLabel, sortOption, transactionTypeFilter, lens, setLens]);
 
   const resultsLabel = `${filteredTransactions.length} ${filteredTransactions.length === 1 ? 'entry' : 'entries'}`;
   const hasBaseTransactions = transactions.length > 0;
@@ -451,9 +525,22 @@ export const HistoryPage = () => {
       {...slidePageTransition}
       className="space-y-4 pb-24"
     >
-      <FinancialTrajectoryCard data={chartData} />
+      <section className="space-y-1 px-1">
+        <p className="text-micro font-bold uppercase text-on-surface-variant">Transactions</p>
+        <h2 className="font-headline text-2xl font-extrabold text-primary">Recent activity</h2>
+      </section>
 
       <section className="space-y-4">
+        <SegmentedControl
+          ariaLabel="Transaction type filter"
+          value={transactionTypeFilter}
+          onChange={setTransactionTypeFilter}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'income', label: 'Income' },
+            { value: 'expense', label: 'Expenses' },
+          ]}
+        />
         <div className="relative group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <Search className="w-5 h-5 text-on-surface-variant/50" />
@@ -541,11 +628,16 @@ export const HistoryPage = () => {
         </div>
       </section>
 
+      <AccordionSection title="Financial trajectory" count={chartData.length}>
+        <FinancialTrajectoryCard data={chartData} />
+      </AccordionSection>
+
 
 
       <TransactionHistoryList
         transactions={filteredTransactions}
         hasBaseTransactions={hasBaseTransactions}
+        onOpenDetails={setDetailTransaction}
         onQuickEdit={setQuickEditTransaction}
         onDelete={setDeleteId}
       />
@@ -568,6 +660,19 @@ export const HistoryPage = () => {
         onSave={saveQuickEdit}
         onDelete={(id) => {
           setQuickEditTransaction(null);
+          setDeleteId(id);
+        }}
+      />
+
+      <TransactionDetailSheet
+        transaction={detailTransaction}
+        onClose={() => setDetailTransaction(null)}
+        onEdit={(transaction) => {
+          setDetailTransaction(null);
+          setQuickEditTransaction(transaction);
+        }}
+        onDelete={(id) => {
+          setDetailTransaction(null);
           setDeleteId(id);
         }}
       />

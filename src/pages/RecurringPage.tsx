@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Bell, Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
 import { RecurringExpense, RecurringFrequency } from '../types';
@@ -8,7 +9,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { CategoryPicker } from '../components/CategoryPicker';
-import { Button, Card, EmptyState, Input, Switch } from '../components/ui';
+import { Button, Card, EmptyState, Input, SegmentedControl, Switch } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { RecurringEntryCard } from '../components/RecurringEntryCard';
 import { haptics } from '../utils/haptics';
@@ -41,6 +42,7 @@ const recurringReminderOptions = [
 ];
 
 export const RecurringPage = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { recurring, setRecurring, categories, addCategory } = useApp();
   const [isAdding, setIsAdding] = useState(false);
@@ -193,6 +195,18 @@ export const RecurringPage = () => {
       {...pageTransition}
       className="space-y-4 pb-24"
     >
+      <SegmentedControl
+        ariaLabel="Planning view"
+        value="recurring"
+        onChange={(value) => {
+          if (value === 'calendar') navigate('/calendar');
+        }}
+        options={[
+          { value: 'calendar', label: 'Calendar' },
+          { value: 'recurring', label: 'Recurring' },
+        ]}
+      />
+
       <Card as="section">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline text-lg font-bold text-primary">

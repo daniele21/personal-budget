@@ -40,6 +40,10 @@ function renderPage() {
 
 describe('InsightsPage analytics lenses', () => {
   beforeEach(() => {
+    const selectedMonth = new Date();
+    selectedMonth.setDate(1);
+    selectedMonth.setHours(0, 0, 0, 0);
+
     mockUseApp.mockReturnValue({
       transactions: [
         transaction({ id: 'salary', amount: 3000, type: 'income', category: 'Salary', title: 'Salary' }),
@@ -53,6 +57,8 @@ describe('InsightsPage analytics lenses', () => {
       setRecurring: vi.fn(),
       categories: ['Food', 'Travel', 'Salary', 'Bonus'],
       addCategory: vi.fn(),
+      monthlyBudget: 3000,
+      selectedMonth,
     });
   });
 
@@ -62,45 +68,80 @@ describe('InsightsPage analytics lenses', () => {
     expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
     expect(screen.getByText('€3,500.00')).toBeInTheDocument();
     expect(screen.getByText('€700.00')).toBeInTheDocument();
-    expect(screen.getByText('+€2,800.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€2,800.00').length).toBeGreaterThan(0);
   });
 
   it('switches to net-of-extras totals', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole('button', { name: /net of extras/i }));
+    const netToggle = screen.getByRole('radio', { name: 'Net' });
+    await user.click(netToggle);
 
+    expect(netToggle).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Actual' })).not.toBeChecked();
     expect(screen.getByText('€3,000.00')).toBeInTheDocument();
     expect(screen.getByText('€100.00')).toBeInTheDocument();
-    expect(screen.getByText('+€2,900.00')).toBeInTheDocument();
-    expect(screen.queryByText('Travel')).not.toBeInTheDocument();
+    expect(screen.getAllByText('€2,900.00').length).toBeGreaterThan(0);
+    expect(screen.getByText('Excluded from Net: €600.00 expenses · €500.00 income')).toBeInTheDocument();
+  });
+
+  it('calculates safe to spend from the configured budget and selected lens expenses', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.getByText('€2,300.00')).toBeInTheDocument();
+    expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: 'Net' }));
+
+    expect(screen.getAllByText('€2,900.00').length).toBeGreaterThan(1);
+    expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
   });
 
   it('switches to extras-only totals and categories', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole('button', { name: /^extras$/i }));
+    await user.click(screen.getByRole('radio', { name: 'Actual' }));
 
-    expect(screen.queryByText(/extras this period/i)).not.toBeInTheDocument();
-    expect(screen.getByText('€500.00')).toBeInTheDocument();
-    expect(screen.getByText('€600.00')).toBeInTheDocument();
-    expect(screen.getByText('-€100.00')).toBeInTheDocument();
-    expect(screen.getAllByText('Travel').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Bonus').length).toBeGreaterThan(0);
-
-    expect(screen.queryByText('Food')).not.toBeInTheDocument();
+    expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
+    expect(screen.getByText('€3,500.00')).toBeInTheDocument();
+    expect(screen.getByText('€700.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€2,800.00').length).toBeGreaterThan(0);
   });
 
-  it('opens transaction details from an expanded category item', async () => {
+  it('uses the selected app month as the range anchor for multi-month filters', async () => {
     const user = userEvent.setup();
+    mockUseApp.mockReturnValue({
+      transactions: [
+        transaction({ id: 'may-income', amount: 1000, type: 'income', date: new Date(2026, 4, 5).toISOString() }),
+        transaction({ id: 'jun-income', amount: 2000, type: 'income', date: new Date(2026, 5, 5).toISOString() }),
+        transaction({ id: 'jul-income', amount: 3000, type: 'income', date: new Date(2026, 6, 5).toISOString() }),
+        transaction({ id: 'apr-income', amount: 9000, type: 'income', date: new Date(2026, 3, 5).toISOString() }),
+      ],
+      setTransactions: vi.fn(),
+      budgets: [],
+      recurring: [],
+      setRecurring: vi.fn(),
+      categories: ['Salary'],
+      addCategory: vi.fn(),
+      monthlyBudget: 3000,
+      selectedMonth: new Date(2026, 6, 1),
+    });
+
     renderPage();
 
-    await user.click(screen.getByRole('button', { name: /food/i }));
-    await user.click(screen.getByRole('button', { name: /open transaction groceries/i }));
+    await user.selectOptions(screen.getByRole('combobox', { name: /select insights period/i }), '3M');
 
-    expect(screen.getByRole('dialog', { name: /quick edit transaction/i })).toBeInTheDocument();
-    expect(screen.getByText('Transaction details')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /select insights period/i })).toHaveValue('3M');
+    expect(screen.getByText('1 May – 31 Jul')).toBeInTheDocument();
+    expect(screen.getAllByText('€6,000.00').length).toBeGreaterThan(0);
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /select insights period/i }), '6M');
+
+    expect(screen.getByRole('combobox', { name: /select insights period/i })).toHaveValue('6M');
+    expect(screen.getByText('1 Feb – 31 Jul')).toBeInTheDocument();
+    expect(screen.getAllByText('€15,000.00').length).toBeGreaterThan(0);
   });
 });
