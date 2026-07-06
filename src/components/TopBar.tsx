@@ -259,20 +259,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
               <h1 className="min-w-0 truncate font-headline text-xl font-extrabold text-primary">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
-              <button
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="Budget settings"
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="More options"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
+              {SearchBtn}
+              {NotificationBtn}
             </div>
           </div>
         </header>

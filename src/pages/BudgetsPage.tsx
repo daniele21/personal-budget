@@ -49,6 +49,13 @@ export const BudgetsPage = () => {
   const budgetDialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(budgetDialogRef, isAdding, () => setIsAdding(false));
 
+  const handleOpenAddBudget = () => {
+    const firstUnbudgeted = categories.find((cat) => !budgets.some((b) => b.category === cat)) || categories[0] || '';
+    setNewCategory(firstUnbudgeted);
+    setNewLimit('');
+    setIsAdding(true);
+  };
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => setBarsMounted(true));
     return () => cancelAnimationFrame(frame);
@@ -207,7 +214,7 @@ export const BudgetsPage = () => {
         {/* Add budget shortcut */}
         <button
           type="button"
-          onClick={() => setIsAdding(true)}
+          onClick={handleOpenAddBudget}
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-primary/25 bg-primary/5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
           aria-label="Add budget"
         >
@@ -310,7 +317,7 @@ export const BudgetsPage = () => {
             icon={<PieChart className="h-10 w-10" />}
             title="No budgets yet"
             description="Create category limits to track progress through the month."
-            action={<Button size="md" onClick={() => setIsAdding(true)}>Add budget</Button>}
+            action={<Button size="md" onClick={handleOpenAddBudget}>Add budget</Button>}
           />
         </Card>
       )}

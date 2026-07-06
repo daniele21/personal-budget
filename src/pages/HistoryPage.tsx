@@ -191,7 +191,10 @@ export const HistoryPage = () => {
     const cat = searchParams.get('category');
     return cat ? [cat] : [];
   });
-  const [transactionTypeFilter, setTransactionTypeFilter] = useState<TransactionTypeFilter>('all');
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<TransactionTypeFilter>(() => {
+    const t = searchParams.get('type');
+    return (t === 'income' || t === 'expense') ? t : 'all';
+  });
   const [sortKey, setSortKey] = useState<Finance.TransactionSortKey>('date');
   const [sortDirection, setSortDirection] = useState<Finance.SortDirection>('desc');
   const [startDate, setStartDate] = useState(() => {
@@ -240,6 +243,13 @@ export const HistoryPage = () => {
     const lensStr = params.get('lens');
     if (lensStr === 'normalized' || lensStr === 'actual') {
       setLens(lensStr);
+    }
+
+    const typeStr = params.get('type');
+    if (typeStr === 'income' || typeStr === 'expense') {
+      setTransactionTypeFilter(typeStr);
+    } else {
+      setTransactionTypeFilter('all');
     }
   }, [location.search]);
 
@@ -530,35 +540,59 @@ export const HistoryPage = () => {
         <h2 className="font-headline text-2xl font-extrabold text-primary">Recent activity</h2>
       </section>
 
-      <section className="space-y-4">
-        <SegmentedControl
-          ariaLabel="Transaction type filter"
-          value={transactionTypeFilter}
-          onChange={setTransactionTypeFilter}
-          options={[
-            { value: 'all', label: 'All' },
-            { value: 'income', label: 'Income' },
-            { value: 'expense', label: 'Expenses' },
-          ]}
-        />
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Search className="w-5 h-5 text-on-surface-variant/50" />
-          </div>
-          <input 
-            className="w-full bg-surface-container-highest border-none rounded-2xl py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-on-surface-variant/50 transition-all text-sm" 
-            placeholder="Search transactions..." 
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <SegmentedControl
+            ariaLabel="Transaction type filter"
+            value={transactionTypeFilter}
+            onChange={setTransactionTypeFilter}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'income', label: 'Income' },
+              { value: 'expense', label: 'Expenses' },
+            ]}
+            size="compact"
           />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsImportWizardOpen(true)}
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-outline-variant/10 bg-surface-container-lowest px-3 py-1.5 text-xs font-bold text-on-surface shadow-sm transition-all hover:bg-primary hover:text-on-primary hover:border-primary"
+            >
+              <FileUp className="h-3.5 w-3.5" />
+              <span>Import</span>
+            </button>
+            {hasNonDefaultFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-outline-variant/10 bg-surface-container-lowest px-3 py-1.5 text-xs font-bold text-on-surface-variant shadow-sm transition-all hover:bg-error/10 hover:text-error"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <div className="flex items-center gap-2">
+          <div className="relative flex-grow group">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-on-surface-variant/50" />
+            </div>
+            <input 
+              className="w-full bg-surface-container-highest border-none rounded-full h-8 pl-9 pr-3 focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-on-surface-variant/50 transition-all text-xs" 
+              placeholder="Search..." 
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <button
             type="button"
             onClick={() => setIsFiltersSheetOpen(true)}
             className={cn(
-              'inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold shadow-sm transition-all',
+              'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm transition-all',
               selectedCategories.length > 0 || periodPreset !== 'current-month'
                 ? 'border-primary bg-primary text-on-primary'
                 : 'border-outline-variant/10 bg-surface-container-lowest text-on-surface',
@@ -566,40 +600,22 @@ export const HistoryPage = () => {
           >
             <Filter className="h-3.5 w-3.5" />
             <span>Filters</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            <ChevronDown className="h-3 w-3 opacity-70" />
           </button>
           <button
             type="button"
             onClick={() => setIsSortSheetOpen(true)}
             className={cn(
-              'inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold shadow-sm transition-all',
+              'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm transition-all',
               sortOption !== 'date-desc'
                 ? 'border-primary bg-primary text-on-primary'
                 : 'border-outline-variant/10 bg-surface-container-lowest text-on-surface',
             )}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>Sort: {sortLabel}</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            <span>Sort</span>
+            <ChevronDown className="h-3 w-3 opacity-70" />
           </button>
-          <button
-            type="button"
-            onClick={() => setIsImportWizardOpen(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-outline-variant/10 bg-surface-container-lowest px-4 py-2 text-xs font-bold text-on-surface shadow-sm transition-all hover:bg-primary hover:text-on-primary hover:border-primary"
-          >
-            <FileUp className="h-3.5 w-3.5" />
-            <span>Import</span>
-          </button>
-          {hasNonDefaultFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-outline-variant/10 bg-surface-container-lowest px-4 py-2 text-xs font-bold text-on-surface-variant shadow-sm transition-all"
-            >
-              <X className="h-3.5 w-3.5" />
-              <span>Reset</span>
-            </button>
-          )}
         </div>
         <div className="space-y-2 px-1">
           {activeChips.length > 0 ? (

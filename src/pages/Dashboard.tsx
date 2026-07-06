@@ -231,7 +231,7 @@ export const Dashboard = () => {
 
       {/* ── 3. Income / Spent / Remaining row ─────────────────────────── */}
       <div className="grid grid-cols-3 gap-2">
-        <Link to="/history" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
+        <Link to="/history?type=income" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
           <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
             <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Income this month</p>
             <div className="flex items-center justify-between mt-1 gap-1">
@@ -242,7 +242,7 @@ export const Dashboard = () => {
             </div>
           </div>
         </Link>
-        <Link to="/history" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
+        <Link to="/history?type=expense" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
           <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
             <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Spent</p>
             <div className="mt-1">
@@ -252,7 +252,7 @@ export const Dashboard = () => {
             </div>
           </div>
         </Link>
-        <Link to="/budgets" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
+        <Link to="/history" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
           <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
             <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Remaining</p>
             <div className="mt-1">
@@ -332,18 +332,21 @@ export const Dashboard = () => {
           <div className="space-y-1">
             {groupedRecent.map((group) => (
               <div key={group.label}>
-                {/* Date group header */}
-                <div className="tx-date-group">
-                  <span>{group.label}</span>
-                  <span className="text-on-surface-variant/60">
-                    {formatCurrency(
-                      group.transactions.reduce(
-                        (sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount),
-                        0,
-                      ),
-                    )}
-                  </span>
-                </div>
+                {(() => {
+                  const netTotal = group.transactions.reduce(
+                    (sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount),
+                    0,
+                  );
+                  return (
+                    <div className="tx-date-group">
+                      <span>{group.label}</span>
+                      <span className="text-[11px] font-medium text-on-surface-variant/60 tabular-nums">
+                        {netTotal >= 0 ? '+' : '-'}
+                        {formatCurrency(Math.abs(netTotal))}
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 {/* Transactions — hairline divider on wrapper, flex layout on button */}
                 {group.transactions.map((t) => (

@@ -127,12 +127,7 @@ export function TransactionHistoryList({
           {/* ── Date group header ── */}
           <div className="tx-date-group">
             <span>{group.label}</span>
-            <span
-              className={cn(
-                'tabular-nums',
-                group.netTotal >= 0 ? 'text-secondary' : 'text-tertiary',
-              )}
-            >
+            <span className="text-[11px] font-medium text-on-surface-variant/60 tabular-nums">
               {group.netTotal >= 0 ? '+' : '-'}
               {formatCurrency(Math.abs(group.netTotal))}
             </span>
