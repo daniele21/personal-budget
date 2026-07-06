@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Check, X, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { CategoryIcon } from './CategoryIcon';
@@ -81,16 +82,16 @@ export const CategoryPicker = ({
         </button>
       </div>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div className="fixed inset-0 z-[170] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
           <button
             type="button"
             aria-label="Close category picker"
             className="absolute inset-0"
             onClick={() => {
-            closePicker();
-          }}
-        />
+              closePicker();
+            }}
+          />
 
           <div
             ref={dialogRef}
@@ -183,7 +184,8 @@ export const CategoryPicker = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

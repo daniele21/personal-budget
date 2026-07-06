@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { X, ChevronLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -63,7 +64,7 @@ export const NumericKeypadModal = ({ isOpen, onClose, onConfirm, initialValue }:
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[190] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       role="dialog"
@@ -117,6 +118,7 @@ export const NumericKeypadModal = ({ isOpen, onClose, onConfirm, initialValue }:
           Confirm Amount
         </button>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };

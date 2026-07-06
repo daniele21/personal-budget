@@ -640,6 +640,7 @@ export const HistoryPage = () => {
         onOpenDetails={setDetailTransaction}
         onQuickEdit={setQuickEditTransaction}
         onDelete={setDeleteId}
+        sortKey={sortKey}
       />
 
       <ConfirmDialog

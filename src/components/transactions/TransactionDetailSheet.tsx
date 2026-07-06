@@ -32,16 +32,20 @@ function DetailRow({
   value,
   icon,
   valueTone,
+  className,
+  valueClassName,
 }: {
   label: string;
   value: React.ReactNode;
   icon?: React.ReactNode;
   valueTone?: 'default' | 'muted' | 'positive' | 'category';
+  className?: string;
+  valueClassName?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
+    <div className={cn("flex items-center justify-between gap-3 py-2.5", className)}>
       {/* Label side */}
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 shrink-0 items-center gap-2.5">
         {icon && (
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-container-high text-on-surface-variant">
             {icon}
@@ -52,10 +56,12 @@ function DetailRow({
       {/* Value side */}
       <span
         className={cn(
-          'min-w-0 truncate text-right text-sm font-bold',
+          'min-w-0 text-right text-sm font-bold',
+          !valueClassName && 'truncate',
           valueTone === 'muted' && 'text-on-surface-variant',
           valueTone === 'positive' && 'text-secondary',
           (!valueTone || valueTone === 'default' || valueTone === 'category') && 'text-on-surface',
+          valueClassName
         )}
       >
         {value}
@@ -167,6 +173,8 @@ export function TransactionDetailSheet({
               label="Note"
               icon={<FileText className="h-3.5 w-3.5" />}
               value={transaction.description}
+              className="items-start"
+              valueClassName="break-words whitespace-pre-wrap text-left text-xs font-semibold leading-relaxed"
             />
           )}
         </div>

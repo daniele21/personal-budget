@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Paperclip, Search, Wallet } from 'lucide-react';
 import { Transaction } from '../../types';
 import { cn } from '../../lib/utils';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import { CategoryBadge } from '../ui/CategoryBadge';
 import { EmptyState } from '../ui';
 import { SwipeableRow } from '../SwipeableRow';
@@ -17,6 +17,7 @@ interface TransactionHistoryListProps {
   onOpenDetails: (transaction: Transaction) => void;
   onQuickEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
+  sortKey?: string;
 }
 
 /**
@@ -36,11 +37,11 @@ export function TransactionHistoryList({
   onOpenDetails,
   onQuickEdit,
   onDelete,
+  sortKey,
 }: TransactionHistoryListProps) {
-  const groups = groupTransactionsByDate(transactions);
-  let rowIndex = 0;
+  const isSortedByAmount = sortKey === 'amount';
 
-  if (groups.length === 0) {
+  if (transactions.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-outline-variant/20 bg-surface-container-low">
         <EmptyState
@@ -56,6 +57,68 @@ export function TransactionHistoryList({
       </div>
     );
   }
+
+  if (isSortedByAmount) {
+    return (
+      <section aria-label="Transaction history">
+        {transactions.map((transaction, index) => (
+          <motion.div
+            key={transaction.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: staggerDelay(index) }}
+            className="border-b border-outline-variant/20 last:border-b-0"
+          >
+            <SwipeableRow
+              onEdit={() => onQuickEdit(transaction)}
+              onDelete={() => onDelete(transaction.id)}
+            >
+              {/* Tap target — full-width button with the compact row layout */}
+              <button
+                type="button"
+                onClick={() => onOpenDetails(transaction)}
+                className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left"
+              >
+                <CategoryBadge category={transaction.category} size="md" className="shrink-0" />
+
+                {/* Title + category + date */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p className="min-w-0 truncate text-sm font-bold text-on-surface">
+                      {transaction.title}
+                    </p>
+                    <ExtraTransactionBadge transaction={transaction} />
+                  </div>
+                  <p className="truncate text-[10px] font-medium text-on-surface-variant">
+                    {transaction.category} • {formatDate(transaction.date)}
+                  </p>
+                </div>
+
+                {/* Amount + attachment indicator */}
+                <div className="shrink-0 text-right">
+                  <p
+                    className={cn(
+                      'text-sm font-extrabold tabular-nums',
+                      transaction.type === 'income' ? 'text-secondary' : 'text-tertiary',
+                    )}
+                  >
+                    {transaction.type === 'income' ? '+' : '-'}
+                    {formatCurrency(transaction.amount)}
+                  </p>
+                  {transaction.attachmentUrl && (
+                    <Paperclip className="ml-auto mt-0.5 h-3 w-3 text-primary/40" />
+                  )}
+                </div>
+              </button>
+            </SwipeableRow>
+          </motion.div>
+        ))}
+      </section>
+    );
+  }
+
+  const groups = groupTransactionsByDate(transactions);
+  let rowIndex = 0;
 
   return (
     <section aria-label="Transaction history">
@@ -139,3 +202,4 @@ export function TransactionHistoryList({
     </section>
   );
 }
+
