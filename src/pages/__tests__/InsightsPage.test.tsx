@@ -131,17 +131,47 @@ describe('InsightsPage analytics lenses', () => {
     });
 
     renderPage();
+    await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '3M');
 
-    await user.selectOptions(screen.getByRole('combobox', { name: /select insights period/i }), '3M');
-
-    expect(screen.getByRole('combobox', { name: /select insights period/i })).toHaveValue('3M');
+    expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('3M');
     expect(screen.getByText('1 May – 31 Jul')).toBeInTheDocument();
     expect(screen.getAllByText('€6,000.00').length).toBeGreaterThan(0);
 
-    await user.selectOptions(screen.getByRole('combobox', { name: /select insights period/i }), '6M');
+    await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '6M');
 
-    expect(screen.getByRole('combobox', { name: /select insights period/i })).toHaveValue('6M');
+    expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('6M');
     expect(screen.getByText('1 Feb – 31 Jul')).toBeInTheDocument();
     expect(screen.getAllByText('€15,000.00').length).toBeGreaterThan(0);
+  });
+
+  it('handles moving average dynamic windows and manual override in bottom sheet', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    // 1. By default for 1M range (default), it should calculate 30d moving average
+    // The main page callout button shows "Average Spending (30d)"
+    const calloutButton = screen.getByRole('button', { name: /Average Spending \(30d\)/i });
+    expect(calloutButton).toBeInTheDocument();
+
+    // 2. Click callout button to open BottomSheet
+    await user.click(calloutButton);
+
+    // 3. Confirm BottomSheet shows "30-Day Moving Average" title
+    expect(screen.getByRole('heading', { name: /30-Day Moving Average/i })).toBeInTheDocument();
+
+    // 4. Verify segmented controls for window mode are present.
+    // The active option should be "Auto (30d)"
+    const autoOption = screen.getByRole('button', { name: /Auto \(30d\)/i });
+    expect(autoOption).toBeInTheDocument();
+
+    // 5. Click "7d" manual override button
+    const sevenOption = screen.getByRole('button', { name: /^7d$/i });
+    await user.click(sevenOption);
+
+    // 6. Confirm title dynamically updates to "7-Day Moving Average"
+    expect(screen.getByRole('heading', { name: /7-Day Moving Average/i })).toBeInTheDocument();
+
+    // 7. Verify explanation text also updates (preceding 7 days)
+    expect(screen.getByText(/preceding 7 days/i)).toBeInTheDocument();
   });
 });

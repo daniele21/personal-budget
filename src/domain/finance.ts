@@ -619,3 +619,65 @@ export function syncRecurringTransactions(
 export function formatMonthLabel(date: Date = new Date()): string {
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
+
+/**
+ * Calculates a rolling moving average of expenses.
+ * Uses a sliding-window (two-pointer) approach with a running sum for O(N log N + D) performance.
+ */
+export function calculateMovingAverage(
+  transactions: Transaction[],
+  start: Date,
+  end: Date,
+  windowSize: number,
+): { dateLabel: string; value: number }[] {
+  const data: { dateLabel: string; value: number }[] = [];
+  const cursor = new Date(start);
+
+  // Filter only expenses, pre-parse timestamps, and sort chronologically
+  const expenseTx = transactions
+    .filter((t) => t.type === 'expense')
+    .map((t) => ({
+      time: new Date(t.date).getTime(),
+      amount: t.amount,
+    }))
+    .sort((a, b) => a.time - b.time);
+
+  let startIdx = 0;
+  let endIdx = 0;
+  let runningSum = 0;
+
+  while (cursor <= end) {
+    const dayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 0, 0, 0);
+    const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59);
+
+    const windowStart = new Date(dayStart);
+    windowStart.setDate(windowStart.getDate() - (windowSize - 1));
+
+    const wStartTime = windowStart.getTime();
+    const dEndTime = dayEnd.getTime();
+
+    // Add new transactions entering the window (up to dayEnd)
+    while (endIdx < expenseTx.length && expenseTx[endIdx].time <= dEndTime) {
+      runningSum += expenseTx[endIdx].amount;
+      endIdx++;
+    }
+
+    // Remove transactions that have slid out of the window (before windowStart)
+    while (startIdx < expenseTx.length && expenseTx[startIdx].time < wStartTime) {
+      runningSum -= expenseTx[startIdx].amount;
+      startIdx++;
+    }
+
+    // Average spending over the window size
+    const avg = Math.max(0, runningSum) / windowSize;
+
+    data.push({
+      dateLabel: cursor.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      value: avg,
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return data;
+}

@@ -29,6 +29,7 @@ import {
   getCategoryDeltas,
   getDailySpendingHeatmap,
   getMonthlyBreakdown,
+  calculateMovingAverage,
 } from '../finance';
 import { Transaction, Budget, RecurringExpense } from '../../types';
 
@@ -861,5 +862,35 @@ describe('formatMonthLabel', () => {
   it('defaults to current month', () => {
     const result = formatMonthLabel();
     expect(result).toContain(new Date().getFullYear().toString());
+  });
+});
+
+// ─── calculateMovingAverage ──────────────────────────────────────────
+
+describe('calculateMovingAverage', () => {
+  const start = new Date(2026, 3, 1); // 1 April 2026
+  const end = new Date(2026, 3, 5);   // 5 April 2026
+
+  it('correctly calculates 3-day moving average', () => {
+    const transactions = [
+      tx({ amount: 30, type: 'expense', date: '2026-03-31T12:00:00.000Z' }), // Day -1 relative to April 1
+      tx({ amount: 60, type: 'expense', date: '2026-04-01T12:00:00.000Z' }), // Day 1
+      tx({ amount: 90, type: 'expense', date: '2026-04-03T12:00:00.000Z' }), // Day 3
+      tx({ amount: 100, type: 'income', date: '2026-04-03T12:00:00.000Z' }), // Day 3 (ignored, income)
+    ];
+
+    const result = calculateMovingAverage(transactions, start, end, 3);
+    expect(result).toHaveLength(5);
+    expect(result[0]).toEqual({ dateLabel: '1 Apr', value: 30 });
+    expect(result[1]).toEqual({ dateLabel: '2 Apr', value: 30 });
+    expect(result[2]).toEqual({ dateLabel: '3 Apr', value: 50 });
+    expect(result[3]).toEqual({ dateLabel: '4 Apr', value: 30 });
+    expect(result[4]).toEqual({ dateLabel: '5 Apr', value: 30 });
+  });
+
+  it('returns zeros when there are no expenses', () => {
+    const result = calculateMovingAverage([], start, end, 3);
+    expect(result).toHaveLength(5);
+    expect(result.every(d => d.value === 0)).toBe(true);
   });
 });

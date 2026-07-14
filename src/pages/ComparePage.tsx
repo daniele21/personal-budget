@@ -80,9 +80,9 @@ const BarTooltip = ({ active, payload, label }: any) => {
       <div className="space-y-1">
         {payload.map((entry: any) => {
           const displayColor = entry.dataKey === 'current' 
-            ? 'var(--color-tertiary)' 
+            ? 'var(--color-primary)' 
             : entry.dataKey === 'prev' 
-            ? '#f87171' 
+            ? 'var(--color-secondary)' 
             : entry.fill;
           return (
             <div key={entry.dataKey} className="flex items-center justify-between gap-3 font-semibold">
@@ -525,12 +525,12 @@ function CompareTab({
               <BarChart data={activeChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="compareCurrentGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f87171" />
-                    <stop offset="100%" stopColor="var(--color-tertiary)" />
+                    <stop offset="0%" stopColor="var(--color-primary)" />
+                    <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.6} />
                   </linearGradient>
                   <linearGradient id="comparePrevGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fca5a5" />
-                    <stop offset="100%" stopColor="#f87171" stopOpacity={0.6} />
+                    <stop offset="0%" stopColor="var(--color-secondary)" />
+                    <stop offset="100%" stopColor="var(--color-secondary)" stopOpacity={0.6} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -571,11 +571,11 @@ function CompareTab({
         {/* Legend */}
         <div className="mt-2 flex items-center gap-4 text-[10px] font-bold text-on-surface-variant">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-tertiary to-[#f87171]" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
             {labelA}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-[#f87171]/55 to-[#fca5a5]" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-secondary" />
             {labelB}
           </span>
         </div>

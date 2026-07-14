@@ -51,35 +51,7 @@ function buildWeeklyData(
   return data;
 }
 
-function calculate30DayMovingAverage(transactions: Transaction[], start: Date, end: Date) {
-  const data: { dateLabel: string; value: number }[] = [];
-  const cursor = new Date(start);
-  const expenseTx = transactions.filter(t => t.type === 'expense');
 
-  while (cursor <= end) {
-    const dayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 0, 0, 0);
-    const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59);
-
-    const windowStart = new Date(dayStart);
-    windowStart.setDate(windowStart.getDate() - 29);
-
-    const windowTx = expenseTx.filter(t => {
-      const d = new Date(t.date);
-      return d >= windowStart && d <= dayEnd;
-    });
-
-    const sum = windowTx.reduce((acc, t) => acc + t.amount, 0);
-    const avg = sum / 30;
-
-    data.push({
-      dateLabel: cursor.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      value: avg
-    });
-
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return data;
-}
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -199,6 +171,7 @@ export const InsightsPage = () => {
   });
   const [isAvgTrendOpen, setIsAvgTrendOpen] = useState(false);
   const [movingAvgScale, setMovingAvgScale] = useState<'daily' | 'monthly'>('daily');
+  const [windowMode, setWindowMode] = useState<'auto' | '7' | '30' | '90'>('auto');
   
   const { start, end, prevStart, prevEnd, periodLabel, comparisonLabel } = useMemo(() => {
     if (range === 'CUSTOM') {
@@ -286,9 +259,16 @@ export const InsightsPage = () => {
     ? `Avg: ${formatCurrency(monthlyAverage)}/mo · ${formatCurrency(dailyAverage)}/day`
     : `Avg: ${formatCurrency(dailyAverage)}/day`;
 
+  const calculatedWindowSize = useMemo(() => {
+    if (windowMode === 'auto') {
+      return daysCount <= 15 ? 7 : daysCount <= 180 ? 30 : 90;
+    }
+    return parseInt(windowMode, 10);
+  }, [windowMode, daysCount]);
+
   const movingAverageData = useMemo(() => {
     if (!isAvgTrendOpen) return [];
-    const raw = calculate30DayMovingAverage(filteredTransactions, start, end);
+    const raw = Finance.calculateMovingAverage(filteredTransactions, start, end, calculatedWindowSize);
     if (movingAvgScale === 'monthly') {
       return raw.map(d => ({
         ...d,
@@ -296,7 +276,7 @@ export const InsightsPage = () => {
       }));
     }
     return raw;
-  }, [isAvgTrendOpen, filteredTransactions, start, end, movingAvgScale]);
+  }, [isAvgTrendOpen, filteredTransactions, start, end, movingAvgScale, calculatedWindowSize]);
 
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
@@ -375,7 +355,7 @@ export const InsightsPage = () => {
             <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-tertiary text-white">
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Average Spending</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Average Spending ({calculatedWindowSize}d)</span>
           </div>
           
           <div className="flex items-baseline gap-6 mt-1 flex-wrap">
@@ -497,21 +477,43 @@ export const InsightsPage = () => {
 
       <BottomSheet
         isOpen={isAvgTrendOpen}
-        title="30-Day Moving Average"
+        title={`${calculatedWindowSize}-Day Moving Average`}
         subtitle={`Average spending trend (${movingAvgScale === 'daily' ? 'daily' : 'monthly'}) from ${periodLabel}`}
         onClose={() => setIsAvgTrendOpen(false)}
       >
         <div className="space-y-4 pt-2">
-          <SegmentedControl
-            value={movingAvgScale}
-            options={[
-              { value: 'daily', label: 'Daily Average' },
-              { value: 'monthly', label: 'Monthly Equivalent' },
-            ]}
-            onChange={(val) => setMovingAvgScale(val as 'daily' | 'monthly')}
-            ariaLabel="Moving average scale selector"
-            className="w-full"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/80 px-1">Display Scale</span>
+              <SegmentedControl
+                value={movingAvgScale}
+                options={[
+                  { value: 'daily', label: 'Daily' },
+                  { value: 'monthly', label: 'Monthly' },
+                ]}
+                onChange={(val) => setMovingAvgScale(val as 'daily' | 'monthly')}
+                ariaLabel="Moving average scale selector"
+                className="w-full"
+                size="compact"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/80 px-1">Smoothing Window</span>
+              <SegmentedControl
+                value={windowMode}
+                options={[
+                  { value: 'auto', label: `Auto (${calculatedWindowSize}d)` },
+                  { value: '7', label: '7d' },
+                  { value: '30', label: '30d' },
+                  { value: '90', label: '90d' },
+                ]}
+                onChange={(val) => setWindowMode(val as 'auto' | '7' | '30' | '90')}
+                ariaLabel="Moving average window size selector"
+                className="w-full"
+                size="compact"
+              />
+            </div>
+          </div>
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -535,7 +537,7 @@ export const InsightsPage = () => {
                       <div className="glass-card rounded-2xl p-3 shadow-lg shadow-primary/5 text-xs min-w-[130px]">
                         <p className="mb-1 font-bold text-on-surface">{label}</p>
                         <div className="flex items-center justify-between gap-3 font-semibold text-tertiary">
-                          <span>30d Moving Avg</span>
+                          <span>{calculatedWindowSize}d Moving Avg</span>
                           <span className="font-extrabold">
                             {formatCurrency(payload[0].value)}
                             {movingAvgScale === 'daily' ? '/day' : '/mo'}
@@ -559,9 +561,9 @@ export const InsightsPage = () => {
           
           <div className="rounded-2xl bg-surface-container-low p-3.5 text-xs font-semibold text-on-surface-variant leading-relaxed">
             <p>
-              The <strong>30-Day Moving Average</strong> smooths out short-term fluctuations in your spending. 
+              The <strong>{calculatedWindowSize}-Day Moving Average</strong> smooths out short-term fluctuations in your spending. 
               {movingAvgScale === 'daily' ? (
-                <span> Each point represents the average daily expense computed over the preceding 30 days.</span>
+                <span> Each point represents the average daily expense computed over the preceding {calculatedWindowSize} days.</span>
               ) : (
                 <span> Each point represents the average monthly equivalent spending, computed as the daily average multiplied by 30.</span>
               )}
