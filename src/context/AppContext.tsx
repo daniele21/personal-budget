@@ -1,37 +1,17 @@
-/**
- * AppContext — centralized state management.
- *
- * Single source of truth for all app data. Pages and components
- * consume this context instead of reading localStorage directly.
- *
- * Responsibilities:
- * - Holds all persisted state (transactions, budgets, recurring, settings)
- * - Provides typed setters
- * - Syncs to localStorage on every change
- * - Exposes derived/computed values via the domain layer
- */
-import React, { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
-import { useCloudBackup } from '../hooks/useCloudBackup';
-import { STORAGE_KEYS } from '../data/storageKeys';
-import { buildDemoData } from '../data/demoData';
+import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import { AuthProvider, useAuth } from '../state/AuthProvider';
+import { PreferencesProvider, usePreferences } from '../state/PreferencesProvider';
+import { AppDataProvider, useAppData, InitialDataChoice } from '../state/AppDataProvider';
+import { BackupProvider, useBackup } from '../state/BackupProvider';
 import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } from '../types';
+import * as Finance from '../domain/finance';
 import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
-import * as Finance from '../domain/finance';
-import {
-  AppData,
-  INITIAL_APP_DATA,
-  isFinancialDataEmpty,
-  normalizeAppData,
-  syncAppData,
-} from '../data/model';
+import { buildDemoData } from '../data/demoData';
 
-// ─── Context Shape ──────────────────────────────────────────────────
+// ─── Legacy Context Shape (compatible facade) ───────────────────────
 
 interface AppState {
-  // Raw data
   transactions: Transaction[];
   budgets: Budget[];
   recurring: RecurringExpense[];
@@ -54,7 +34,7 @@ interface AppState {
   isHydrated: boolean;
   selectedMonth: Date;
 
-  // Setters
+  // Compatible Setters
   setTransactions: (txs: Transaction[]) => void;
   setBudgets: (budgets: Budget[]) => void;
   setRecurring: (recurring: RecurringExpense[]) => void;
@@ -70,11 +50,11 @@ interface AppState {
   setOnboardingComplete: (v: boolean) => void;
   setSelectedMonth: (date: Date) => void;
 
-  // Auth actions
+  // Compatible Auth actions
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 
-  // Actions
+  // Compatible Actions
   addTransaction: (tx: Transaction) => void;
   addTransactions: (txs: Transaction[]) => void;
   updateTransaction: (id: string, tx: Transaction) => void;
@@ -91,7 +71,7 @@ interface AppState {
   deleteCloudBackup: () => Promise<boolean>;
   pushBackupNow: () => Promise<boolean>;
 
-  // Derived (computed from domain layer)
+  // Derived
   monthlyTransactions: Transaction[];
   monthlyTotals: Finance.TransactionTotals;
   allTimeTotals: Finance.TransactionTotals;
@@ -103,284 +83,238 @@ interface AppState {
   currentBalance: number;
 }
 
-const AppContext = createContext<AppState | null>(null);
-type InitialDataChoice = 'blank' | 'demo' | 'restored' | null;
+const LegacyAppContext = createContext<AppState | null>(null);
 
-// ─── Provider ───────────────────────────────────────────────────────
+// ─── Dialogs and Facade Orchestration ─────────────────────────────────
 
-export const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  // Firebase auth
-  const { user, loading: authLoading, error: authError, isAdmin, signInWithGoogle, signOut } = useFirebaseAuth();
-  const isLoggedIn = user !== null;
+const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { user, authLoading, authError, isAdmin, isLoggedIn, signInWithGoogle, signOut } = useAuth();
+  const { isDarkMode, setIsDarkMode, selectedMonth, setSelectedMonth } = usePreferences();
+  const {
+    state,
+    dispatch,
+    isHydrated,
+    monthlyTransactions,
+    monthlyTotals,
+    allTimeTotals,
+    safeToSpend,
+    budgetStatuses,
+    categorySpending,
+    momChange,
+    recentTransactions,
+    currentBalance,
+  } = useAppData();
 
-  // Persisted state
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>(STORAGE_KEYS.transactions, INITIAL_APP_DATA.transactions);
-  const [budgets, setBudgets] = useLocalStorage<Budget[]>(STORAGE_KEYS.budgets, INITIAL_APP_DATA.budgets);
-  const [recurring, setRecurringState] = useLocalStorage<RecurringExpense[]>(STORAGE_KEYS.recurring, INITIAL_APP_DATA.recurring);
-  const [accounts, setAccounts] = useLocalStorage<Account[]>(STORAGE_KEYS.accounts, INITIAL_APP_DATA.accounts);
-  const [categories, setCategories] = useLocalStorage<string[]>(STORAGE_KEYS.categories, INITIAL_APP_DATA.categories);
-  const [archivedCategories, setArchivedCategories] = useLocalStorage<string[]>(STORAGE_KEYS.archivedCategories, INITIAL_APP_DATA.archivedCategories);
-  const [savingsGoals, setSavingsGoals] = useLocalStorage<SavingsGoal[]>(STORAGE_KEYS.savingsGoals, INITIAL_APP_DATA.savingsGoals);
-  const [monthlyBudget, setMonthlyBudget] = useLocalStorage<number>(STORAGE_KEYS.monthlyBudget, INITIAL_APP_DATA.monthlyBudget);
-  const [isDarkMode, setIsDarkMode] = useLocalStorage(STORAGE_KEYS.darkMode, false);
-  const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage(STORAGE_KEYS.cloudBackupEnabled, false);
-  const [onboardingComplete, setOnboardingComplete] = useLocalStorage(STORAGE_KEYS.onboardingComplete, false);
-  const [initialDataChoice, setInitialDataChoice] = useLocalStorage<InitialDataChoice>(STORAGE_KEYS.initialDataChoice, null);
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
-
-  const setRecurring = useCallback((nextRecurring: RecurringExpense[]) => {
-    setRecurringState(syncAppData({
-      transactions,
-      budgets,
-      recurring: nextRecurring,
-      accounts,
-      categories,
-      archivedCategories,
-      savingsGoals,
-      monthlyBudget,
-    }).recurring);
-  }, [accounts, archivedCategories, budgets, categories, monthlyBudget, savingsGoals, setRecurringState, transactions]);
-
-  useEffect(() => {
-    const syncedData = syncAppData({
-      transactions,
-      budgets,
-      recurring,
-      accounts,
-      categories,
-      archivedCategories,
-      savingsGoals,
-      monthlyBudget,
-    });
-
-    if (JSON.stringify(syncedData.transactions) !== JSON.stringify(transactions)) {
-      setTransactions(syncedData.transactions);
-    }
-    if (JSON.stringify(syncedData.recurring) !== JSON.stringify(recurring)) {
-      setRecurringState(syncedData.recurring);
-    }
-  }, [accounts, archivedCategories, budgets, categories, monthlyBudget, recurring, savingsGoals, setRecurringState, setTransactions, transactions]);
-
-  // Compat setters (kept for existing code that calls setUser/setIsLoggedIn)
-  const setUser = useCallback((_u: User | null) => { /* managed by Firebase */ }, []);
-  const setIsLoggedIn = useCallback((_v: boolean) => { /* managed by Firebase */ }, []);
-
-  // ─── Actions ────────────────────────────────────────────────────
-
-  const addTransaction = useCallback((tx: Transaction) => {
-    setTransactions(prev => [tx, ...prev]);
-  }, [setTransactions]);
-
-  const addTransactions = useCallback((txs: Transaction[]) => {
-    setTransactions(prev => [...txs, ...prev]);
-  }, [setTransactions]);
-
-  const updateTransaction = useCallback((id: string, tx: Transaction) => {
-    setTransactions(transactions.map(t => t.id === id ? tx : t));
-  }, [transactions, setTransactions]);
-
-  const deleteTransaction = useCallback((id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-  }, [transactions, setTransactions]);
-
-  const addBudget = useCallback((budget: Budget) => {
-    const existing = budgets.findIndex(b => b.category === budget.category);
-    if (existing > -1) {
-      const updated = [...budgets];
-      updated[existing] = budget;
-      setBudgets(updated);
-    } else {
-      setBudgets([...budgets, budget]);
-    }
-  }, [budgets, setBudgets]);
-
-  const deleteBudget = useCallback((category: string) => {
-    setBudgets(budgets.filter(b => b.category !== category));
-  }, [budgets, setBudgets]);
-
-  const addRecurring = useCallback((bill: RecurringExpense) => {
-    setRecurring([...recurring, bill]);
-  }, [recurring, setRecurring]);
-
-  const updateRecurring = useCallback((id: string, bill: RecurringExpense) => {
-    setRecurring(recurring.map(r => r.id === id ? bill : r));
-  }, [recurring, setRecurring]);
-
-  const deleteRecurring = useCallback((id: string) => {
-    setRecurring(recurring.filter(r => r.id !== id));
-  }, [recurring, setRecurring]);
-
-  const addCategory = useCallback((name: string) => {
-    if (!categories.includes(name)) {
-      setCategories([...categories, name]);
-    }
-    if (archivedCategories.includes(name)) {
-      setArchivedCategories(archivedCategories.filter((category) => category !== name));
-    }
-  }, [categories, archivedCategories, setCategories, setArchivedCategories]);
-
-  const resetAll = useCallback(() => {
-    localStorage.clear();
-    window.location.reload();
-  }, []);
-
-  // ─── Cloud backup (non-blocking daily sync) ────────────────────
-
-  const getBackupData = useCallback((): AppData => syncAppData({
-    transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals, monthlyBudget,
-  }), [transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals, monthlyBudget]);
+  const {
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    backupAvailable,
+    backupStatus,
+    lastBackupDate,
+    backupCheckComplete,
+    restoreFromCloud,
+    dismissRestore,
+    deleteCloudBackup,
+    pushBackupNow,
+  } = useBackup();
 
   const isLocalEmpty = useCallback(
-    () => isFinancialDataEmpty({ transactions, budgets, recurring }),
-    [transactions, budgets, recurring],
+    () => state.transactions.length === 0 && state.budgets.length === 0 && state.recurring.length === 0,
+    [state.transactions, state.budgets, state.recurring]
   );
 
-  const applyBackupData = useCallback((data: import('../lib/backup').BackupPayload) => {
-    const normalizedData = normalizeAppData(data);
-    setTransactions(normalizedData.transactions);
-    setBudgets(normalizedData.budgets);
-    setRecurringState(normalizedData.recurring);
-    setAccounts(normalizedData.accounts);
-    setCategories(normalizedData.categories);
-    setArchivedCategories(normalizedData.archivedCategories);
-    setSavingsGoals(normalizedData.savingsGoals);
-    setMonthlyBudget(normalizedData.monthlyBudget);
-  }, [setTransactions, setBudgets, setRecurringState, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
-
-  const { restoreFromCloud, backupAvailable, backupCheckComplete, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate } = useCloudBackup({
-    uid: user?.id ?? null,
-    enabled: cloudBackupEnabled,
-    getData: getBackupData,
-    isLocalEmpty,
-    applyData: applyBackupData,
-  });
-
-  // Expose manual push to UI
-  const pushBackupNow = useCallback(async (): Promise<boolean> => {
-    if (typeof pushNow === 'function') {
-      return await pushNow();
-    }
-    return false;
-  }, [pushNow]);
-
   const applyDemoData = useCallback(() => {
-    const demoData = buildDemoData();
-    setTransactions(demoData.transactions);
-    setBudgets(demoData.budgets);
-    setRecurring(demoData.recurring);
-    setAccounts(demoData.accounts);
-    setCategories(demoData.categories);
-    setArchivedCategories(demoData.archivedCategories);
-    setSavingsGoals(demoData.savingsGoals);
-    setMonthlyBudget(demoData.monthlyBudget);
-  }, [setTransactions, setBudgets, setRecurring, setAccounts, setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget]);
+    const demo = buildDemoData();
+    dispatch({ type: 'data/hydrated', data: demo });
+  }, [dispatch]);
 
   const handleRestoreBackup = useCallback(async () => {
     const restored = await restoreFromCloud();
     if (restored) {
       setCloudBackupEnabled(true);
-      setInitialDataChoice('restored');
-      setOnboardingComplete(true);
+      dispatch({ type: 'onboarding/initial-choice', choice: 'restored' });
+      dispatch({ type: 'onboarding/completed', complete: true });
     }
-  }, [restoreFromCloud, setCloudBackupEnabled, setInitialDataChoice, setOnboardingComplete]);
+  }, [restoreFromCloud, setCloudBackupEnabled, dispatch]);
 
   const handleStartBlank = useCallback(() => {
     if (backupAvailable) {
       setCloudBackupEnabled(false);
     }
-    setInitialDataChoice('blank');
+    dispatch({ type: 'onboarding/initial-choice', choice: 'blank' });
     dismissRestore();
-  }, [backupAvailable, dismissRestore, setCloudBackupEnabled, setInitialDataChoice]);
+  }, [backupAvailable, dismissRestore, setCloudBackupEnabled, dispatch]);
 
   const handleUseDemoData = useCallback(() => {
     if (backupAvailable) {
       setCloudBackupEnabled(false);
     }
     applyDemoData();
-    setInitialDataChoice('demo');
-    setOnboardingComplete(true);
+    dispatch({ type: 'onboarding/initial-choice', choice: 'demo' });
+    dispatch({ type: 'onboarding/completed', complete: true });
     dismissRestore();
-  }, [applyDemoData, backupAvailable, dismissRestore, setCloudBackupEnabled, setInitialDataChoice, setOnboardingComplete]);
+  }, [applyDemoData, backupAvailable, dismissRestore, setCloudBackupEnabled, dispatch]);
 
-  // ─── Derived values (domain layer) ─────────────────────────────
+  // Facade Setters mapping to semantic command dispatches
+  const setTransactions = useCallback((txs: Transaction[]) => dispatch({ type: 'transaction/created-many', transactions: txs }), [dispatch]);
+  const setBudgets = useCallback((budgets: Budget[]) => budgets.forEach(b => dispatch({ type: 'budget/added', budget: b })), [dispatch]);
+  const setRecurring = useCallback((recurring: RecurringExpense[]) => recurring.forEach(r => dispatch({ type: 'recurring/added', expense: r })), [dispatch]);
+  const setAccounts = useCallback((accounts: Account[]) => dispatch({ type: 'accounts/updated', accounts }), [dispatch]);
+  const setCategories = useCallback((categories: string[]) => categories.forEach(c => dispatch({ type: 'category/added', name: c })), [dispatch]);
+  const setArchivedCategories = useCallback((archived: string[]) => dispatch({ type: 'category/archived-updated', archivedCategories: archived }), [dispatch]);
+  const setSavingsGoals = useCallback((goals: SavingsGoal[]) => dispatch({ type: 'savingsGoals/updated', savingsGoals: goals }), [dispatch]);
+  const setMonthlyBudget = useCallback((budget: number) => dispatch({ type: 'monthlyBudget/updated', monthlyBudget: budget }), [dispatch]);
+  const setOnboardingComplete = useCallback((v: boolean) => dispatch({ type: 'onboarding/completed', complete: v }), [dispatch]);
 
-  const monthlyTransactions = useMemo(() => Finance.filterByMonth(transactions, selectedMonth), [transactions, selectedMonth]);
-  const monthlyTotals = useMemo(() => Finance.calculateTotals(monthlyTransactions), [monthlyTransactions]);
-  const allTimeTotals = useMemo(() => Finance.calculateTotals(transactions), [transactions]);
+  // Compatibility Setters (no-op or handled elsewhere)
+  const setUser = useCallback(() => {}, []);
+  const setIsLoggedIn = useCallback(() => {}, []);
 
-  const initialBalance = INITIAL_APP_DATA.accounts.reduce((acc, curr) => acc + curr.balance, 0);
-  const currentBalance = initialBalance + allTimeTotals.net;
+  // Facade Action mappings
+  const addTransaction = useCallback((tx: Transaction) => dispatch({ type: 'transaction/created', transaction: tx }), [dispatch]);
+  const addTransactions = useCallback((txs: Transaction[]) => dispatch({ type: 'transaction/created-many', transactions: txs }), [dispatch]);
+  const updateTransaction = useCallback((id: string, tx: Transaction) => dispatch({ type: 'transaction/updated', id, transaction: tx }), [dispatch]);
+  const deleteTransaction = useCallback((id: string) => dispatch({ type: 'transaction/deleted', id }), [dispatch]);
+  const addBudget = useCallback((budget: Budget) => dispatch({ type: 'budget/added', budget }), [dispatch]);
+  const deleteBudget = useCallback((category: string) => dispatch({ type: 'budget/deleted', category }), [dispatch]);
+  const addRecurring = useCallback((bill: RecurringExpense) => dispatch({ type: 'recurring/added', expense: bill }), [dispatch]);
+  const updateRecurring = useCallback((id: string, bill: RecurringExpense) => dispatch({ type: 'recurring/updated', id, expense: bill }), [dispatch]);
+  const deleteRecurring = useCallback((id: string) => dispatch({ type: 'recurring/deleted', id }), [dispatch]);
+  const addCategory = useCallback((name: string) => dispatch({ type: 'category/added', name }), [dispatch]);
+  const resetAll = useCallback(() => dispatch({ type: 'data/reset' }), [dispatch]);
 
-  const safeToSpendData = useMemo(
-    () => Finance.safeToSpend(
-      monthlyBudget,
-      monthlyTotals.expenses,
-      Finance.calculateBudgetableCashInflow(monthlyTransactions),
-    ),
-    [monthlyBudget, monthlyTotals.expenses, monthlyTransactions]
-  );
+  const value = useMemo<AppState>(() => ({
+    transactions: state.transactions,
+    budgets: state.budgets,
+    recurring: state.recurring,
+    accounts: state.accounts,
+    categories: state.categories,
+    archivedCategories: state.archivedCategories,
+    savingsGoals: state.savingsGoals,
+    monthlyBudget: state.monthlyBudget,
+    user,
+    isLoggedIn,
+    isDarkMode,
+    cloudBackupEnabled,
+    backupAvailable,
+    backupStatus,
+    lastBackupDate,
+    onboardingComplete: state.onboardingComplete,
+    authLoading,
+    authError,
+    isAdmin,
+    isHydrated,
+    selectedMonth,
 
-  const budgetStatuses = useMemo(
-    () => Finance.analyzeBudgets(budgets, monthlyTransactions),
-    [budgets, monthlyTransactions]
-  );
+    setTransactions,
+    setBudgets,
+    setRecurring,
+    setAccounts,
+    setCategories,
+    setArchivedCategories,
+    setSavingsGoals,
+    setMonthlyBudget,
+    setUser,
+    setIsLoggedIn,
+    setIsDarkMode,
+    setCloudBackupEnabled,
+    setOnboardingComplete,
+    setSelectedMonth,
 
-  const categorySpending = useMemo(
-    () => Finance.spendingByCategory(monthlyTransactions),
-    [monthlyTransactions]
-  );
+    signInWithGoogle,
+    signOut,
 
-  const momChange = useMemo(() => Finance.monthOverMonthChange(transactions, selectedMonth), [transactions, selectedMonth]);
+    addTransaction,
+    addTransactions,
+    updateTransaction,
+    deleteTransaction,
+    addBudget,
+    deleteBudget,
+    addRecurring,
+    updateRecurring,
+    deleteRecurring,
+    addCategory,
+    resetAll,
+    restoreFromCloud,
+    dismissRestore,
+    deleteCloudBackup,
+    pushBackupNow,
 
-  const recentTransactions = useMemo(
-    () => Finance.sortByDateDesc(monthlyTransactions).slice(0, 5),
-    [monthlyTransactions]
-  );
+    monthlyTransactions,
+    monthlyTotals,
+    allTimeTotals,
+    safeToSpend,
+    budgetStatuses,
+    categorySpending,
+    momChange,
+    recentTransactions,
+    currentBalance,
+  }), [
+    state,
+    user,
+    isLoggedIn,
+    isDarkMode,
+    cloudBackupEnabled,
+    backupAvailable,
+    backupStatus,
+    lastBackupDate,
+    authLoading,
+    authError,
+    isAdmin,
+    isHydrated,
+    selectedMonth,
+    setTransactions,
+    setBudgets,
+    setRecurring,
+    setAccounts,
+    setCategories,
+    setArchivedCategories,
+    setSavingsGoals,
+    setMonthlyBudget,
+    setUser,
+    setIsLoggedIn,
+    setIsDarkMode,
+    setCloudBackupEnabled,
+    setOnboardingComplete,
+    setSelectedMonth,
+    signInWithGoogle,
+    signOut,
+    addTransaction,
+    addTransactions,
+    updateTransaction,
+    deleteTransaction,
+    addBudget,
+    deleteBudget,
+    addRecurring,
+    updateRecurring,
+    deleteRecurring,
+    addCategory,
+    resetAll,
+    restoreFromCloud,
+    dismissRestore,
+    deleteCloudBackup,
+    pushBackupNow,
+    monthlyTransactions,
+    monthlyTotals,
+    allTimeTotals,
+    safeToSpend,
+    budgetStatuses,
+    categorySpending,
+    momChange,
+    recentTransactions,
+    currentBalance,
+  ]);
 
   const showInitialDataDialog = (
     isLoggedIn &&
     isHydrated &&
     backupCheckComplete &&
     isLocalEmpty() &&
-    initialDataChoice === null
+    state.initialDataChoice === null
   );
 
-  // ─── Context value ─────────────────────────────────────────────
-
-  const value: AppState = {
-    // Raw
-    transactions, budgets, recurring, accounts, categories, archivedCategories, savingsGoals,
-    monthlyBudget, user, isLoggedIn, isDarkMode, cloudBackupEnabled, backupAvailable,
-    backupStatus, lastBackupDate, onboardingComplete,
-    authLoading, authError, isAdmin, isHydrated, selectedMonth,
-    // Setters
-    setTransactions, setBudgets, setRecurring, setAccounts,
-    setCategories, setArchivedCategories, setSavingsGoals, setMonthlyBudget, setUser, setIsLoggedIn, setIsDarkMode,
-    setCloudBackupEnabled, setOnboardingComplete, setSelectedMonth,
-    // Auth actions
-    signInWithGoogle, signOut,
-    // Actions
-    addTransaction, addTransactions, updateTransaction, deleteTransaction,
-    addBudget, deleteBudget,
-    addRecurring, updateRecurring, deleteRecurring,
-    addCategory, resetAll, restoreFromCloud, dismissRestore, deleteCloudBackup, pushBackupNow,
-    // Derived
-    monthlyTransactions, monthlyTotals, allTimeTotals,
-    safeToSpend: safeToSpendData, budgetStatuses, categorySpending,
-    momChange, recentTransactions, currentBalance,
-  };
-
   return (
-    <AppContext.Provider value={value}>
+    <LegacyAppContext.Provider value={value}>
       {children}
       <InitialDataDialog
         isOpen={showInitialDataDialog}
@@ -390,23 +324,37 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         onUseDemoData={handleUseDemoData}
       />
       <OnboardingDialog
-        isOpen={isLoggedIn && !showInitialDataDialog && !onboardingComplete && initialDataChoice === 'blank' && isLocalEmpty()}
-        monthlyBudget={monthlyBudget}
+        isOpen={isLoggedIn && !showInitialDataDialog && !state.onboardingComplete && state.initialDataChoice === 'blank' && isLocalEmpty()}
+        monthlyBudget={state.monthlyBudget}
         onSetMonthlyBudget={setMonthlyBudget}
         onAddCategory={addCategory}
-        onAddGoal={(goal) => setSavingsGoals([...savingsGoals, goal])}
+        onAddGoal={(goal) => setSavingsGoals([...state.savingsGoals, goal])}
         cloudBackupEnabled={cloudBackupEnabled}
         onSetCloudBackupEnabled={setCloudBackupEnabled}
         onComplete={() => setOnboardingComplete(true)}
       />
-    </AppContext.Provider>
+    </LegacyAppContext.Provider>
   );
 };
 
-// ─── Hook ───────────────────────────────────────────────────────────
+// ─── Provider Root ───────────────────────────────────────────────────
+
+export const AppProvider = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <AuthProvider>
+      <PreferencesProvider>
+        <AppDataProvider>
+          <BackupProvider>
+            <MainAppWrapper>{children}</MainAppWrapper>
+          </BackupProvider>
+        </AppDataProvider>
+      </PreferencesProvider>
+    </AuthProvider>
+  );
+};
 
 export function useApp(): AppState {
-  const ctx = useContext(AppContext);
+  const ctx = useContext(LegacyAppContext);
   if (!ctx) throw new Error('useApp must be used within AppProvider');
   return ctx;
 }
