@@ -42,7 +42,7 @@ export type AppDataAction =
 
 // ─── Reducer ────────────────────────────────────────────────────────
 
-function appDataReducer(state: AppDataState, action: AppDataAction): AppDataState {
+export function appDataReducer(state: AppDataState, action: AppDataAction): AppDataState {
   let nextState: AppDataState;
 
   switch (action.type) {
@@ -291,8 +291,12 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
       appDataRepository.clear();
       localStorage.removeItem(STORAGE_KEYS.onboardingComplete);
       localStorage.removeItem(STORAGE_KEYS.initialDataChoice);
-      reactDispatch(action);
-      window.location.reload();
+      attachmentRepository.clearAllAttachments()
+        .catch(err => console.error('[AppDataProvider] Error clearing IDB attachments:', err))
+        .finally(() => {
+          reactDispatch(action);
+          window.location.reload();
+        });
       return;
     }
     reactDispatch(action);

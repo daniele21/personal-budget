@@ -35,7 +35,11 @@ function buildWeeklyData(
   while (cursor <= end) {
     const weekEnd = new Date(cursor);
     weekEnd.setDate(cursor.getDate() + 6);
-    if (weekEnd > end) weekEnd.setTime(end.getTime());
+    weekEnd.setHours(23, 59, 59, 999);
+    if (weekEnd > end) {
+      weekEnd.setTime(end.getTime());
+      weekEnd.setHours(23, 59, 59, 999);
+    }
 
     const label = cursor.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const weekTx = transactions.filter((t) => {

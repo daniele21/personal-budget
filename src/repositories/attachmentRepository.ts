@@ -1,4 +1,4 @@
-import { get, set, del } from 'idb-keyval';
+import { get, set, del, clear } from 'idb-keyval';
 
 export const attachmentRepository = {
   async getAttachment(transactionId: string): Promise<string | undefined> {
@@ -24,6 +24,14 @@ export const attachmentRepository = {
       await del(`attachment_${transactionId}`);
     } catch (error) {
       console.error('[AttachmentRepository] Error deleting attachment:', error);
+    }
+  },
+
+  async clearAllAttachments(): Promise<void> {
+    try {
+      await clear();
+    } catch (error) {
+      console.error('[AttachmentRepository] Error clearing attachments:', error);
     }
   }
 };

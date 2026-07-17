@@ -31,7 +31,7 @@ export const ProfilePage = () => {
     categories, setCategories, archivedCategories, setArchivedCategories,
     savingsGoals, setSavingsGoals, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance,
     user, signOut, isAdmin, cloudBackupEnabled, setCloudBackupEnabled,
-    backupStatus, lastBackupDate, deleteCloudBackup, pushBackupNow,
+    backupStatus, lastBackupDate, deleteCloudBackup, pushBackupNow, resetAll,
     isDarkMode, setIsDarkMode,
   } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
@@ -71,14 +71,12 @@ export const ProfilePage = () => {
   );
 
   const handleResetLocal = () => {
-    localStorage.clear();
-    window.location.reload();
+    resetAll();
   };
 
   const handleResetAll = async () => {
     await deleteCloudBackup();
-    localStorage.clear();
-    window.location.reload();
+    resetAll();
   };
 
   const handleBackupNow = async () => {
