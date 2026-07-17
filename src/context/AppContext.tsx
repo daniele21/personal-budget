@@ -156,11 +156,11 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
   }, [applyDemoData, backupAvailable, dismissRestore, setCloudBackupEnabled, dispatch]);
 
   // Facade Setters mapping to semantic command dispatches
-  const setTransactions = useCallback((txs: Transaction[]) => dispatch({ type: 'transaction/created-many', transactions: txs }), [dispatch]);
-  const setBudgets = useCallback((budgets: Budget[]) => budgets.forEach(b => dispatch({ type: 'budget/added', budget: b })), [dispatch]);
-  const setRecurring = useCallback((recurring: RecurringExpense[]) => recurring.forEach(r => dispatch({ type: 'recurring/added', expense: r })), [dispatch]);
+  const setTransactions = useCallback((txs: Transaction[]) => dispatch({ type: 'transactions/replaced', transactions: txs }), [dispatch]);
+  const setBudgets = useCallback((budgets: Budget[]) => dispatch({ type: 'budgets/replaced', budgets }), [dispatch]);
+  const setRecurring = useCallback((recurring: RecurringExpense[]) => dispatch({ type: 'recurring/replaced', recurring }), [dispatch]);
   const setAccounts = useCallback((accounts: Account[]) => dispatch({ type: 'accounts/updated', accounts }), [dispatch]);
-  const setCategories = useCallback((categories: string[]) => categories.forEach(c => dispatch({ type: 'category/added', name: c })), [dispatch]);
+  const setCategories = useCallback((categories: string[]) => dispatch({ type: 'categories/replaced', categories }), [dispatch]);
   const setArchivedCategories = useCallback((archived: string[]) => dispatch({ type: 'category/archived-updated', archivedCategories: archived }), [dispatch]);
   const setSavingsGoals = useCallback((goals: SavingsGoal[]) => dispatch({ type: 'savingsGoals/updated', savingsGoals: goals }), [dispatch]);
   const setMonthlyBudget = useCallback((budget: number) => dispatch({ type: 'monthlyBudget/updated', monthlyBudget: budget }), [dispatch]);

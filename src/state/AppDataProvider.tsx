@@ -34,7 +34,11 @@ export type AppDataAction =
   | { type: 'onboarding/completed'; complete: boolean }
   | { type: 'onboarding/initial-choice'; choice: InitialDataChoice }
   | { type: 'data/hydrated'; data: AppData }
-  | { type: 'data/reset' };
+  | { type: 'data/reset' }
+  | { type: 'transactions/replaced'; transactions: Transaction[] }
+  | { type: 'budgets/replaced'; budgets: Budget[] }
+  | { type: 'recurring/replaced'; recurring: RecurringExpense[] }
+  | { type: 'categories/replaced'; categories: string[] };
 
 // ─── Reducer ────────────────────────────────────────────────────────
 
@@ -181,23 +185,40 @@ function appDataReducer(state: AppDataState, action: AppDataAction): AppDataStat
       };
       break;
 
+    case 'transactions/replaced':
+      nextState = {
+        ...state,
+        transactions: action.transactions,
+      };
+      break;
+
+    case 'budgets/replaced':
+      nextState = {
+        ...state,
+        budgets: action.budgets,
+      };
+      break;
+
+    case 'recurring/replaced':
+      nextState = {
+        ...state,
+        recurring: action.recurring,
+      };
+      break;
+
+    case 'categories/replaced':
+      nextState = {
+        ...state,
+        categories: action.categories,
+      };
+      break;
+
     default:
       return state;
   }
 
-  // Ensure state consistency by running domain-level synchronization
+  // Ensure state consistency by running domain-level synchronization (pure)
   const synced = syncAppData(nextState);
-  
-  // Save to repositories/localStorage
-  if (action.type === 'data/reset') {
-    appDataRepository.clear();
-  } else {
-    appDataRepository.saveAppData(synced);
-    localStorage.setItem(STORAGE_KEYS.onboardingComplete, String(nextState.onboardingComplete));
-    if (nextState.initialDataChoice) {
-      localStorage.setItem(STORAGE_KEYS.initialDataChoice, nextState.initialDataChoice);
-    }
-  }
 
   return {
     ...nextState,
@@ -250,11 +271,26 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     setIsHydrated(true);
   }, []);
 
+  // Save changes to repositories/localStorage in an effect to keep the reducer pure
+  useEffect(() => {
+    if (!isHydrated) return;
+    appDataRepository.saveAppData(state);
+    localStorage.setItem(STORAGE_KEYS.onboardingComplete, String(state.onboardingComplete));
+    if (state.initialDataChoice) {
+      localStorage.setItem(STORAGE_KEYS.initialDataChoice, state.initialDataChoice);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.initialDataChoice);
+    }
+  }, [state, isHydrated]);
+
   // Dispatch wrapper to execute async/side-effect operations (e.g. attachment deletion)
   const dispatch = useCallback((action: AppDataAction) => {
     if (action.type === 'transaction/deleted') {
       attachmentRepository.deleteAttachment(action.id);
     } else if (action.type === 'data/reset') {
+      appDataRepository.clear();
+      localStorage.removeItem(STORAGE_KEYS.onboardingComplete);
+      localStorage.removeItem(STORAGE_KEYS.initialDataChoice);
       reactDispatch(action);
       window.location.reload();
       return;

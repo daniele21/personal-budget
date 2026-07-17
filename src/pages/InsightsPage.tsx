@@ -42,9 +42,8 @@ function buildWeeklyData(
       const d = new Date(t.date);
       return d >= cursor && d <= weekEnd;
     });
-    const income = weekTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenses = weekTx.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    data.push({ label, income, expenses, net: income - expenses });
+    const totals = Finance.calculateTotals(weekTx);
+    data.push({ label, income: totals.income, expenses: totals.expenses, net: totals.net });
 
     cursor.setDate(cursor.getDate() + 7);
   }

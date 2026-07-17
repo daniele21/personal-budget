@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import { Transaction } from '../../types';
 import { cn } from '../../lib/utils';
+import * as Finance from '../../domain/finance';
 
 interface CashFlowChartProps {
   /** All transactions for the selected month */
@@ -45,10 +46,8 @@ export function CashFlowChart({
         );
       });
 
-      const income = intervalTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const expenses = intervalTx.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-
-      return { income, expenses };
+      const totals = Finance.calculateTotals(intervalTx);
+      return { income: totals.income, expenses: totals.expenses };
     });
   }, [transactions, month]);
 

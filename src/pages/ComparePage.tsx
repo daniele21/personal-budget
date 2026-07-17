@@ -115,17 +115,13 @@ function SpendingByCategoryTab({
   end: Date;
   lens: 'actual' | 'normalized';
 }) {
-  const expenseTx = useMemo(
-    () => transactions.filter((t) => t.type === 'expense'),
+  const totalExpenses = useMemo(
+    () => Finance.calculateTotals(transactions).expenses,
     [transactions],
   );
-  const totalExpenses = useMemo(
-    () => expenseTx.reduce((s, t) => s + t.amount, 0),
-    [expenseTx],
-  );
   const categorySpending = useMemo(
-    () => Finance.spendingByCategory(expenseTx),
-    [expenseTx],
+    () => Finance.spendingByCategory(transactions),
+    [transactions],
   );
 
   // Assign a colour to each category using getCategoryTheme
@@ -278,8 +274,8 @@ function CompareTab({
     ? ((totalsA.expenses - totalsB.expenses) / totalsB.expenses) * 100
     : null;
 
-  const catA = useMemo(() => Finance.spendingByCategory(txA.filter((t) => t.type === 'expense')), [txA]);
-  const catB = useMemo(() => Finance.spendingByCategory(txB.filter((t) => t.type === 'expense')), [txB]);
+  const catA = useMemo(() => Finance.spendingByCategory(txA), [txA]);
+  const catB = useMemo(() => Finance.spendingByCategory(txB), [txB]);
 
   const availableCategories = useMemo(() => {
     return Array.from(new Set([...catA.map((c) => c.category), ...catB.map((c) => c.category)]));
@@ -322,13 +318,13 @@ function CompareTab({
         const sB = new Date(prevStart.getTime() + idx * intervalLenB);
         const eB = new Date(prevStart.getTime() + (idx + 1) * intervalLenB);
 
-        const valA = txA
-          .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
-          .reduce((sum, t) => sum + t.amount, 0);
+        const valA = Finance.calculateTotals(
+          txA.filter((t) => t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
+        ).expenses;
 
-        const valB = txB
-          .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
-          .reduce((sum, t) => sum + t.amount, 0);
+        const valB = Finance.calculateTotals(
+          txB.filter((t) => t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
+        ).expenses;
 
         return {
           name: `Week ${idx + 1}`,
@@ -350,13 +346,13 @@ function CompareTab({
       const sB = new Date(tempDateB.getFullYear(), tempDateB.getMonth(), 1);
       const eB = new Date(tempDateB.getFullYear(), tempDateB.getMonth() + 1, 1);
 
-      const valA = txA
-        .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
-        .reduce((sum, t) => sum + t.amount, 0);
+      const valA = Finance.calculateTotals(
+        txA.filter((t) => t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
+      ).expenses;
 
-      const valB = txB
-        .filter((t) => t.type === 'expense' && t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
-        .reduce((sum, t) => sum + t.amount, 0);
+      const valB = Finance.calculateTotals(
+        txB.filter((t) => t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
+      ).expenses;
 
       const monthName = sA.toLocaleDateString('en-US', { month: 'short' });
       return {
@@ -369,13 +365,14 @@ function CompareTab({
 
   // 3. By Merchant top comparison
   const merchantBarData = useMemo(() => {
-    const expA = txA.filter((t) => t.type === 'expense');
-    const expB = txB.filter((t) => t.type === 'expense');
+    const expA = txA.filter((t) => t.type === 'expense' || Finance.getTransactionReportingClass(t) === 'reimbursement');
+    const expB = txB.filter((t) => t.type === 'expense' || Finance.getTransactionReportingClass(t) === 'reimbursement');
 
     const merchantMapA = new Map<string, number>();
     expA.forEach((t) => {
       const name = t.title || t.description || 'Unknown';
-      merchantMapA.set(name, (merchantMapA.get(name) || 0) + t.amount);
+      const amount = t.type === 'expense' ? t.amount : -t.amount;
+      merchantMapA.set(name, (merchantMapA.get(name) || 0) + amount);
     });
 
     let topMerchants = Array.from(merchantMapA.entries())
@@ -387,7 +384,8 @@ function CompareTab({
       const merchantMapB = new Map<string, number>();
       expB.forEach((t) => {
         const name = t.title || t.description || 'Unknown';
-        merchantMapB.set(name, (merchantMapB.get(name) || 0) + t.amount);
+        const amount = t.type === 'expense' ? t.amount : -t.amount;
+        merchantMapB.set(name, (merchantMapB.get(name) || 0) + amount);
       });
       topMerchants = Array.from(merchantMapB.entries())
         .sort((a, b) => b[1] - a[1])
@@ -396,9 +394,13 @@ function CompareTab({
     }
 
     return topMerchants.map((merchant) => {
-      const current = expA.filter((t) => (t.title || t.description || 'Unknown') === merchant).reduce((s, t) => s + t.amount, 0);
-      const prev = expB.filter((t) => (t.title || t.description || 'Unknown') === merchant).reduce((s, t) => s + t.amount, 0);
-      return { name: merchant, current, prev };
+      const current = expA
+        .filter((t) => (t.title || t.description || 'Unknown') === merchant)
+        .reduce((s, t) => s + (t.type === 'expense' ? t.amount : -t.amount), 0);
+      const prev = expB
+        .filter((t) => (t.title || t.description || 'Unknown') === merchant)
+        .reduce((s, t) => s + (t.type === 'expense' ? t.amount : -t.amount), 0);
+      return { name: merchant, current: Math.max(0, current), prev: Math.max(0, prev) };
     });
   }, [txA, txB]);
 
