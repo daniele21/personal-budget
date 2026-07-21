@@ -16,6 +16,10 @@ Questa sezione descrive lo stato corrente e sostituisce le indicazioni speriment
 - Budgets usa una barra lineare e percentuale esplicita; il grande gauge duplicato è stato rimosso.
 - More e le superfici di lettura sono neutrali e condividono la stessa gerarchia in modalità chiara e scura.
 - Importi e percentuali principali usano cifre tabulari; i controlli mantengono label accessibili e target adeguati.
+- Il canvas light usa `#f6f8fb` e le card standard usano bianco puro; in dark mode restano superfici semantiche scure, non bianco forzato.
+- Gradienti e profondità ambientale sono riservati alle superfici inverse. Le card standard ed elevated sono superfici piatte con bordo e ombra minima; i soft status usano wash uniformi.
+- Overview, Categories, Compare, Year e Calendar applicano la stessa grammatica di focal summary senza introdurre nuove varianti Card.
+- I controlli selezionati, incluse le tab locali Reports e Planning, usano primary pieno con stato accessibile equivalente.
 
 La verifica automatica copre struttura e semantica. Il confronto visuale ai viewport baseline resta da eseguire quando sarà disponibile una sessione browser controllabile.
 

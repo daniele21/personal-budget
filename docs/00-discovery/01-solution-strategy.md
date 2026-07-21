@@ -58,6 +58,10 @@ Calendar and recurring management become a single Planning area organized as `Ca
 
 Home and Budgets default to the Actual analytics lens and expose a minimal `Actual | Net` control. Reports exposes the complete `Actual | Net of extras | Extras only` control. The active lens must always be visible; Net must explain that extras are excluded. Home and Budgets may share this UI state for the active app session, but a new session returns to Actual so the app never silently hides real cash activity.
 
+The compact Home control is positioned separately from the centered month label, and Budgets keeps it in the focal-summary header. Reports places its full three-state control in a focus-managed `View options` bottom sheet; the trigger always names the active lens so report scope is never implicit.
+
+Add Transaction uses progressive disclosure for optional fields. Title, category, date, type, and amount remain immediately visible; payment method, reporting treatment, notes, and attachment live under `More options`. The section opens automatically when an edited transaction contains meaningful advanced values, and recurring-occurrence notices and validation remain visible.
+
 Rationale: the primary shell should prioritize daily budgeting work while keeping analytics directly reachable. Consolidating analytics and planning removes overlapping destinations and duplicated forms. A compact but explicit lens control preserves advanced analysis without making it the dominant Home interaction.
 
 ### Safe To Spend

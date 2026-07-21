@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { CalendarDays, ChevronDown, ChevronRight, Link as LinkIcon, TrendingDown, TrendingUp } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   PieChart,
@@ -22,7 +22,7 @@ import { Transaction } from '../types';
 import { getCategoryTheme } from '../config/categoryThemes';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { pageTransition } from '../utils/motion';
-import { SegmentedControl, PeriodSelector, getRangeDates, RangeKey } from '../components/ui';
+import { FocalSummaryCard, SegmentedControl, PeriodSelector, getRangeDates, RangeKey } from '../components/ui';
 import { CompareInsights } from '../components/compare/CompareInsights';
 
 // ─── Period helpers ────────────────────────────────────────────────────
@@ -145,6 +145,16 @@ function SpendingByCategoryTab({
 
   return (
     <div className="space-y-4">
+      <FocalSummaryCard>
+        <div>
+          <p className="text-xs font-semibold text-inverse-on-surface-variant">Total spent</p>
+          <p className="mt-1 font-headline text-4xl font-extrabold tabular-nums text-inverse-on-surface">
+            {formatCurrency(totalExpenses)}
+          </p>
+          <p className="mt-1 text-xs text-inverse-on-surface-variant">{periodLabel}</p>
+        </div>
+      </FocalSummaryCard>
+
       {/* The ranked list is primary on mobile; the donut is supplementary on larger screens. */}
       <div className="hidden items-center justify-center md:flex" aria-label={`Category distribution for ${periodLabel}`}>
         <div style={{ width: 240, height: 240 }}>
@@ -451,59 +461,21 @@ function CompareTab({
 
   return (
     <div className="space-y-4">
-      {/* ── Period comparison header ── */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Period A (current) */}
-        <Link
-          to={`/transactions?startDate=${formatDate(start)}&endDate=${formatDate(end)}&preset=custom&lens=${lens}`}
-          className="space-y-1 rounded-2xl bg-surface-container-lowest p-3 text-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors duration-150 block"
-        >
-          <p className="text-[10px] font-bold text-on-surface-variant">{labelA}</p>
-          <p className="font-headline text-2xl font-extrabold text-primary tabular-nums">
-            {formatCurrency(totalsA.expenses)}
+      <FocalSummaryCard tone={delta > 0 ? 'warning' : 'positive'}>
+        <div>
+          <p className="text-xs font-semibold text-inverse-on-surface-variant">Compared with {labelB}</p>
+          <p className="mt-1 font-headline text-3xl font-extrabold tabular-nums text-inverse-on-surface">
+            {formatCurrency(Math.abs(delta))} {delta > 0 ? 'more' : 'less'}
           </p>
-          <p className="text-[10px] font-semibold text-on-surface-variant">Expenses</p>
-          {/* Active indicator */}
-          <div className="mx-auto mt-1 h-0.5 w-8 rounded-full bg-primary" />
-        </Link>
-        {/* Period B (previous) */}
-        <Link
-          to={`/transactions?startDate=${formatDate(prevStart)}&endDate=${formatDate(prevEnd)}&preset=custom&lens=${lens}`}
-          className="space-y-1 rounded-2xl bg-surface-container-lowest p-3 text-center border border-outline-variant/20 hover:bg-surface-container-low transition-colors duration-150 block"
-        >
-          <p className="text-[10px] font-bold text-on-surface-variant">{labelB}</p>
-          <p className="font-headline text-2xl font-extrabold text-on-surface tabular-nums">
-            {formatCurrency(totalsB.expenses)}
-          </p>
-          <p className="text-[10px] font-semibold text-on-surface-variant">Expenses</p>
-          {/* Previous indicator */}
-          <div className="mx-auto mt-1 h-0.5 w-8 rounded-full bg-secondary" />
-        </Link>
-      </div>
-
-      {/* ── Delta banner ── */}
-      {deltaPercent !== null && (
-        <div
-          className={cn(
-            'flex items-center gap-2.5 rounded-xl px-4 py-3',
-            delta > 0
-              ? 'border border-accent-amber/20 bg-accent-amber/8'
-              : 'border border-secondary/20 bg-secondary/8',
-          )}
-        >
-          {delta > 0 ? (
-            <TrendingUp className="h-4 w-4 shrink-0 text-accent-amber" />
-          ) : (
-            <TrendingDown className="h-4 w-4 shrink-0 text-secondary" />
-          )}
-          <p className="text-xs font-bold text-on-surface">
-            <span className={delta > 0 ? 'text-accent-amber' : 'text-secondary'}>
-              {delta > 0 ? '▲' : '▼'} {formatCurrency(Math.abs(delta))} ({deltaPercent >= 0 ? '+' : ''}{deltaPercent.toFixed(1)}%)
-            </span>{' '}
-            {delta > 0 ? 'more' : 'less'} than {labelB}
+          <p className={cn('mt-1 text-sm font-bold', delta > 0 ? 'text-inverse-warning' : 'text-inverse-positive')}>
+            {deltaPercent === null ? 'No comparable baseline' : `${deltaPercent >= 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`}
           </p>
         </div>
-      )}
+        <div className="grid grid-cols-2 gap-3 border-t border-white/12 pt-3 text-xs text-inverse-on-surface-variant">
+          <span>{labelA}: {formatCurrency(totalsA.expenses)}</span>
+          <span className="text-right">{labelB}: {formatCurrency(totalsB.expenses)}</span>
+        </div>
+      </FocalSummaryCard>
 
       <CompareInsights insights={comparisonInsights} sourceLabel={`${labelA} compared with ${labelB}`} />
 

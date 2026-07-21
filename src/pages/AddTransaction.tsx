@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Pencil, Check, X, Camera } from 'lucide-react';
+import { Pencil, X, Camera } from 'lucide-react';
 import { get, set, del } from 'idb-keyval';
 import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
 import { Transaction, TransactionReportingClass } from '../types';
-import { CategoryIcon } from '../components/CategoryIcon';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { upsertRecurringOverride } from '../domain/recurring';
-import { Card } from '../components/ui';
+import { AccordionSection, Card } from '../components/ui';
 import { ReportingTreatmentToggle } from '../components/ExtraFlagToggle';
 import { ReportingTreatmentInfo } from '../components/ReportingTreatmentInfo';
 
@@ -31,7 +30,9 @@ export const AddTransaction = () => {
   const [paymentMethod, setPaymentMethod] = useState('Debit Card');
   const [attachmentUrl, setAttachmentUrl] = useState<string | undefined>(undefined);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
+  const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editingTransaction = id ? transactions.find((transaction) => transaction.id === id) : undefined;
 
   useEffect(() => {
     if (id) {
@@ -45,10 +46,20 @@ export const AddTransaction = () => {
         setReportingClass(!transaction.sourceRecurringId && transaction.reportingClass !== 'regular' ? transaction.reportingClass : undefined);
         setDate(new Date(transaction.date).toISOString().split('T')[0]);
         setPaymentMethod(transaction.paymentMethod);
+        setIsMoreOptionsOpen(
+          Boolean(
+            transaction.description ||
+            transaction.paymentMethod !== 'Debit Card' ||
+            transaction.attachmentUrl,
+          ),
+        );
         
         // Load attachment from IndexedDB
         get(`attachment_${id}`).then(val => {
-          if (val) setAttachmentUrl(val);
+          if (val) {
+            setAttachmentUrl(val);
+            setIsMoreOptionsOpen(true);
+          }
         });
       }
     }
@@ -169,39 +180,45 @@ export const AddTransaction = () => {
       exit={{ opacity: 0, scale: 0.95 }}
       className="max-w-md mx-auto pb-24"
     >
-      <div className="flex p-1 bg-surface-container-high rounded-full mb-6 w-full max-w-[280px] mx-auto">
+      <div className="mx-auto mb-4 flex w-full max-w-[280px] rounded-full border border-outline-variant/15 bg-surface-container-low p-1">
         <button 
+          type="button"
           onClick={() => setType('expense')}
+          aria-pressed={type === 'expense'}
           className={cn(
-            "flex-1 py-2.5 px-4 rounded-full font-headline font-bold text-xs transition-all",
-            type === 'expense' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
+            'min-h-10 flex-1 rounded-full px-4 py-2.5 font-headline text-xs font-bold transition-all',
+            type === 'expense' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
           )}
         >
           Expense
         </button>
         <button 
+          type="button"
           onClick={() => setType('income')}
+          aria-pressed={type === 'income'}
           className={cn(
-            "flex-1 py-2.5 px-4 rounded-full font-headline font-bold text-xs transition-all",
-            type === 'income' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
+            'min-h-10 flex-1 rounded-full px-4 py-2.5 font-headline text-xs font-bold transition-all',
+            type === 'income' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
           )}
         >
           Income
         </button>
       </div>
 
-      <section className="mb-10 text-center">
-        <label className="block text-on-surface-variant text-micro mb-2 font-bold">Entry Amount</label>
-        <div 
+      <Card as="section" className="mb-4 p-5 text-center">
+        <p className="mb-2 text-micro font-bold uppercase tracking-wide text-on-surface-variant">Amount</p>
+        <button
+          type="button"
           onClick={() => setIsKeypadOpen(true)}
-          className="relative inline-flex items-baseline justify-center cursor-pointer group"
+          className="group relative inline-flex min-h-14 items-baseline justify-center rounded-2xl px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-label={`Edit amount, currently ${APP_CONFIG.currency}${amount}`}
         >
-          <span className="text-3xl font-headline font-extrabold text-on-surface-variant mr-2 group-hover:scale-110 transition-transform">{APP_CONFIG.currency}</span>
-          <span className="text-6xl font-headline font-extrabold text-primary p-0 group-hover:scale-105 transition-transform">
+          <span className="mr-2 font-headline text-2xl font-extrabold text-on-surface-variant">{APP_CONFIG.currency}</span>
+          <span className="p-0 font-headline text-5xl font-extrabold tabular-nums text-primary transition-transform group-active:scale-[0.98]">
             {amount}
           </span>
-          <Pencil className="w-4 h-4 text-primary/30 ml-2 group-hover:text-primary transition-colors" />
-        </div>
+          <Pencil className="ml-2 h-4 w-4 text-primary/40 transition-colors group-hover:text-primary" />
+        </button>
         
         <NumericKeypadModal 
           isOpen={isKeypadOpen} 
@@ -209,53 +226,34 @@ export const AddTransaction = () => {
           onConfirm={(val) => setAmount(val)}
           initialValue={amount}
         />
-      </section>
+      </Card>
 
       <div className="space-y-4">
-        <Card
-          className={cn(
-            'p-6 transition-colors',
-            reportingClass === 'extra' && !transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && 'border-accent-amber/35 bg-accent-amber/10',
-            reportingClass === 'reimbursement' && !transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && 'border-secondary/30 bg-secondary-container/15',
-          )}
-        >
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <label className="block text-on-surface-variant text-micro font-bold">Transaction Title</label>
-            {!transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
-              <div className="flex items-center gap-1">
-                <ReportingTreatmentInfo />
-                <ReportingTreatmentToggle
-                  value={reportingClass}
-                  type={type}
-                  onChange={setReportingClass}
-                />
-              </div>
-            )}
-          </div>
-          {id && transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
-            <p className="text-micro font-bold text-primary mb-3">
+        {id && editingTransaction?.sourceRecurringId && (
+          <p className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs font-bold text-primary">
               This edit applies only to this recurring month
-            </p>
-          )}
+          </p>
+        )}
+
+        <Card className="space-y-5 p-5">
+          <div>
+            <label htmlFor="transaction-title" className="mb-2 block text-xs font-bold text-on-surface-variant">Title</label>
           <input 
-            className="w-full bg-surface-container-highest border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary-container font-bold" 
+            id="transaction-title"
+            className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4 text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/25"
             placeholder="e.g. Weekly Groceries"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-        </Card>
+          </div>
 
-        <Card className="p-6">
           <CategoryPicker
             categories={categories}
             value={category}
             onChange={setCategory}
             onAddCategory={(name) => { addCategory(name); setCategory(name); }}
           />
-        </Card>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
+          <div className="flex flex-col gap-1 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
             <label htmlFor="transaction-date" className="block text-on-surface-variant text-xs font-bold">Date</label>
             <input 
               id="transaction-date"
@@ -265,8 +263,36 @@ export const AddTransaction = () => {
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
-          <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
-            <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs font-bold">Payment Method</label>
+        </Card>
+
+        {!editingTransaction?.sourceRecurringId && (
+          <Card className="flex items-center justify-between gap-4 p-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-bold text-on-surface-variant">Reporting treatment</p>
+                <ReportingTreatmentInfo />
+              </div>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                Keep extras and refunds distinct in reports.
+              </p>
+            </div>
+            <ReportingTreatmentToggle
+              value={reportingClass}
+              type={type}
+              onChange={setReportingClass}
+            />
+          </Card>
+        )}
+
+        <AccordionSection
+          title="More options"
+          description="Payment method, notes, attachment"
+          open={isMoreOptionsOpen}
+          onOpenChange={setIsMoreOptionsOpen}
+        >
+          <div className="space-y-5">
+            <div className="flex flex-col gap-1 rounded-2xl bg-surface-container-low p-4">
+              <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs font-bold">Payment method</label>
             <select
               id="transaction-payment-method"
               className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full appearance-none"
@@ -278,17 +304,16 @@ export const AddTransaction = () => {
               <option value="Cash">Cash</option>
               <option value="Bank Transfer">Bank Transfer</option>
             </select>
-          </div>
-        </div>
+            </div>
 
-        <Card className="p-6">
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-on-surface-variant text-micro font-bold">Description / Notes</label>
+            <label htmlFor="transaction-notes" className="block text-on-surface-variant text-xs font-bold">Notes</label>
             <div className="flex items-center gap-2">
               {attachmentUrl && (
                 <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-outline-variant/20">
                   <img src={attachmentUrl} alt="Attachment" className="w-full h-full object-cover" />
                   <button
+                    type="button"
                     onClick={() => setAttachmentUrl(undefined)}
                     className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
                   >
@@ -297,6 +322,7 @@ export const AddTransaction = () => {
                 </div>
               )}
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1 text-primary text-micro font-bold hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors"
               >
@@ -313,20 +339,23 @@ export const AddTransaction = () => {
             />
           </div>
           <textarea
+            id="transaction-notes"
             className="w-full bg-surface-container-highest border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary-container min-h-[100px] resize-none placeholder:text-on-surface-variant/50"
             placeholder="Add some details about this transaction..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           ></textarea>
-        </Card>
+          </div>
+        </AccordionSection>
       </div>
 
       <div className="mt-8">
         <button 
+          type="button"
           onClick={handleSave}
           className="w-full bg-primary text-on-primary py-4 rounded-2xl font-headline font-extrabold text-base shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
         >
-          {id ? 'Update Transaction' : 'Save Transaction'}
+          {id ? 'Update' : 'Save'} {type}
         </button>
       </div>
     </motion.div>

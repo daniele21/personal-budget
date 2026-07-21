@@ -17,7 +17,7 @@ import {
 } from '../domain/finance';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
-import { Card, Button, EmptyState, LensSelector } from '../components/ui';
+import { Card, Button, EmptyState, FocalSummaryCard, LensSelector } from '../components/ui';
 import { ProgressRow } from '../components/ui/ProgressRow';
 import { haptics } from '../utils/haptics';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -65,9 +65,6 @@ export const BudgetsPage = () => {
     calculateTotals(
       filterByAnalyticsLens(monthlyTransactions, selectedLens).filter((t) => t.category === category),
     ).expenses;
-
-  const getNormalizedSpentForCategory = (category: string) =>
-    getSpentForCategory(category, 'normalized');
 
   const safeToSpendTotals = useMemo(
     () => calculateTotalsByLens(monthlyTransactions, lens),
@@ -127,13 +124,9 @@ export const BudgetsPage = () => {
   // ── Totals ───────────────────────────────────────────────────────────
   const totalLimit = budgets.reduce((acc, b) => acc + b.limit, 0);
   const totalSpent = budgets.reduce((acc, b) => acc + getSpentForCategory(b.category), 0);
-  const totalNormalizedSpent = budgets.reduce(
-    (acc, b) => acc + getNormalizedSpentForCategory(b.category),
-    0,
-  );
-  const totalActualSpent = budgets.reduce((acc, b) => acc + getSpentForCategory(b.category, 'actual'), 0);
-  const totalExtraSpent = Math.max(0, totalActualSpent - totalNormalizedSpent);
   const progress = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
+  const availableBudget = Math.max(0, totalLimit - totalSpent);
+  const remainingPercent = Math.max(0, 100 - progress);
 
   // ── Alerts: budgets near/at limit ───────────────────────────────────
   const alerts = budgets
@@ -150,29 +143,28 @@ export const BudgetsPage = () => {
     <motion.div {...pageTransition} className="space-y-4 pb-24">
 
       {/* ── 1. Monthly category-budget health ── */}
-      <Card
-        variant="inverse"
-        tone={progress >= 100 ? 'danger' : progress >= 90 ? 'warning' : 'primary'}
-        as="section"
+      <FocalSummaryCard
+        tone={progress >= 100 ? 'danger' : progress >= 80 ? 'warning' : 'primary'}
         className="space-y-4"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="font-headline text-sm font-bold text-inverse-on-surface">Monthly category budgets</h2>
+            <h2 className="font-headline text-sm font-bold text-inverse-on-surface">Monthly budget</h2>
             <p className="text-xs text-inverse-on-surface-variant">{formatMonthLabel(selectedMonth)}</p>
           </div>
           <LensSelector value={lens} onChange={setLens} className="max-w-[9.25rem]" />
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-end justify-between gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="font-headline text-3xl font-extrabold leading-none text-inverse-on-surface tabular-nums">{progress}%</p>
-              <p className="mt-1 text-xs text-inverse-on-surface-variant">of category limits used</p>
+              <p className="font-headline text-2xl font-extrabold leading-none text-inverse-on-surface tabular-nums">{formatCurrency(totalSpent)}</p>
+              <p className="mt-1 text-xs text-inverse-on-surface-variant">spent of {formatCurrency(totalLimit)}</p>
             </div>
-            <p className="pb-0.5 text-right text-xs font-bold text-inverse-on-surface-variant tabular-nums">
-              {formatCurrency(totalSpent)} of {formatCurrency(totalLimit)}
-            </p>
+            <div className="text-right">
+              <p className="font-headline text-2xl font-extrabold leading-none text-inverse-on-surface tabular-nums">{formatCurrency(availableBudget)}</p>
+              <p className="mt-1 text-xs text-inverse-on-surface-variant">available</p>
+            </div>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
             <div
@@ -180,7 +172,7 @@ export const BudgetsPage = () => {
                 'h-full rounded-full transition-all duration-1000',
                 progress >= 100
                   ? 'bg-tertiary'
-                  : progress >= 90
+                  : progress >= 80
                   ? 'bg-accent-amber'
                   : progress >= 70
                   ? 'bg-accent-cyan'
@@ -189,11 +181,10 @@ export const BudgetsPage = () => {
               style={{ width: barsMounted ? `${Math.min(100, progress)}%` : '0%' }}
             />
           </div>
-          {lens === 'actual' && totalExtraSpent > 0 && (
-            <p className="text-[10px] font-bold text-inverse-warning">
-              {formatCurrency(totalNormalizedSpent)} net of extras · +{formatCurrency(totalExtraSpent)} extras
-            </p>
-          )}
+          <div className="flex items-center justify-between text-xs font-semibold text-inverse-on-surface-variant">
+            <span>{progress}% used</span>
+            <span>{remainingPercent}% remaining</span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-white/12 pt-3">
@@ -205,7 +196,7 @@ export const BudgetsPage = () => {
             {safeToSpend.usedPercent}% of {formatCurrency(safeToSpend.effectiveLimit)} monthly limit used
           </p>
         </div>
-      </Card>
+      </FocalSummaryCard>
 
       {/* ── 2. Budget progress list ── */}
       <div className="flex items-center justify-between gap-3 px-1">
@@ -224,9 +215,6 @@ export const BudgetsPage = () => {
           <div className="space-y-0 divide-y divide-outline-variant/20">
             {budgets.map((budget) => {
               const spent = getSpentForCategory(budget.category);
-              const normalizedSpent = getNormalizedSpentForCategory(budget.category);
-              const actualSpent = getSpentForCategory(budget.category, 'actual');
-              const extraSpent = Math.max(0, actualSpent - normalizedSpent);
               const budgetProgress = budget.limit > 0 ? Math.round((spent / budget.limit) * 100) : 0;
               const theme = getCategoryTheme(budget.category);
 
@@ -275,7 +263,7 @@ export const BudgetsPage = () => {
                           background:
                             budgetProgress >= 100
                               ? 'var(--color-tertiary)'
-                              : budgetProgress >= 90
+                              : budgetProgress >= 80
                               ? 'var(--color-accent-amber)'
                               : theme.color,
                         }}
@@ -286,7 +274,7 @@ export const BudgetsPage = () => {
                         'w-8 shrink-0 text-right text-[10px] font-bold tabular-nums',
                         budgetProgress >= 100
                           ? 'text-tertiary'
-                          : budgetProgress >= 90
+                          : budgetProgress >= 80
                           ? 'text-accent-amber'
                           : 'text-on-surface-variant',
                       )}
@@ -295,12 +283,6 @@ export const BudgetsPage = () => {
                     </span>
                   </div>
 
-                  {/* Extras note */}
-                  {lens === 'actual' && extraSpent > 0 && (
-                    <p className="text-[10px] font-bold text-accent-amber">
-                      {formatCurrency(normalizedSpent)} net · +{formatCurrency(extraSpent)} extras
-                    </p>
-                  )}
                 </div>
               );
             })}

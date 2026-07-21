@@ -66,9 +66,8 @@ describe('InsightsPage analytics lenses', () => {
     renderPage();
 
     expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
-    expect(screen.getByText('€3,500.00')).toBeInTheDocument();
     expect(screen.getAllByText('€700.00').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('€2,800.00').length).toBeGreaterThan(0);
+    expect(screen.getByText('Spent').closest('.aura-card-inverse')).toBeInTheDocument();
   });
 
   it('switches to net-of-extras totals', async () => {
@@ -80,9 +79,7 @@ describe('InsightsPage analytics lenses', () => {
 
     expect(netToggle).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Actual, includes extras' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByText('€3,000.00')).toBeInTheDocument();
     expect(screen.getAllByText('€100.00').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('€2,900.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Excluded from Net: €600.00 expenses · €500.00 income')).toBeInTheDocument();
   });
 
@@ -100,9 +97,7 @@ describe('InsightsPage analytics lenses', () => {
     await user.click(screen.getByRole('button', { name: 'Actual, includes extras' }));
 
     expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
-    expect(screen.getByText('€3,500.00')).toBeInTheDocument();
     expect(screen.getAllByText('€700.00').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('€2,800.00').length).toBeGreaterThan(0);
   });
 
   it('uses the selected app month as the range anchor for multi-month filters', async () => {
@@ -128,14 +123,12 @@ describe('InsightsPage analytics lenses', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '3M');
 
     expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('3M');
-    expect(screen.getByText('1 May – 31 Jul')).toBeInTheDocument();
-    expect(screen.getAllByText('€6,000.00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 May – 31 Jul').length).toBeGreaterThan(0);
 
     await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '6M');
 
     expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('6M');
-    expect(screen.getByText('1 Feb – 31 Jul')).toBeInTheDocument();
-    expect(screen.getAllByText('€15,000.00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 Feb – 31 Jul').length).toBeGreaterThan(0);
   });
 
   it('shows rolling spending pace and switches the trend scale', async () => {

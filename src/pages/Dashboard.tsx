@@ -14,6 +14,7 @@ import { CategoryBadge } from '../components/ui/CategoryBadge';
 import {
   Card,
   EmptyState,
+  FocalSummaryCard,
   LensSelector,
   Skeleton,
 } from '../components/ui';
@@ -169,16 +170,14 @@ export const Dashboard = () => {
   return (
     <motion.div {...pageTransition} className="space-y-3 pb-24">
       {/* ── 1. Month navigator ─────────────────────────────────────────── */}
-      <div className="aura-control-surface flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5">
+      <div className="aura-control-surface grid grid-cols-[2rem_minmax(0,1fr)_auto_2rem] items-center gap-2 rounded-2xl px-3 py-2.5">
         <button onClick={handlePrevMonth} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/6 text-primary transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Previous month">
           <ChevronLeft className="h-4 w-4 text-primary" />
         </button>
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-2">
-          <div className="shrink-0 text-center">
-            <p className="text-sm font-semibold text-primary">{formatMonthLabel(selectedMonth)}</p>
-          </div>
-          <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
-        </div>
+        <p className="min-w-0 truncate text-center text-sm font-semibold text-primary sm:text-base">
+          {formatMonthLabel(selectedMonth)}
+        </p>
+        <LensSelector value={lens} onChange={setLens} className="mx-0 w-[7.5rem] shrink-0" />
         <button onClick={handleNextMonth} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/6 text-primary transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Next month">
           <ChevronRight className="h-4 w-4 text-primary" />
         </button>
@@ -186,8 +185,7 @@ export const Dashboard = () => {
 
       {/* ── 2. Safe to Spend Hero ─────────────────────────────────────── */}
       <Link to="/budgets" className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:opacity-90">
-        <Card
-          variant="inverse"
+        <FocalSummaryCard
           tone={isOverBudget ? 'danger' : usedPercent > 80 ? 'warning' : 'primary'}
           className="py-4"
         >
@@ -227,7 +225,7 @@ export const Dashboard = () => {
               </p>
             </div>
           </div>
-        </Card>
+        </FocalSummaryCard>
       </Link>
 
       {/* ── 3. Monthly summary ─────────────────────────────────────────── */}
@@ -275,11 +273,11 @@ export const Dashboard = () => {
       </Card>
 
       {homeInsights.length > 0 && (
-        <section className="space-y-2 px-1" aria-label="Monthly insights">
-          <h3 className="text-sm font-semibold text-on-surface">Worth noting</h3>
-          <ul className="space-y-1.5">
+        <section className="rounded-2xl border border-primary/15 bg-primary/5 p-4" aria-label="Monthly insights">
+          <h3 className="text-sm font-semibold text-primary">Worth noting</h3>
+          <ul className="mt-2 space-y-1.5">
             {homeInsights.map((insight) => (
-              <li key={insight} className="border-l-2 border-primary/30 pl-3 text-xs leading-relaxed text-on-surface-variant">{insight}</li>
+              <li key={insight} className="text-xs leading-relaxed text-on-surface-variant">{insight}</li>
             ))}
           </ul>
         </section>

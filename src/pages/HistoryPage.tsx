@@ -515,8 +515,8 @@ export const HistoryPage = () => {
       {...slidePageTransition}
       className="space-y-4 pb-24"
     >
-      <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
+      <section className="flex flex-col gap-2">
+        <div className="order-2 flex items-center justify-between gap-2">
           <SegmentedControl
             ariaLabel="Transaction type filter"
             value={transactionTypeFilter}
@@ -526,7 +526,6 @@ export const HistoryPage = () => {
               { value: 'income', label: 'Income' },
               { value: 'expense', label: 'Expenses' },
             ]}
-            size="compact"
           />
           <div className="flex items-center gap-1.5">
             {hasNonDefaultFilters && (
@@ -542,13 +541,13 @@ export const HistoryPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="order-1 flex items-center gap-2">
           <div className="relative flex-grow group">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
               <Search className="w-4 h-4 text-on-surface-variant/50" />
             </div>
             <input 
-              className="w-full bg-surface-container-highest border-none rounded-full h-11 pl-10 pr-3 focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-on-surface-variant/50 transition-all text-sm"
+              className="h-11 w-full rounded-full border border-outline-variant/15 bg-surface-container-lowest pl-10 pr-3 text-sm text-on-surface transition-all placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20"
               placeholder="Search transactions"
               type="text"
               value={search}
@@ -559,7 +558,7 @@ export const HistoryPage = () => {
             type="button"
             onClick={() => setIsFiltersSheetOpen(true)}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm transition-all',
+              'inline-flex h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm transition-all',
               selectedCategories.length > 0 || periodPreset !== 'current-month'
                 ? 'border-primary bg-primary text-on-primary'
                 : 'border-outline-variant/10 bg-surface-container-lowest text-on-surface',
@@ -570,7 +569,7 @@ export const HistoryPage = () => {
             <ChevronDown className="h-3 w-3 opacity-70" />
           </button>
         </div>
-        <div className="space-y-2 px-1">
+        <div className="order-3 space-y-2 px-1">
           {activeChips.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               {activeChips.map((chip) => (
@@ -578,7 +577,7 @@ export const HistoryPage = () => {
                   key={chip.key}
                   type="button"
                   onClick={chip.onRemove}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-low px-3 py-1.5 text-[11px] font-bold text-on-surface-variant transition-colors hover:bg-surface-container-high"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-[11px] font-bold text-primary transition-colors hover:bg-primary/10"
                 >
                   <span>{chip.label}</span>
                   <X className="h-3 w-3" />

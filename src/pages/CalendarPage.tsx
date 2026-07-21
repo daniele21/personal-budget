@@ -144,24 +144,26 @@ export const CalendarPage = () => {
     setSelectedDate(null);
   };
 
-  const monthTotals = useMemo(() => {
-    const values = Object.values(dailyTotals) as Array<{ income: number; expenses: number }>;
-    return {
-      income: values.reduce((sum, value) => sum + value.income, 0),
-      expenses: values.reduce((sum, value) => sum + value.expenses, 0),
-    };
-  }, [dailyTotals]);
-
-  const monthlyRecurringTotal = useMemo(
-    () => recurring.reduce((sum, item) => (
-      sum + getRecurringOccurrencesInMonth(item, viewYear, viewMonth).reduce((occurrenceSum, occurrenceDate) => {
+  const monthlyPayments = useMemo(
+    () => recurring
+      .filter((item) => item.type !== 'income')
+      .flatMap((item) => getRecurringOccurrencesInMonth(item, viewYear, viewMonth).map((occurrenceDate) => {
         const occurrenceKey = getRecurringOccurrenceKey(item, occurrenceDate);
         const override = getRecurringOverride(item, occurrenceKey);
-        return occurrenceSum + (override?.amount ?? item.amount);
-      }, 0)
-    ), 0),
+        return {
+          name: override?.title ?? item.name,
+          amount: override?.amount ?? item.amount,
+          date: occurrenceDate,
+        };
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime()),
     [recurring, viewYear, viewMonth],
   );
+  const monthlyRecurringTotal = monthlyPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const isPastMonth = new Date(viewYear, viewMonth + 1, 0) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const nextRecurringPayment = monthlyPayments.find((payment) => (
+    isPastMonth || payment.date >= new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  ));
 
   useFocusTrap(recurringFormRef, recurringForm.isOpen, recurringForm.reset);
   useFocusTrap(recurringChoiceRef, recurringActionTarget !== null, () => setRecurringActionTarget(null));
@@ -329,9 +331,10 @@ export const CalendarPage = () => {
       </div>
 
       <CalendarMonthSummary
-        income={monthTotals.income}
-        expenses={monthTotals.expenses}
-        recurringTotal={monthlyRecurringTotal}
+        total={monthlyRecurringTotal}
+        count={monthlyPayments.length}
+        nextPayment={nextRecurringPayment}
+        isPastMonth={isPastMonth}
       />
 
       <CalendarGrid

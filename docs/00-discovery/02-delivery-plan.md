@@ -5,9 +5,11 @@
 - Simplify the primary shell to `Home | Transactions | Add | Budgets | Reports`, with five equally spaced slots and Add at the center; keep More as a secondary tools/settings area reached from a fixed `…` action in every header.
 - Consolidate Insights, Compare, and Year Review into one Reports area.
 - Consolidate Calendar and Recurring into one Planning area with a shared recurring form.
-- Simplify Home, Transactions, Budgets, and More through clearer screen ownership; retain the approved always-visible Add Transaction form.
+- Simplify Home, Transactions, Budgets, and More through clearer screen ownership; use progressive disclosure for optional Add Transaction fields while keeping required fields and recurring notices visible.
 - Keep Actual as the default lens with a minimal Home/Budgets control and a complete Reports control.
 - Reduce decorative surface effects while preserving semantic hierarchy, theme parity, and accessibility.
+- Apply one inverse focal financial summary at most per screen, keep standard light surfaces white, and reserve solid primary blue for actions and selected controls.
+- Keep the existing bottom navigation and TopBar information architecture unchanged during the color-hierarchy refinement.
 - Track task-level progress, dependencies, quality gates, and risks in [`08-ux-simplification-progress-plan.md`](./08-ux-simplification-progress-plan.md).
 - Keep the initiative local-first: no new backend, provider, AI workflow, subprocessor, or admin access to personal financial data.
 

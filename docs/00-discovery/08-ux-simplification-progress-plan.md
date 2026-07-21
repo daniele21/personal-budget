@@ -40,7 +40,7 @@ Last updated: 2026-07-21
 | M3. Unified Reports | In progress | Shared route-aware report shell, canonical views, and session-scoped three-state lens implemented; content reduction remains open |
 | M4. Unified Planning | In progress | Functional implementation and automated coverage complete; narrow-width and light/dark visual verification remains open |
 | M5. Transactions simplification | In progress | Primary controls simplified; combined Filters/Sort and Import relocation implemented; operational regression coverage remains open |
-| M6. Add Transaction simplification | Done | Progressive disclosure was rejected by product decision; the original always-visible form UI is retained |
+| M6. Add Transaction simplification | Done | Decision superseded: optional fields now use accessible progressive disclosure with edit-state protection |
 | M7. Home and Budgets simplification | In progress | Functional UI and regression coverage complete; visual viewport/theme verification remains open |
 | M8. More and visual-system reduction | In progress | More inventory and neutral shared surfaces implemented; visual comparison and theme verification remain open |
 | M9. Regression, release, and documentation sync | In progress | Automated quality gate and documentation sync complete; manual visual/accessibility release checks remain open |
@@ -336,7 +336,7 @@ Exit criteria:
 
 ### M6. Add Transaction UI Decision
 
-Goal: preserve the established Add Transaction form without progressive disclosure.
+Goal: keep the primary Add Transaction path immediate while progressively disclosing optional fields.
 
 Status: **Done**
 
@@ -344,16 +344,17 @@ Dependencies: M1 shared disclosure pattern.
 
 Tasks:
 
-- [x] Reject the proposed `More options` disclosure for this form.
-- [x] Restore payment method, reporting treatment, description, and attachment as always-visible fields.
-- [x] Restore the existing `Save Transaction` and `Update Transaction` actions.
+- [x] Add an accessible `More options` disclosure for optional fields.
+- [x] Move payment method, reporting treatment, description, and attachment into the disclosure.
+- [x] Automatically open advanced fields when editing meaningful non-default values.
+- [x] Use contextual Save/Update expense/income actions.
 - [x] Preserve validation, attachment handling, reporting invariants, edit behavior, and recurring-occurrence messaging unchanged.
 - [x] Add an accessible information dialog explaining how Extra and Refund affect Actual, Net, Extras only, income, expenses, and category budgets.
 
 Exit criteria:
 
-- the original Add Transaction UI remains intact;
-- no progressive-disclosure state or duplicate test remains;
+- required fields remain immediately available;
+- optional values are never silently hidden during edit;
 - reporting and recurring invariants do not regress.
 
 ### M7. Home And Budgets Simplification
@@ -574,6 +575,8 @@ Use this table for decisions or conditions that change delivery.
 | 2026-07-21 | Progress | M4 | Added shared Planning tabs, canonical Calendar/Recurring routes, legacy aliases, and canonical search/notification links | Route and component regression coverage passes; recurring form extraction remains open |
 | 2026-07-21 | Progress | M5 | Removed duplicate Transactions heading and primary Import, combined filter/sort controls, and suppressed default metadata | Import now opens from More via a canonical query entry; broad operational tests remain open |
 | 2026-07-21 | Decision | M6 | Rejected `More options` and contextual CTA changes for Add Transaction | Restored the original always-visible form UI and removed the superseded progressive-disclosure test |
+| 2026-07-21 | Superseding decision | M6 | Approved `More options` and contextual CTA copy for Add Transaction | Optional fields are collapsed for create and automatically revealed for meaningful edit state; regression coverage added |
+| 2026-07-21 | Visual hierarchy | M1/M3/M4/M7/M8 | Approved one inverse focal summary per analytical or planning view, white standard light surfaces, and primary selected controls | Navigation remains unchanged; 207 automated tests and production build pass |
 | 2026-07-21 | Improvement | M6 | Added an information action beside Extra/Refund with a focus-managed explanatory dialog | Copy is grounded in the domain calculations and introduces no new financial behavior |
 | 2026-07-21 | Fix | M1/M6 | Rendered shared bottom sheets through a document-level portal after nested Add Transaction surfaces appeared above the Extra/Refund dialog | The dialog and backdrop now occupy the intended top-level stacking layer; portal placement has regression coverage |
 | 2026-07-21 | Progress | M4 | Extracted the recurring type, name, amount, schedule, reminder, and category controls into one shared form used by Calendar and Recurring | Recurring now supports income and expense consistently in both views; typecheck, component tests, and production build pass |

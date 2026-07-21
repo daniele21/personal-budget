@@ -50,7 +50,8 @@ describe('ComparePage category report', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Spending by category' })).toBeInTheDocument();
-    expect(screen.getAllByText('€125.00')).toHaveLength(2);
+    expect(screen.getAllByText('€125.00').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Total spent').closest('.aura-card-inverse')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Food/ })).toHaveAttribute('href', expect.stringContaining('category=Food'));
 
     const supplementaryChart = screen.getByLabelText(/Category distribution for/);

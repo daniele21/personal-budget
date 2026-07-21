@@ -1,27 +1,59 @@
 import React from 'react';
+import { FocalSummaryCard } from '../ui';
 import { formatCurrency } from '../../utils/formatters';
 
-interface CalendarMonthSummaryProps {
-  income: number;
-  expenses: number;
-  recurringTotal: number;
+interface NextPayment {
+  name: string;
+  date: Date;
+  amount: number;
 }
 
-export function CalendarMonthSummary({ income, expenses, recurringTotal }: CalendarMonthSummaryProps) {
+interface CalendarMonthSummaryProps {
+  total: number;
+  count: number;
+  nextPayment?: NextPayment;
+  isPastMonth: boolean;
+}
+
+export function CalendarMonthSummary({ total, count, nextPayment, isPastMonth }: CalendarMonthSummaryProps) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysUntil = nextPayment
+    ? Math.max(0, Math.ceil((nextPayment.date.getTime() - today.getTime()) / 86_400_000))
+    : null;
+  const urgencyClass = daysUntil !== null && daysUntil <= 3
+    ? 'text-inverse-danger'
+    : daysUntil !== null && daysUntil <= 7
+      ? 'text-inverse-warning'
+      : 'text-inverse-on-surface-variant';
+
   return (
-    <div className="grid grid-cols-3 gap-2">
-      <div className="rounded-2xl border border-outline-variant/5 bg-surface-container-lowest p-3">
-        <p className="text-micro text-on-surface-variant font-bold mb-1">Income</p>
-        <p className="text-base font-bold text-secondary">{formatCurrency(income)}</p>
+    <FocalSummaryCard tone={daysUntil !== null && daysUntil <= 3 ? 'danger' : daysUntil !== null && daysUntil <= 7 ? 'warning' : 'primary'}>
+      <div>
+        <p className="text-xs font-semibold text-inverse-on-surface-variant">
+          {isPastMonth ? 'Scheduled in this month' : 'Upcoming this month'}
+        </p>
+        <p className="mt-1 font-headline text-4xl font-extrabold tabular-nums text-inverse-on-surface">
+          {formatCurrency(total)}
+        </p>
+        <p className="mt-1 text-xs text-inverse-on-surface-variant">
+          {count} recurring {count === 1 ? 'payment' : 'payments'}
+        </p>
       </div>
-      <div className="rounded-2xl border border-outline-variant/5 bg-surface-container-lowest p-3">
-        <p className="text-micro text-on-surface-variant font-bold mb-1">Expenses</p>
-        <p className="text-base font-bold text-tertiary">{formatCurrency(expenses)}</p>
-      </div>
-      <div className="rounded-2xl border border-outline-variant/5 bg-surface-container-lowest p-3">
-        <p className="text-micro text-on-surface-variant font-bold mb-1">Recurring</p>
-        <p className="text-base font-bold text-primary">{formatCurrency(recurringTotal)}</p>
-      </div>
-    </div>
+
+      {nextPayment && (
+        <div className="flex items-end justify-between gap-3 border-t border-white/12 pt-3">
+          <div className="min-w-0">
+            <p className="text-micro font-bold uppercase tracking-wide text-inverse-on-surface-variant">Next up</p>
+            <p className="mt-1 truncate text-sm font-bold text-inverse-on-surface">{nextPayment.name}</p>
+            <p className={`mt-0.5 text-xs font-semibold ${urgencyClass}`}>
+              {nextPayment.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {daysUntil !== null && !isPastMonth ? ` · ${daysUntil === 0 ? 'due today' : `due in ${daysUntil} days`}` : ''}
+            </p>
+          </div>
+          <p className="shrink-0 text-sm font-bold tabular-nums text-inverse-on-surface">{formatCurrency(nextPayment.amount)}</p>
+        </div>
+      )}
+    </FocalSummaryCard>
   );
 }

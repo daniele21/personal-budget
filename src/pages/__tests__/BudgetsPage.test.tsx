@@ -54,31 +54,32 @@ describe('BudgetsPage extra reporting', () => {
     });
   });
 
-  it('uses actual spend as the default budget progress and shows net-of-extras as secondary context', () => {
+  it('uses actual spend as the default budget progress', () => {
     render(<BudgetsPage />);
 
-    expect(screen.getAllByText('€300.00 of €500.00')).toHaveLength(2);
-    expect(screen.getByText('€100.00 net of extras · +€200.00 extras')).toBeInTheDocument();
-    expect(screen.getByText('€100.00 net · +€200.00 extras')).toBeInTheDocument();
+    expect(screen.getByText('€300.00')).toBeInTheDocument();
+    expect(screen.getByText('spent of €500.00')).toBeInTheDocument();
+    expect(screen.getByText('60% used')).toBeInTheDocument();
   });
 
   it('switches budget progress to net view when Net is selected', async () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
 
-    expect(screen.getAllByText('60%')).toHaveLength(2);
+    expect(screen.getByText('60% used')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Net of extras' }));
 
-    expect(screen.getAllByText('20%')).toHaveLength(2);
-    expect(screen.queryByText('€100.00 net · +€200.00 extras')).not.toBeInTheDocument();
+    expect(screen.getByText('20% used')).toBeInTheDocument();
+    expect(screen.getByText('€100.00')).toBeInTheDocument();
   });
 
   it('labels the monthly limit and category-budget denominators separately', () => {
     render(<BudgetsPage />);
 
-    expect(screen.getByText('Monthly category budgets')).toBeInTheDocument();
-    expect(screen.getByText('of category limits used')).toBeInTheDocument();
+    expect(screen.getByText('Monthly budget')).toBeInTheDocument();
+    expect(screen.getByText('60% used')).toBeInTheDocument();
+    expect(screen.getByText('40% remaining')).toBeInTheDocument();
     expect(screen.getByText('Safe to spend')).toBeInTheDocument();
     expect(screen.getByText('10% of €3,000.00 monthly limit used')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /monthly limit used/ })).not.toBeInTheDocument();

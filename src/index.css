@@ -29,7 +29,7 @@
   --font-size-hero: 2.25rem;      /* 36px — balance, key metrics */
 
   /* --- Brand color palette (Aura Finance) --- */
-  --color-surface: #edf3f7;
+  --color-surface: #f6f8fb;
   --color-on-surface: #101828;
   --color-on-surface-variant: #667085;
   --color-primary: #003461;
@@ -46,7 +46,7 @@
   --color-accent-pink: #ec4899;
   --color-accent-lime: #84cc16;
   --color-surface-container-low: #f5f8fa;
-  --color-surface-container-lowest: #fcfdfe;
+  --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #e7eef4;
   --color-surface-container-highest: #d8e2ea;
   --color-outline-variant: #c7d3dd;
@@ -181,7 +181,6 @@
   content: none;
 }
 
-.aura-card-elevated::after,
 .aura-control-surface::after,
 .aura-segmented-control::after {
   content: '';
@@ -206,27 +205,11 @@
   --aura-tone-wash: 5%;
   position: relative;
   isolation: isolate;
-  background: transparent;
-  border: 0;
+  background: var(--color-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 58%, transparent);
   border-radius: 1.25rem;
   box-shadow: var(--aura-card-shadow-elevated);
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
-}
-
-.aura-card-elevated::before {
-  inset: -3px;
-  filter: blur(7px);
-  opacity: 0.34;
-}
-
-.aura-card-elevated::after {
-  background:
-    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--aura-tone-soft) 9%, transparent), transparent 38%),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)) 0%,
-      var(--color-surface-container-lowest) 66%
-    );
 }
 
 .aura-card-elevated:hover {
@@ -263,20 +246,13 @@
   --aura-tone-wash: 6%;
 }
 
-/* Deliberately visible wash for a small number of focal dashboard surfaces. */
+/* Optional flat semantic wash. Gradients are reserved for inverse focal cards. */
 .aura-card-colorized {
-  --aura-tone-wash: 12%;
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 92%, var(--aura-tone));
 }
 
 .aura-card-elevated.aura-card-colorized::after {
-  background:
-    radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--aura-tone-soft) 18%, transparent), transparent 42%),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)) 0%,
-      color-mix(in srgb, var(--color-surface-container-lowest) 95%, var(--aura-tone-soft)) 54%,
-      var(--color-surface-container-lowest) 100%
-    );
+  content: none;
 }
 
 /** Inverse financial anchor: one dark focal surface inside the light workspace. */
@@ -360,15 +336,11 @@
 }
 
 .aura-section-tone-primary {
-  background:
-    radial-gradient(circle at 95% 8%, color-mix(in srgb, var(--color-accent-cyan) 15%, transparent), transparent 38%),
-    linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-low) 88%, var(--color-primary)), var(--color-surface-container-low) 72%);
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 94%, var(--color-primary));
 }
 
 .aura-section-tone-warning {
-  background:
-    radial-gradient(circle at 92% 12%, color-mix(in srgb, var(--color-tertiary) 11%, transparent), transparent 42%),
-    linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-low) 86%, var(--color-accent-amber)), var(--color-surface-container-low) 74%);
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 93%, var(--color-accent-amber));
 }
 
 /* One shared analytical panel is calmer and more structured than four elevated KPI cards. */
@@ -382,9 +354,7 @@
 
 .aura-kpi-cell {
   min-width: 0;
-  background:
-    radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--aura-kpi-tone) 13%, transparent), transparent 42%),
-    linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-lowest) 89%, var(--aura-kpi-tone)), var(--color-surface-container-lowest) 78%);
+  background: var(--color-surface-container-lowest);
 }
 
 .aura-kpi-cell:nth-child(2n) {
@@ -450,12 +420,12 @@
 
 .aura-icon-chip-primary {
   color: var(--color-primary);
-  background: linear-gradient(145deg, color-mix(in srgb, var(--color-accent-cyan) 18%, var(--color-surface-container-lowest)), color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-container-lowest)));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 88%, var(--color-primary));
 }
 
 .aura-icon-chip-positive {
   color: var(--color-secondary);
-  background: linear-gradient(145deg, color-mix(in srgb, var(--color-accent-lime) 20%, var(--color-surface-container-lowest)), color-mix(in srgb, var(--color-secondary) 12%, var(--color-surface-container-lowest)));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 86%, var(--color-secondary));
 }
 
 .aura-status-primary,
@@ -470,25 +440,25 @@
 
 .aura-status-primary {
   color: var(--color-primary);
-  background: linear-gradient(110deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-accent-cyan) 13%, transparent));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 90%, var(--color-primary));
 }
 
 .aura-status-warning {
   color: color-mix(in srgb, var(--color-accent-amber) 72%, var(--color-on-surface));
-  background: linear-gradient(110deg, color-mix(in srgb, var(--color-accent-amber) 15%, transparent), color-mix(in srgb, var(--color-primary) 6%, transparent));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 86%, var(--color-accent-amber));
 }
 
 .aura-status-danger {
   color: var(--color-tertiary);
-  background: linear-gradient(110deg, color-mix(in srgb, var(--color-tertiary) 12%, transparent), color-mix(in srgb, var(--color-accent-amber) 10%, transparent));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 88%, var(--color-tertiary));
 }
 
 .aura-lens-selected-primary {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 90%, var(--color-primary));
 }
 
 .aura-lens-selected-amber {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent-amber) 16%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest));
+  background: color-mix(in srgb, var(--color-surface-container-lowest) 86%, var(--color-accent-amber));
 }
 
 .aura-metric-positive,
@@ -497,27 +467,19 @@
 }
 
 .aura-metric-positive {
-  background:
-    radial-gradient(circle at 18% 15%, color-mix(in srgb, var(--color-accent-lime) 15%, transparent), transparent 44%),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 12%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 78%);
+  background: var(--color-surface-container-lowest);
 }
 
 .aura-metric-positive:hover {
-  background:
-    radial-gradient(circle at 18% 15%, color-mix(in srgb, var(--color-accent-lime) 20%, transparent), transparent 46%),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 15%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 80%);
+  background: var(--color-surface-container-low);
 }
 
 .aura-metric-neutral {
-  background:
-    radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--color-accent-cyan) 14%, transparent), transparent 44%),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 78%);
+  background: var(--color-surface-container-lowest);
 }
 
 .aura-metric-neutral:hover {
-  background:
-    radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--color-accent-cyan) 19%, transparent), transparent 46%),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 13%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 80%);
+  background: var(--color-surface-container-low);
 }
 
 .aura-metric-divider::before {

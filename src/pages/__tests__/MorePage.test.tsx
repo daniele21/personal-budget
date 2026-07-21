@@ -45,6 +45,7 @@ describe('MorePage appearance settings', () => {
     expect(screen.queryByText('Budgets')).not.toBeInTheDocument();
     expect(screen.queryByText('Year in Review')).not.toBeInTheDocument();
     expect(screen.queryByText('Install Aura')).not.toBeInTheDocument();
-    expect(screen.getByText('Stored locally; cloud backup is off')).toBeInTheDocument();
+    expect(screen.getByText('Private by design')).toBeInTheDocument();
+    expect(screen.getByText('Local-first data and secure optional backup')).toBeInTheDocument();
   });
 });

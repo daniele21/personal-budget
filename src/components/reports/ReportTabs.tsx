@@ -26,7 +26,7 @@ export function ReportTabs({ activeView }: { activeView: ReportView }) {
             'flex min-h-9 min-w-0 items-center justify-center rounded-lg px-1.5 text-[11px] font-bold transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
             activeView === view.value
-              ? 'bg-surface-container-lowest text-primary shadow-sm'
+              ? 'bg-primary text-on-primary shadow-sm'
               : 'text-on-surface-variant hover:text-on-surface',
           )}
         >

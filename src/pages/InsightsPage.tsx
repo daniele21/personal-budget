@@ -16,7 +16,7 @@ import { formatCurrency } from '../utils/formatters';
 import * as Finance from '../domain/finance';
 import { Transaction } from '../types';
 import { pageTransition } from '../utils/motion';
-import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, SegmentedControl } from '../components/ui';
+import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, FocalSummaryCard, SegmentedControl } from '../components/ui';
 
 // ─── Period helpers ──────────────────────────────────────────────────
 
@@ -78,43 +78,6 @@ const ChartTooltip = ({ active, payload, label }: any) => {
     </div>
   );
 };
-
-// ─── 2x2 KPI Card ─────────────────────────────────────────────────────
-
-interface KpiCardProps {
-  label: string;
-  value: string;
-  change: string | null;
-  positive: boolean;
-  sub?: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  surfaceClassName: string;
-  valueClassName?: string;
-  className?: string;
-}
-
-function KpiCard({ label, value, change, positive, sub, icon, iconBg, surfaceClassName, valueClassName, className }: KpiCardProps) {
-  return (
-    <div className={cn('aura-kpi-cell space-y-1.5 p-3.5', surfaceClassName, className)}>
-      <div className="flex items-center gap-2">
-        <span className={cn('flex h-7 w-7 items-center justify-center rounded-xl text-white', iconBg)}>
-          {icon}
-        </span>
-        <span className="text-xs font-bold text-on-surface-variant">{label}</span>
-      </div>
-      <p className={cn("font-headline text-xl font-extrabold tabular-nums leading-tight", valueClassName || "text-on-surface")}>
-        {value}
-      </p>
-      {change && (
-        <p className={cn('text-[10px] font-bold', positive ? 'text-secondary' : 'text-tertiary')}>
-          {change}
-        </p>
-      )}
-      {sub && <p className="text-[10px] font-semibold text-on-surface-variant">{sub}</p>}
-    </div>
-  );
-}
 
 // ─── Cash flow progress bar ────────────────────────────────────────────
 
@@ -225,9 +188,6 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
 
   const totals = useMemo(() => Finance.calculateTotals(periodTx), [periodTx]);
   const prevTotals = useMemo(() => Finance.calculateTotals(prevTx), [prevTx]);
-  const incomeChange = prevTotals.income > 0
-    ? ((totals.income - prevTotals.income) / prevTotals.income) * 100
-    : null;
   const expenseChange = prevTotals.expenses > 0
     ? ((totals.expenses - prevTotals.expenses) / prevTotals.expenses) * 100
     : null;
@@ -343,40 +303,22 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
         </div>
       )}
 
-      {/* ── 2×2 KPI grid ── */}
-      <div className="aura-kpi-panel grid grid-cols-2">
-        <KpiCard
-          label="Income"
-          value={formatCurrency(totals.income)}
-          change={incomeChange !== null ? `${incomeChange >= 0 ? '+' : ''}${incomeChange.toFixed(0)}% vs ${comparisonLabel}` : null}
-          positive={incomeChange !== null && incomeChange >= 0}
-          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-          iconBg="bg-secondary"
-          surfaceClassName="aura-kpi-positive"
-          valueClassName="text-secondary"
-        />
-        <KpiCard
-          label="Expenses"
-          value={formatCurrency(totals.expenses)}
-          change={expenseChange !== null ? `${expenseChange >= 0 ? '+' : ''}${expenseChange.toFixed(0)}% vs ${comparisonLabel}` : null}
-          positive={expenseChange !== null && expenseChange <= 0}
-          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>}
-          iconBg="bg-primary"
-          surfaceClassName="aura-kpi-neutral"
-          valueClassName="text-on-surface"
-        />
-        <KpiCard
-          label="Net Cash Flow"
-          value={formatCurrency(totals.net)}
-          change={netChange !== null ? `${netChange >= 0 ? '+' : ''}${netChange.toFixed(0)}% vs ${comparisonLabel}` : null}
-          positive={netChange !== null && netChange >= 0}
-          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M3 12h18M12 3l9 9-9 9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-          iconBg="bg-accent-cyan"
-          surfaceClassName="aura-kpi-primary"
-          valueClassName={totals.net >= 0 ? "text-secondary" : "text-tertiary"}
-          className="col-span-2"
-        />
-      </div>
+      <FocalSummaryCard tone={expenseChange !== null && expenseChange > 0 ? 'warning' : 'primary'}>
+        <div>
+          <p className="text-xs font-semibold text-inverse-on-surface-variant">Spent</p>
+          <p className="mt-1 font-headline text-4xl font-extrabold tabular-nums text-inverse-on-surface">
+            {formatCurrency(totals.expenses)}
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs text-inverse-on-surface-variant">
+          <span>{periodLabel}</span>
+          {expenseChange !== null && (
+            <span className={expenseChange <= 0 ? 'text-inverse-positive' : 'text-inverse-warning'}>
+              {expenseChange >= 0 ? '+' : ''}{expenseChange.toFixed(0)}% vs {comparisonLabel}
+            </span>
+          )}
+        </div>
+      </FocalSummaryCard>
 
       {/* ── Rolling spending pace ── */}
       <button

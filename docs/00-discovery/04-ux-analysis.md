@@ -8,6 +8,15 @@
 
 L’architettura operativa implementata usa cinque slot equivalenti nella bottom navigation: `Home | Transactions | Add | Budgets | Reports`. Add è l’azione centrale; More è raggiungibile dal controllo `…` fisso in ogni variante della TopBar, mentre l’avatar apre Profile.
 
+## Color Hierarchy Refinement — 2026-07-21
+
+- La navigazione primaria e la TopBar restano invariate.
+- Home mantiene mese/anno e `Actual | Net` nello stesso controllo, ma in colonne indipendenti: il periodo è centrato e il Lens resta allineato a destra.
+- Budgets mantiene il Lens visibile e ricompone la focal summary attorno a speso, disponibile, percentuale usata e residua.
+- Add Transaction mostra subito soltanto il percorso principale e sposta metodo di pagamento, trattamento, note e allegato in `More options`; in modifica, valori avanzati esistenti aprono automaticamente la sezione.
+- Reports rende il Lens accessibile da `View options` e ne mostra sempre lo stato attivo sul trigger.
+- Calendar usa una sola summary per pagamenti ricorrenti; More porta il callout privacy prima delle liste operative.
+
 - Reports è l’unica area analitica completa (`Overview | Categories | Compare | Year`).
 - Planning unifica Calendar e Recurring con form, stato, validazione e preparazione dati condivisi.
 - Home orienta sulla disponibilità corrente, usa una preview cash-flow compatta e mostra al massimo due insight deterministici.

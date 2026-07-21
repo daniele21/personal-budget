@@ -1,4 +1,5 @@
 export { Card } from './Card';
+export { FocalSummaryCard } from './FocalSummaryCard';
 export { Button } from './Button';
 export { Switch } from './Switch';
 export { Input, Select } from './Input';
