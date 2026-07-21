@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AddTransaction } from '../AddTransaction';
@@ -43,12 +43,29 @@ describe('AddTransaction progressive disclosure', () => {
     expect(screen.queryByLabelText('Payment method')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark as extra' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save expense' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Transaction type' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Category: Food/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Date')).toBeInTheDocument();
 
     await user.click(options);
 
     expect(options).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByLabelText('Payment method')).toBeInTheDocument();
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add receipt' })).toBeInTheDocument();
+  });
+
+  it('switches transaction type in place and keeps one clear primary action', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const typeControl = screen.getByRole('group', { name: 'Transaction type' });
+    await user.click(within(typeControl).getByRole('button', { name: 'Income' }));
+
+    expect(within(typeControl).getByRole('button', { name: 'Income' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Save income' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mark as refund' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Save (expense|income)/i })).toHaveLength(1);
   });
 
   it('opens advanced fields when editing meaningful existing values', () => {

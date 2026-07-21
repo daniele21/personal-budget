@@ -345,7 +345,7 @@ Dependencies: M1 shared disclosure pattern.
 Tasks:
 
 - [x] Add an accessible `More options` disclosure for optional fields.
-- [x] Move payment method, reporting treatment, description, and attachment into the disclosure.
+- [x] Keep reporting treatment visible as a compact choice; move payment method, description, and attachment into the disclosure.
 - [x] Automatically open advanced fields when editing meaningful non-default values.
 - [x] Use contextual Save/Update expense/income actions.
 - [x] Preserve validation, attachment handling, reporting invariants, edit behavior, and recurring-occurrence messaging unchanged.
@@ -581,6 +581,7 @@ Use this table for decisions or conditions that change delivery.
 | 2026-07-21 | Fix | M1/M6 | Rendered shared bottom sheets through a document-level portal after nested Add Transaction surfaces appeared above the Extra/Refund dialog | The dialog and backdrop now occupy the intended top-level stacking layer; portal placement has regression coverage |
 | 2026-07-21 | Progress | M4 | Extracted the recurring type, name, amount, schedule, reminder, and category controls into one shared form used by Calendar and Recurring | Recurring now supports income and expense consistently in both views; typecheck, component tests, and production build pass |
 | 2026-07-21 | Accessibility | M1/M4 | Associated shared Input and Select labels with their controls using stable generated IDs | Date fields now expose accessible names without requiring page-level IDs |
+| 2026-07-21 | UX refinement | M6 | Rebuilt Add Transaction as two compact grouped surfaces with a shared type control, compact category picker, semantic form submit, and sticky contextual CTA | Financial and storage behavior is unchanged; targeted regression coverage passes, while 320/390 px light/dark visual QA remains pending because no browser was available |
 | 2026-07-21 | Progress | M4 | Moved recurring draft state, create/edit hydration, validation, date normalization, entity construction, and override preservation into shared hook/domain helpers | Both Planning views now use one orchestration path; all 27 suites and 197 tests pass |
 | 2026-07-21 | Fix | M4 | Corrected recurring Undo to restore from the post-deletion list instead of the stale pre-deletion state | Prevents a deleted recurring plan from being duplicated when Undo is selected in Calendar or Recurring |
 | 2026-07-21 | Coverage | M4 | Added UI regressions for recurring delete/undo and occurrence-only edits | Functional M4 coverage is complete; visual viewport/theme verification remains before Done |

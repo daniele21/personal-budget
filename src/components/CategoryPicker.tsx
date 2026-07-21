@@ -12,6 +12,7 @@ interface CategoryPickerProps {
   onAddCategory?: (name: string) => void;
   label?: string;
   disabled?: boolean;
+  density?: 'default' | 'compact';
 }
 
 export const CategoryPicker = ({
@@ -21,6 +22,7 @@ export const CategoryPicker = ({
   onAddCategory,
   label = 'Category',
   disabled = false,
+  density = 'default',
 }: CategoryPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -61,22 +63,40 @@ export const CategoryPicker = ({
 
   return (
     <>
-      <div>
-        <label className="block text-micro font-bold text-on-surface-variant mb-2">{label}</label>
+      <div className={cn(density === 'compact' && 'h-full')}>
+        {density === 'default' && (
+          <label className="mb-2 block text-micro font-bold text-on-surface-variant">{label}</label>
+        )}
         <button
           type="button"
           onClick={() => setIsOpen(true)}
           disabled={disabled}
-          className="w-full flex items-center gap-3 rounded-2xl bg-surface-container-high px-4 py-3 text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface-container-high"
+          className={cn(
+            'flex w-full items-center text-left transition-all focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60',
+            density === 'compact'
+              ? 'h-full min-h-16 gap-2.5 rounded-none bg-transparent px-3.5 py-3 hover:bg-surface-container-low disabled:hover:bg-transparent'
+              : 'gap-3 rounded-2xl bg-surface-container-high px-4 py-3 hover:bg-surface-container-low disabled:hover:bg-surface-container-high',
+          )}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
+          aria-label={`${label}: ${selectedCategory || 'not selected'}. Choose category`}
         >
-          <div className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center flex-shrink-0">
+          <div className={cn(
+            'flex flex-shrink-0 items-center justify-center bg-surface-container-lowest',
+            density === 'compact' ? 'h-8 w-8 rounded-lg' : 'h-10 w-10 rounded-xl',
+          )}>
             <CategoryIcon category={selectedCategory} className="w-4 h-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-on-surface truncate">{selectedCategory || 'Select category'}</p>
-            <p className="text-micro font-bold text-on-surface-variant">{disabled ? 'Locked for this budget' : 'Tap to choose'}</p>
+            {density === 'compact' && (
+              <p className="mb-0.5 text-micro font-bold text-on-surface-variant">{label}</p>
+            )}
+            <p className={cn('truncate font-bold text-on-surface', density === 'compact' ? 'text-xs' : 'text-sm')}>
+              {selectedCategory || 'Select category'}
+            </p>
+            {density === 'default' && (
+              <p className="text-micro font-bold text-on-surface-variant">{disabled ? 'Locked for this budget' : 'Tap to choose'}</p>
+            )}
           </div>
           <ChevronRight className="w-4 h-4 text-on-surface-variant flex-shrink-0" />
         </button>

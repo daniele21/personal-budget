@@ -13,7 +13,7 @@ L’architettura operativa implementata usa cinque slot equivalenti nella bottom
 - La navigazione primaria e la TopBar restano invariate.
 - Home mantiene mese/anno e `Actual | Net` nello stesso controllo, ma in colonne indipendenti: il periodo è centrato e il Lens resta allineato a destra.
 - Budgets mantiene il Lens visibile e ricompone la focal summary attorno a speso, disponibile, percentuale usata e residua.
-- Add Transaction mostra subito soltanto il percorso principale e sposta metodo di pagamento, trattamento, note e allegato in `More options`; in modifica, valori avanzati esistenti aprono automaticamente la sezione.
+- Add Transaction raggruppa tipo e importo in una superficie compatta, mantiene titolo, categoria, data e trattamento nel percorso principale, e sposta metodo di pagamento, note e ricevuta in `More options`; in modifica, valori avanzati esistenti aprono automaticamente la sezione e la CTA resta raggiungibile sopra la bottom navigation.
 - Reports rende il Lens accessibile da `View options` e ne mostra sempre lo stato attivo sul trigger.
 - Calendar usa una sola summary per pagamenti ricorrenti; More porta il callout privacy prima delle liste operative.
 

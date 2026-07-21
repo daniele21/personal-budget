@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Pencil, X, Camera } from 'lucide-react';
 import { get, set, del } from 'idb-keyval';
-import { cn } from '../lib/utils';
 import { APP_CONFIG } from '../constants';
 import { Transaction, TransactionReportingClass } from '../types';
 import { CategoryPicker } from '../components/CategoryPicker';
@@ -11,7 +10,7 @@ import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { upsertRecurringOverride } from '../domain/recurring';
-import { AccordionSection, Card } from '../components/ui';
+import { AccordionSection, Button, Card, SegmentedControl } from '../components/ui';
 import { ReportingTreatmentToggle } from '../components/ExtraFlagToggle';
 import { ReportingTreatmentInfo } from '../components/ReportingTreatmentInfo';
 import { getLocalDateInputValue } from '../utils/dates';
@@ -175,190 +174,187 @@ export const AddTransaction = () => {
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="max-w-md mx-auto pb-24"
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 4 }}
+      className="mx-auto max-w-md pb-20"
     >
-      <div className="mx-auto mb-4 flex w-full max-w-[280px] rounded-full border border-outline-variant/15 bg-surface-container-low p-1">
-        <button 
-          type="button"
-          onClick={() => setType('expense')}
-          aria-pressed={type === 'expense'}
-          className={cn(
-            'min-h-10 flex-1 rounded-full px-4 py-2.5 font-headline text-xs font-bold transition-all',
-            type === 'expense' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
-          )}
-        >
-          Expense
-        </button>
-        <button 
-          type="button"
-          onClick={() => setType('income')}
-          aria-pressed={type === 'income'}
-          className={cn(
-            'min-h-10 flex-1 rounded-full px-4 py-2.5 font-headline text-xs font-bold transition-all',
-            type === 'income' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
-          )}
-        >
-          Income
-        </button>
-      </div>
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSave();
+        }}
+        className="space-y-3"
+      >
+        <Card as="section" className="overflow-hidden p-0 text-center">
+          <div className="border-b border-outline-variant/10 p-2.5">
+            <SegmentedControl
+              value={type}
+              onChange={setType}
+              ariaLabel="Transaction type"
+              className="w-full border-0 bg-surface-container-low"
+              optionClassName="min-h-9"
+              options={[
+                { value: 'expense', label: 'Expense' },
+                { value: 'income', label: 'Income' },
+              ]}
+            />
+          </div>
 
-      <Card as="section" className="mb-4 p-5 text-center">
-        <p className="mb-2 text-micro font-bold uppercase tracking-wide text-on-surface-variant">Amount</p>
-        <button
-          type="button"
-          onClick={() => setIsKeypadOpen(true)}
-          className="group relative inline-flex min-h-14 items-baseline justify-center rounded-2xl px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-          aria-label={`Edit amount, currently ${APP_CONFIG.currency}${amount}`}
-        >
-          <span className="mr-2 font-headline text-2xl font-extrabold text-on-surface-variant">{APP_CONFIG.currency}</span>
-          <span className="p-0 font-headline text-5xl font-extrabold tabular-nums text-primary transition-transform group-active:scale-[0.98]">
-            {amount}
-          </span>
-          <Pencil className="ml-2 h-4 w-4 text-primary/40 transition-colors group-hover:text-primary" />
-        </button>
-        
-        <NumericKeypadModal 
-          isOpen={isKeypadOpen} 
-          onClose={() => setIsKeypadOpen(false)} 
-          onConfirm={(val) => setAmount(val)}
-          initialValue={amount}
-        />
-      </Card>
+          <div className="px-4 py-4">
+            <p className="mb-1 text-micro font-bold uppercase tracking-wide text-on-surface-variant">Amount</p>
+            <button
+              type="button"
+              onClick={() => setIsKeypadOpen(true)}
+              className="group relative inline-flex min-h-12 max-w-full items-baseline justify-center rounded-xl px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              aria-label={`Edit amount, currently ${APP_CONFIG.currency}${amount}`}
+            >
+              <span className="mr-1.5 font-headline text-xl font-bold text-on-surface-variant">{APP_CONFIG.currency}</span>
+              <span className="truncate font-headline text-4xl font-extrabold tabular-nums text-primary transition-transform group-active:scale-[0.98]">
+                {amount}
+              </span>
+              <Pencil className="ml-2 h-3.5 w-3.5 shrink-0 text-primary/45 transition-colors group-hover:text-primary" />
+            </button>
+          </div>
 
-      <div className="space-y-4">
+          <NumericKeypadModal
+            isOpen={isKeypadOpen}
+            onClose={() => setIsKeypadOpen(false)}
+            onConfirm={(val) => setAmount(val)}
+            initialValue={amount}
+          />
+        </Card>
+
         {id && editingTransaction?.sourceRecurringId && (
-          <p className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs font-bold text-primary">
-              This edit applies only to this recurring month
+          <p className="rounded-xl border border-primary/15 bg-primary/5 px-3.5 py-2.5 text-xs font-bold text-primary">
+            This edit applies only to this recurring month
           </p>
         )}
 
-        <Card className="space-y-5 p-5">
-          <div>
-            <label htmlFor="transaction-title" className="mb-2 block text-xs font-bold text-on-surface-variant">Title</label>
-          <input 
-            id="transaction-title"
-            className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4 text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/25"
-            placeholder="e.g. Weekly Groceries"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          </div>
-
-          <CategoryPicker
-            categories={categories}
-            value={category}
-            onChange={setCategory}
-            onAddCategory={(name) => { addCategory(name); setCategory(name); }}
-          />
-          <div className="flex flex-col gap-1 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
-            <label htmlFor="transaction-date" className="block text-on-surface-variant text-xs font-bold">Date</label>
-            <input 
-              id="transaction-date"
-              type="date" 
-              className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+        <Card className="overflow-hidden p-0">
+          <div className="px-3.5 py-3">
+            <label htmlFor="transaction-title" className="mb-1.5 block text-micro font-bold text-on-surface-variant">Title</label>
+            <input
+              id="transaction-title"
+              required
+              className="w-full border-0 bg-transparent p-0 text-sm font-bold text-on-surface outline-none placeholder:font-normal placeholder:text-on-surface-variant/60 focus:ring-0"
+              placeholder="Weekly groceries"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
           </div>
-        </Card>
 
-        {!editingTransaction?.sourceRecurringId && (
-          <Card className="flex items-center justify-between gap-4 p-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="text-xs font-bold text-on-surface-variant">Reporting treatment</p>
+          <div className="grid grid-cols-2 border-t border-outline-variant/10">
+            <CategoryPicker
+              categories={categories}
+              value={category}
+              density="compact"
+              onChange={setCategory}
+              onAddCategory={(name) => { addCategory(name); setCategory(name); }}
+            />
+            <div className="flex min-h-16 min-w-0 flex-col justify-center border-l border-outline-variant/10 px-3.5 py-3">
+              <label htmlFor="transaction-date" className="mb-0.5 block text-micro font-bold text-on-surface-variant">Date</label>
+              <input
+                id="transaction-date"
+                required
+                type="date"
+                className="min-w-0 w-full border-0 bg-transparent p-0 font-headline text-xs font-bold text-primary focus:ring-0"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {!editingTransaction?.sourceRecurringId && (
+            <div className="flex min-h-14 items-center justify-between gap-3 border-t border-outline-variant/10 px-3.5 py-2.5">
+              <div className="flex min-w-0 items-center gap-1">
+                <p className="text-xs font-bold text-on-surface-variant">Treatment</p>
                 <ReportingTreatmentInfo />
               </div>
-              <p className="mt-1 text-xs text-on-surface-variant">
-                Keep extras and refunds distinct in reports.
-              </p>
+              <ReportingTreatmentToggle
+                value={reportingClass}
+                type={type}
+                onChange={setReportingClass}
+              />
             </div>
-            <ReportingTreatmentToggle
-              value={reportingClass}
-              type={type}
-              onChange={setReportingClass}
-            />
-          </Card>
-        )}
+          )}
 
-        <AccordionSection
-          title="More options"
-          description="Payment method, notes, attachment"
-          open={isMoreOptionsOpen}
-          onOpenChange={setIsMoreOptionsOpen}
-        >
-          <div className="space-y-5">
-            <div className="flex flex-col gap-1 rounded-2xl bg-surface-container-low p-4">
-              <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs font-bold">Payment method</label>
-            <select
-              id="transaction-payment-method"
-              className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full appearance-none"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            >
-              <option value="Credit Card">Credit Card</option>
-              <option value="Debit Card">Debit Card</option>
-              <option value="Cash">Cash</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-            </select>
-            </div>
+          <AccordionSection
+            title="More options"
+            description="Payment, notes & receipt"
+            open={isMoreOptionsOpen}
+            onOpenChange={setIsMoreOptionsOpen}
+            className="rounded-none border-x-0 border-b-0 bg-transparent shadow-none"
+          >
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1 rounded-xl bg-surface-container-low p-3">
+                <label htmlFor="transaction-payment-method" className="text-micro font-bold text-on-surface-variant">Payment method</label>
+                <select
+                  id="transaction-payment-method"
+                  className="w-full appearance-none border-0 bg-transparent p-0 font-headline text-xs font-bold text-primary focus:ring-0"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Debit Card">Debit Card</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
 
-          <div className="flex items-center justify-between mb-3">
-            <label htmlFor="transaction-notes" className="block text-on-surface-variant text-xs font-bold">Notes</label>
-            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="transaction-notes" className="text-micro font-bold text-on-surface-variant">Notes</label>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex min-h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>{attachmentUrl ? 'Change receipt' : 'Add receipt'}</span>
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+              </div>
+
+              <textarea
+                id="transaction-notes"
+                className="min-h-20 w-full resize-none rounded-xl border-0 bg-surface-container-low p-3 text-sm text-on-surface placeholder:text-on-surface-variant/55 focus:ring-2 focus:ring-primary/25"
+                placeholder="Optional details"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+
               {attachmentUrl && (
-                <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-outline-variant/20">
-                  <img src={attachmentUrl} alt="Attachment" className="w-full h-full object-cover" />
+                <div className="flex items-center gap-3 rounded-xl bg-surface-container-low p-2">
+                  <img src={attachmentUrl} alt="Attached receipt preview" className="h-10 w-10 rounded-lg object-cover" />
+                  <span className="min-w-0 flex-1 truncate text-xs font-bold text-on-surface">Receipt attached</span>
                   <button
                     type="button"
                     onClick={() => setAttachmentUrl(undefined)}
-                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                    aria-label="Remove attached receipt"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-tertiary-container hover:text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary/30"
                   >
-                    <X className="w-4 h-4 text-white" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 text-primary text-micro font-bold hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>{attachmentUrl ? 'Change' : 'Attach'}</span>
-              </button>
             </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-          </div>
-          <textarea
-            id="transaction-notes"
-            className="w-full bg-surface-container-highest border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary-container min-h-[100px] resize-none placeholder:text-on-surface-variant/50"
-            placeholder="Add some details about this transaction..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          ></textarea>
-          </div>
-        </AccordionSection>
-      </div>
+          </AccordionSection>
+        </Card>
 
-      <div className="mt-8">
-        <button 
-          type="button"
-          onClick={handleSave}
-          className="w-full bg-primary text-on-primary py-4 rounded-2xl font-headline font-extrabold text-base shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
-        >
-          {id ? 'Update' : 'Save'} {type}
-        </button>
-      </div>
+        <div className="sticky bottom-[4.25rem] z-20 -mx-1 rounded-2xl bg-surface/90 p-1 backdrop-blur-md">
+          <Button type="submit" fullWidth className="min-h-12 rounded-2xl text-sm">
+            {id ? 'Update' : 'Save'} {type}
+          </Button>
+        </div>
+      </form>
     </motion.div>
   );
 };

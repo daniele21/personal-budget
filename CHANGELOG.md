@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Made Add Transaction more compact by grouping type with amount, placing essential fields in one dense form, keeping optional details behind `More options`, and keeping the contextual save action reachable above the bottom navigation.
+
 ### Fixed
 
 - Separated expense month-over-month change from net cash-flow change on Home.

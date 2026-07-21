@@ -66,7 +66,7 @@ Home and Budgets default to the Actual analytics lens and expose a minimal `Actu
 
 The compact Home control is positioned separately from the centered month label, and Budgets keeps it in the focal-summary header. Reports places its full three-state control in a focus-managed `View options` bottom sheet; the trigger always names the active lens so report scope is never implicit.
 
-Add Transaction uses progressive disclosure for optional fields. Title, category, date, type, and amount remain immediately visible; payment method, reporting treatment, notes, and attachment live under `More options`. The section opens automatically when an edited transaction contains meaningful advanced values, and recurring-occurrence notices and validation remain visible.
+Add Transaction uses progressive disclosure for optional fields. Type and amount share one compact entry surface; title, category, date, and reporting treatment remain immediately visible in a grouped form. Payment method, notes, and receipt attachment live under `More options`. The section opens automatically when an edited transaction contains meaningful advanced values, the save action stays reachable above the bottom navigation, and recurring-occurrence notices and validation remain visible.
 
 Rationale: the primary shell should prioritize daily budgeting work while keeping analytics directly reachable. Consolidating analytics and planning removes overlapping destinations and duplicated forms. A compact but explicit lens control preserves advanced analysis without making it the dominant Home interaction.
 
