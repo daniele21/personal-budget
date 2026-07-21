@@ -31,7 +31,7 @@ export interface Account {
   name: string;
   bank: string;
   lastFour: string;
-  balance: number;
+  openingBalance: number;
   type: 'checking' | 'savings' | 'credit' | 'cash';
   apy?: string;
   status?: string;

@@ -14,6 +14,7 @@ import { upsertRecurringOverride } from '../domain/recurring';
 import { AccordionSection, Card } from '../components/ui';
 import { ReportingTreatmentToggle } from '../components/ExtraFlagToggle';
 import { ReportingTreatmentInfo } from '../components/ReportingTreatmentInfo';
+import { getLocalDateInputValue } from '../utils/dates';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +27,7 @@ export const AddTransaction = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [reportingClass, setReportingClass] = useState<TransactionReportingClass | undefined>(undefined);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => getLocalDateInputValue());
   const [paymentMethod, setPaymentMethod] = useState('Debit Card');
   const [attachmentUrl, setAttachmentUrl] = useState<string | undefined>(undefined);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);

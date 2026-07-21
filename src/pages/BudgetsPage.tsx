@@ -89,9 +89,11 @@ export const BudgetsPage = () => {
 
     const existingIndex = budgets.findIndex((b) => b.category === newCategory);
     if (existingIndex > -1) {
-      const updated = [...budgets];
-      updated[existingIndex].limit = parsedLimit;
-      setBudgets(updated);
+      setBudgets(budgets.map((budget, index) => (
+        index === existingIndex
+          ? { ...budget, limit: parsedLimit }
+          : budget
+      )));
       toast('Budget updated', 'success');
     } else {
       setBudgets([

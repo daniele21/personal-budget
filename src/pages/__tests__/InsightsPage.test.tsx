@@ -90,6 +90,14 @@ describe('InsightsPage analytics lenses', () => {
     expect(screen.queryByText(/safe limit/)).not.toBeInTheDocument();
   });
 
+  it('compares net cash flow with the previous net instead of treating income as a goal', () => {
+    renderPage();
+
+    expect(screen.getAllByText('Net cash flow').length).toBeGreaterThan(0);
+    expect(screen.getByText('Previous period')).toBeInTheDocument();
+    expect(screen.queryByText(/Goal /)).not.toBeInTheDocument();
+  });
+
   it('switches to extras-only totals and categories', async () => {
     const user = userEvent.setup();
     renderPage();

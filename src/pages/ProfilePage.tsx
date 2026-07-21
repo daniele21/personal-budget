@@ -212,10 +212,11 @@ export const ProfilePage = () => {
           <div className="min-w-0">
             <p className="mb-1 text-micro font-bold uppercase tracking-[0.12em] text-inverse-on-surface-variant">Total Net Worth</p>
             <h2 className="truncate text-4xl font-extrabold tracking-tight text-inverse-on-surface">{formatCurrency(netWorth)}</h2>
+            <p className="mt-1 text-micro font-semibold text-inverse-on-surface-variant">Opening balances + recorded ledger activity</p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-inverse-positive ring-1 ring-inset ring-white/10">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>Live</span>
+            <span>Calculated</span>
           </div>
         </div>
         <div className="grid grid-cols-2 divide-x divide-white/12 border-t border-white/12 pt-3">

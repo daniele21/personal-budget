@@ -87,6 +87,21 @@ function normalizeTransaction(transaction: Transaction): Transaction {
   };
 }
 
+function normalizeAccount(value: unknown): Account | null {
+  if (!value || typeof value !== 'object') return null;
+  const account = value as Partial<Account> & { balance?: unknown };
+  const { balance: legacyBalance, ...accountWithoutLegacyBalance } = account;
+  const openingBalance = numberOrDefault(
+    account.openingBalance,
+    numberOrDefault(legacyBalance, 0),
+  );
+
+  return {
+    ...(accountWithoutLegacyBalance as Account),
+    openingBalance,
+  };
+}
+
 export function normalizeAppData(input: AppDataInput = {}): AppData {
   const recurring = normalizeRecurringExpenses(
     arrayOrDefault<RecurringExpense>(input.recurring, INITIAL_APP_DATA.recurring),
@@ -97,7 +112,9 @@ export function normalizeAppData(input: AppDataInput = {}): AppData {
     transactions: syncRecurringTransactions(recurring, transactions).map(normalizeTransaction),
     budgets: arrayOrDefault<Budget>(input.budgets, INITIAL_APP_DATA.budgets),
     recurring,
-    accounts: arrayOrDefault<Account>(input.accounts, INITIAL_APP_DATA.accounts),
+    accounts: arrayOrDefault<unknown>(input.accounts, INITIAL_APP_DATA.accounts)
+      .map(normalizeAccount)
+      .filter((account): account is Account => account !== null),
     categories: arrayOrDefault<string>(input.categories, INITIAL_APP_DATA.categories),
     archivedCategories: arrayOrDefault<string>(input.archivedCategories, INITIAL_APP_DATA.archivedCategories),
     savingsGoals: arrayOrDefault<SavingsGoal>(input.savingsGoals, INITIAL_APP_DATA.savingsGoals),

@@ -81,7 +81,8 @@ interface AppState {
   safeToSpend: Finance.SafeToSpendStatus;
   budgetStatuses: Finance.BudgetStatus[];
   categorySpending: Finance.CategorySpending[];
-  momChange: number | null;
+  expenseMomChange: number | null;
+  netMomChange: number | null;
   recentTransactions: Transaction[];
   currentBalance: number;
 }
@@ -110,7 +111,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     safeToSpend,
     budgetStatuses,
     categorySpending,
-    momChange,
+    expenseMomChange,
+    netMomChange,
     recentTransactions,
     currentBalance,
   } = useAppData();
@@ -258,7 +260,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     safeToSpend,
     budgetStatuses,
     categorySpending,
-    momChange,
+    expenseMomChange,
+    netMomChange,
     recentTransactions,
     currentBalance,
   }), [
@@ -314,7 +317,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     safeToSpend,
     budgetStatuses,
     categorySpending,
-    momChange,
+    expenseMomChange,
+    netMomChange,
     recentTransactions,
     currentBalance,
   ]);

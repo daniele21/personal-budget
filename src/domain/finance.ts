@@ -178,7 +178,7 @@ export function analyzeBudgets(budgets: Budget[], monthlyTransactions: Transacti
  * Returns the % change in expenses compared to last month.
  * Positive = spending less (good). Null = no previous data.
  */
-export function monthOverMonthChange(transactions: Transaction[], date: Date = new Date()): number | null {
+export function expenseMonthOverMonthChange(transactions: Transaction[], date: Date = new Date()): number | null {
   const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
 
   const currentExpenses = calculateTotals(filterByMonth(transactions, date)).expenses;
@@ -186,6 +186,19 @@ export function monthOverMonthChange(transactions: Transaction[], date: Date = n
 
   if (prevExpenses === 0) return null;
   return ((prevExpenses - currentExpenses) / prevExpenses) * 100;
+}
+
+/**
+ * Returns the % change in net cash flow compared to last month.
+ * The absolute previous net keeps the direction meaningful for negative baselines.
+ */
+export function netMonthOverMonthChange(transactions: Transaction[], date: Date = new Date()): number | null {
+  const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  const currentNet = calculateTotals(filterByMonth(transactions, date)).net;
+  const previousNet = calculateTotals(filterByMonth(transactions, prevMonth)).net;
+
+  if (previousNet === 0) return null;
+  return ((currentNet - previousNet) / Math.abs(previousNet)) * 100;
 }
 
 // ─── Safe to Spend ──────────────────────────────────────────────────
@@ -263,6 +276,75 @@ export interface PeriodComparison {
   totalsB: TransactionTotals;
   categoryDeltas: CategoryDelta[];
   insights: string[];
+}
+
+export interface CategoryTrendPoint {
+  name: string;
+  current: number;
+  prev: number;
+}
+
+interface DateBucket {
+  start: Date;
+  end: Date;
+  label: string;
+}
+
+function createTrendBuckets(start: Date, end: Date): DateBucket[] {
+  const durationDays = Math.ceil((end.getTime() - start.getTime()) / 86_400_000);
+  const useWeeklyBuckets = durationDays <= 45;
+  const buckets: DateBucket[] = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    const bucketStart = new Date(cursor);
+    const nextStart = new Date(cursor);
+
+    if (useWeeklyBuckets) {
+      nextStart.setDate(nextStart.getDate() + 7);
+    } else {
+      nextStart.setFullYear(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      nextStart.setHours(0, 0, 0, 0);
+    }
+
+    const bucketEnd = new Date(Math.min(end.getTime(), nextStart.getTime() - 1));
+    buckets.push({
+      start: bucketStart,
+      end: bucketEnd,
+      label: useWeeklyBuckets
+        ? `Week ${buckets.length + 1}`
+        : bucketStart.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+    });
+    cursor.setTime(nextStart.getTime());
+  }
+
+  return buckets;
+}
+
+export function getCategoryComparisonTrend(
+  transactionsA: Transaction[],
+  transactionsB: Transaction[],
+  category: string,
+  rangeA: Pick<DateRange, 'start' | 'end'>,
+  rangeB: Pick<DateRange, 'start' | 'end'>,
+): CategoryTrendPoint[] {
+  if (!category || rangeA.start > rangeA.end || rangeB.start > rangeB.end) return [];
+
+  const bucketsA = createTrendBuckets(rangeA.start, rangeA.end);
+  const bucketsB = createTrendBuckets(rangeB.start, rangeB.end);
+  const categoryA = transactionsA.filter((transaction) => transaction.category === category);
+  const categoryB = transactionsB.filter((transaction) => transaction.category === category);
+
+  return bucketsA.map((bucket, index) => {
+    const previousBucket = bucketsB[index];
+    return {
+      name: bucket.label,
+      current: calculateTotals(filterByDateRange(categoryA, bucket.start, bucket.end)).expenses,
+      prev: previousBucket
+        ? calculateTotals(filterByDateRange(categoryB, previousBucket.start, previousBucket.end)).expenses
+        : 0,
+    };
+  });
 }
 
 export function createMonthRange(year: number, month: number): DateRange {

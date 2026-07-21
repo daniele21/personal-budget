@@ -115,6 +115,22 @@ describe('central app data model', () => {
     expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingNote).toBeUndefined();
   });
 
+  it('migrates legacy account balances to opening balances without double semantics', () => {
+    const data = normalizeAppData({
+      accounts: [{
+        id: 'legacy-account',
+        name: 'Main',
+        bank: 'Bank',
+        lastFour: '1234',
+        balance: 1250,
+        type: 'checking',
+      }],
+    });
+
+    expect(data.accounts).toEqual([expect.objectContaining({ openingBalance: 1250 })]);
+    expect(data.accounts[0]).not.toHaveProperty('balance');
+  });
+
   it('checks financial emptiness from the canonical financial collections', () => {
     expect(isFinancialDataEmpty(INITIAL_APP_DATA)).toBe(true);
     expect(isFinancialDataEmpty({

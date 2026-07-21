@@ -12,7 +12,7 @@ interface CashFlowChartProps {
   /** Net amount for the month (income − expenses) */
   netAmount: number;
   /** Month-over-month % change (null = not available) */
-  momChange: number | null;
+  netMomChange: number | null;
   className?: string;
 }
 
@@ -23,7 +23,7 @@ export function CashFlowChart({
   transactions,
   month,
   netAmount,
-  momChange,
+  netMomChange,
   className,
 }: CashFlowChartProps) {
   const intervals = useMemo(() => {
@@ -173,9 +173,9 @@ export function CashFlowChart({
           </p>
           <p className="mt-1.5 text-xs font-medium text-on-surface-variant">Net cash flow</p>
         </div>
-        {momChange !== null && (
-          <span className={cn('pb-0.5 text-xs font-semibold', momChange >= 0 ? 'text-secondary' : 'text-on-surface-variant')}>
-            {momChange >= 0 ? '+' : ''}{momChange.toFixed(0)}% vs prev
+        {netMomChange !== null && (
+          <span className={cn('pb-0.5 text-xs font-semibold', netMomChange >= 0 ? 'text-secondary' : 'text-on-surface-variant')}>
+            {netMomChange >= 0 ? '+' : ''}{netMomChange.toFixed(0)}% vs prev
           </span>
         )}
       </div>

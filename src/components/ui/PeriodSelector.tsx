@@ -5,6 +5,7 @@ import { BottomSheet } from './BottomSheet';
 import { Input } from './Input';
 import { AnalyticsLensControl } from './AnalyticsLensControl';
 import type { AnalyticsLens } from '../../domain/finance';
+import { normalizeDateRange } from '../../domain/finance';
 
 export type RangeKey = '1M' | 'LM' | '3M' | '6M' | '12M' | 'CUSTOM';
 export const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
@@ -24,8 +25,12 @@ export function getRangeDates(key: RangeKey, anchorYear: number, anchorMonth: nu
   let months: number = 1;
 
   if (key === 'CUSTOM' && customStart && customEnd) {
-    start = new Date(customStart + 'T00:00:00');
-    end = new Date(customEnd + 'T23:59:59');
+    const normalized = normalizeDateRange(
+      `${customStart}T00:00:00`,
+      `${customEnd}T00:00:00`,
+    );
+    start = normalized.start;
+    end = normalized.end;
     const durationMs = end.getTime() - start.getTime();
     prevEnd = new Date(start.getTime() - 1);
     prevStart = new Date(prevEnd.getTime() - durationMs);
@@ -88,6 +93,9 @@ export function PeriodSelector({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [tempStart, setTempStart] = useState(customStartDate);
   const [tempEnd, setTempEnd] = useState(customEndDate);
+  const customRangeValid = Boolean(tempStart)
+    && Boolean(tempEnd)
+    && new Date(`${tempStart}T00:00:00`) <= new Date(`${tempEnd}T00:00:00`);
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nextVal = e.target.value as RangeKey;
@@ -98,6 +106,7 @@ export function PeriodSelector({
   };
 
   const handleApplyCustom = () => {
+    if (!customRangeValid) return;
     setIsSheetOpen(false);
     onCustomDatesChange(tempStart, tempEnd);
   };
@@ -162,7 +171,8 @@ export function PeriodSelector({
             </button>
             <button
               onClick={handleApplyCustom}
-              className="flex-1 rounded-xl bg-primary py-2 text-xs font-bold text-on-primary hover:bg-primary-container transition-colors"
+              disabled={!customRangeValid}
+              className="flex-1 rounded-xl bg-primary py-2 text-xs font-bold text-on-primary transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
             >
               Apply
             </button>
@@ -182,6 +192,11 @@ export function PeriodSelector({
             value={tempEnd}
             onChange={(e) => setTempEnd(e.target.value)}
           />
+          {!customRangeValid && (
+            <p className="text-xs font-semibold text-tertiary" role="alert">
+              Start date must be on or before end date.
+            </p>
+          )}
         </div>
       </BottomSheet>
     </>

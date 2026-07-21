@@ -241,7 +241,8 @@ interface AppDataContextType {
   safeToSpend: Finance.SafeToSpendStatus;
   budgetStatuses: Finance.BudgetStatus[];
   categorySpending: Finance.CategorySpending[];
-  momChange: number | null;
+  expenseMomChange: number | null;
+  netMomChange: number | null;
   recentTransactions: Transaction[];
   currentBalance: number;
 }
@@ -251,7 +252,7 @@ const AppDataContext = createContext<AppDataContextType | null>(null);
 // ─── Provider ───────────────────────────────────────────────────────
 
 export const AppDataProvider = ({ children }: { children: React.ReactNode }) => {
-  const { selectedMonth } = usePreferences();
+  const { selectedMonth, analyticsLens } = usePreferences();
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Initialize state from appDataRepository
@@ -307,8 +308,8 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   const monthlyTotals = useMemo(() => Finance.calculateTotals(monthlyTransactions), [monthlyTransactions]);
   const allTimeTotals = useMemo(() => Finance.calculateTotals(state.transactions), [state.transactions]);
 
-  const initialBalance = useMemo(() => state.accounts.reduce((acc, curr) => acc + curr.balance, 0), [state.accounts]);
-  const currentBalance = useMemo(() => initialBalance + allTimeTotals.net, [initialBalance, allTimeTotals.net]);
+  const openingBalance = useMemo(() => state.accounts.reduce((acc, curr) => acc + curr.openingBalance, 0), [state.accounts]);
+  const currentBalance = useMemo(() => openingBalance + allTimeTotals.net, [openingBalance, allTimeTotals.net]);
 
   const safeToSpendData = useMemo(
     () => Finance.safeToSpend(
@@ -329,7 +330,18 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     [monthlyTransactions]
   );
 
-  const momChange = useMemo(() => Finance.monthOverMonthChange(state.transactions, selectedMonth), [state.transactions, selectedMonth]);
+  const analyticsTransactions = useMemo(
+    () => Finance.filterByAnalyticsLens(state.transactions, analyticsLens),
+    [state.transactions, analyticsLens],
+  );
+  const expenseMomChange = useMemo(
+    () => Finance.expenseMonthOverMonthChange(analyticsTransactions, selectedMonth),
+    [analyticsTransactions, selectedMonth],
+  );
+  const netMomChange = useMemo(
+    () => Finance.netMonthOverMonthChange(analyticsTransactions, selectedMonth),
+    [analyticsTransactions, selectedMonth],
+  );
 
   const recentTransactions = useMemo(
     () => Finance.sortByDateDesc(monthlyTransactions).slice(0, 5),
@@ -346,7 +358,8 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     safeToSpend: safeToSpendData,
     budgetStatuses,
     categorySpending,
-    momChange,
+    expenseMomChange,
+    netMomChange,
     recentTransactions,
     currentBalance,
   }), [
@@ -359,7 +372,8 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     safeToSpendData,
     budgetStatuses,
     categorySpending,
-    momChange,
+    expenseMomChange,
+    netMomChange,
     recentTransactions,
     currentBalance,
   ]);

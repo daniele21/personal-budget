@@ -22,6 +22,7 @@ import { Transaction } from '../types';
 import { getCategoryTheme } from '../config/categoryThemes';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { pageTransition } from '../utils/motion';
+import { getLocalDateInputValue } from '../utils/dates';
 import { FocalSummaryCard, SegmentedControl, PeriodSelector, getRangeDates, RangeKey } from '../components/ui';
 import { CompareInsights } from '../components/compare/CompareInsights';
 
@@ -272,7 +273,6 @@ function CompareTab({
   prevStart,
   prevEnd,
   lens,
-  range,
 }: {
   txA: Transaction[];
   txB: Transaction[];
@@ -283,7 +283,6 @@ function CompareTab({
   prevStart: Date;
   prevEnd: Date;
   lens: Finance.AnalyticsLens;
-  range: RangeKey;
 }) {
   const [view, setView] = useState<CompareView>('total');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -306,10 +305,12 @@ function CompareTab({
     return Array.from(new Set([...catA.map((c) => c.category), ...catB.map((c) => c.category)]));
   }, [catA, catB]);
 
-  // Set default category
+  // Keep the selected category valid when the period or analytics lens changes.
   useEffect(() => {
-    if (availableCategories.length > 0 && !selectedCategory) {
+    if (availableCategories.length > 0 && !availableCategories.includes(selectedCategory)) {
       setSelectedCategory(availableCategories[0]);
+    } else if (availableCategories.length === 0 && selectedCategory) {
+      setSelectedCategory('');
     }
   }, [availableCategories, selectedCategory]);
 
@@ -325,68 +326,16 @@ function CompareTab({
       .slice(0, 6);
   }, [availableCategories, catA, catB]);
 
-  // 2. By Category trend (weekly for 1M, monthly for 3M/6M/12M)
+  // 2. By Category trend (granularity follows the actual range duration)
   const categoryTrendData = useMemo(() => {
-    if (!selectedCategory) return [];
-
-    if (range === '1M') {
-      const lenA = end.getTime() - start.getTime();
-      const lenB = prevEnd.getTime() - prevStart.getTime();
-
-      const intervalLenA = lenA / 5;
-      const intervalLenB = lenB / 5;
-
-      return Array.from({ length: 5 }, (_, idx) => {
-        const sA = new Date(start.getTime() + idx * intervalLenA);
-        const eA = new Date(start.getTime() + (idx + 1) * intervalLenA);
-
-        const sB = new Date(prevStart.getTime() + idx * intervalLenB);
-        const eB = new Date(prevStart.getTime() + (idx + 1) * intervalLenB);
-
-        const valA = Finance.calculateTotals(
-          txA.filter((t) => t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
-        ).expenses;
-
-        const valB = Finance.calculateTotals(
-          txB.filter((t) => t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
-        ).expenses;
-
-        return {
-          name: `Week ${idx + 1}`,
-          current: valA,
-          prev: valB,
-        };
-      });
-    }
-
-    // For 3M, 6M, 12M: Group by calendar month
-    const monthsCount = range === '3M' ? 3 : range === '6M' ? 6 : 12;
-
-    return Array.from({ length: monthsCount }, (_, idx) => {
-      const tempDateA = new Date(start.getFullYear(), start.getMonth() + idx, 1);
-      const sA = new Date(tempDateA.getFullYear(), tempDateA.getMonth(), 1);
-      const eA = new Date(tempDateA.getFullYear(), tempDateA.getMonth() + 1, 1);
-
-      const tempDateB = new Date(prevStart.getFullYear(), prevStart.getMonth() + idx, 1);
-      const sB = new Date(tempDateB.getFullYear(), tempDateB.getMonth(), 1);
-      const eB = new Date(tempDateB.getFullYear(), tempDateB.getMonth() + 1, 1);
-
-      const valA = Finance.calculateTotals(
-        txA.filter((t) => t.category === selectedCategory && new Date(t.date) >= sA && new Date(t.date) < eA)
-      ).expenses;
-
-      const valB = Finance.calculateTotals(
-        txB.filter((t) => t.category === selectedCategory && new Date(t.date) >= sB && new Date(t.date) < eB)
-      ).expenses;
-
-      const monthName = sA.toLocaleDateString('en-US', { month: 'short' });
-      return {
-        name: monthName,
-        current: valA,
-        prev: valB,
-      };
-    });
-  }, [selectedCategory, txA, txB, start, end, prevStart, prevEnd, range]);
+    return Finance.getCategoryComparisonTrend(
+      txA,
+      txB,
+      selectedCategory,
+      { start, end },
+      { start: prevStart, end: prevEnd },
+    );
+  }, [selectedCategory, txA, txB, start, end, prevStart, prevEnd]);
 
   // 3. By Merchant top comparison
   const merchantBarData = useMemo(() => {
@@ -679,10 +628,10 @@ export function ComparePage({
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(1); // Default to start of this month
-    return d.toISOString().split('T')[0];
+    return getLocalDateInputValue(d);
   });
   const [customEndDate, setCustomEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return getLocalDateInputValue();
   });
 
   const { start, end, prevStart, prevEnd, periodLabel: labelA, comparisonLabel: labelB } = useMemo(
@@ -758,7 +707,6 @@ export function ComparePage({
           prevStart={prevStart}
           prevEnd={prevEnd}
           lens={lens}
-          range={range}
         />
       )}
     </motion.div>

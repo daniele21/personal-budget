@@ -25,8 +25,10 @@ export function AccountList({ accounts }: { accounts: Account[] }) {
               </div>
             </div>
             <div className="text-right">
-              <p className="font-bold text-sm text-primary">{formatCurrency(account.balance)}</p>
-              <p className="text-micro text-secondary font-bold">{account.status || account.apy}</p>
+              <p className="font-bold text-sm text-primary">{formatCurrency(account.openingBalance)}</p>
+              <p className="text-micro text-on-surface-variant font-bold">
+                Opening balance{account.status || account.apy ? ` · ${account.status || account.apy}` : ''}
+              </p>
             </div>
           </div>
         ))}

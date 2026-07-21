@@ -7,10 +7,10 @@ interface CashFlowPreviewProps {
   transactions: Transaction[];
   month: Date;
   netAmount: number;
-  momChange: number | null;
+  netMomChange: number | null;
 }
 
-export function CashFlowPreview({ transactions, month, netAmount, momChange }: CashFlowPreviewProps) {
+export function CashFlowPreview({ transactions, month, netAmount, netMomChange }: CashFlowPreviewProps) {
   const points = useMemo(() => {
     const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
     const buckets = Array.from({ length: 8 }, () => 0);
@@ -35,9 +35,9 @@ export function CashFlowPreview({ transactions, month, netAmount, momChange }: C
           {netAmount >= 0 ? '+' : ''}{formatCurrency(netAmount)}
         </p>
         <p className="text-xs text-on-surface-variant">Net cash flow</p>
-        {momChange !== null && (
+        {netMomChange !== null && (
           <p className="mt-1 text-xs font-semibold text-on-surface-variant">
-            {momChange >= 0 ? '+' : ''}{momChange.toFixed(0)}% vs previous month
+            {netMomChange >= 0 ? '+' : ''}{netMomChange.toFixed(0)}% vs previous month
           </p>
         )}
       </div>

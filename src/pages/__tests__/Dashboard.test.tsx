@@ -35,7 +35,7 @@ function transaction(overrides: Partial<Transaction> = {}): Transaction {
   };
 }
 
-function renderDashboard(transactions: Transaction[]) {
+function renderDashboard(transactions: Transaction[], overrides: Record<string, unknown> = {}) {
   mockUseApp.mockImplementation(() => {
     const [analyticsLens, setAnalyticsLens] = React.useState<'actual' | 'normalized'>('actual');
     return {
@@ -47,7 +47,8 @@ function renderDashboard(transactions: Transaction[]) {
       monthlyTotals: calculateTotals(transactions),
       monthlyBudget: 3000,
       monthlyTransactions: transactions,
-      momChange: null,
+      expenseMomChange: null,
+      netMomChange: null,
       recentTransactions: transactions,
       isHydrated: true,
       categories: ['Salary', 'Food', 'Travel'],
@@ -56,6 +57,7 @@ function renderDashboard(transactions: Transaction[]) {
       setSelectedMonth: vi.fn(),
       analyticsLens,
       setAnalyticsLens,
+      ...overrides,
     };
   });
 
@@ -131,5 +133,24 @@ describe('Dashboard safe-to-spend lens', () => {
       element.classList.contains('text-inverse-on-surface'),
     );
     expect(overBudgetAmount).toBeDefined();
+  });
+
+  it('labels expense and net changes with their distinct meanings', () => {
+    renderDashboard([transaction({ amount: 100 })], {
+      expenseMomChange: 25,
+      netMomChange: -50,
+    });
+
+    expect(screen.getByText('Spending is 25% lower than last month.')).toBeInTheDocument();
+    expect(screen.getByText('-50% vs previous month')).toBeInTheDocument();
+  });
+
+  it('describes past months as closed instead of showing days remaining', () => {
+    const pastMonth = new Date();
+    pastMonth.setMonth(pastMonth.getMonth() - 1, 1);
+    renderDashboard([transaction({ amount: 100 })], { selectedMonth: pastMonth });
+
+    expect(screen.getByText('Month closed')).toBeInTheDocument();
+    expect(screen.queryByText(/days remaining/)).not.toBeInTheDocument();
   });
 });

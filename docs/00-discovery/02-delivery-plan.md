@@ -12,6 +12,7 @@
 - Keep the existing bottom navigation and TopBar information architecture unchanged during the color-hierarchy refinement.
 - Track task-level progress, dependencies, quality gates, and risks in [`08-ux-simplification-progress-plan.md`](./08-ux-simplification-progress-plan.md).
 - Keep the initiative local-first: no new backend, provider, AI workflow, subprocessor, or admin access to personal financial data.
+- Keep financial comparison semantics explicit: expense change, net cash-flow change, account opening balances, and scheduled-versus-remaining recurring totals must not be reused as interchangeable metrics.
 
 ## Quality Gates
 
@@ -21,7 +22,7 @@
 
 ## UX Simplification Release Readiness — 2026-07-21
 
-- Automated gate: typecheck, 202 tests across 28 files, production build, and diff validation pass.
+- Automated gate: typecheck, 220 tests across 33 files, production build, and diff validation pass.
 - Configuration and migrations: none. The release changes client UI composition and session-only lens state; it introduces no environment variables, storage migrations, backend jobs, or provider dependencies.
 - Compatibility: legacy report, planning, and transaction routes remain valid aliases.
 - Rollback: revert the client bundle to the previous release; no data rollback is required because financial schemas and persistence semantics are unchanged.
@@ -40,6 +41,7 @@
 - Notifications and reminders are stored locally and use browser notification permission; no Firebase Cloud Messaging or backend scheduler is introduced.
 - The mobile PWA install button does not store install, device, or usage state and does not send any data to a service.
 - No new subprocessors or cross-device transfers are introduced by the feature set.
+- The account-field compatibility migration runs locally during model normalization and does not introduce new personal data, retention, export, vendor, or transfer behavior.
 
 ## Feature Delivery Slices
 

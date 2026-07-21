@@ -17,7 +17,8 @@ import {
   getTransactionReportingClass,
   analyzeBudget,
   analyzeBudgets,
-  monthOverMonthChange,
+  expenseMonthOverMonthChange,
+  netMonthOverMonthChange,
   safeToSpend,
   spendingByCategory,
   getRecurringDue,
@@ -31,6 +32,7 @@ import {
   getMonthlyBreakdown,
   calculateMovingAverage,
   calculateRollingSpending,
+  getCategoryComparisonTrend,
 } from '../finance';
 import { Transaction, Budget, RecurringExpense } from '../../types';
 
@@ -596,9 +598,9 @@ describe('spendingByCategory', () => {
   });
 });
 
-// ─── monthOverMonthChange ───────────────────────────────────────────
+// ─── Month-over-month changes ──────────────────────────────────────
 
-describe('monthOverMonthChange', () => {
+describe('expenseMonthOverMonthChange', () => {
   const now = new Date();
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 10).toISOString();
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 10).toISOString();
@@ -608,7 +610,7 @@ describe('monthOverMonthChange', () => {
       tx({ amount: 500, type: 'expense', date: lastMonth }),
       tx({ amount: 300, type: 'expense', date: thisMonth }),
     ];
-    const change = monthOverMonthChange(transactions);
+    const change = expenseMonthOverMonthChange(transactions);
     expect(change).toBeCloseTo(40); // (500-300)/500 * 100
   });
 
@@ -617,7 +619,7 @@ describe('monthOverMonthChange', () => {
       tx({ amount: 300, type: 'expense', date: lastMonth }),
       tx({ amount: 500, type: 'expense', date: thisMonth }),
     ];
-    const change = monthOverMonthChange(transactions);
+    const change = expenseMonthOverMonthChange(transactions);
     expect(change).toBeCloseTo(-66.67, 1);
   });
 
@@ -625,11 +627,68 @@ describe('monthOverMonthChange', () => {
     const transactions = [
       tx({ amount: 300, type: 'expense', date: thisMonth }),
     ];
-    expect(monthOverMonthChange(transactions)).toBeNull();
+    expect(expenseMonthOverMonthChange(transactions)).toBeNull();
   });
 
   it('returns null when no data at all', () => {
-    expect(monthOverMonthChange([])).toBeNull();
+    expect(expenseMonthOverMonthChange([])).toBeNull();
+  });
+});
+
+describe('netMonthOverMonthChange', () => {
+  const anchor = new Date(2026, 3, 1);
+
+  it('compares net cash flow rather than expenses', () => {
+    const transactions = [
+      tx({ amount: 1000, type: 'income', date: '2026-03-10T00:00:00.000Z' }),
+      tx({ amount: 600, type: 'expense', date: '2026-03-11T00:00:00.000Z' }),
+      tx({ amount: 1000, type: 'income', date: '2026-04-10T00:00:00.000Z' }),
+      tx({ amount: 500, type: 'expense', date: '2026-04-11T00:00:00.000Z' }),
+    ];
+
+    expect(netMonthOverMonthChange(transactions, anchor)).toBeCloseTo(25);
+  });
+
+  it('uses the absolute previous net for a negative baseline', () => {
+    const transactions = [
+      tx({ amount: 100, type: 'expense', date: '2026-03-10T00:00:00.000Z' }),
+      tx({ amount: 50, type: 'income', date: '2026-04-10T00:00:00.000Z' }),
+    ];
+
+    expect(netMonthOverMonthChange(transactions, anchor)).toBeCloseTo(150);
+  });
+});
+
+describe('getCategoryComparisonTrend', () => {
+  it('uses weekly buckets for custom ranges up to 45 days', () => {
+    const points = getCategoryComparisonTrend(
+      [
+        tx({ amount: 10, type: 'expense', category: 'Food', date: '2026-01-10T12:00:00.000Z' }),
+        tx({ amount: 20, type: 'expense', category: 'Food', date: '2026-01-18T12:00:00.000Z' }),
+      ],
+      [],
+      'Food',
+      { start: new Date(2026, 0, 10), end: new Date(2026, 0, 30, 23, 59, 59, 999) },
+      { start: new Date(2025, 11, 20), end: new Date(2026, 0, 9, 23, 59, 59, 999) },
+    );
+
+    expect(points).toHaveLength(3);
+    expect(points.map((point) => point.name)).toEqual(['Week 1', 'Week 2', 'Week 3']);
+    expect(points.map((point) => point.current)).toEqual([10, 20, 0]);
+  });
+
+  it('uses the real calendar months contained in longer custom ranges', () => {
+    const points = getCategoryComparisonTrend(
+      [tx({ amount: 30, type: 'expense', category: 'Food', date: '2026-02-15T12:00:00.000Z' })],
+      [],
+      'Food',
+      { start: new Date(2026, 0, 15), end: new Date(2026, 2, 20, 23, 59, 59, 999) },
+      { start: new Date(2025, 10, 10), end: new Date(2026, 0, 14, 23, 59, 59, 999) },
+    );
+
+    expect(points).toHaveLength(3);
+    expect(points.map((point) => point.name)).toEqual(['Jan 26', 'Feb 26', 'Mar 26']);
+    expect(points.map((point) => point.current)).toEqual([0, 30, 0]);
   });
 });
 

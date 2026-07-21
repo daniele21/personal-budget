@@ -16,6 +16,7 @@ import { formatCurrency } from '../utils/formatters';
 import * as Finance from '../domain/finance';
 import { Transaction } from '../types';
 import { pageTransition } from '../utils/motion';
+import { getLocalDateInputValue } from '../utils/dates';
 import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, FocalSummaryCard, SegmentedControl } from '../components/ui';
 
 // ─── Period helpers ──────────────────────────────────────────────────
@@ -79,42 +80,32 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-// ─── Cash flow progress bar ────────────────────────────────────────────
+// ─── Cash flow comparison ──────────────────────────────────────────────
 
-function CashFlowBar({
+function CashFlowComparison({
   current,
-  goal,
-  change,
+  previous,
   comparisonLabel,
 }: {
   current: number;
-  goal: number | null;
-  change: number | null;
+  previous: number;
   comparisonLabel: string;
 }) {
-  const pct = goal && goal > 0 ? Math.min(100, (current / goal) * 100) : 0;
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold text-on-surface-variant">This month</span>
-        {change !== null && (
-          <span className={cn('font-bold', change >= 0 ? 'text-secondary' : 'text-tertiary')}>
-            {change >= 0 ? '+' : ''}{change.toFixed(0)}% vs {comparisonLabel}
-          </span>
-        )}
+    <div className="grid grid-cols-2 divide-x divide-outline-variant/20">
+      <div className="pr-3">
+        <p className="text-[10px] font-semibold text-on-surface-variant">Net cash flow</p>
+        <p className={cn('mt-1 text-base font-extrabold tabular-nums', current >= 0 ? 'text-secondary' : 'text-tertiary')}>
+          {formatCurrency(current)}
+        </p>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-        <div
-          className="h-full rounded-full bg-secondary transition-all duration-1000"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="pl-3">
+        <p className="text-[10px] font-semibold text-on-surface-variant">Previous period</p>
+        <p className={cn('mt-1 text-base font-extrabold tabular-nums', previous >= 0 ? 'text-on-surface' : 'text-tertiary')}>
+          {formatCurrency(previous)}
+        </p>
+        <p className="mt-0.5 truncate text-[9px] font-semibold text-on-surface-variant">{comparisonLabel}</p>
       </div>
-      {goal && (
-        <div className="flex justify-between text-[10px] font-semibold text-on-surface-variant">
-          <span>{formatCurrency(current)}</span>
-          <span>Goal {formatCurrency(goal)}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -128,7 +119,7 @@ interface InsightsPageProps {
 }
 
 export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensControl = true }: InsightsPageProps = {}) => {
-  const { transactions, selectedMonth } = useApp();
+  const { transactions } = useApp();
   const [localLens, setLocalLens] = useState<Finance.AnalyticsLens>('actual');
   const lens = analyticsLens ?? localLens;
   const setLens = onAnalyticsLensChange ?? setLocalLens;
@@ -137,32 +128,23 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(1); // Default to start of this month
-    return d.toISOString().split('T')[0];
+    return getLocalDateInputValue(d);
   });
   const [customEndDate, setCustomEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return getLocalDateInputValue();
   });
   const [isAvgTrendOpen, setIsAvgTrendOpen] = useState(false);
   const [spendingPaceScale, setSpendingPaceScale] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   const { start, end, prevStart, prevEnd, periodLabel, comparisonLabel } = useMemo(() => {
     if (range === 'CUSTOM') {
-      const s = new Date(customStartDate + 'T00:00:00');
-      const e = new Date(customEndDate + 'T23:59:59');
-      
-      const durationMs = e.getTime() - s.getTime();
-      const pEnd = new Date(s.getTime() - 1);
-      const pStart = new Date(pEnd.getTime() - durationMs);
-      
-      const startLabel = s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      const endLabel = e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      const periodLabel = `${startLabel} – ${endLabel}`;
-      
-      const prevStartLabel = pStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      const prevEndLabel = pEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-      const comparisonLabel = `${prevStartLabel} – ${prevEndLabel}`;
-      
-      return { start: s, end: e, prevStart: pStart, prevEnd: pEnd, periodLabel, comparisonLabel };
+      return getRangeDates(
+        range,
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        customStartDate,
+        customEndDate,
+      );
     }
     const today = new Date();
     return getRangeDates(range, today.getFullYear(), today.getMonth());
@@ -197,19 +179,17 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
 
   const chartData = useMemo(() => buildWeeklyData(periodTx, start, end), [periodTx, start, end]);
 
-  // Cash flow goal: use total income from prev period as soft target
-  const cashFlowGoal = prevTotals.income > 0 ? prevTotals.income : null;
-
   const { rollingStart, rollingEnd, rollingPeriodLabel } = useMemo(() => {
     const today = new Date();
     const lastCompleteMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
     let paceStart: Date;
     let paceEnd: Date;
 
     if (range === 'CUSTOM') {
       paceStart = start;
-      paceEnd = end < lastCompleteMonthEnd ? end : lastCompleteMonthEnd;
+      paceEnd = end < endOfToday ? end : endOfToday;
     } else {
       const completeMonths = range === '3M' ? 3 : range === '6M' ? 6 : range === '12M' ? 12 : 1;
       paceEnd = lastCompleteMonthEnd;
@@ -321,31 +301,33 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
       </FocalSummaryCard>
 
       {/* ── Rolling spending pace ── */}
-      <button
-        onClick={() => setIsAvgTrendOpen(true)}
-        className="aura-section-surface aura-section-tone-warning w-full p-4 text-left transition-colors active:scale-[0.995]"
-        aria-label="Open spending pace trend"
-      >
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-xs font-bold text-on-surface">Spending pace</span>
-          <span className="text-xs font-semibold text-on-surface-variant">View trend →</span>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { value: dailyPace, label: 'per day', context: '7-day average' },
-            { value: weeklyPace, label: 'per week', context: '4-week average' },
-            { value: monthlyPace, label: 'per month', context: '3-month average' },
-          ].map((metric) => (
-            <div key={metric.label} className="min-w-0">
-              <p className="truncate font-headline text-base font-extrabold tabular-nums text-tertiary sm:text-lg">
-                {formatCurrency(metric.value)}
-              </p>
-              <p className="text-[10px] font-bold text-on-surface">{metric.label}</p>
-              <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant">{metric.context}</p>
-            </div>
-          ))}
-        </div>
-      </button>
+      {rollingStart <= rollingEnd && (
+        <button
+          onClick={() => setIsAvgTrendOpen(true)}
+          className="aura-section-surface aura-section-tone-warning w-full p-4 text-left transition-colors active:scale-[0.995]"
+          aria-label="Open spending pace trend"
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="text-xs font-bold text-on-surface">Spending pace</span>
+            <span className="text-xs font-semibold text-on-surface-variant">View trend →</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: dailyPace, label: 'per day', context: '7-day average' },
+              { value: weeklyPace, label: 'per week', context: '4-week average' },
+              { value: monthlyPace, label: 'per month', context: '3-month average' },
+            ].map((metric) => (
+              <div key={metric.label} className="min-w-0">
+                <p className="truncate font-headline text-base font-extrabold tabular-nums text-tertiary sm:text-lg">
+                  {formatCurrency(metric.value)}
+                </p>
+                <p className="text-[10px] font-bold text-on-surface">{metric.label}</p>
+                <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant">{metric.context}</p>
+              </div>
+            ))}
+          </div>
+        </button>
+      )}
 
       {/* ── Overview chart: bars (Income, Expenses) + line (Net Cash Flow) ── */}
       <div className="aura-card aura-card-tone-primary space-y-3 p-4">
@@ -426,17 +408,16 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
       {/* ── Cash flow this month ── */}
       <div className="aura-section-surface aura-section-tone-primary space-y-3 p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-on-surface">Cash flow this month</h3>
+          <h3 className="text-sm font-bold text-on-surface">Net cash flow</h3>
           {netChange !== null && (
             <span className={cn('text-xs font-bold', netChange >= 0 ? 'text-secondary' : 'text-tertiary')}>
               {netChange >= 0 ? '+' : ''}{netChange.toFixed(0)}% vs {comparisonLabel}
             </span>
           )}
         </div>
-        <CashFlowBar
+        <CashFlowComparison
           current={totals.net}
-          goal={cashFlowGoal}
-          change={netChange}
+          previous={prevTotals.net}
           comparisonLabel={comparisonLabel}
         />
       </div>

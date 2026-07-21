@@ -34,6 +34,7 @@ import { PlanningTabs } from '../components/planning/PlanningTabs';
 import { RecurringFormFields } from '../components/planning/RecurringFormFields';
 import { saveRecurringItem } from '../domain/recurringForm';
 import { useRecurringForm } from '../hooks/useRecurringForm';
+import { getLocalDateInputValue } from '../utils/dates';
 
 const getMonthDays = (year: number, month: number) => {
   const firstDay = new Date(year, month, 1);
@@ -159,11 +160,20 @@ export const CalendarPage = () => {
       .sort((a, b) => a.date.getTime() - b.date.getTime()),
     [recurring, viewYear, viewMonth],
   );
-  const monthlyRecurringTotal = monthlyPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const isPastMonth = new Date(viewYear, viewMonth + 1, 0) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const nextRecurringPayment = monthlyPayments.find((payment) => (
-    isPastMonth || payment.date >= new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  ));
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const viewedMonthStart = new Date(viewYear, viewMonth, 1);
+  const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const period = viewedMonthStart < currentMonthStart
+    ? 'past'
+    : viewedMonthStart > currentMonthStart
+      ? 'future'
+      : 'current';
+  const summaryPayments = period === 'current'
+    ? monthlyPayments.filter((payment) => (
+      getUtcDateInputValue(payment.date.toISOString()) >= getLocalDateInputValue(startOfToday)
+    ))
+    : monthlyPayments;
+  const monthlyRecurringTotal = summaryPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
   useFocusTrap(recurringFormRef, recurringForm.isOpen, recurringForm.reset);
   useFocusTrap(recurringChoiceRef, recurringActionTarget !== null, () => setRecurringActionTarget(null));
@@ -332,9 +342,9 @@ export const CalendarPage = () => {
 
       <CalendarMonthSummary
         total={monthlyRecurringTotal}
-        count={monthlyPayments.length}
-        nextPayment={nextRecurringPayment}
-        isPastMonth={isPastMonth}
+        count={summaryPayments.length}
+        nextPayment={summaryPayments[0]}
+        period={period}
       />
 
       <CalendarGrid

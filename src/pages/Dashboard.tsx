@@ -47,7 +47,8 @@ export const Dashboard = () => {
     budgets,
     monthlyBudget,
     monthlyTransactions,
-    momChange,
+    expenseMomChange,
+    netMomChange,
     recentTransactions,
     isHydrated,
     categories,
@@ -88,23 +89,26 @@ export const Dashboard = () => {
   const homeInsights = [
     isOverBudget ? `Spending is ${formatCurrency(safeToSpendTotals.expenses - effectiveLimit)} over the monthly limit.` : null,
     !isOverBudget && usedPercent >= 80 ? `${usedPercent}% of the monthly limit has been used.` : null,
-    momChange !== null && Math.abs(momChange) >= 10
-      ? `Net cash flow is ${Math.abs(momChange).toFixed(0)}% ${momChange >= 0 ? 'higher' : 'lower'} than last month.`
+    expenseMomChange !== null && Math.abs(expenseMomChange) >= 10
+      ? expenseMomChange >= 0
+        ? `Spending is ${expenseMomChange.toFixed(0)}% lower than last month.`
+        : `Spending is ${Math.abs(expenseMomChange).toFixed(0)}% higher than last month.`
       : null,
   ].filter((insight): insight is string => insight !== null).slice(0, 2);
 
   const today = new Date();
-  const isCurrentMonth =
-    selectedMonth.getFullYear() === today.getFullYear() &&
-    selectedMonth.getMonth() === today.getMonth();
+  const selectedMonthStart = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+  const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const daysInSelectedMonth = new Date(
     selectedMonth.getFullYear(),
     selectedMonth.getMonth() + 1,
     0,
   ).getDate();
-  const daysRemaining = isCurrentMonth
-    ? Math.max(0, daysInSelectedMonth - today.getDate())
-    : daysInSelectedMonth;
+  const periodStatus = selectedMonthStart < currentMonthStart
+    ? 'Month closed'
+    : selectedMonthStart > currentMonthStart
+      ? `${daysInSelectedMonth} days in month`
+      : `${daysInSelectedMonth - today.getDate() + 1} days including today`;
 
   // ── Month navigation ───────────────────────────────────────────────
   const handlePrevMonth = () => {
@@ -211,7 +215,7 @@ export const Dashboard = () => {
                 {formatCurrency(safeToSpendTotals.expenses)} spent of {formatCurrency(effectiveLimit)}
               </p>
               <p className="text-xs font-normal text-inverse-on-surface-variant">
-                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
+                {periodStatus}
               </p>
             </div>
             {/* Gauge with hidden text labels below it for mockup matching */}
@@ -260,7 +264,7 @@ export const Dashboard = () => {
           transactions={filteredTransactions}
           month={selectedMonth}
           netAmount={safeToSpendTotals.net}
-          momChange={momChange}
+          netMomChange={netMomChange}
         />
         <div className="aura-divider-top mt-1 flex justify-end pt-3">
           <Link

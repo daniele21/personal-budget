@@ -18,6 +18,8 @@ Chosen: keep the persisted app data model centralized in `src/data/model.ts`.
 
 Rationale: transactions, budgets, recurring entries, accounts, categories, savings goals, and monthly budget must have one canonical shape shared by local storage, cloud backup, demo data, and app context. The context may orchestrate React state, but it should not define a parallel data contract. The model layer owns initial app data, normalization of restored or partial data, recurring transaction sync, and financial emptiness checks.
 
+Accounts use `openingBalance`, not a live balance. Total Net Worth is defined as the sum of account opening balances plus the net result of every transaction in the ledger. Persisted local or backup data that still uses the legacy `balance` field is normalized to `openingBalance` when loaded. A future live-balance model would require transactions to be assigned to accounts and is intentionally outside the current scope.
+
 ### Categories
 
 Chosen: archive categories instead of deleting historical meaning.
@@ -46,6 +48,8 @@ Rationale: these features increase navigation and analysis value without changin
 
 Insights presents spending pace as three fixed rolling averages instead of a configurable statistical average: daily pace is trailing seven-day spend divided by seven, weekly pace is trailing twenty-eight-day spend divided by four, and monthly pace is trailing ninety-day spend divided by three. The summary shows the latest value for all three scales; its detail view uses a single chart with a Day, Week, or Month selector. Preset periods contain only complete calendar months and always end on the final day of the previous month; for example, `3M` shows the three complete months before the current month. The selected scale controls the averaging horizon within that complete-month history.
 
+Custom report periods must have a start date on or before the end date. The control blocks invalid input and range construction normalizes it defensively. Category comparison trends use weekly buckets for ranges up to 45 days and real calendar-month buckets for longer ranges. Spending Pace uses the requested custom period only through the earlier of its end date and today. Cash-flow comparisons compare current net cash flow with previous-period net cash flow; previous income is not treated as a savings goal.
+
 Rationale: fixed, named windows answer the practical question of how quickly spending is changing without exposing smoothing configuration or conflating the selected reporting period with the rolling calculation.
 
 ### Information Architecture And UX Simplification
@@ -55,6 +59,8 @@ Chosen: use `Home | Transactions | Add | Budgets | Reports` as the primary mobil
 Reports becomes the only full analytics area, organized as `Overview | Categories | Compare | Year`. Existing Insights, Compare, and Year Review calculations remain local and deterministic, but are recomposed into this hierarchy. Existing `/insights`, `/compare`, and `/year-review` routes remain aliases or deep links to the appropriate report view.
 
 Calendar and recurring management become a single Planning area organized as `Calendar | Recurring`, with one shared recurring-entry form and orchestration path. Existing `/calendar` and `/recurring` routes remain deep links to the appropriate view.
+
+The Planning month summary distinguishes historical, current, and future months. Historical and future summaries include all scheduled expense occurrences; the current month includes only occurrences due today or later and labels them as remaining.
 
 Home and Budgets default to the Actual analytics lens and expose a minimal `Actual | Net` control. Reports exposes the complete `Actual | Net of extras | Extras only` control. The active lens must always be visible; Net must explain that extras are excluded. Home and Budgets may share this UI state for the active app session, but a new session returns to Actual so the app never silently hides real cash activity.
 
