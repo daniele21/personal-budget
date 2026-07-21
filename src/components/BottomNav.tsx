@@ -127,7 +127,7 @@ function renderAddAction(item: NavItem, isActive: boolean) {
     >
       <span
         className={cn(
-          'flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary',
+          'flex h-14 w-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-on-primary',
           'transition-transform active:scale-95',
           isActive && 'ring-4 ring-primary/20',
         )}

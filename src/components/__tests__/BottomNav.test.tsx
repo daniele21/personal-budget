@@ -25,6 +25,7 @@ describe('BottomNav', () => {
     expect(container.querySelector('[data-nav-position="center"]')).toContainElement(
       screen.getByRole('link', { name: 'Add transaction' }),
     );
+    expect(screen.getByRole('link', { name: 'Add transaction' }).firstElementChild).toHaveClass('-translate-y-5');
   });
 
   it('keeps report aliases under the Reports active state', () => {
