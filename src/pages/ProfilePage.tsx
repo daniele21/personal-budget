@@ -8,7 +8,7 @@ import { Transaction, Budget } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CategoryManagerDialog } from '../components/CategoryManagerDialog';
 import { NotificationPreferences } from '../components/NotificationPreferences';
-import { Switch } from '../components/ui';
+import { Card, Switch } from '../components/ui';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
@@ -208,18 +208,28 @@ export const ProfilePage = () => {
       {...pageTransition}
       className="space-y-5 pb-24"
     >
-      <section>
-        <div className="flex flex-col gap-3 mb-6">
-          <div>
-            <p className="text-on-surface-variant text-micro mb-1 font-bold">Total Net Worth</p>
-            <h2 className="text-4xl font-extrabold text-primary tracking-tight">{formatCurrency(netWorth)}</h2>
+      <Card variant="inverse" tone={netWorth >= 0 ? 'positive' : 'danger'} as="section" className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="mb-1 text-micro font-bold uppercase tracking-[0.12em] text-inverse-on-surface-variant">Total Net Worth</p>
+            <h2 className="truncate text-4xl font-extrabold tracking-tight text-inverse-on-surface">{formatCurrency(netWorth)}</h2>
           </div>
-          <div className="flex items-center gap-2 text-secondary font-bold bg-secondary-container/20 px-4 py-1.5 rounded-full w-fit text-xs">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-inverse-positive ring-1 ring-inset ring-white/10">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>Real-time calculation</span>
+            <span>Live</span>
           </div>
         </div>
-      </section>
+        <div className="grid grid-cols-2 divide-x divide-white/12 border-t border-white/12 pt-3">
+          <div className="pr-3">
+            <p className="text-micro font-semibold text-inverse-on-surface-variant">Total income</p>
+            <p className="mt-1 truncate text-sm font-bold text-inverse-positive">{formatCurrency(totalIncome)}</p>
+          </div>
+          <div className="pl-3">
+            <p className="text-micro font-semibold text-inverse-on-surface-variant">Total expenses</p>
+            <p className="mt-1 truncate text-sm font-bold text-inverse-danger">{formatCurrency(totalExpenses)}</p>
+          </div>
+        </div>
+      </Card>
 
       <section>
         <div className="flex items-center justify-between mb-4">

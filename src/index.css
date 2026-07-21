@@ -29,9 +29,9 @@
   --font-size-hero: 2.25rem;      /* 36px — balance, key metrics */
 
   /* --- Brand color palette (Aura Finance) --- */
-  --color-surface: #eef3f8;
-  --color-on-surface: #071e27;
-  --color-on-surface-variant: #486581;
+  --color-surface: #edf3f7;
+  --color-on-surface: #101828;
+  --color-on-surface-variant: #667085;
   --color-primary: #003461;
   --color-primary-container: #004b87;
   --color-on-primary: #ffffff;
@@ -45,11 +45,26 @@
   --color-accent-cyan: #06b6d4;
   --color-accent-pink: #ec4899;
   --color-accent-lime: #84cc16;
-  --color-surface-container-low: #e4ebf2;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-high: #d9e2ec;
-  --color-surface-container-highest: #cbd5e1;
-  --color-outline-variant: #b5c4d4;
+  --color-surface-container-low: #f5f8fa;
+  --color-surface-container-lowest: #fcfdfe;
+  --color-surface-container-high: #e7eef4;
+  --color-surface-container-highest: #d8e2ea;
+  --color-outline-variant: #c7d3dd;
+  --color-inverse-surface: #071e35;
+  --color-inverse-surface-strong: #003f68;
+  --color-inverse-on-surface: #f8fbff;
+  --color-inverse-on-surface-variant: #b8cad8;
+  --color-inverse-positive: #6ee7a0;
+  --color-inverse-warning: #fbbf24;
+  --color-inverse-danger: #ff7b78;
+  --color-inverse-accent: #58d5e8;
+  --aura-card-border: color-mix(in srgb, var(--color-outline-variant) 58%, transparent);
+  --aura-surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  --aura-card-shadow: var(--aura-surface-highlight), 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 24px -18px rgba(0, 52, 97, 0.22);
+  --aura-card-shadow-elevated: var(--aura-surface-highlight), 0 3px 7px rgba(16, 24, 40, 0.06), 0 22px 48px -16px rgba(0, 52, 97, 0.28);
+  --aura-control-shadow: var(--aura-surface-highlight), 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 20px -12px rgba(0, 52, 97, 0.20);
+  --aura-border-neutral-start: color-mix(in srgb, var(--color-primary) 18%, var(--color-outline-variant));
+  --aura-border-neutral-end: color-mix(in srgb, var(--color-secondary) 12%, var(--color-outline-variant));
 
   /* --- Border radius scale --- */
   --radius-xl: 0.75rem;
@@ -77,6 +92,19 @@
     --color-surface-container-high: #1d3042;
     --color-surface-container-highest: #283f54;
     --color-outline-variant: #2b4255;
+    --color-inverse-surface: #10283a;
+    --color-inverse-surface-strong: #0b5278;
+    --color-inverse-on-surface: #ffffff;
+    --color-inverse-on-surface-variant: #c3d7e6;
+    --color-inverse-positive: #86efac;
+    --color-inverse-warning: #fcd34d;
+    --color-inverse-danger: #fda4af;
+    --color-inverse-accent: #67e8f9;
+    --aura-card-border: color-mix(in srgb, var(--color-outline-variant) 72%, transparent);
+    --aura-surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --aura-card-shadow: var(--aura-surface-highlight), 0 2px 5px rgba(0, 0, 0, 0.34), 0 16px 34px -18px rgba(0, 0, 0, 0.86);
+    --aura-card-shadow-elevated: var(--aura-surface-highlight), 0 4px 9px rgba(0, 0, 0, 0.40), 0 26px 54px -20px rgba(0, 0, 0, 0.92);
+    --aura-control-shadow: var(--aura-surface-highlight), 0 8px 22px -14px rgba(0, 0, 0, 0.82);
   }
 }
 
@@ -132,52 +160,410 @@
 
 /**
  * aura-card — standard surface card.
- * White bg, visible border, soft elevation shadow.
+ * Quiet premium surface with a fine border and low ambient elevation.
  */
 .aura-card {
-  background: var(--color-surface-container-lowest);
-  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
-  border-radius: var(--radius-3xl);
-  box-shadow: 0 4px 20px -3px rgba(0, 52, 97, 0.05), 0 2px 6px -1px rgba(0, 52, 97, 0.03);
-  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --aura-tone: var(--color-primary);
+  --aura-tone-soft: var(--color-secondary);
+  --aura-tone-wash: 1%;
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)),
+    var(--color-surface-container-lowest) 70%
+  );
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 52%, transparent);
+  border-radius: 1.25rem;
+  box-shadow: var(--aura-card-shadow);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.aura-card-elevated::before,
+.aura-control-surface::before,
+.aura-segmented-control::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -2;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--aura-tone), transparent 46%, var(--aura-tone-soft));
+  filter: blur(5px);
+  opacity: 0.20;
+}
+
+.aura-card-elevated::after,
+.aura-control-surface::after,
+.aura-segmented-control::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)) 0%,
+    var(--color-surface-container-lowest) 62%
+  );
 }
 
 .aura-card:hover {
-  transform: translateY(-1.5px);
-  border-color: color-mix(in srgb, var(--color-outline-variant) 65%, transparent);
-  box-shadow: 0 10px 28px -4px rgba(0, 52, 97, 0.07), 0 3px 10px -2px rgba(0, 52, 97, 0.04);
+  box-shadow: var(--aura-card-shadow);
 }
 
 /**
  * aura-card-elevated — hero/summary card with stronger presence.
  */
 .aura-card-elevated {
-  background: var(--color-surface-container-lowest);
-  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
-  border-radius: var(--radius-3xl);
-  box-shadow: 0 12px 36px -6px rgba(0, 52, 97, 0.08), 0 4px 14px -3px rgba(0, 52, 97, 0.05);
-  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --aura-tone: var(--color-primary);
+  --aura-tone-soft: var(--color-accent-cyan);
+  --aura-tone-wash: 5%;
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border: 0;
+  border-radius: 1.25rem;
+  box-shadow: var(--aura-card-shadow-elevated);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.aura-card-elevated::before {
+  inset: -3px;
+  filter: blur(7px);
+  opacity: 0.34;
+}
+
+.aura-card-elevated::after {
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--aura-tone-soft) 9%, transparent), transparent 38%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)) 0%,
+      var(--color-surface-container-lowest) 66%
+    );
 }
 
 .aura-card-elevated:hover {
-  transform: translateY(-1.5px);
-  border-color: color-mix(in srgb, var(--color-outline-variant) 85%, transparent);
-  box-shadow: 0 20px 48px -8px rgba(0, 52, 97, 0.12), 0 6px 18px -4px rgba(0, 52, 97, 0.07);
+  box-shadow: var(--aura-card-shadow-elevated);
+}
+
+.aura-card-tone-neutral {
+  --aura-tone: color-mix(in srgb, var(--color-primary) 34%, var(--color-outline-variant));
+  --aura-tone-soft: color-mix(in srgb, var(--color-secondary) 24%, var(--color-outline-variant));
+  --aura-tone-wash: 0.75%;
+}
+
+.aura-card-tone-primary {
+  --aura-tone: var(--color-primary);
+  --aura-tone-soft: var(--color-accent-cyan);
+  --aura-tone-wash: 5%;
+}
+
+.aura-card-tone-positive {
+  --aura-tone: var(--color-secondary);
+  --aura-tone-soft: var(--color-accent-lime);
+  --aura-tone-wash: 4.5%;
+}
+
+.aura-card-tone-warning {
+  --aura-tone: var(--color-accent-amber);
+  --aura-tone-soft: var(--color-primary);
+  --aura-tone-wash: 7%;
+}
+
+.aura-card-tone-danger {
+  --aura-tone: var(--color-tertiary);
+  --aura-tone-soft: var(--color-accent-amber);
+  --aura-tone-wash: 6%;
+}
+
+/* Deliberately visible wash for a small number of focal dashboard surfaces. */
+.aura-card-colorized {
+  --aura-tone-wash: 12%;
+}
+
+.aura-card-elevated.aura-card-colorized::after {
+  background:
+    radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--aura-tone-soft) 18%, transparent), transparent 42%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)) 0%,
+      color-mix(in srgb, var(--color-surface-container-lowest) 95%, var(--aura-tone-soft)) 54%,
+      var(--color-surface-container-lowest) 100%
+    );
+}
+
+/** Inverse financial anchor: one dark focal surface inside the light workspace. */
+.aura-card-inverse {
+  --aura-inverse-state: var(--color-inverse-accent);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--color-inverse-on-surface);
+  background:
+    radial-gradient(circle at 90% 8%, color-mix(in srgb, var(--aura-inverse-state) 17%, transparent), transparent 38%),
+    radial-gradient(circle at 8% 110%, color-mix(in srgb, var(--color-inverse-accent) 15%, transparent), transparent 45%),
+    linear-gradient(135deg, var(--color-inverse-surface) 0%, var(--color-inverse-surface-strong) 100%);
+  border: 1px solid color-mix(in srgb, var(--color-inverse-accent) 28%, transparent);
+  border-radius: 1.25rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 22px 46px -22px color-mix(in srgb, var(--color-inverse-surface-strong) 72%, transparent);
+}
+
+.aura-card-inverse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.07), transparent 32%, transparent 72%, rgba(255, 255, 255, 0.03));
+}
+
+.aura-card-inverse-tone-positive { --aura-inverse-state: var(--color-inverse-positive); }
+.aura-card-inverse-tone-warning { --aura-inverse-state: var(--color-inverse-warning); }
+.aura-card-inverse-tone-danger { --aura-inverse-state: var(--color-inverse-danger); }
+
+.aura-card-inverse .aura-status-primary {
+  color: var(--color-inverse-positive);
+  background: color-mix(in srgb, var(--color-inverse-positive) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-inverse-positive) 22%, transparent);
+}
+
+.aura-card-inverse .aura-status-warning {
+  color: var(--color-inverse-warning);
+  background: color-mix(in srgb, var(--color-inverse-warning) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-inverse-warning) 22%, transparent);
+}
+
+.aura-card-inverse .aura-status-danger {
+  color: var(--color-inverse-danger);
+  background: color-mix(in srgb, var(--color-inverse-danger) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-inverse-danger) 22%, transparent);
 }
 
 /**
  * aura-card-flat — section sub-area card, subtle border.
  */
 .aura-card-flat {
-  background: var(--color-surface-container-low);
-  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-low) 96%, var(--color-primary)), var(--color-surface-container-low));
+  border: 0;
   border-radius: var(--radius-2xl);
   transition: all 0.2s ease;
 }
 
 .aura-card-flat:hover {
   background: var(--color-surface-container-high);
-  border-color: color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
+}
+
+/** Raised control group: filters, period pickers, and compact toolbars. */
+.aura-control-surface {
+  --aura-tone: var(--color-primary);
+  --aura-tone-soft: var(--color-secondary);
+  --aura-tone-wash: 2%;
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--color-surface-container-high) 86%, var(--color-primary)),
+      color-mix(in srgb, var(--color-surface-container-low) 92%, var(--color-accent-cyan)) 52%,
+      color-mix(in srgb, var(--color-surface-container-low) 93%, var(--color-secondary))
+    );
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 44%, transparent);
+  box-shadow: var(--aura-control-shadow);
+}
+
+/* Quiet section plane: groups related content without creating another floating card. */
+.aura-section-surface {
+  background: var(--color-surface-container-low);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 38%, transparent);
+  border-radius: 1.25rem;
+}
+
+.aura-section-tone-primary {
+  background:
+    radial-gradient(circle at 95% 8%, color-mix(in srgb, var(--color-accent-cyan) 15%, transparent), transparent 38%),
+    linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-low) 88%, var(--color-primary)), var(--color-surface-container-low) 72%);
+}
+
+.aura-section-tone-warning {
+  background:
+    radial-gradient(circle at 92% 12%, color-mix(in srgb, var(--color-tertiary) 11%, transparent), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-low) 86%, var(--color-accent-amber)), var(--color-surface-container-low) 74%);
+}
+
+/* One shared analytical panel is calmer and more structured than four elevated KPI cards. */
+.aura-kpi-panel {
+  overflow: hidden;
+  background: var(--color-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 52%, transparent);
+  border-radius: 1.25rem;
+  box-shadow: var(--aura-card-shadow);
+}
+
+.aura-kpi-cell {
+  min-width: 0;
+  background:
+    radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--aura-kpi-tone) 13%, transparent), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-lowest) 89%, var(--aura-kpi-tone)), var(--color-surface-container-lowest) 78%);
+}
+
+.aura-kpi-cell:nth-child(2n) {
+  border-left: 1px solid color-mix(in srgb, var(--color-outline-variant) 48%, transparent);
+}
+
+.aura-kpi-cell:nth-child(n + 3) {
+  border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 48%, transparent);
+}
+
+.aura-kpi-positive { --aura-kpi-tone: var(--color-secondary); }
+.aura-kpi-neutral { --aura-kpi-tone: var(--color-on-surface-variant); }
+.aura-kpi-primary { --aura-kpi-tone: var(--color-primary); }
+.aura-kpi-warning { --aura-kpi-tone: var(--color-accent-amber); }
+
+.aura-segmented-control {
+  --aura-tone: var(--color-primary);
+  --aura-tone-soft: var(--color-accent-amber);
+  --aura-tone-wash: 0%;
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border: 0;
+}
+
+.aura-segmented-control::before {
+  filter: blur(4px);
+  opacity: 0.16;
+}
+
+.aura-segmented-control::after {
+  background: color-mix(in srgb, var(--color-surface-container-high) 72%, transparent);
+}
+
+.aura-topbar::after,
+.aura-bottom-nav::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-primary) 30%, transparent) 28%, color-mix(in srgb, var(--color-accent-cyan) 34%, transparent) 52%, color-mix(in srgb, var(--color-secondary) 26%, transparent) 76%, transparent);
+  filter: blur(4px);
+  opacity: 0.72;
+}
+
+.aura-topbar::after { bottom: -3px; }
+.aura-bottom-nav::before { top: -3px; }
+
+.aura-fab {
+  background: linear-gradient(145deg, var(--color-primary-container), var(--color-primary) 64%, color-mix(in srgb, var(--color-primary) 82%, var(--color-accent-cyan)));
+}
+
+.aura-icon-chip-primary,
+.aura-icon-chip-positive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-on-primary) 28%, transparent), 0 8px 18px -12px currentColor;
+}
+
+.aura-icon-chip-primary {
+  color: var(--color-primary);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--color-accent-cyan) 18%, var(--color-surface-container-lowest)), color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-container-lowest)));
+}
+
+.aura-icon-chip-positive {
+  color: var(--color-secondary);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--color-accent-lime) 20%, var(--color-surface-container-lowest)), color-mix(in srgb, var(--color-secondary) 12%, var(--color-surface-container-lowest)));
+}
+
+.aura-status-primary,
+.aura-status-warning,
+.aura-status-danger {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+}
+
+.aura-status-primary {
+  color: var(--color-primary);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-accent-cyan) 13%, transparent));
+}
+
+.aura-status-warning {
+  color: color-mix(in srgb, var(--color-accent-amber) 72%, var(--color-on-surface));
+  background: linear-gradient(110deg, color-mix(in srgb, var(--color-accent-amber) 15%, transparent), color-mix(in srgb, var(--color-primary) 6%, transparent));
+}
+
+.aura-status-danger {
+  color: var(--color-tertiary);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--color-tertiary) 12%, transparent), color-mix(in srgb, var(--color-accent-amber) 10%, transparent));
+}
+
+.aura-lens-selected-primary {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest));
+}
+
+.aura-lens-selected-amber {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent-amber) 16%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest));
+}
+
+.aura-metric-positive,
+.aura-metric-neutral {
+  transition: background 180ms ease;
+}
+
+.aura-metric-positive {
+  background:
+    radial-gradient(circle at 18% 15%, color-mix(in srgb, var(--color-accent-lime) 15%, transparent), transparent 44%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 12%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 78%);
+}
+
+.aura-metric-positive:hover {
+  background:
+    radial-gradient(circle at 18% 15%, color-mix(in srgb, var(--color-accent-lime) 20%, transparent), transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 15%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 80%);
+}
+
+.aura-metric-neutral {
+  background:
+    radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--color-accent-cyan) 14%, transparent), transparent 44%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 78%);
+}
+
+.aura-metric-neutral:hover {
+  background:
+    radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--color-accent-cyan) 19%, transparent), transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 13%, var(--color-surface-container-lowest)), var(--color-surface-container-lowest) 80%);
+}
+
+.aura-metric-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--color-outline-variant) 65%, transparent), transparent);
+}
+
+.aura-divider-top {
+  position: relative;
+}
+
+.aura-divider-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-outline-variant) 58%, transparent) 18%, color-mix(in srgb, var(--color-primary) 22%, var(--color-outline-variant)) 50%, color-mix(in srgb, var(--color-outline-variant) 58%, transparent) 82%, transparent);
 }
 
 /* Shimmer loading animation */

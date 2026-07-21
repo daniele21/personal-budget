@@ -23,7 +23,8 @@ const mockTransaction = (id: string, amount = 100): Transaction => ({
 const mockBudget = (category: string, limit = 500): Budget => ({
   category,
   limit,
-  period: 'monthly',
+  spent: 0,
+  currency: 'EUR',
 });
 
 const mockRecurring = (id: string, amount = 50): RecurringExpense => ({
@@ -31,6 +32,7 @@ const mockRecurring = (id: string, amount = 50): RecurringExpense => ({
   name: `Bill ${id}`,
   amount,
   startDate: '2026-04-01T00:00:00.000Z',
+  endDate: '',
   dayOfMonth: 1,
   category: 'Utilities',
   type: 'expense',

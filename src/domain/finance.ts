@@ -681,3 +681,58 @@ export function calculateMovingAverage(
 
   return data;
 }
+
+/**
+ * Calculates rolling expense totals for each calendar day in a range.
+ * Transactions before `start` are intentionally considered when they fall
+ * inside the first rolling window, so the chart does not start with an
+ * artificially incomplete value.
+ */
+export function calculateRollingSpending(
+  transactions: Transaction[],
+  start: Date,
+  end: Date,
+  windowSize: number,
+): { dateLabel: string; value: number }[] {
+  if (windowSize < 1 || end < start) return [];
+
+  const data: { dateLabel: string; value: number }[] = [];
+  const cursor = new Date(start);
+  const expenseTx = transactions
+    .filter((transaction) => transaction.type === 'expense')
+    .map((transaction) => ({
+      time: new Date(transaction.date).getTime(),
+      amount: transaction.amount,
+    }))
+    .sort((a, b) => a.time - b.time);
+
+  let startIdx = 0;
+  let endIdx = 0;
+  let runningSum = 0;
+
+  while (cursor <= end) {
+    const dayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+    const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59, 999);
+    const windowStart = new Date(dayStart);
+    windowStart.setDate(windowStart.getDate() - (windowSize - 1));
+
+    while (endIdx < expenseTx.length && expenseTx[endIdx].time <= dayEnd.getTime()) {
+      runningSum += expenseTx[endIdx].amount;
+      endIdx += 1;
+    }
+
+    while (startIdx < expenseTx.length && expenseTx[startIdx].time < windowStart.getTime()) {
+      runningSum -= expenseTx[startIdx].amount;
+      startIdx += 1;
+    }
+
+    data.push({
+      dateLabel: cursor.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      value: Math.max(0, runningSum),
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return data;
+}

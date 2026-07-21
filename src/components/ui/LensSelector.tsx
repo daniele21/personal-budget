@@ -18,7 +18,7 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
   return (
     <fieldset
       aria-label="Analytics lens"
-      className={cn("grid h-8 w-full max-w-[10rem] grid-cols-2 items-center gap-1 rounded-full border border-outline-variant/15 bg-surface-container-low p-1 mx-auto", className)}
+      className={cn("aura-segmented-control mx-auto grid h-9 w-full max-w-[10rem] grid-cols-2 items-center gap-1 rounded-full p-1", className)}
     >
       <legend className="sr-only">Analytics lens</legend>
       <input
@@ -35,10 +35,10 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
         aria-label="Net"
         aria-pressed={normalizedSelected}
         className={cn(
-          "relative inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.96]",
+          "relative inline-flex h-7 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-xs font-medium leading-none transition-colors duration-200 active:opacity-75",
           "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/25",
           normalizedSelected
-            ? "text-primary font-bold"
+            ? "text-primary font-semibold"
             : "text-on-surface-variant hover:text-on-surface"
         )}
       >
@@ -46,7 +46,7 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
           <motion.span
             layoutId="active-lens"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="absolute inset-0 rounded-full border border-outline-variant/20 bg-surface-container-lowest shadow-sm"
+            className="aura-lens-selected-primary absolute inset-0 rounded-full shadow-[0_2px_10px_rgba(0,52,97,0.12)]"
           />
         )}
         <ShieldCheck className={cn("h-3.5 w-3.5 shrink-0 transition-colors z-10", normalizedSelected ? "text-primary" : "text-on-surface-variant/70")} />
@@ -68,18 +68,18 @@ export function LensSelector({ value, onChange, className }: LensSelectorProps) 
         aria-label="Actual"
         aria-pressed={!normalizedSelected}
         className={cn(
-          "relative inline-flex h-6 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-semibold leading-none transition-all duration-200 active:scale-[0.96]",
+          "relative inline-flex h-7 min-w-0 cursor-pointer select-none items-center justify-center gap-1 rounded-full px-1.5 text-xs font-medium leading-none transition-colors duration-200 active:opacity-75",
           "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/25",
           normalizedSelected
             ? "text-on-surface-variant hover:text-on-surface"
-            : "text-accent-amber font-bold"
+            : "text-accent-amber font-semibold"
         )}
       >
         {!normalizedSelected && (
           <motion.span
             layoutId="active-lens"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="absolute inset-0 rounded-full border border-outline-variant/20 bg-surface-container-lowest shadow-sm"
+            className="aura-lens-selected-amber absolute inset-0 rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.14)]"
           />
         )}
         <Sparkles className={cn("h-3.5 w-3.5 shrink-0 transition-colors z-10", normalizedSelected ? "text-on-surface-variant/70" : "text-accent-amber")} />

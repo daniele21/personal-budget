@@ -1,19 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
-  BarChart3,
-  CalendarDays,
-  ChevronDown,
+  ArrowDownRight,
+  ArrowUpRight,
+  ChartNoAxesCombined,
   ChevronLeft,
   ChevronRight,
   Info,
-  Lightbulb,
-  Plus,
-  ReceiptText,
-  TrendingUp,
   Wallet,
-  WalletCards,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
@@ -21,9 +16,7 @@ import { formatCurrency } from '../utils/formatters';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import {
   Card,
-  CompactMetricCard,
   EmptyState,
-  IconAction,
   LensSelector,
   Skeleton,
 } from '../components/ui';
@@ -71,9 +64,6 @@ export const Dashboard = () => {
   useBudgetAlerts(budgets, transactions);
 
   // ── Derived state ─────────────────────────────────────────────────
-  const { income: monthlyIncome, expenses: monthlyExpenses } = monthlyTotals;
-  const animatedBalance = useAnimatedNumber(monthlyTotals.net);
-  const [barsMounted, setBarsMounted] = useState(false);
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
@@ -97,11 +87,20 @@ export const Dashboard = () => {
   );
   const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
+  const isOverBudget = safeToSpendTotals.expenses > effectiveLimit;
 
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setBarsMounted(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
+  const today = new Date();
+  const isCurrentMonth =
+    selectedMonth.getFullYear() === today.getFullYear() &&
+    selectedMonth.getMonth() === today.getMonth();
+  const daysInSelectedMonth = new Date(
+    selectedMonth.getFullYear(),
+    selectedMonth.getMonth() + 1,
+    0,
+  ).getDate();
+  const daysRemaining = isCurrentMonth
+    ? Math.max(0, daysInSelectedMonth - today.getDate())
+    : daysInSelectedMonth;
 
   // ── Month navigation ───────────────────────────────────────────────
   const handlePrevMonth = () => {
@@ -137,10 +136,6 @@ export const Dashboard = () => {
     });
   };
 
-  // ── Compute MoM trend numbers for cards ───────────────────────────
-  const incomeTrend = momChange !== null ? momChange : null;
-  const expenseTrend = momChange !== null ? -momChange : null;
-
   // ── Group recent transactions by date label ────────────────────────
   const groupedRecent = useMemo(() => {
     const today = new Date();
@@ -169,106 +164,105 @@ export const Dashboard = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <motion.div {...pageTransition} className="space-y-3 pb-24">
-      {/* ── 1. Safe to Spend Hero ─────────────────────────────────────── */}
-      <Link to="/budgets" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-3xl transition-transform active:scale-[0.99]">
-        <Card variant="elevated" className="space-y-2 py-3 overflow-hidden">
+      {/* ── 1. Month navigator ─────────────────────────────────────────── */}
+      <div className="aura-control-surface flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5">
+        <button onClick={handlePrevMonth} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/6 text-primary transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Previous month">
+          <ChevronLeft className="h-4 w-4 text-primary" />
+        </button>
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-2">
+          <div className="shrink-0 text-center">
+            <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">Monthly snapshot</p>
+            <p className="text-sm font-semibold text-primary">{formatMonthLabel(selectedMonth)}</p>
+          </div>
+          <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
+        </div>
+        <button onClick={handleNextMonth} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/6 text-primary transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Next month">
+          <ChevronRight className="h-4 w-4 text-primary" />
+        </button>
+      </div>
+
+      {/* ── 2. Safe to Spend Hero ─────────────────────────────────────── */}
+      <Link to="/budgets" className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:opacity-90">
+        <Card
+          variant="inverse"
+          tone={isOverBudget ? 'danger' : usedPercent > 80 ? 'warning' : 'primary'}
+          className="py-4"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-1.5">
-                <h2 className="font-headline text-xs font-bold text-on-surface-variant">Safe to spend</h2>
-                <Info className="h-3.5 w-3.5 text-on-surface-variant/60" />
+                <h2 className="font-headline text-sm font-medium text-inverse-on-surface-variant">Available to spend</h2>
+                <Info className="h-3.5 w-3.5 text-inverse-on-surface-variant/70" />
               </div>
               {isHydrated ? (
                 <p
                   className={cn(
-                    'font-headline text-3xl font-extrabold leading-none tabular-nums',
-                    usedPercent > 90 ? 'text-tertiary' : 'text-primary',
+                    'font-headline text-4xl font-bold leading-none tracking-tight tabular-nums',
+                    'text-inverse-on-surface',
                   )}
                 >
                   {formatCurrency(animatedSafeAmount)}
                 </p>
               ) : (
-                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-32 bg-white/15" />
               )}
-              <p className="text-[10px] font-bold text-on-surface-variant">
-                of {formatCurrency(effectiveLimit)}
+              <p className="text-xs font-normal text-inverse-on-surface-variant">
+                {formatCurrency(safeToSpendTotals.expenses)} spent of {formatCurrency(effectiveLimit)}
+              </p>
+              <p className="text-xs font-normal text-inverse-on-surface-variant">
+                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
               </p>
             </div>
             {/* Gauge with hidden text labels below it for mockup matching */}
-            <div className="shrink-0 scale-95 origin-right">
-              <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" hideText />
+            <div className="shrink-0 scale-90 origin-right">
+              <RadialGauge percent={usedPercent} value={`${usedPercent}%`} label="used" hideText inverse />
+              <p className={cn(
+                'mt-1 justify-center text-center text-xs',
+                isOverBudget ? 'aura-status-danger' : usedPercent > 80 ? 'aura-status-warning' : 'aura-status-primary',
+              )}>
+                {usedPercent}% used · {isOverBudget ? 'Over budget' : 'On track'}
+              </p>
             </div>
           </div>
         </Card>
       </Link>
 
-      {/* ── 2. Month navigator ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface-container-low px-3 py-2">
-        <button
-          onClick={handlePrevMonth}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="h-4 w-4 text-primary" />
-        </button>
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-2">
-          <div className="shrink-0 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
-              Monthly snapshot
-            </p>
-            <p className="text-sm font-extrabold text-primary">{formatMonthLabel(selectedMonth)}</p>
-          </div>
-          <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
-        </div>
-        <button
-          onClick={handleNextMonth}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-          aria-label="Next month"
-        >
-          <ChevronRight className="h-4 w-4 text-primary" />
-        </button>
-      </div>
-
-      {/* ── 3. Income / Spent / Remaining row ─────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2">
-        <Link to="/history?type=income" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
-          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
-            <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Income this month</p>
-            <div className="flex items-center justify-between mt-1 gap-1">
-              <span className="text-sm font-extrabold text-secondary truncate">
+      {/* ── 3. Monthly summary ─────────────────────────────────────────── */}
+      <Card className="grid grid-cols-2 p-0">
+        <Link to="/history?type=income" className="aura-metric-positive min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-on-surface-variant">Income</p>
+              <span className="aura-icon-chip-positive h-7 w-7" aria-hidden="true">
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+            <p className="mt-1 truncate text-base font-semibold text-secondary">
                 {isHydrated ? formatCurrency(safeToSpendTotals.income) : <Skeleton className="h-4 w-12" />}
-              </span>
-              <TrendingUp className="h-3 w-3 text-secondary shrink-0" />
-            </div>
-          </div>
+            </p>
         </Link>
-        <Link to="/history?type=expense" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
-          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
-            <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Spent</p>
-            <div className="mt-1">
-              <span className="text-sm font-extrabold text-tertiary truncate">
+        <Link to="/history?type=expense" className="aura-metric-divider aura-metric-neutral relative min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-on-surface-variant">Spent</p>
+              <span className="aura-icon-chip-primary h-7 w-7" aria-hidden="true">
+                <ArrowDownRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+            <p className="mt-1 truncate text-base font-semibold text-on-surface">
                 {isHydrated ? formatCurrency(safeToSpendTotals.expenses) : <Skeleton className="h-4 w-12" />}
-              </span>
-            </div>
-          </div>
+            </p>
         </Link>
-        <Link to="/history" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-2xl transition-all active:scale-[0.97]">
-          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 flex flex-col justify-between min-h-[68px] hover:border-outline-variant/45 hover:shadow-sm">
-            <p className="text-[10px] font-bold text-on-surface-variant leading-tight">Remaining</p>
-            <div className="mt-1">
-              <span className="text-sm font-extrabold text-on-surface truncate">
-                {isHydrated ? formatCurrency(safeAmount) : <Skeleton className="h-4 w-12" />}
-              </span>
-            </div>
-          </div>
-        </Link>
-      </div>
+      </Card>
 
       {/* ── 5. Cash flow chart ─────────────────────────────────────────── */}
-      <Card variant="elevated" className="space-y-3 p-4">
+      <Card tone="primary" colorized className="space-y-3 p-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-headline text-sm font-bold text-on-surface">Cash flow overview</h3>
-          <span className="text-[10px] font-bold text-on-surface-variant">
+          <div className="flex items-center gap-2.5">
+            <span className="aura-icon-chip-primary h-8 w-8" aria-hidden="true">
+              <ChartNoAxesCombined className="h-4 w-4" />
+            </span>
+            <h3 className="font-headline text-base font-semibold text-on-surface">Cash flow</h3>
+          </div>
+          <span className="text-xs font-medium text-on-surface-variant">
             {formatMonthLabel(selectedMonth)}
           </span>
         </div>
@@ -278,54 +272,26 @@ export const Dashboard = () => {
           netAmount={monthlyTotals.net}
           momChange={momChange}
         />
-        <div className="border-t border-outline-variant/20 pt-3 mt-1 flex justify-end">
+        <div className="aura-divider-top mt-1 flex justify-end pt-3">
           <Link
             to="/insights"
-            className="flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline"
+            className="text-sm font-medium text-primary hover:underline"
           >
-            See insights
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path d="M3 3v18h18M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <ChevronRight className="h-3 w-3" />
+            View report
           </Link>
         </div>
       </Card>
 
-      {/* ── 7. Savings insight ─────────────────────────────────────────── */}
-      {monthlyTotals.net > 0 && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-secondary/15 bg-secondary/5 p-3">
-          <Lightbulb className="h-4 w-4 shrink-0 text-secondary" />
-          <p className="text-sm font-medium text-on-surface">
-            You saved{' '}
-            <span className="font-bold text-secondary">{formatCurrency(monthlyTotals.net)}</span>{' '}
-            this month.
-          </p>
-        </div>
-      )}
-
       {/* ── 8. Recent transactions ─────────────────────────────────────── */}
       <section className="aura-card p-4" aria-label="Recent transactions">
-        <div className="mb-3 flex items-end justify-between">
-          <div>
-            <h3 className="font-headline text-base font-bold text-primary">Recent Transactions</h3>
-            <p className="text-xs font-medium text-on-surface-variant">Latest movements</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/add"
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-on-primary shadow-sm transition-all hover:bg-primary-container hover:shadow-md"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add
-            </Link>
+        <div className="mb-2 flex items-center justify-between">
+            <h3 className="font-headline text-base font-semibold text-on-surface">Recent transactions</h3>
             <Link
               to="/history"
-              className="rounded-full bg-surface-container-low px-3 py-1.5 text-xs font-bold text-primary shadow-sm transition-all hover:bg-surface-container-high hover:shadow-md"
+              className="text-sm font-medium text-primary hover:underline"
             >
-              View All
+              View all
             </Link>
-          </div>
         </div>
 
         {groupedRecent.length > 0 ? (
@@ -340,7 +306,7 @@ export const Dashboard = () => {
                   return (
                     <div className="tx-date-group">
                       <span>{group.label}</span>
-                      <span className="text-[11px] font-medium text-on-surface-variant/60 tabular-nums">
+                      <span className="text-xs font-medium text-on-surface-variant/60 tabular-nums">
                         {netTotal >= 0 ? '+' : '-'}
                         {formatCurrency(Math.abs(netTotal))}
                       </span>
@@ -356,24 +322,24 @@ export const Dashboard = () => {
                   >
                     <button
                       onClick={() => setDetailTransaction(t)}
-                      className="flex w-full items-center gap-2.5 bg-surface px-1 py-2.5 text-left transition-colors active:bg-surface-container-low"
+                      className="flex w-full items-center gap-2.5 bg-transparent px-1 py-2.5 text-left transition-colors active:bg-surface-container-low"
                     >
                       <CategoryBadge category={t.category} size="md" className="shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <p className="min-w-0 truncate text-sm font-bold text-on-surface">
+                          <p className="min-w-0 truncate text-sm font-semibold text-on-surface">
                             {t.title}
                           </p>
                           <ExtraTransactionBadge transaction={t} className="shrink-0" />
                         </div>
-                        <p className="text-[10px] font-medium text-on-surface-variant">
+                        <p className="text-xs font-medium text-on-surface-variant">
                           {t.category}
                         </p>
                       </div>
                       <p
                         className={cn(
-                          'shrink-0 text-sm font-extrabold tabular-nums',
-                          t.type === 'income' ? 'text-secondary' : 'text-tertiary',
+                          'shrink-0 text-sm font-semibold tabular-nums',
+                          t.type === 'income' ? 'text-secondary' : 'text-on-surface',
                         )}
                       >
                         {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}

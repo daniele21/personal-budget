@@ -61,10 +61,9 @@ export const BottomNav = () => {
     <nav
       aria-label="Main navigation"
       className={cn(
-        'fixed bottom-0 w-full z-50',
-        'bg-surface/92 backdrop-blur-2xl',
-        'rounded-t-2xl border-t border-outline-variant/25',
-        'shadow-[0_-8px_24px_rgba(0,52,97,0.06)]',
+        'aura-bottom-nav fixed bottom-0 z-50 w-full',
+        'bg-surface-container-lowest/92 backdrop-blur-xl',
+        'shadow-[0_-10px_30px_-24px_rgba(0,52,97,0.34)]',
         'safe-area-bottom',
       )}
     >
@@ -77,9 +76,9 @@ export const BottomNav = () => {
       >
         <div
           className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-2xl',
-            'bg-primary text-on-primary',
-            'shadow-[0_4px_20px_rgba(0,52,97,0.35)]',
+            'flex h-12 w-12 items-center justify-center rounded-full',
+            'aura-fab text-on-primary',
+            'shadow-[0_8px_24px_-8px_rgba(0,52,97,0.48)]',
             'transition-all hover:bg-primary-container active:scale-90',
             'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25',
             isAddActive && 'ring-4 ring-primary/25',
@@ -123,28 +122,28 @@ function renderNavTab(item: NavItem, isActive: boolean) {
       aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'flex flex-col items-center justify-end gap-0.5 py-1',
-        'rounded-xl transition-all active:scale-90',
+        'relative flex flex-col items-center justify-end gap-0.5 py-1',
+        'rounded-xl transition-colors active:opacity-75',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
       )}
     >
-      {/* Icon pill */}
+      {isActive && (
+        <span className="absolute -top-2 h-1 w-7 rounded-full bg-[linear-gradient(90deg,var(--color-accent-cyan),var(--color-primary),var(--color-secondary))] shadow-[0_2px_8px_rgba(0,52,97,0.28)]" aria-hidden="true" />
+      )}
       <div
         className={cn(
-          'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-          isActive
-            ? 'bg-primary/12 text-primary'
-            : 'bg-transparent text-on-surface-variant/60',
+          'flex h-8 w-8 items-center justify-center rounded-xl text-on-surface-variant transition-all',
+          isActive && 'bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-accent-cyan)_18%,transparent),color-mix(in_srgb,var(--color-primary)_10%,transparent))] text-primary shadow-[0_6px_16px_-12px_rgba(0,52,97,0.45)]',
         )}
       >
-        <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.5 : 1.75} />
+        <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 1.75} />
       </div>
 
       {/* Label */}
       <span
         className={cn(
-          'max-w-full truncate text-[9px] font-bold transition-all',
-          isActive ? 'text-primary opacity-100' : 'text-on-surface-variant opacity-55',
+          'max-w-full truncate text-[11px] font-medium transition-colors',
+          isActive ? 'text-primary' : 'text-on-surface-variant',
         )}
       >
         {item.label}

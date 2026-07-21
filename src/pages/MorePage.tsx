@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/ui';
+import { PwaInstallButton } from '../components/PwaInstallButton';
 import { pageTransition } from '../utils/motion';
 
 /**
@@ -105,6 +106,16 @@ export function MorePage() {
             </Link>
           );
         })}
+      </Card>
+
+      <Card as="section" className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-headline text-base font-semibold text-on-surface">Install Aura</h3>
+          <p className="mt-0.5 text-xs text-on-surface-variant">
+            Add the app to your device for quicker access.
+          </p>
+        </div>
+        <PwaInstallButton />
       </Card>
 
       {/* ── Status cards ── */}

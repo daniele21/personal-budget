@@ -150,14 +150,19 @@ export const BudgetsPage = () => {
     <motion.div {...pageTransition} className="space-y-4 pb-24">
 
       {/* ── 1. Safe to Spend + Budget health hero ── */}
-      <Card variant="elevated" as="section" className="space-y-3">
+      <Card
+        variant="inverse"
+        tone={safeToSpend.usedPercent > 100 ? 'danger' : safeToSpend.usedPercent > 80 ? 'warning' : 'primary'}
+        as="section"
+        className="space-y-3"
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-headline text-sm font-bold text-on-surface-variant">
+              <h2 className="font-headline text-sm font-bold text-inverse-on-surface-variant">
                 Safe to Spend
               </h2>
-              <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-bold text-on-surface-variant">
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-inverse-on-surface-variant ring-1 ring-inset ring-white/10">
                 {formatMonthLabel(selectedMonth)}
               </span>
               <LensSelector value={lens} onChange={setLens} className="mt-1 max-w-[9.25rem] sm:mt-0" />
@@ -165,12 +170,12 @@ export const BudgetsPage = () => {
             <p
               className={cn(
                 'font-headline text-4xl font-extrabold leading-none tabular-nums',
-                safeToSpend.usedPercent > 90 ? 'text-tertiary' : 'text-secondary',
+                'text-inverse-on-surface',
               )}
             >
               {formatCurrency(safeToSpend.remaining)}
             </p>
-            <p className="text-xs font-semibold text-on-surface-variant">
+            <p className="text-xs font-semibold text-inverse-on-surface-variant">
               of {formatCurrency(safeToSpend.effectiveLimit)} safe limit
             </p>
           </div>
@@ -179,17 +184,18 @@ export const BudgetsPage = () => {
               percent={safeToSpend.usedPercent}
               value={`${safeToSpend.usedPercent}%`}
               label="used"
+              inverse
             />
           </div>
         </div>
 
         {/* Overall progress */}
         <div className="space-y-1">
-          <div className="flex justify-between text-[10px] font-bold text-on-surface-variant">
+          <div className="flex justify-between text-[10px] font-bold text-inverse-on-surface-variant">
             <span>Budget progress · {formatMonthLabel(selectedMonth)}</span>
             <span>{progress}% of budgeted</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-1000',
@@ -205,7 +211,7 @@ export const BudgetsPage = () => {
             />
           </div>
           {lens === 'actual' && totalExtraSpent > 0 && (
-            <p className="text-[10px] font-bold text-accent-amber">
+            <p className="text-[10px] font-bold text-inverse-warning">
               {formatCurrency(totalNormalizedSpent)} net of extras · +{formatCurrency(totalExtraSpent)} extras
             </p>
           )}
@@ -215,7 +221,7 @@ export const BudgetsPage = () => {
         <button
           type="button"
           onClick={handleOpenAddBudget}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-primary/25 bg-primary/5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/25 bg-white/8 py-2.5 text-sm font-bold text-inverse-on-surface transition-colors hover:bg-white/14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inverse-accent/60"
           aria-label="Add budget"
         >
           <Plus className="h-4 w-4" />

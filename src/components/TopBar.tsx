@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationCenter } from './NotificationCenter';
-import { PwaInstallButton } from './PwaInstallButton';
 import { useNotifications } from '../hooks/useNotifications';
 import { BrandMark } from './BrandMark';
 
@@ -147,23 +146,21 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
 
   // Dashboard: greeting "Ciao, Marco" with avatar left, actions right
   if (variant === 'dashboard') {
-    const firstName = user?.name?.split(' ')[0] ?? 'Aura';
     return (
       <>
-        <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             {/* Left: brand icon + greeting */}
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
               <div className="min-w-0">
-                <h1 className="min-w-0 truncate font-headline text-sm font-extrabold text-primary">
-                  Ciao, {firstName} 👋
+                <h1 className="min-w-0 truncate font-headline text-sm font-semibold text-primary">
+                  Monthly overview
                 </h1>
               </div>
             </div>
-            {/* Right: PWA install + search + notifications + avatar */}
+            {/* Right: search + notifications + avatar */}
             <div className="flex shrink-0 items-center gap-0.5">
-              <PwaInstallButton />
               {SearchBtn}
               {NotificationBtn}
               {AvatarLink}
@@ -180,8 +177,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'transactions') {
     return (
       <>
-        <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
               <h1 className="min-w-0 truncate font-headline text-xl font-extrabold text-primary">{title}</h1>
@@ -202,8 +199,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'insights') {
     return (
       <>
-        <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
               <h1 className="min-w-0 truncate font-headline text-xl font-extrabold text-primary">Insights</h1>
@@ -224,8 +221,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'reports') {
     return (
       <>
-        <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
               <h1 className="min-w-0 truncate font-headline text-xl font-extrabold text-primary">{title}</h1>
@@ -252,8 +249,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'budgets') {
     return (
       <>
-        <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
               <h1 className="min-w-0 truncate font-headline text-xl font-extrabold text-primary">{title}</h1>
@@ -274,8 +271,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'back') {
     return (
       <>
-        <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-          <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-3 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-3 sm:max-w-xl sm:px-5 md:max-w-2xl">
             {BackBtn}
             <HomeLogoLink />
             <h1 className="min-w-0 truncate font-headline text-base font-extrabold text-primary">
@@ -296,8 +293,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   // Default: logo + title + full action bar
   return (
     <>
-      <header className="fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,52,97,0.06)]">
-        <div className="mx-auto flex h-14 max-w-md items-center gap-2.5 px-3 sm:max-w-xl sm:px-5 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+      <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-md items-center gap-2.5 px-3 sm:max-w-xl sm:px-5 md:max-w-2xl">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <HomeLogoLink className="h-9 w-9" />
             <h1 className="min-w-0 truncate font-headline text-sm font-extrabold text-primary sm:text-base">
@@ -305,7 +302,6 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-            <PwaInstallButton />
             {SearchBtn}
             {NotificationBtn}
             {AvatarLink}

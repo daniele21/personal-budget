@@ -71,12 +71,12 @@ describe('Dashboard safe-to-spend lens', () => {
       transaction({ id: 'bonus', amount: 500, type: 'income', category: 'Bonus', title: 'Bonus', reportingClass: 'extra' }),
     ]);
 
-    expect(screen.getAllByText('€2,300.00')).toHaveLength(2);
+    expect(screen.getByText('€2,300.00')).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('radio', { name: 'Net' })[0]);
 
-    expect(screen.getAllByText('€2,900.00')).toHaveLength(2);
-    expect(screen.getByText('of €3,000.00')).toBeInTheDocument();
+    expect(screen.getByText('€2,900.00')).toBeInTheDocument();
+    expect(screen.getByText(/spent of €3,000\.00/)).toBeInTheDocument();
   });
 
   it('does not use a reimbursement-only inflow as the safe-to-spend limit', () => {
@@ -84,8 +84,8 @@ describe('Dashboard safe-to-spend lens', () => {
       transaction({ id: 'refund', amount: 100, type: 'income', category: 'Food', title: 'Refund', reportingClass: 'reimbursement' }),
     ]);
 
-    expect(screen.getAllByText('€3,000.00')).toHaveLength(2);
-    expect(screen.getByText('of €3,000.00')).toBeInTheDocument();
+    expect(screen.getByText('€3,000.00')).toBeInTheDocument();
+    expect(screen.getByText(/spent of €3,000\.00/)).toBeInTheDocument();
   });
 
   it('shows remaining safe-to-spend room even when no income is recorded for the month', () => {
@@ -93,8 +93,36 @@ describe('Dashboard safe-to-spend lens', () => {
       transaction({ id: 'expense', amount: 1737.96, type: 'expense', category: 'Food', title: 'Monthly spend' }),
     ]);
 
-    expect(screen.getByText('Income this month')).toBeInTheDocument();
+    expect(screen.getByText('Income')).toBeInTheDocument();
     expect(screen.getByText('€0.00')).toBeInTheDocument();
-    expect(screen.getAllByText('€1,262.04')).toHaveLength(2);
+    expect(screen.getByText('€1,262.04')).toBeInTheDocument();
+  });
+
+  it('presents the period before the primary metric and keeps ordinary expenses neutral', () => {
+    renderDashboard([transaction({ amount: 100 })]);
+
+    const monthSnapshot = screen.getByText('Monthly snapshot');
+    const primaryMetric = screen.getByText('Available to spend');
+    expect(monthSnapshot.compareDocumentPosition(primaryMetric) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const expenseAmount = screen.getAllByText('-€100.00').find((element) =>
+      element.classList.contains('text-on-surface'),
+    );
+    expect(expenseAmount).toBeDefined();
+    expect(expenseAmount).toHaveClass('text-on-surface');
+    expect(expenseAmount).not.toHaveClass('text-tertiary');
+  });
+
+  it('marks the hero as over budget only after the effective limit is exceeded', () => {
+    renderDashboard([transaction({ amount: 3100 })]);
+
+    expect(screen.getByText(/used · Over budget/)).toBeInTheDocument();
+    expect(screen.getByText('Available to spend').closest('.aura-card-inverse')).toHaveClass(
+      'aura-card-inverse-tone-danger',
+    );
+    const overBudgetAmount = screen.getAllByText('€0.00').find((element) =>
+      element.classList.contains('text-inverse-on-surface'),
+    );
+    expect(overBudgetAmount).toBeDefined();
   });
 });

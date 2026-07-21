@@ -67,7 +67,7 @@ describe('InsightsPage analytics lenses', () => {
 
     expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
     expect(screen.getByText('€3,500.00')).toBeInTheDocument();
-    expect(screen.getByText('€700.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€700.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('€2,800.00').length).toBeGreaterThan(0);
   });
 
@@ -81,7 +81,7 @@ describe('InsightsPage analytics lenses', () => {
     expect(netToggle).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Actual' })).not.toBeChecked();
     expect(screen.getByText('€3,000.00')).toBeInTheDocument();
-    expect(screen.getByText('€100.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€100.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('€2,900.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Excluded from Net: €600.00 expenses · €500.00 income')).toBeInTheDocument();
   });
@@ -107,7 +107,7 @@ describe('InsightsPage analytics lenses', () => {
 
     expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
     expect(screen.getByText('€3,500.00')).toBeInTheDocument();
-    expect(screen.getByText('€700.00')).toBeInTheDocument();
+    expect(screen.getAllByText('€700.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('€2,800.00').length).toBeGreaterThan(0);
   });
 
@@ -144,34 +144,45 @@ describe('InsightsPage analytics lenses', () => {
     expect(screen.getAllByText('€15,000.00').length).toBeGreaterThan(0);
   });
 
-  it('handles moving average dynamic windows and manual override in bottom sheet', async () => {
+  it('shows rolling spending pace and switches the trend scale', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    // 1. By default for 1M range (default), it should calculate 30d moving average
-    // The main page callout button shows "Average Spending (30d)"
-    const calloutButton = screen.getByRole('button', { name: /Average Spending \(30d\)/i });
+    const calloutButton = screen.getByRole('button', { name: /open spending pace trend/i });
     expect(calloutButton).toBeInTheDocument();
+    expect(screen.getByText('7-day average')).toBeInTheDocument();
+    expect(screen.getByText('4-week average')).toBeInTheDocument();
+    expect(screen.getByText('3-month average')).toBeInTheDocument();
 
-    // 2. Click callout button to open BottomSheet
     await user.click(calloutButton);
 
-    // 3. Confirm BottomSheet shows "30-Day Moving Average" title
-    expect(screen.getByRole('heading', { name: /30-Day Moving Average/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /spending pace/i })).toBeInTheDocument();
+    const today = new Date();
+    const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    const previousMonthStart = new Date(previousMonthEnd.getFullYear(), previousMonthEnd.getMonth(), 1);
+    const expectedPeriod = `${previousMonthStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${previousMonthEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+    expect(screen.getByText(`Rolling spending trend · ${expectedPeriod}`)).toBeInTheDocument();
+    expect(screen.getByText(/per day, averaged over the preceding 7 days/i)).toBeInTheDocument();
 
-    // 4. Verify segmented controls for window mode are present.
-    // The active option should be "Auto (30d)"
-    const autoOption = screen.getByRole('button', { name: /Auto \(30d\)/i });
-    expect(autoOption).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Week$/i }));
+    expect(screen.getByText(/per week, averaged over the preceding 4 weeks/i)).toBeInTheDocument();
 
-    // 5. Click "7d" manual override button
-    const sevenOption = screen.getByRole('button', { name: /^7d$/i });
-    await user.click(sevenOption);
+    await user.click(screen.getByRole('button', { name: /^Month$/i }));
+    expect(screen.getByText(/per month, averaged over the preceding 3 months/i)).toBeInTheDocument();
+  });
 
-    // 6. Confirm title dynamically updates to "7-Day Moving Average"
-    expect(screen.getByRole('heading', { name: /7-Day Moving Average/i })).toBeInTheDocument();
+  it('uses only complete calendar months for multi-month spending pace', async () => {
+    const user = userEvent.setup();
+    renderPage();
 
-    // 7. Verify explanation text also updates (preceding 7 days)
-    expect(screen.getByText(/preceding 7 days/i)).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '3M');
+    await user.click(screen.getByRole('button', { name: /open spending pace trend/i }));
+
+    const today = new Date();
+    const periodEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    const periodStart = new Date(periodEnd.getFullYear(), periodEnd.getMonth() - 2, 1);
+    const expectedPeriod = `${periodStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${periodEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+
+    expect(screen.getByText(`Rolling spending trend · ${expectedPeriod}`)).toBeInTheDocument();
   });
 });

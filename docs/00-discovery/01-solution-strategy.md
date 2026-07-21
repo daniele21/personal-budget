@@ -44,6 +44,10 @@ Chosen: add local-only global search, period comparison, and year-in-review repo
 
 Rationale: these features increase navigation and analysis value without changing the storage model, adding external processors, or exposing financial records to an admin or backend.
 
+Insights presents spending pace as three fixed rolling averages instead of a configurable statistical average: daily pace is trailing seven-day spend divided by seven, weekly pace is trailing twenty-eight-day spend divided by four, and monthly pace is trailing ninety-day spend divided by three. The summary shows the latest value for all three scales; its detail view uses a single chart with a Day, Week, or Month selector. Preset periods contain only complete calendar months and always end on the final day of the previous month; for example, `3M` shows the three complete months before the current month. The selected scale controls the averaging horizon within that complete-month history.
+
+Rationale: fixed, named windows answer the practical question of how quickly spending is changing without exposing smoothing configuration or conflating the selected reporting period with the rolling calculation.
+
 ### Safe To Spend
 
 Chosen: calculate safe-to-spend against the lower value between the configured monthly budget and the current month's income, then subtract current-month expenses.

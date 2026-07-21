@@ -17,8 +17,7 @@ interface CashFlowChartProps {
 }
 
 /**
- * Custom Cash Flow Overview chart showing dual-coloured rounded vertical pillars
- * matching the Aura Finance mockup design.
+ * Compact cash-flow chart with quiet tracks and semantic income/spend fills.
  */
 export function CashFlowChart({
   transactions,
@@ -69,17 +68,22 @@ export function CashFlowChart({
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* Custom Rounded-Pill Bar Chart */}
+      {/* Rounded interval bars */}
       <div className="relative">
-        <svg viewBox="0 0 320 100" className="w-full h-24 overflow-visible">
+        <svg
+          viewBox="0 0 320 100"
+          className="h-24 w-full overflow-visible"
+          role="img"
+          aria-label={`Cash flow by interval for ${month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
+        >
           <defs>
             <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#34d399" />
+              <stop offset="0%" stopColor="var(--color-secondary)" stopOpacity="0.58" />
               <stop offset="100%" stopColor="var(--color-secondary)" />
             </linearGradient>
             <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f87171" />
-              <stop offset="100%" stopColor="var(--color-tertiary)" />
+              <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.48" />
+              <stop offset="100%" stopColor="var(--color-primary)" />
             </linearGradient>
           </defs>
 
@@ -92,11 +96,11 @@ export function CashFlowChart({
             stroke="var(--color-outline-variant)"
             strokeDasharray="4 4"
             strokeWidth="1"
-            opacity="0.6"
+            opacity="0.42"
           />
 
           {intervals.map((interval, idx) => {
-            const width = 12;
+            const width = 10;
             const spacing = 32;
             const x = idx * spacing + 12;
             const chartHeight = 100;
@@ -124,9 +128,9 @@ export function CashFlowChart({
                   y={0}
                   width={width}
                   height={chartHeight}
-                  rx={6}
+                  rx={5}
                   fill="var(--color-surface-container-high)"
-                  opacity="0.35"
+                  opacity="0.62"
                 />
 
                 {/* Color Fills inside clipPath */}
@@ -139,7 +143,7 @@ export function CashFlowChart({
                     height={cappedIncomeHeight}
                     fill="url(#incomeGrad)"
                   />
-                  {/* Expense Fill (Blue gradient) */}
+                  {/* Expense fill */}
                   <rect
                     x={x}
                     y={chartHeight - cappedExpenseHeight}
@@ -154,7 +158,7 @@ export function CashFlowChart({
         </svg>
 
         {/* X-Axis labels centered to align with the 9 bars */}
-        <div className="flex justify-between text-[8px] font-bold text-on-surface-variant/70 px-1 mt-1">
+        <div className="mt-1 flex justify-between px-1 text-[11px] font-medium text-on-surface-variant/70">
           {labels.map((label, index) => (
             <span key={index}>{label}</span>
           ))}
@@ -164,13 +168,13 @@ export function CashFlowChart({
       {/* Summary row */}
       <div className="flex items-end justify-between pt-1">
         <div>
-          <p className={cn('font-headline text-lg font-extrabold tabular-nums leading-none', isPositive ? 'text-secondary' : 'text-primary')}>
+          <p className={cn('font-headline text-xl font-bold tabular-nums leading-none tracking-tight', isPositive ? 'text-secondary' : 'text-on-surface')}>
             {isPositive ? '+' : ''}{formatCurrency(netAmount)}
           </p>
-          <p className="text-[10px] font-bold text-on-surface-variant mt-1.5">Net cash flow</p>
+          <p className="mt-1.5 text-xs font-medium text-on-surface-variant">Net cash flow</p>
         </div>
         {momChange !== null && (
-          <span className={cn('text-[10px] font-bold pb-0.5', momChange >= 0 ? 'text-secondary' : 'text-tertiary')}>
+          <span className={cn('pb-0.5 text-xs font-semibold', momChange >= 0 ? 'text-secondary' : 'text-on-surface-variant')}>
             {momChange >= 0 ? '+' : ''}{momChange.toFixed(0)}% vs prev
           </span>
         )}

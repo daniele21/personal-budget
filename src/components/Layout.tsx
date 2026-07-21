@@ -42,7 +42,7 @@ export const Layout = ({ children, title }: LayoutProps) => {
         Skip to content
       </a>
       <TopBar title={title} />
-      <main id="main-content" className="pt-16 px-3 max-w-md mx-auto sm:px-4 sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+      <main id="main-content" className="mx-auto max-w-md px-4 pt-16 sm:max-w-xl sm:px-5 md:max-w-2xl">
         <AnimatePresence mode="wait">
           {children}
         </AnimatePresence>

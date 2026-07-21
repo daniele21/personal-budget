@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { CalendarDays, ChevronDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../utils/formatters';
@@ -92,12 +91,13 @@ interface KpiCardProps {
   sub?: string;
   icon: React.ReactNode;
   iconBg: string;
+  surfaceClassName: string;
   valueClassName?: string;
 }
 
-function KpiCard({ label, value, change, positive, sub, icon, iconBg, valueClassName }: KpiCardProps) {
+function KpiCard({ label, value, change, positive, sub, icon, iconBg, surfaceClassName, valueClassName }: KpiCardProps) {
   return (
-    <div className="aura-card space-y-1.5 p-3.5">
+    <div className={cn('aura-kpi-cell space-y-1.5 p-3.5', surfaceClassName)}>
       <div className="flex items-center gap-2">
         <span className={cn('flex h-7 w-7 items-center justify-center rounded-xl text-white', iconBg)}>
           {icon}
@@ -173,8 +173,7 @@ export const InsightsPage = () => {
     return new Date().toISOString().split('T')[0];
   });
   const [isAvgTrendOpen, setIsAvgTrendOpen] = useState(false);
-  const [movingAvgScale, setMovingAvgScale] = useState<'daily' | 'monthly'>('daily');
-  const [windowMode, setWindowMode] = useState<'auto' | '7' | '30' | '90'>('auto');
+  const [spendingPaceScale, setSpendingPaceScale] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   const { start, end, prevStart, prevEnd, periodLabel, comparisonLabel } = useMemo(() => {
     if (range === 'CUSTOM') {
@@ -243,43 +242,67 @@ export const InsightsPage = () => {
   // Cash flow goal: use total income from prev period as soft target
   const cashFlowGoal = prevTotals.income > 0 ? prevTotals.income : null;
 
-  const daysCount = useMemo(() => {
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    return Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
-  }, [start, end]);
+  const { rollingStart, rollingEnd, rollingPeriodLabel } = useMemo(() => {
+    const today = new Date();
+    const lastCompleteMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
 
-  const isMultiMonth = range === '3M' || range === '6M' || range === '12M' || daysCount > 30;
+    let paceStart: Date;
+    let paceEnd: Date;
 
-  const dailyAverage = totals.expenses / daysCount;
-  const monthlyAverage = totals.expenses / (
-    range === '3M' ? 3 :
-    range === '6M' ? 6 :
-    range === '12M' ? 12 :
-    (daysCount / 30.4375)
+    if (range === 'CUSTOM') {
+      paceStart = start;
+      paceEnd = end < lastCompleteMonthEnd ? end : lastCompleteMonthEnd;
+    } else {
+      const completeMonths = range === '3M' ? 3 : range === '6M' ? 6 : range === '12M' ? 12 : 1;
+      paceEnd = lastCompleteMonthEnd;
+      paceStart = new Date(paceEnd.getFullYear(), paceEnd.getMonth() - completeMonths + 1, 1);
+    }
+
+    const startLabel = paceStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const endLabel = paceEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+    return {
+      rollingStart: paceStart,
+      rollingEnd: paceEnd,
+      rollingPeriodLabel: `${startLabel} – ${endLabel}`,
+    };
+  }, [range, start, end]);
+
+  const sevenDaySpendingData = useMemo(
+    () => Finance.calculateRollingSpending(filteredTransactions, rollingStart, rollingEnd, 7),
+    [filteredTransactions, rollingStart, rollingEnd],
+  );
+  const fourWeekSpendingData = useMemo(
+    () => Finance.calculateRollingSpending(filteredTransactions, rollingStart, rollingEnd, 28),
+    [filteredTransactions, rollingStart, rollingEnd],
+  );
+  const dailySpendingData = useMemo(
+    () => sevenDaySpendingData.map((point) => ({ ...point, value: point.value / 7 })),
+    [sevenDaySpendingData],
+  );
+  const weeklySpendingData = useMemo(
+    () => fourWeekSpendingData.map((point) => ({ ...point, value: point.value / 4 })),
+    [fourWeekSpendingData],
+  );
+  const monthlySpendingData = useMemo(
+    () => Finance.calculateRollingSpending(filteredTransactions, rollingStart, rollingEnd, 90)
+      .map((point) => ({ ...point, value: point.value / 3 })),
+    [filteredTransactions, rollingStart, rollingEnd],
   );
 
-  const expenseSub = isMultiMonth
-    ? `Avg: ${formatCurrency(monthlyAverage)}/mo · ${formatCurrency(dailyAverage)}/day`
-    : `Avg: ${formatCurrency(dailyAverage)}/day`;
-
-  const calculatedWindowSize = useMemo(() => {
-    if (windowMode === 'auto') {
-      return daysCount <= 15 ? 7 : daysCount <= 180 ? 30 : 90;
-    }
-    return parseInt(windowMode, 10);
-  }, [windowMode, daysCount]);
-
-  const movingAverageData = useMemo(() => {
-    if (!isAvgTrendOpen) return [];
-    const raw = Finance.calculateMovingAverage(filteredTransactions, start, end, calculatedWindowSize);
-    if (movingAvgScale === 'monthly') {
-      return raw.map(d => ({
-        ...d,
-        value: d.value * 30
-      }));
-    }
-    return raw;
-  }, [isAvgTrendOpen, filteredTransactions, start, end, movingAvgScale, calculatedWindowSize]);
+  const spendingPaceData = spendingPaceScale === 'daily'
+    ? dailySpendingData
+    : spendingPaceScale === 'weekly'
+      ? weeklySpendingData
+      : monthlySpendingData;
+  const dailyPace = dailySpendingData.at(-1)?.value ?? 0;
+  const weeklyPace = weeklySpendingData.at(-1)?.value ?? 0;
+  const monthlyPace = monthlySpendingData.at(-1)?.value ?? 0;
+  const spendingPaceUnit = spendingPaceScale === 'daily'
+    ? 'per day, averaged over the preceding 7 days'
+    : spendingPaceScale === 'weekly'
+      ? 'per week, averaged over the preceding 4 weeks'
+      : 'per month, averaged over the preceding 3 months';
 
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
@@ -300,13 +323,13 @@ export const InsightsPage = () => {
       />
 
       {extraImpact.count > 0 && (
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-2 text-xs font-bold text-on-surface-variant">
+        <div className="aura-section-surface px-4 py-2 text-xs font-semibold text-on-surface-variant">
           {lens === 'actual' ? 'Extras this period' : 'Excluded from Net'}: {formatCurrency(extraImpact.expenses)} expenses · {formatCurrency(extraImpact.income)} income
         </div>
       )}
 
       {/* ── 2×2 KPI grid ── */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="aura-kpi-panel grid grid-cols-2">
         <KpiCard
           label="Income"
           value={formatCurrency(totals.income)}
@@ -314,6 +337,7 @@ export const InsightsPage = () => {
           positive={incomeChange !== null && incomeChange >= 0}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           iconBg="bg-secondary"
+          surfaceClassName="aura-kpi-positive"
           valueClassName="text-secondary"
         />
         <KpiCard
@@ -322,8 +346,9 @@ export const InsightsPage = () => {
           change={expenseChange !== null ? `${expenseChange >= 0 ? '+' : ''}${expenseChange.toFixed(0)}% vs ${comparisonLabel}` : null}
           positive={expenseChange !== null && expenseChange <= 0}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>}
-          iconBg="bg-tertiary"
-          valueClassName="text-tertiary"
+          iconBg="bg-primary"
+          surfaceClassName="aura-kpi-neutral"
+          valueClassName="text-on-surface"
         />
         <KpiCard
           label="Net Cash Flow"
@@ -332,6 +357,7 @@ export const InsightsPage = () => {
           positive={netChange !== null && netChange >= 0}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M3 12h18M12 3l9 9-9 9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           iconBg="bg-accent-cyan"
+          surfaceClassName="aura-kpi-primary"
           valueClassName={totals.net >= 0 ? "text-secondary" : "text-tertiary"}
         />
         <KpiCard
@@ -341,51 +367,41 @@ export const InsightsPage = () => {
           positive={true}
           sub={`of ${formatCurrency(safeToSpend.effectiveLimit)} safe limit`}
           icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-          iconBg="bg-accent-purple"
+          iconBg={safeToSpend.remaining <= 0 ? 'bg-tertiary' : 'bg-primary'}
+          surfaceClassName={safeToSpend.remaining <= 0 ? 'aura-kpi-warning' : 'aura-kpi-primary'}
+          valueClassName={safeToSpend.remaining <= 0 ? 'text-tertiary' : 'text-primary'}
         />
       </div>
 
-      {/* ── Average Daily & Monthly callout ── */}
+      {/* ── Rolling spending pace ── */}
       <button
         onClick={() => setIsAvgTrendOpen(true)}
-        className="relative text-left w-full overflow-hidden rounded-3xl border border-tertiary/15 bg-gradient-to-br from-tertiary/[0.04] to-tertiary/[0.01] p-4 flex items-center justify-between gap-4 transition-all duration-300 hover:border-tertiary/30 hover:shadow-md hover:shadow-tertiary/5 active:scale-[0.99]"
+        className="aura-section-surface aura-section-tone-warning w-full p-4 text-left transition-colors active:scale-[0.995]"
+        aria-label="Open spending pace trend"
       >
-        {/* Subtle decorative glow */}
-        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-tertiary/5 blur-2xl pointer-events-none" />
-        
-        <div className="space-y-1.5 z-10">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-tertiary text-white">
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" strokeLinecap="round" /></svg>
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Average Spending ({calculatedWindowSize}d)</span>
-          </div>
-          
-          <div className="flex items-baseline gap-6 mt-1 flex-wrap">
-            {isMultiMonth && (
-              <div>
-                <p className="text-[9px] font-bold text-on-surface-variant/80 uppercase">Monthly Average</p>
-                <p className="font-headline text-lg font-black text-tertiary mt-0.5">{formatCurrency(monthlyAverage)}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-[9px] font-bold text-on-surface-variant/80 uppercase">Daily Average</p>
-              <p className="font-headline text-lg font-black text-tertiary mt-0.5">{formatCurrency(dailyAverage)}</p>
-            </div>
-          </div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-xs font-bold text-on-surface">Spending pace</span>
+          <span className="text-xs font-semibold text-on-surface-variant">View trend →</span>
         </div>
-
-        {/* Sparkline trend arrow icon signalling clickability */}
-        <div className="text-tertiary/30 hover:text-tertiary/60 transition-colors shrink-0 z-10 flex flex-col items-center gap-1">
-          <svg className="h-6 w-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span className="text-[8px] font-bold uppercase tracking-wider text-tertiary/60">Trend</span>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { value: dailyPace, label: 'per day', context: '7-day average' },
+            { value: weeklyPace, label: 'per week', context: '4-week average' },
+            { value: monthlyPace, label: 'per month', context: '3-month average' },
+          ].map((metric) => (
+            <div key={metric.label} className="min-w-0">
+              <p className="truncate font-headline text-base font-extrabold tabular-nums text-tertiary sm:text-lg">
+                {formatCurrency(metric.value)}
+              </p>
+              <p className="text-[10px] font-bold text-on-surface">{metric.label}</p>
+              <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant">{metric.context}</p>
+            </div>
+          ))}
         </div>
       </button>
 
       {/* ── Overview chart: bars (Income, Expenses) + line (Net Cash Flow) ── */}
-      <div className="aura-card space-y-3 p-4">
+      <div className="aura-card aura-card-tone-primary space-y-3 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-on-surface">Overview</h3>
         </div>
@@ -461,7 +477,7 @@ export const InsightsPage = () => {
       </div>
 
       {/* ── Cash flow this month ── */}
-      <div className="aura-card space-y-3 p-4">
+      <div className="aura-section-surface aura-section-tone-primary space-y-3 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-on-surface">Cash flow this month</h3>
           {netChange !== null && (
@@ -480,47 +496,27 @@ export const InsightsPage = () => {
 
       <BottomSheet
         isOpen={isAvgTrendOpen}
-        title={`${calculatedWindowSize}-Day Moving Average`}
-        subtitle={`Average spending trend (${movingAvgScale === 'daily' ? 'daily' : 'monthly'}) from ${periodLabel}`}
+        title="Spending pace"
+        subtitle={`Rolling spending trend · ${rollingPeriodLabel}`}
         onClose={() => setIsAvgTrendOpen(false)}
       >
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/80 px-1">Display Scale</span>
-              <SegmentedControl
-                value={movingAvgScale}
-                options={[
-                  { value: 'daily', label: 'Daily' },
-                  { value: 'monthly', label: 'Monthly' },
-                ]}
-                onChange={(val) => setMovingAvgScale(val as 'daily' | 'monthly')}
-                ariaLabel="Moving average scale selector"
-                className="w-full"
-                size="compact"
-              />
-            </div>
-            <div className="space-y-1">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/80 px-1">Smoothing Window</span>
-              <SegmentedControl
-                value={windowMode}
-                options={[
-                  { value: 'auto', label: `Auto (${calculatedWindowSize}d)` },
-                  { value: '7', label: '7d' },
-                  { value: '30', label: '30d' },
-                  { value: '90', label: '90d' },
-                ]}
-                onChange={(val) => setWindowMode(val as 'auto' | '7' | '30' | '90')}
-                ariaLabel="Moving average window size selector"
-                className="w-full"
-                size="compact"
-              />
-            </div>
-          </div>
+          <SegmentedControl
+            value={spendingPaceScale}
+            options={[
+              { value: 'daily', label: 'Day' },
+              { value: 'weekly', label: 'Week' },
+              { value: 'monthly', label: 'Month' },
+            ]}
+            onChange={(value) => setSpendingPaceScale(value as 'daily' | 'weekly' | 'monthly')}
+            ariaLabel="Spending pace scale"
+            className="w-full"
+            size="compact"
+          />
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={movingAverageData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <ComposedChart data={spendingPaceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis
                   dataKey="dateLabel"
                   tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
@@ -540,10 +536,9 @@ export const InsightsPage = () => {
                       <div className="glass-card rounded-2xl p-3 shadow-lg shadow-primary/5 text-xs min-w-[130px]">
                         <p className="mb-1 font-bold text-on-surface">{label}</p>
                         <div className="flex items-center justify-between gap-3 font-semibold text-tertiary">
-                          <span>{calculatedWindowSize}d Moving Avg</span>
+                          <span>{spendingPaceScale === 'daily' ? 'Daily pace' : spendingPaceScale === 'weekly' ? 'Weekly pace' : 'Monthly pace'}</span>
                           <span className="font-extrabold">
                             {formatCurrency(payload[0].value)}
-                            {movingAvgScale === 'daily' ? '/day' : '/mo'}
                           </span>
                         </div>
                       </div>
@@ -562,15 +557,8 @@ export const InsightsPage = () => {
             </ResponsiveContainer>
           </div>
           
-          <div className="rounded-2xl bg-surface-container-low p-3.5 text-xs font-semibold text-on-surface-variant leading-relaxed">
-            <p>
-              The <strong>{calculatedWindowSize}-Day Moving Average</strong> smooths out short-term fluctuations in your spending. 
-              {movingAvgScale === 'daily' ? (
-                <span> Each point represents the average daily expense computed over the preceding {calculatedWindowSize} days.</span>
-              ) : (
-                <span> Each point represents the average monthly equivalent spending, computed as the daily average multiplied by 30.</span>
-              )}
-            </p>
+          <div className="rounded-2xl bg-surface-container-low p-3.5 text-xs font-semibold leading-relaxed text-on-surface-variant">
+            Each point shows how much you were spending {spendingPaceUnit} on that date.
           </div>
         </div>
       </BottomSheet>

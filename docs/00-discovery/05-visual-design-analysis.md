@@ -4,6 +4,40 @@
 > **Baseline**: Material Design 3 tokens · Tailwind 4 `@theme` · Manrope + Inter · Lucide Icons  
 > **Last Updated**: 2026-07-05 — aggiornato dopo applicazione brand kit PNG, shell Aura, login, PWA assets e densità UI compatta
 
+## Visual polish v1 — 2026-07-21
+
+### Tonal layering refinement — 2026-07-21
+
+La direzione cromatica approvata sostituisce la gerarchia basata prevalentemente su card bianche, halo e ombre con una gerarchia di superfici: canvas blu-grigio, section plane, card standard, card dominante e control surface. Il bianco quasi puro viene riservato ai contenuti prioritari; le superfici semantiche usano wash cromatici contenuti e il rosso resta dedicato a condizioni negative o fuori soglia.
+
+Dopo la prima verifica visuale, i wash focali sono stati aumentati fino a un livello chiaramente percepibile. La variante condivisa `colorized` è intenzionalmente opt-in: Dashboard la usa per hero e Cash Flow, mentre riepilogo Income/Spent, controlli e pannello KPI usano gradienti semantici dedicati. TopBar, BottomNav e contenuti di lettura restano neutri per bilanciare il ritmo cromatico.
+
+Safe to Spend usa ora la variante condivisa `inverse`: una superficie Deep Ocean stabile che agisce come ancora visiva della Home. Il valore resta bianco e gli stati vengono comunicati da accento ambientale, gauge e status chip (`positive`, `warning`, `danger`) senza trasformare l'intera card in una superficie di errore. Token inverse dedicati garantiscono contrasto e separazione anche nella modalità scura globale.
+
+La stessa grammatica inverse è stata estesa solo ai landmark finanziari principali: Safe to Spend e Budget Health nella schermata Budgets, Total Net Worth nel Profile e risultato netto annuale con Savings Rate nel Year Review. Ogni schermata mantiene una sola superficie scura; liste, form, grafici di dettaglio, impostazioni e controlli restano chiari. Add Transaction e Compare restano candidati opzionali da valutare dopo una verifica visuale complessiva.
+
+Insights raggruppa i quattro KPI in un unico pannello 2×2 con separatori e toni interni, riducendo la sensazione di mosaico. Spending pace e cash-flow secondario usano section plane senza elevation; la card Overview mantiene un accento primario. Le nuove regole sono centralizzate in token e primitive condivise e mantengono la parità dark mode.
+
+Implementato il primo restyling incrementale senza modificare logica finanziaria, modelli dati o destinazioni della navigazione:
+
+- palette light neutralizzata tramite token semantici; dark mode invariata;
+- card standard senza ombre o sollevamento hover, card elevated riservata alla hero Dashboard;
+- shell consumer limitata a `md:max-w-2xl` finché non esiste un layout desktop dedicato;
+- TopBar senza shadow, saluto o install action; installazione PWA ricollocata in More;
+- BottomNav semplificata visivamente, mantenendo rotte e information architecture correnti;
+- Dashboard riordinata come periodo, Available to spend, riepilogo Income/Spent, Cash flow e transazioni recenti;
+- testi principali portati ad almeno 12 px, normale spesa resa neutra e CTA duplicate rimosse.
+
+Rifinitura premium successiva: introdotta una scala di elevation CSS condivisa (`control`, `card`, `elevated`) con shadow multilivello e highlight interno, differenziata per light/dark mode. Gauge e Cash Flow sono stati ripuliti da accenti multicolore non necessari; il gauge usa ora un singolo colore semantico e segnala correttamente il budget superato anche quando il residuo è già limitato a zero.
+
+La gerarchia cromatica usa ora border gradient e surface wash centralizzati nel componente `Card`: `primary` per contenuto dominante, `positive` per successo/disponibilità, `warning` per soglia alta e `danger` solo per limite superato. Card secondarie, controlli, TopBar e BottomNav mantengono gradienti molto più tenui per evitare competizione con la hero; tutte le varianti derivano dai token semantici e conservano la parità dark mode.
+
+Il perimetro cromatico non usa più un `border` visibile: è renderizzato come halo esterno sfocato dietro una superficie opaca, così la separazione deriva da luce, colore e shadow senza produrre una linea netta. Anche i separatori della Dashboard sfumano verso le estremità.
+
+La palette Aura è ora applicata come linguaggio operativo: Deep Ocean Blue/Cyan per azioni e analisi, Forest Green/Lime per entrate e andamento positivo, Amber per lente Actual e soglie alte, Crimson solo per budget realmente superato. Icon chip, status chip, stato attivo della navigazione, hero e Cash Flow usano questi accenti; le superfici secondarie restano neutre per preservare la gerarchia.
+
+La proposta `Home | Transactions | Add | Budgets | More` resta un intervento separato e richiede ancora conferma dell'information architecture, come registrato nel piano compatto.
+
 ---
 
 ## Stato Implementazione

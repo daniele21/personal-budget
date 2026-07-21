@@ -1,14 +1,14 @@
 import React from 'react';
-import { cn } from '../lib/utils';
 
 interface RadialGaugeProps {
   percent: number;
   label: string;
   value: string;
   hideText?: boolean;
+  inverse?: boolean;
 }
 
-export function RadialGauge({ percent, label, value, hideText = false }: RadialGaugeProps) {
+export function RadialGauge({ percent, label, value, hideText = false, inverse = false }: RadialGaugeProps) {
   const clamped = Math.max(0, Math.min(100, percent));
   const centerX = 80;
   const centerY = 76;
@@ -18,54 +18,54 @@ export function RadialGauge({ percent, label, value, hideText = false }: RadialG
   const needleX = centerX + needleRadius * Math.cos((angle * Math.PI) / 180);
   const needleY = centerY - needleRadius * Math.sin((angle * Math.PI) / 180);
 
-  const point = (degrees: number) => ({
-    x: centerX + radius * Math.cos((degrees * Math.PI) / 180),
-    y: centerY - radius * Math.sin((degrees * Math.PI) / 180),
-  });
-
-  const arc = (startAngle: number, endAngle: number) => {
-    const start = point(startAngle);
-    const end = point(endAngle);
-    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 0 1 ${end.x} ${end.y}`;
-  };
-
-  const stateColor = clamped > 90 ? 'text-tertiary' : clamped > 75 ? 'text-accent-amber' : 'text-secondary';
+  const arcPath = `M ${centerX - radius} ${centerY} A ${radius} ${radius} 0 0 1 ${centerX + radius} ${centerY}`;
+  const stateColor = percent > 100
+    ? `var(--color-${inverse ? 'inverse-danger' : 'tertiary'})`
+    : clamped > 80
+      ? `var(--color-${inverse ? 'inverse-warning' : 'accent-amber'})`
+      : `var(--color-${inverse ? 'inverse-positive' : 'secondary'})`;
+  const trackColor = inverse
+    ? 'color-mix(in srgb, var(--color-inverse-on-surface) 16%, transparent)'
+    : 'var(--color-surface-container-high)';
+  const needleColor = inverse ? 'var(--color-inverse-on-surface)' : 'var(--color-primary)';
 
   return (
     <div className="flex flex-col items-center justify-start" role="img" aria-label={`${label}: ${value}, ${Math.round(clamped)} percent used`}>
       <svg viewBox="0 0 160 88" className="h-16 w-32 shrink-0 overflow-visible">
         <path
-          d={arc(180, 0)}
+          d={arcPath}
           fill="none"
-          stroke="var(--color-surface-container-highest)"
-          strokeWidth="14"
+          stroke={trackColor}
+          strokeWidth="12"
           strokeLinecap="round"
         />
         <path
-          d={arc(180, 126)}
+          d={arcPath}
           fill="none"
-          stroke="var(--color-accent-cyan)"
-          strokeWidth="14"
+          stroke={stateColor}
+          strokeWidth="12"
           strokeLinecap="round"
+          pathLength="100"
+          strokeDasharray="100"
+          strokeDashoffset={100 - clamped}
+          className="transition-[stroke-dashoffset,stroke] duration-700 ease-out"
         />
-        <path d={arc(126, 48)} fill="none" stroke="var(--color-secondary)" strokeWidth="14" strokeLinecap="round" />
-        <path d={arc(48, 0)} fill="none" stroke="var(--color-accent-amber)" strokeWidth="14" strokeLinecap="round" />
         <line
           x1={centerX}
           y1={centerY}
           x2={needleX}
           y2={needleY}
-          stroke="var(--color-primary)"
+          stroke={needleColor}
           strokeWidth="6"
           strokeLinecap="round"
-          className="transition-all duration-700"
+          className="transition-all duration-700 ease-out"
         />
-        <circle cx={centerX} cy={centerY} r="6" fill="var(--color-primary)" />
+        <circle cx={centerX} cy={centerY} r="6" fill={needleColor} />
       </svg>
       {!hideText && (
         <div className="-mt-0.5 text-center">
-          <p className={cn('font-headline text-base font-extrabold leading-none', stateColor)}>{value}</p>
-          <p className="mt-1 text-micro font-bold leading-none text-on-surface-variant">{label}</p>
+          <p className="font-headline text-base font-bold leading-none" style={{ color: stateColor }}>{value}</p>
+          <p className={inverse ? 'mt-1 text-xs font-medium leading-none text-inverse-on-surface-variant' : 'mt-1 text-xs font-medium leading-none text-on-surface-variant'}>{label}</p>
         </div>
       )}
     </div>
