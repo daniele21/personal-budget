@@ -10,12 +10,10 @@ import { BudgetsPage } from './pages/BudgetsPage';
 import { RecurringPage } from './pages/RecurringPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { CalendarPage } from './pages/CalendarPage';
-import { InsightsPage } from './pages/InsightsPage';
 import { AdminPage } from './pages/AdminPage';
 import { Login } from './pages/Login';
-import { ComparePage } from './pages/ComparePage';
-import { YearReviewPage } from './pages/YearReviewPage';
 import { MorePage } from './pages/MorePage';
+import { ReportsPage } from './pages/ReportsPage';
 
 // Components
 import { Layout } from './components/Layout';
@@ -49,12 +47,18 @@ export default function App() {
             <Route path="/add" element={<Layout title="Add Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
             <Route path="/edit/:id" element={<Layout title="Edit Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
             <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
-            <Route path="/recurring" element={<Layout title="Recurring"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
+            <Route path="/recurring" element={<Layout title="Planning"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
             <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
-            <Route path="/calendar" element={<Layout title="Calendar"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
-            <Route path="/insights" element={<Layout title="Reports"><ErrorBoundary><InsightsPage /></ErrorBoundary></Layout>} />
-            <Route path="/compare" element={<Layout title="Compare & Trends"><ErrorBoundary><ComparePage /></ErrorBoundary></Layout>} />
-            <Route path="/year-review" element={<Layout title="Year in Review"><ErrorBoundary><YearReviewPage /></ErrorBoundary></Layout>} />
+            <Route path="/calendar" element={<Layout title="Planning"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
+            <Route path="/planning" element={<Layout title="Planning"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
+            <Route path="/planning/recurring" element={<Layout title="Planning"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
+            <Route path="/reports" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="overview" /></ErrorBoundary></Layout>} />
+            <Route path="/reports/categories" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="categories" /></ErrorBoundary></Layout>} />
+            <Route path="/reports/compare" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="compare" /></ErrorBoundary></Layout>} />
+            <Route path="/reports/year" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="year" /></ErrorBoundary></Layout>} />
+            <Route path="/insights" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="overview" /></ErrorBoundary></Layout>} />
+            <Route path="/compare" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="compare" /></ErrorBoundary></Layout>} />
+            <Route path="/year-review" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="year" /></ErrorBoundary></Layout>} />
             <Route path="/more" element={<Layout title="More"><ErrorBoundary><MorePage /></ErrorBoundary></Layout>} />
             {isAdmin && (
               <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />

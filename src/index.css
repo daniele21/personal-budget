@@ -168,29 +168,17 @@
   --aura-tone-wash: 1%;
   position: relative;
   isolation: isolate;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)),
-    var(--color-surface-container-lowest) 70%
-  );
+  background: var(--color-surface-container-lowest);
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 52%, transparent);
   border-radius: 1.25rem;
-  box-shadow: var(--aura-card-shadow);
+  box-shadow: var(--aura-surface-highlight), 0 1px 2px color-mix(in srgb, var(--color-on-surface) 5%, transparent);
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
 .aura-card-elevated::before,
 .aura-control-surface::before,
 .aura-segmented-control::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  z-index: -2;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(135deg, var(--aura-tone), transparent 46%, var(--aura-tone-soft));
-  filter: blur(5px);
-  opacity: 0.20;
+  content: none;
 }
 
 .aura-card-elevated::after,
@@ -202,15 +190,11 @@
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--color-surface-container-lowest) calc(100% - var(--aura-tone-wash)), var(--aura-tone)) 0%,
-    var(--color-surface-container-lowest) 62%
-  );
+  background: var(--color-surface-container-lowest);
 }
 
 .aura-card:hover {
-  box-shadow: var(--aura-card-shadow);
+  box-shadow: var(--aura-surface-highlight), 0 1px 2px color-mix(in srgb, var(--color-on-surface) 5%, transparent);
 }
 
 /**
@@ -346,7 +330,7 @@
  * aura-card-flat — section sub-area card, subtle border.
  */
 .aura-card-flat {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--color-surface-container-low) 96%, var(--color-primary)), var(--color-surface-container-low));
+  background: var(--color-surface-container-low);
   border: 0;
   border-radius: var(--radius-2xl);
   transition: all 0.2s ease;
@@ -363,15 +347,9 @@
   --aura-tone-wash: 2%;
   position: relative;
   isolation: isolate;
-  background:
-    linear-gradient(
-      115deg,
-      color-mix(in srgb, var(--color-surface-container-high) 86%, var(--color-primary)),
-      color-mix(in srgb, var(--color-surface-container-low) 92%, var(--color-accent-cyan)) 52%,
-      color-mix(in srgb, var(--color-surface-container-low) 93%, var(--color-secondary))
-    );
+  background: var(--color-surface-container-low);
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 44%, transparent);
-  box-shadow: var(--aura-control-shadow);
+  box-shadow: var(--aura-surface-highlight);
 }
 
 /* Quiet section plane: groups related content without creating another floating card. */

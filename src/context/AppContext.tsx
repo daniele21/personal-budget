@@ -8,6 +8,7 @@ import * as Finance from '../domain/finance';
 import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
 import { buildDemoData } from '../data/demoData';
+import { PrimaryAnalyticsLens } from '../domain/finance';
 
 // ─── Legacy Context Shape (compatible facade) ───────────────────────
 
@@ -33,6 +34,7 @@ interface AppState {
   isAdmin: boolean;
   isHydrated: boolean;
   selectedMonth: Date;
+  analyticsLens: PrimaryAnalyticsLens;
 
   // Compatible Setters
   setTransactions: (txs: Transaction[]) => void;
@@ -49,6 +51,7 @@ interface AppState {
   setCloudBackupEnabled: (v: boolean) => void;
   setOnboardingComplete: (v: boolean) => void;
   setSelectedMonth: (date: Date) => void;
+  setAnalyticsLens: (lens: PrimaryAnalyticsLens) => void;
 
   // Compatible Auth actions
   signInWithGoogle: () => Promise<void>;
@@ -89,7 +92,14 @@ const LegacyAppContext = createContext<AppState | null>(null);
 
 const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
   const { user, authLoading, authError, isAdmin, isLoggedIn, signInWithGoogle, signOut } = useAuth();
-  const { isDarkMode, setIsDarkMode, selectedMonth, setSelectedMonth } = usePreferences();
+  const {
+    isDarkMode,
+    setIsDarkMode,
+    selectedMonth,
+    setSelectedMonth,
+    analyticsLens,
+    setAnalyticsLens,
+  } = usePreferences();
   const {
     state,
     dispatch,
@@ -205,6 +215,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     isAdmin,
     isHydrated,
     selectedMonth,
+    analyticsLens,
 
     setTransactions,
     setBudgets,
@@ -220,6 +231,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     setCloudBackupEnabled,
     setOnboardingComplete,
     setSelectedMonth,
+    setAnalyticsLens,
 
     signInWithGoogle,
     signOut,
@@ -263,6 +275,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     isAdmin,
     isHydrated,
     selectedMonth,
+    analyticsLens,
     setTransactions,
     setBudgets,
     setRecurring,
@@ -277,6 +290,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     setCloudBackupEnabled,
     setOnboardingComplete,
     setSelectedMonth,
+    setAnalyticsLens,
     signInWithGoogle,
     signOut,
     addTransaction,

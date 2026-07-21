@@ -2,7 +2,21 @@
 
 > **Scope**: Miglioramenti all'esperienza utente per trasformare Aura da "buon prototipo" a "prodotto mobile-first professionale"  
 > **Baseline**: React 19 · Tailwind 4 · Framer Motion · PWA · Mobile-first  
-> **Last Updated**: 2026-04-26 — aggiornato dopo implementazione 7.1 features + fix UX
+> **Last Updated**: 2026-07-21 — aggiornato dopo la semplificazione UX M0–M9
+
+## Stato UX consolidato — 2026-07-21
+
+L’architettura operativa implementata usa cinque slot equivalenti nella bottom navigation: `Home | Transactions | Add | Budgets | Reports`. Add è l’azione centrale; More è raggiungibile dal controllo `…` fisso in ogni variante della TopBar, mentre l’avatar apre Profile.
+
+- Reports è l’unica area analitica completa (`Overview | Categories | Compare | Year`).
+- Planning unifica Calendar e Recurring con form, stato, validazione e preparazione dati condivisi.
+- Home orienta sulla disponibilità corrente, usa una preview cash-flow compatta e mostra al massimo due insight deterministici.
+- Budgets privilegia l’utilizzo dei limiti di categoria; Safe to Spend è un riferimento secondario e il gauge duplicato è stato rimosso.
+- Transactions privilegia ricerca e operazioni, con filtri e ordinamento in un unico sheet e Import spostato tra gli strumenti occasionali.
+- Add Transaction conserva tutti i campi visibili per decisione prodotto e include una spiegazione accessibile di Extra e Refund.
+- More contiene soltanto Planning, Import/Export, Privacy & Backup, Settings e Admin quando autorizzato; il tema scuro è gestito qui.
+
+Le scelte Actual/Net sono stato di sessione non persistente. Non sono stati introdotti nuovi dati personali, trasferimenti, provider o logiche finanziarie.
 
 ---
 
@@ -67,7 +81,7 @@
 La [TopBar.tsx](file:///Users/moltisantid/Personal/personal-budget/src/components/TopBar.tsx) è stata completamente riscritta (117 righe):
 - ✅ **Back button contestuale** (riga 48-68): usa `useLocation` + `isSubPage` per mostrare `ArrowLeft` sulle sotto-pagine
 - ✅ **Search button** (riga 72-79): apre `GlobalSearch` con `Cmd+K` / `/` shortcut
-- ✅ **Dark mode toggle** (riga 80-86): `Sun`/`Moon` con aria-label
+- ✅ **More fisso**: il controllo `…` è presente in ogni variante e apre gli strumenti secondari
 - ✅ **Bell funzionale** (riga 87-99): badge dinamico con `unreadCount`, apre `NotificationCenter`
 - ✅ **Keyboard shortcuts** (righe 31-46): `Cmd+K` = search, `N` = add, `B` = budgets
 - ✅ **Avatar profilo** (riga 100-109): link a `/profile` con foto utente
@@ -110,7 +124,7 @@ La [TopBar.tsx](file:///Users/moltisantid/Personal/personal-budget/src/component
 
 [Toast.tsx](file:///Users/moltisantid/Personal/personal-budget/src/components/Toast.tsx) ora supporta `action?: { label, onClick }` (righe 13-16) con rendering di un pulsante inline nel toast (righe 61-72).
 
-**Completato** — History, Calendar/Recurring e Budgets eliminano dopo conferma e offrono undo via toast.
+**Completato** — History, Calendar/Recurring e Budgets eliminano dopo conferma e offrono undo via toast. Calendar/Recurring e Budgets ricostruiscono l’undo dalla lista post-cancellazione per evitare duplicazioni.
 
 ---
 

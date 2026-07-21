@@ -23,6 +23,7 @@ import { getCategoryTheme } from '../config/categoryThemes';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { pageTransition } from '../utils/motion';
 import { SegmentedControl, PeriodSelector, getRangeDates, RangeKey } from '../components/ui';
+import { CompareInsights } from '../components/compare/CompareInsights';
 
 // ─── Period helpers ────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ function SpendingByCategoryTab({
   labelA: string;
   start: Date;
   end: Date;
-  lens: 'actual' | 'normalized';
+  lens: Finance.AnalyticsLens;
 }) {
   const totalExpenses = useMemo(
     () => Finance.calculateTotals(transactions).expenses,
@@ -144,8 +145,8 @@ function SpendingByCategoryTab({
 
   return (
     <div className="space-y-4">
-      {/* ── Donut chart ── */}
-      <div className="flex items-center justify-center">
+      {/* The ranked list is primary on mobile; the donut is supplementary on larger screens. */}
+      <div className="hidden items-center justify-center md:flex" aria-label={`Category distribution for ${periodLabel}`}>
         <div style={{ width: 240, height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -178,6 +179,15 @@ function SpendingByCategoryTab({
 
       {/* ── Ranked category list ── */}
       <div className="aura-card divide-y divide-outline-variant/20 p-0 overflow-hidden">
+        <div className="flex items-end justify-between gap-3 px-4 py-3">
+          <div>
+            <h3 className="text-sm font-bold text-on-surface">Spending by category</h3>
+            <p className="mt-0.5 text-[10px] font-semibold text-on-surface-variant">{periodLabel}</p>
+          </div>
+          <p className="shrink-0 font-headline text-lg font-extrabold tabular-nums text-on-surface">
+            {formatCurrency(totalExpenses)}
+          </p>
+        </div>
         {slices.map((cat, i) => (
           <Link
             key={cat.category}
@@ -235,10 +245,11 @@ function SpendingByCategoryTab({
 
 type CompareView = 'total' | 'category' | 'merchant';
 
-const COMPARE_VIEWS: { key: CompareView; label: string }[] = [
-  { key: 'total', label: 'Total Expenses' },
-  { key: 'category', label: 'By Category' },
-  { key: 'merchant', label: 'By Merchant' },
+type PrimaryCompareView = Exclude<CompareView, 'merchant'>;
+
+const PRIMARY_COMPARE_VIEWS: { value: PrimaryCompareView; label: string }[] = [
+  { value: 'total', label: 'Total expenses' },
+  { value: 'category', label: 'By category' },
 ];
 
 function CompareTab({
@@ -261,7 +272,7 @@ function CompareTab({
   end: Date;
   prevStart: Date;
   prevEnd: Date;
-  lens: 'actual' | 'normalized';
+  lens: Finance.AnalyticsLens;
   range: RangeKey;
 }) {
   const [view, setView] = useState<CompareView>('total');
@@ -276,6 +287,10 @@ function CompareTab({
 
   const catA = useMemo(() => Finance.spendingByCategory(txA), [txA]);
   const catB = useMemo(() => Finance.spendingByCategory(txB), [txB]);
+  const comparisonInsights = useMemo(
+    () => Finance.getComparisonInsights(totalsA, totalsB, Finance.getCategoryDeltas(txA, txB)),
+    [totalsA, totalsB, txA, txB],
+  );
 
   const availableCategories = useMemo(() => {
     return Array.from(new Set([...catA.map((c) => c.category), ...catB.map((c) => c.category)]));
@@ -425,6 +440,15 @@ function CompareTab({
       .slice(0, 5);
   }, [catA, catB]);
 
+  if (txA.length === 0 && txB.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-14 text-center">
+        <p className="text-sm font-bold text-on-surface">No transactions to compare</p>
+        <p className="mt-1 text-xs text-on-surface-variant">There is no reportable activity in {labelA} or {labelB}.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* ── Period comparison header ── */}
@@ -481,23 +505,39 @@ function CompareTab({
         </div>
       )}
 
-      {/* ── View selector ── */}
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar rounded-full bg-surface-container-high p-1">
-        {COMPARE_VIEWS.map((v) => (
+      <CompareInsights insights={comparisonInsights} sourceLabel={`${labelA} compared with ${labelB}`} />
+
+      {/* Merchant comparison is an occasional drill-down, not a peer tab. */}
+      {view !== 'merchant' ? (
+        <div className="space-y-2">
+          <SegmentedControl
+            value={view}
+            options={PRIMARY_COMPARE_VIEWS}
+            onChange={setView}
+            ariaLabel="Expense comparison view"
+            className="w-full"
+          />
           <button
-            key={v.key}
-            onClick={() => setView(v.key)}
-            className={cn(
-              'shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-all',
-              view === v.key
-                ? 'bg-primary text-on-primary shadow-sm'
-                : 'text-on-surface-variant hover:bg-surface-container-low',
-            )}
+            type="button"
+            onClick={() => setView('merchant')}
+            className="ml-auto flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-bold text-primary transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
-            {v.label}
+            Compare by merchant
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="flex min-h-10 items-center justify-between gap-3 rounded-xl border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+          <h3 className="text-sm font-bold text-on-surface">Merchant comparison</h3>
+          <button
+            type="button"
+            onClick={() => setView('total')}
+            className="rounded-lg px-2 py-1 text-xs font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            Back to expenses
+          </button>
+        </div>
+      )}
 
       {/* ── Category drilldown selector ── */}
       {view === 'category' && availableCategories.length > 0 && (
@@ -639,14 +679,30 @@ function CompareTab({
 
 type Tab = 'spending' | 'compare';
 
-export function ComparePage() {
+interface ComparePageProps {
+  initialTab?: Tab;
+  showViewSwitcher?: boolean;
+  analyticsLens?: Finance.AnalyticsLens;
+  onAnalyticsLensChange?: (lens: Finance.AnalyticsLens) => void;
+  showLensControl?: boolean;
+}
+
+export function ComparePage({
+  initialTab = 'spending',
+  showViewSwitcher = true,
+  analyticsLens,
+  onAnalyticsLensChange,
+  showLensControl = true,
+}: ComparePageProps = {}) {
   const { transactions } = useApp();
   const today = new Date();
   const [anchorYear, setAnchorYear] = useState(today.getFullYear());
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
   const [range, setRange] = useState<RangeKey>('1M');
-  const [tab, setTab] = useState<Tab>('spending');
-  const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [localLens, setLocalLens] = useState<Finance.AnalyticsLens>('actual');
+  const lens = analyticsLens ?? localLens;
+  const setLens = onAnalyticsLensChange ?? setLocalLens;
 
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const d = new Date();
@@ -688,6 +744,7 @@ export function ComparePage() {
         periodLabel={labelA}
         onRangeChange={setRange}
         onLensChange={setLens}
+        showLensControl={showLensControl}
         onCustomDatesChange={(start, end) => {
           setCustomStartDate(start);
           setCustomEndDate(end);
@@ -695,16 +752,18 @@ export function ComparePage() {
       />
 
       {/* ── Tab switcher ── */}
-      <SegmentedControl
-        value={tab}
-        options={[
-          { value: 'spending', label: 'Spending by Category' },
-          { value: 'compare', label: 'Compare & Trends' },
-        ]}
-        onChange={setTab}
-        ariaLabel="Reports view"
-        className="w-full"
-      />
+      {showViewSwitcher && (
+        <SegmentedControl
+          value={tab}
+          options={[
+            { value: 'spending', label: 'Spending by Category' },
+            { value: 'compare', label: 'Compare & Trends' },
+          ]}
+          onChange={setTab}
+          ariaLabel="Reports view"
+          className="w-full"
+        />
+      )}
 
       {/* ── Tab content ── */}
       {tab === 'spending' ? (

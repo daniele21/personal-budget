@@ -100,11 +100,12 @@ export function PwaInstallButton() {
       <button
         type="button"
         onClick={install}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-low text-primary transition-colors hover:bg-surface-container-high"
+        className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-left text-primary transition-colors hover:bg-surface-container-low"
         aria-label="Install Aura Finance as app"
         aria-expanded={isPanelOpen}
       >
-        <Download className="h-4 w-4" />
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10"><Download className="h-4 w-4" /></span>
+        <span><span className="block text-sm font-bold text-on-surface">Install Aura</span><span className="block text-xs text-on-surface-variant">Add the app to this device</span></span>
       </button>
 
       {isPanelOpen && (

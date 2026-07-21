@@ -75,35 +75,29 @@ describe('InsightsPage analytics lenses', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const netToggle = screen.getByRole('radio', { name: 'Net' });
+    const netToggle = screen.getByRole('button', { name: 'Net of extras' });
     await user.click(netToggle);
 
-    expect(netToggle).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Actual' })).not.toBeChecked();
+    expect(netToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Actual, includes extras' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByText('€3,000.00')).toBeInTheDocument();
     expect(screen.getAllByText('€100.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('€2,900.00').length).toBeGreaterThan(0);
     expect(screen.getByText('Excluded from Net: €600.00 expenses · €500.00 income')).toBeInTheDocument();
   });
 
-  it('calculates safe to spend from the configured budget and selected lens expenses', async () => {
-    const user = userEvent.setup();
+  it('keeps operational safe-to-spend metrics out of Reports Overview', () => {
     renderPage();
 
-    expect(screen.getByText('€2,300.00')).toBeInTheDocument();
-    expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('radio', { name: 'Net' }));
-
-    expect(screen.getAllByText('€2,900.00').length).toBeGreaterThan(1);
-    expect(screen.getByText('of €3,000.00 safe limit')).toBeInTheDocument();
+    expect(screen.queryByText('Safe to Spend')).not.toBeInTheDocument();
+    expect(screen.queryByText(/safe limit/)).not.toBeInTheDocument();
   });
 
   it('switches to extras-only totals and categories', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole('radio', { name: 'Actual' }));
+    await user.click(screen.getByRole('button', { name: 'Actual, includes extras' }));
 
     expect(screen.getByText('Extras this period: €600.00 expenses · €500.00 income')).toBeInTheDocument();
     expect(screen.getByText('€3,500.00')).toBeInTheDocument();
@@ -184,5 +178,20 @@ describe('InsightsPage analytics lenses', () => {
     const expectedPeriod = `${periodStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${periodEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 
     expect(screen.getByText(`Rolling spending trend · ${expectedPeriod}`)).toBeInTheDocument();
+  });
+
+  it('shows an explicit empty state for a period without transactions', () => {
+    const selectedMonth = new Date();
+    selectedMonth.setDate(1);
+    mockUseApp.mockReturnValue({
+      transactions: [],
+      monthlyBudget: 3000,
+      selectedMonth,
+    });
+
+    renderPage();
+
+    expect(screen.getByText('No activity in this period')).toBeInTheDocument();
+    expect(screen.getByText(/Choose another period or add transactions/)).toBeInTheDocument();
   });
 });

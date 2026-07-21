@@ -48,13 +48,25 @@ Insights presents spending pace as three fixed rolling averages instead of a con
 
 Rationale: fixed, named windows answer the practical question of how quickly spending is changing without exposing smoothing configuration or conflating the selected reporting period with the rolling calculation.
 
+### Information Architecture And UX Simplification
+
+Chosen: use `Home | Transactions | Add | Budgets | Reports` as the primary mobile shell. `Add` is a global transaction action rather than a navigation destination, so the shell contains four destinations plus one prominent action in five equal-width slots. More remains a secondary tools/settings area reached through a fixed `…` action in every header; the account avatar links to Profile. The narrow-width implementation must keep Add icon-only, use a restrained active state, and avoid clipping or horizontal scrolling at 320 px and 360 px.
+
+Reports becomes the only full analytics area, organized as `Overview | Categories | Compare | Year`. Existing Insights, Compare, and Year Review calculations remain local and deterministic, but are recomposed into this hierarchy. Existing `/insights`, `/compare`, and `/year-review` routes remain aliases or deep links to the appropriate report view.
+
+Calendar and recurring management become a single Planning area organized as `Calendar | Recurring`, with one shared recurring-entry form and orchestration path. Existing `/calendar` and `/recurring` routes remain deep links to the appropriate view.
+
+Home and Budgets default to the Actual analytics lens and expose a minimal `Actual | Net` control. Reports exposes the complete `Actual | Net of extras | Extras only` control. The active lens must always be visible; Net must explain that extras are excluded. Home and Budgets may share this UI state for the active app session, but a new session returns to Actual so the app never silently hides real cash activity.
+
+Rationale: the primary shell should prioritize daily budgeting work while keeping analytics directly reachable. Consolidating analytics and planning removes overlapping destinations and duplicated forms. A compact but explicit lens control preserves advanced analysis without making it the dominant Home interaction.
+
 ### Safe To Spend
 
 Chosen: calculate safe-to-spend against the lower value between the configured monthly budget and the current month's income, then subtract current-month expenses.
 
 Rationale: the dashboard should not show spendable room based only on expenses when the monthly net flow cannot support it. The configured budget remains the spending cap, while current income prevents overstating safe cash pressure in low-income or partial-income months.
 
-The dashboard lets users switch Safe to Spend between `With extras` and `Net`, matching the category spending lens so one-off income and expenses can either be included in cash-pressure decisions or excluded from normalized planning.
+The dashboard lets users switch Safe to Spend between `Actual` and `Net`, matching the category spending lens so one-off income and expenses can either be included in cash-pressure decisions or excluded from normalized planning. Actual remains the default, and the compact control always exposes its active state.
 
 Safe to Spend uses budgetable cash inflow for the effective limit, not reportable income. Reimbursements reduce expenses in the period where they are recorded, but they do not act as the income cap for Safe to Spend because a refund-only month would otherwise shrink the safe limit to the refund amount. If no budgetable income is recorded for the month, the configured monthly budget remains the limit.
 
@@ -76,9 +88,9 @@ Known limitation: web notifications are browser and platform dependent. On iOS, 
 
 ### Mobile PWA Install Action
 
-Chosen: show a mobile-only install button in the authenticated app header.
+Chosen: show a mobile-only install action in the authenticated More area only when installation or platform-specific guidance is relevant.
 
-Rationale: Aura Finance is mobile-first and already ships a manifest and service worker. The button appears on mobile browsers when the app is not already running in standalone mode. Android/Chrome can use the browser `beforeinstallprompt` event for a native install action when Chrome exposes it, with a fallback help panel when the event is not available. iOS requires concise manual guidance through Safari, Share, and Add to Home Screen because Chrome and Edge on iOS cannot open the native PWA install prompt.
+Rationale: Aura Finance is mobile-first and already ships a manifest and service worker, but installation is occasional rather than a primary daily action. The surface appears on mobile browsers only when the app is not already running in standalone mode and the app can offer either installation or useful platform guidance. Android/Chrome can use the browser `beforeinstallprompt` event for a native install action when Chrome exposes it. iOS requires concise manual guidance through Safari, Share, and Add to Home Screen because Chrome and Edge on iOS cannot open the native PWA install prompt.
 
 ### Admin
 

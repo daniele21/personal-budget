@@ -2,9 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  ChartNoAxesCombined,
   ChevronLeft,
   ChevronRight,
   Info,
@@ -21,7 +18,7 @@ import {
   Skeleton,
 } from '../components/ui';
 import { RadialGauge } from '../components/RadialGauge';
-import { CashFlowChart } from '../components/dashboard/CashFlowChart';
+import { CashFlowPreview } from '../components/dashboard/CashFlowPreview';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
 import {
   calculateBudgetableCashInflowByLens,
@@ -47,7 +44,6 @@ export const Dashboard = () => {
     transactions,
     setTransactions,
     budgets,
-    monthlyTotals,
     monthlyBudget,
     monthlyTransactions,
     momChange,
@@ -57,6 +53,8 @@ export const Dashboard = () => {
     addCategory,
     selectedMonth,
     setSelectedMonth,
+    analyticsLens: lens,
+    setAnalyticsLens: setLens,
   } = useApp();
   const { toast } = useToast();
 
@@ -67,8 +65,6 @@ export const Dashboard = () => {
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
-  const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
-
   const filteredTransactions = useMemo(
     () => filterByAnalyticsLens(transactions, lens),
     [transactions, lens],
@@ -88,6 +84,13 @@ export const Dashboard = () => {
   const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
   const isOverBudget = safeToSpendTotals.expenses > effectiveLimit;
+  const homeInsights = [
+    isOverBudget ? `Spending is ${formatCurrency(safeToSpendTotals.expenses - effectiveLimit)} over the monthly limit.` : null,
+    !isOverBudget && usedPercent >= 80 ? `${usedPercent}% of the monthly limit has been used.` : null,
+    momChange !== null && Math.abs(momChange) >= 10
+      ? `Net cash flow is ${Math.abs(momChange).toFixed(0)}% ${momChange >= 0 ? 'higher' : 'lower'} than last month.`
+      : null,
+  ].filter((insight): insight is string => insight !== null).slice(0, 2);
 
   const today = new Date();
   const isCurrentMonth =
@@ -124,13 +127,14 @@ export const Dashboard = () => {
   const handleDeleteTransaction = (id: string) => {
     const deleted = transactions.find((t) => t.id === id);
     if (!deleted) return;
-    setTransactions(transactions.filter((t) => t.id !== id));
+    const remaining = transactions.filter((t) => t.id !== id);
+    setTransactions(remaining);
     setTransactionToDelete(null);
     haptics.warning();
     toast('Transaction deleted', 'info', 5000, {
       label: 'Undo',
       onClick: () => {
-        setTransactions([...transactions, deleted]);
+        setTransactions([...remaining, deleted]);
         haptics.success();
       },
     });
@@ -171,7 +175,6 @@ export const Dashboard = () => {
         </button>
         <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-2">
           <div className="shrink-0 text-center">
-            <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">Monthly snapshot</p>
             <p className="text-sm font-semibold text-primary">{formatMonthLabel(selectedMonth)}</p>
           </div>
           <LensSelector value={lens} onChange={setLens} className="mx-0 max-w-[9.25rem] shrink-0" />
@@ -229,23 +232,17 @@ export const Dashboard = () => {
 
       {/* ── 3. Monthly summary ─────────────────────────────────────────── */}
       <Card className="grid grid-cols-2 p-0">
-        <Link to="/history?type=income" className="aura-metric-positive min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
+        <Link to="/transactions?type=income" className="aura-metric-positive min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-on-surface-variant">Income</p>
-              <span className="aura-icon-chip-positive h-7 w-7" aria-hidden="true">
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </span>
             </div>
             <p className="mt-1 truncate text-base font-semibold text-secondary">
                 {isHydrated ? formatCurrency(safeToSpendTotals.income) : <Skeleton className="h-4 w-12" />}
             </p>
         </Link>
-        <Link to="/history?type=expense" className="aura-metric-divider aura-metric-neutral relative min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
+        <Link to="/transactions?type=expense" className="aura-metric-divider aura-metric-neutral relative min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-on-surface-variant">Spent</p>
-              <span className="aura-icon-chip-primary h-7 w-7" aria-hidden="true">
-                <ArrowDownRight className="h-3.5 w-3.5" />
-              </span>
             </div>
             <p className="mt-1 truncate text-base font-semibold text-on-surface">
                 {isHydrated ? formatCurrency(safeToSpendTotals.expenses) : <Skeleton className="h-4 w-12" />}
@@ -254,27 +251,22 @@ export const Dashboard = () => {
       </Card>
 
       {/* ── 5. Cash flow chart ─────────────────────────────────────────── */}
-      <Card tone="primary" colorized className="space-y-3 p-4">
+      <Card className="space-y-3 p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="aura-icon-chip-primary h-8 w-8" aria-hidden="true">
-              <ChartNoAxesCombined className="h-4 w-4" />
-            </span>
-            <h3 className="font-headline text-base font-semibold text-on-surface">Cash flow</h3>
-          </div>
+          <h3 className="font-headline text-base font-semibold text-on-surface">Cash flow</h3>
           <span className="text-xs font-medium text-on-surface-variant">
             {formatMonthLabel(selectedMonth)}
           </span>
         </div>
-        <CashFlowChart
+        <CashFlowPreview
           transactions={filteredTransactions}
           month={selectedMonth}
-          netAmount={monthlyTotals.net}
+          netAmount={safeToSpendTotals.net}
           momChange={momChange}
         />
         <div className="aura-divider-top mt-1 flex justify-end pt-3">
           <Link
-            to="/insights"
+            to="/reports"
             className="text-sm font-medium text-primary hover:underline"
           >
             View report
@@ -282,12 +274,23 @@ export const Dashboard = () => {
         </div>
       </Card>
 
+      {homeInsights.length > 0 && (
+        <section className="space-y-2 px-1" aria-label="Monthly insights">
+          <h3 className="text-sm font-semibold text-on-surface">Worth noting</h3>
+          <ul className="space-y-1.5">
+            {homeInsights.map((insight) => (
+              <li key={insight} className="border-l-2 border-primary/30 pl-3 text-xs leading-relaxed text-on-surface-variant">{insight}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* ── 8. Recent transactions ─────────────────────────────────────── */}
       <section className="aura-card p-4" aria-label="Recent transactions">
         <div className="mb-2 flex items-center justify-between">
             <h3 className="font-headline text-base font-semibold text-on-surface">Recent transactions</h3>
             <Link
-              to="/history"
+              to="/transactions"
               className="text-sm font-medium text-primary hover:underline"
             >
               View all

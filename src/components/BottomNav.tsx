@@ -1,103 +1,64 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart2, LayoutDashboard, MoreHorizontal, Plus, TrendingUp } from 'lucide-react';
+import { BarChart3, LayoutDashboard, Plus, ReceiptText, WalletCards } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 /**
- * Fixed bottom navigation bar — matches the Aura Finance mockup (Insights screens):
+ * Primary mobile shell: four destinations around the Add transaction action.
  *
- *  Home  Insights  [+]  Reports  More
- *
- * - Home     → /
- * - Insights → /insights   (overview, summary cards, cash flow chart)
- * - [+] FAB  → /add
- * - Reports  → /compare    (spending by category + compare & trends)
- * - More     → /more       (Transactions, Budgets, Calendar, Profile, …)
+ *  Home  Transactions  [+]  Budgets  Reports
  */
 export const BottomNav = () => {
   const location = useLocation();
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       path: '/',
       icon: LayoutDashboard,
       label: 'Home',
-      aliases: [] as string[],
+      aliases: [],
     },
     {
-      path: '/insights',
-      icon: TrendingUp,
-      label: 'Insights',
-      aliases: [] as string[],
+      path: '/transactions',
+      icon: ReceiptText,
+      label: 'Transactions',
+      aliases: ['/history'],
     },
     {
-      path: '/compare',
-      icon: BarChart2,
+      path: '/add',
+      icon: Plus,
+      label: 'Add transaction',
+      aliases: [],
+      action: true,
+    },
+    {
+      path: '/budgets',
+      icon: WalletCards,
+      label: 'Budgets',
+      aliases: [],
+    },
+    {
+      path: '/reports',
+      icon: BarChart3,
       label: 'Reports',
-      aliases: ['/year-review'] as string[],
-    },
-    {
-      path: '/more',
-      icon: MoreHorizontal,
-      label: 'More',
-      aliases: [
-        '/transactions',
-        '/history',
-        '/budgets',
-        '/recurring',
-        '/calendar',
-        '/profile',
-        '/admin',
-      ] as string[],
+      aliases: ['/reports/categories', '/reports/compare', '/reports/year', '/insights', '/compare', '/year-review'],
     },
   ];
 
-  const isItemActive = (item: (typeof navItems)[number]) =>
+  const isItemActive = (item: NavItem) =>
     location.pathname === item.path || item.aliases.includes(location.pathname);
-
-  const isAddActive = location.pathname === '/add';
 
   return (
     <nav
       aria-label="Main navigation"
-      className={cn(
-        'aura-bottom-nav fixed bottom-0 z-50 w-full',
-        'bg-surface-container-lowest/92 backdrop-blur-xl',
-        'shadow-[0_-10px_30px_-24px_rgba(0,52,97,0.34)]',
-        'safe-area-bottom',
-      )}
+      className="fixed bottom-0 z-50 w-full border-t border-outline-variant/20 bg-surface-container-lowest safe-area-bottom"
     >
-      {/* ── Floating action button (centre) ── */}
-      <Link
-        to="/add"
-        aria-label="Add transaction"
-        aria-current={isAddActive ? 'page' : undefined}
-        className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-3"
-      >
-        <div
-          className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-full',
-            'aura-fab text-on-primary',
-            'shadow-[0_8px_24px_-8px_rgba(0,52,97,0.48)]',
-            'transition-all hover:bg-primary-container active:scale-90',
-            'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25',
-            isAddActive && 'ring-4 ring-primary/25',
-          )}
-        >
-          <Plus className="h-5 w-5" />
-        </div>
-      </Link>
-
-      {/* ── Tab items — 5-column grid with centre gap for FAB ── */}
-      <div className="grid grid-cols-[1fr_1fr_64px_1fr_1fr] items-end px-1 pb-1 pt-2">
-        {/* Left 2 tabs */}
-        {navItems.slice(0, 2).map((item) => renderNavTab(item, isItemActive(item)))}
-
-        {/* Centre spacer for FAB */}
-        <div aria-hidden="true" />
-
-        {/* Right 2 tabs */}
-        {navItems.slice(2).map((item) => renderNavTab(item, isItemActive(item)))}
+      <div className="mx-auto grid max-w-2xl grid-cols-5 items-end pb-1 pt-1">
+        {navItems.map((item, index) => (
+          item.action
+            ? <div key={item.path} data-nav-position={index === 2 ? 'center' : undefined}>{renderAddAction(item, isItemActive(item))}</div>
+            : renderNavTab(item, isItemActive(item))
+        ))}
       </div>
     </nav>
   );
@@ -110,6 +71,7 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   aliases: string[];
+  action?: boolean;
 }
 
 function renderNavTab(item: NavItem, isActive: boolean) {
@@ -122,31 +84,56 @@ function renderNavTab(item: NavItem, isActive: boolean) {
       aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'relative flex flex-col items-center justify-end gap-0.5 py-1',
-        'rounded-xl transition-colors active:opacity-75',
+        'relative flex min-h-12 min-w-0 flex-col items-center justify-end gap-0.5 rounded-xl py-1',
+        'transition-colors active:opacity-75',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
       )}
     >
       {isActive && (
-        <span className="absolute -top-2 h-1 w-7 rounded-full bg-[linear-gradient(90deg,var(--color-accent-cyan),var(--color-primary),var(--color-secondary))] shadow-[0_2px_8px_rgba(0,52,97,0.28)]" aria-hidden="true" />
+        <span className="absolute top-0 h-0.5 w-5 rounded-full bg-primary" aria-hidden="true" />
       )}
       <div
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-xl text-on-surface-variant transition-all',
-          isActive && 'bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-accent-cyan)_18%,transparent),color-mix(in_srgb,var(--color-primary)_10%,transparent))] text-primary shadow-[0_6px_16px_-12px_rgba(0,52,97,0.45)]',
+          'flex h-7 w-7 items-center justify-center rounded-lg text-on-surface-variant transition-colors',
+          isActive && 'text-primary',
         )}
       >
-        <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 1.75} />
+        <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.4 : 1.8} />
       </div>
 
-      {/* Label */}
       <span
         className={cn(
-          'max-w-full truncate text-[11px] font-medium transition-colors',
-          isActive ? 'text-primary' : 'text-on-surface-variant',
+          'max-w-full whitespace-nowrap font-medium leading-none tracking-tight transition-colors',
+          'text-[clamp(0.5rem,2.4vw,0.6875rem)]',
+          isActive ? 'font-semibold text-primary' : 'text-on-surface-variant',
         )}
       >
         {item.label}
+      </span>
+    </Link>
+  );
+}
+
+function renderAddAction(item: NavItem, isActive: boolean) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      key={item.path}
+      to={item.path}
+      aria-label={item.label}
+      aria-current={isActive ? 'page' : undefined}
+      className="flex min-h-12 min-w-0 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+    >
+      <span
+        className={cn(
+          'flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary',
+          'transition-transform active:scale-95',
+          isActive && 'ring-4 ring-primary/20',
+        )}
+        aria-hidden="true"
+      >
+        <Icon className="h-5 w-5" strokeWidth={2.4} />
       </span>
     </Link>
   );

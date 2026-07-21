@@ -19,7 +19,6 @@ import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { Card, Button, EmptyState, LensSelector } from '../components/ui';
 import { ProgressRow } from '../components/ui/ProgressRow';
-import { RadialGauge } from '../components/RadialGauge';
 import { haptics } from '../utils/haptics';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { pageTransition } from '../utils/motion';
@@ -37,9 +36,9 @@ export const BudgetsPage = () => {
     monthlyTransactions,
     monthlyBudget,
     selectedMonth,
+    analyticsLens: lens,
+    setAnalyticsLens: setLens,
   } = useApp();
-
-  const [lens, setLens] = useState<'actual' | 'normalized'>('actual');
   const [isAdding, setIsAdding] = useState(false);
   const [newCategory, setNewCategory] = useState(categories[0]);
   const [newLimit, setNewLimit] = useState('');
@@ -110,14 +109,15 @@ export const BudgetsPage = () => {
 
   const handleDeleteBudget = (category: string) => {
     const deleted = budgets.find((b) => b.category === category);
-    setBudgets(budgets.filter((b) => b.category !== category));
+    const remaining = budgets.filter((b) => b.category !== category);
+    setBudgets(remaining);
     setDeleteTarget(null);
     haptics.warning();
     toast('Budget removed', 'info', 5000, deleted
       ? {
           label: 'Undo',
           onClick: () => {
-            setBudgets([...budgets, deleted]);
+            setBudgets([...remaining, deleted]);
             haptics.success();
           },
         }
@@ -149,51 +149,30 @@ export const BudgetsPage = () => {
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
 
-      {/* ── 1. Safe to Spend + Budget health hero ── */}
+      {/* ── 1. Monthly category-budget health ── */}
       <Card
         variant="inverse"
-        tone={safeToSpend.usedPercent > 100 ? 'danger' : safeToSpend.usedPercent > 80 ? 'warning' : 'primary'}
+        tone={progress >= 100 ? 'danger' : progress >= 90 ? 'warning' : 'primary'}
         as="section"
-        className="space-y-3"
+        className="space-y-4"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-0.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-headline text-sm font-bold text-inverse-on-surface-variant">
-                Safe to Spend
-              </h2>
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-inverse-on-surface-variant ring-1 ring-inset ring-white/10">
-                {formatMonthLabel(selectedMonth)}
-              </span>
-              <LensSelector value={lens} onChange={setLens} className="mt-1 max-w-[9.25rem] sm:mt-0" />
-            </div>
-            <p
-              className={cn(
-                'font-headline text-4xl font-extrabold leading-none tabular-nums',
-                'text-inverse-on-surface',
-              )}
-            >
-              {formatCurrency(safeToSpend.remaining)}
-            </p>
-            <p className="text-xs font-semibold text-inverse-on-surface-variant">
-              of {formatCurrency(safeToSpend.effectiveLimit)} safe limit
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-headline text-sm font-bold text-inverse-on-surface">Monthly category budgets</h2>
+            <p className="text-xs text-inverse-on-surface-variant">{formatMonthLabel(selectedMonth)}</p>
           </div>
-          <div className="shrink-0 origin-top-right scale-90">
-            <RadialGauge
-              percent={safeToSpend.usedPercent}
-              value={`${safeToSpend.usedPercent}%`}
-              label="used"
-              inverse
-            />
-          </div>
+          <LensSelector value={lens} onChange={setLens} className="max-w-[9.25rem]" />
         </div>
 
-        {/* Overall progress */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] font-bold text-inverse-on-surface-variant">
-            <span>Budget progress · {formatMonthLabel(selectedMonth)}</span>
-            <span>{progress}% of budgeted</span>
+        <div className="space-y-2">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="font-headline text-3xl font-extrabold leading-none text-inverse-on-surface tabular-nums">{progress}%</p>
+              <p className="mt-1 text-xs text-inverse-on-surface-variant">of category limits used</p>
+            </div>
+            <p className="pb-0.5 text-right text-xs font-bold text-inverse-on-surface-variant tabular-nums">
+              {formatCurrency(totalSpent)} of {formatCurrency(totalLimit)}
+            </p>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
             <div
@@ -217,19 +196,29 @@ export const BudgetsPage = () => {
           )}
         </div>
 
-        {/* Add budget shortcut */}
-        <button
-          type="button"
-          onClick={handleOpenAddBudget}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/25 bg-white/8 py-2.5 text-sm font-bold text-inverse-on-surface transition-colors hover:bg-white/14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inverse-accent/60"
-          aria-label="Add budget"
-        >
-          <Plus className="h-4 w-4" />
-          Add category budget
-        </button>
+        <div className="flex items-center justify-between gap-3 border-t border-white/12 pt-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-inverse-on-surface-variant">Safe to spend</p>
+            <p className="mt-0.5 text-lg font-bold text-inverse-on-surface tabular-nums">{formatCurrency(safeToSpend.remaining)}</p>
+          </div>
+          <p className="max-w-[11rem] text-right text-[10px] leading-relaxed text-inverse-on-surface-variant">
+            {safeToSpend.usedPercent}% of {formatCurrency(safeToSpend.effectiveLimit)} monthly limit used
+          </p>
+        </div>
       </Card>
 
       {/* ── 2. Budget progress list ── */}
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-sm font-bold text-on-surface">Categories</h2>
+          <p className="text-[10px] font-semibold text-on-surface-variant">Limits apply only to the categories listed below</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={handleOpenAddBudget} aria-label="Add category budget">
+          <Plus className="h-3.5 w-3.5" />
+          Add budget
+        </Button>
+      </div>
+
       {budgets.length > 0 ? (
         <Card className="space-y-0 p-3">
           <div className="space-y-0 divide-y divide-outline-variant/20">

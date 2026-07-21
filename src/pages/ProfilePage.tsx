@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, Moon } from 'lucide-react';
+import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
@@ -32,7 +32,6 @@ export const ProfilePage = () => {
     savingsGoals, setSavingsGoals, monthlyBudget, setMonthlyBudget, allTimeTotals, currentBalance,
     user, signOut, isAdmin, cloudBackupEnabled, setCloudBackupEnabled,
     backupStatus, lastBackupDate, deleteCloudBackup, pushBackupNow, resetAll,
-    isDarkMode, setIsDarkMode,
   } = useApp();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
@@ -57,7 +56,7 @@ export const ProfilePage = () => {
       iconClassName: 'bg-primary/10 text-primary',
     },
     {
-      to: '/recurring',
+      to: '/planning/recurring',
       label: 'Recurring',
       ariaLabel: 'Open recurring bills and income',
       icon: RefreshCw,
@@ -259,29 +258,12 @@ export const ProfilePage = () => {
         </div>
       </section>
 
-      <section>
+      <section id="settings" className="scroll-mt-24">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-headline font-bold text-primary">Settings</h3>
           <Settings className="w-5 h-5 text-on-surface-variant" />
         </div>
         <div className="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/5 space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-low text-primary">
-                <Moon className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-on-surface">Dark mode</p>
-                <p className="text-xs text-on-surface-variant">Use a darker interface theme</p>
-              </div>
-            </div>
-            <Switch
-              checked={isDarkMode}
-              onChange={() => setIsDarkMode(!isDarkMode)}
-              label="Toggle dark mode"
-            />
-          </div>
-          <div className="h-px bg-outline-variant/10" />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-on-surface">Monthly Budget</p>
@@ -412,7 +394,7 @@ export const ProfilePage = () => {
         </div>
       </section>
 
-      <section>
+      <section id="data-management" className="scroll-mt-24">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-headline font-bold text-primary">Data Management</h3>
         </div>
@@ -440,6 +422,7 @@ export const ProfilePage = () => {
             </button>
           </div>
 
+          <div id="privacy-backup" className="scroll-mt-24" />
           <button
             onClick={handleBackupNow}
             disabled={isBackingUp || !cloudBackupEnabled}
@@ -494,7 +477,7 @@ export const ProfilePage = () => {
               </p>
             </div>
             <Link
-              to="/history"
+              to="/transactions?import=1"
               className="w-full py-3 bg-primary text-on-primary rounded-xl text-xs font-bold shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
             >
               Vai alla cronologia per importare
@@ -505,7 +488,7 @@ export const ProfilePage = () => {
 
       <AccountList accounts={accounts} />
 
-      <section className="pt-4 space-y-4">
+      <section className="space-y-4 pt-4">
         {/* Privacy notice */}
         <div className="bg-secondary-container/10 border border-secondary/20 rounded-2xl p-4 flex items-start gap-3">
           <ShieldCheck className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />

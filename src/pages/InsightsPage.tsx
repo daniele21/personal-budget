@@ -18,8 +18,6 @@ import { Transaction } from '../types';
 import { pageTransition } from '../utils/motion';
 import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, SegmentedControl } from '../components/ui';
 
-type InsightsLens = 'actual' | 'normalized';
-
 // ─── Period helpers ──────────────────────────────────────────────────
 
 /** Build weekly buckets for the overview chart */
@@ -93,11 +91,12 @@ interface KpiCardProps {
   iconBg: string;
   surfaceClassName: string;
   valueClassName?: string;
+  className?: string;
 }
 
-function KpiCard({ label, value, change, positive, sub, icon, iconBg, surfaceClassName, valueClassName }: KpiCardProps) {
+function KpiCard({ label, value, change, positive, sub, icon, iconBg, surfaceClassName, valueClassName, className }: KpiCardProps) {
   return (
-    <div className={cn('aura-kpi-cell space-y-1.5 p-3.5', surfaceClassName)}>
+    <div className={cn('aura-kpi-cell space-y-1.5 p-3.5', surfaceClassName, className)}>
       <div className="flex items-center gap-2">
         <span className={cn('flex h-7 w-7 items-center justify-center rounded-xl text-white', iconBg)}>
           {icon}
@@ -159,9 +158,17 @@ function CashFlowBar({
 
 // ─── InsightsPage ─────────────────────────────────────────────────────
 
-export const InsightsPage = () => {
-  const { transactions, selectedMonth, monthlyBudget } = useApp();
-  const [lens, setLens] = useState<InsightsLens>('actual');
+interface InsightsPageProps {
+  analyticsLens?: Finance.AnalyticsLens;
+  onAnalyticsLensChange?: (lens: Finance.AnalyticsLens) => void;
+  showLensControl?: boolean;
+}
+
+export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensControl = true }: InsightsPageProps = {}) => {
+  const { transactions, selectedMonth } = useApp();
+  const [localLens, setLocalLens] = useState<Finance.AnalyticsLens>('actual');
+  const lens = analyticsLens ?? localLens;
+  const setLens = onAnalyticsLensChange ?? setLocalLens;
   const [range, setRange] = useState<RangeKey>('1M');
 
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
@@ -218,15 +225,6 @@ export const InsightsPage = () => {
 
   const totals = useMemo(() => Finance.calculateTotals(periodTx), [periodTx]);
   const prevTotals = useMemo(() => Finance.calculateTotals(prevTx), [prevTx]);
-  const safeToSpendIncomeCap = useMemo(
-    () => Finance.calculateBudgetableCashInflowByLens(Finance.filterByDateRange(transactions, start, end), lens),
-    [transactions, start, end, lens],
-  );
-  const safeToSpend = useMemo(
-    () => Finance.safeToSpend(monthlyBudget, totals.expenses, safeToSpendIncomeCap),
-    [monthlyBudget, totals.expenses, safeToSpendIncomeCap],
-  );
-
   const incomeChange = prevTotals.income > 0
     ? ((totals.income - prevTotals.income) / prevTotals.income) * 100
     : null;
@@ -304,23 +302,40 @@ export const InsightsPage = () => {
       ? 'per week, averaged over the preceding 4 weeks'
       : 'per month, averaged over the preceding 3 months';
 
+  const periodControl = (
+    <PeriodSelector
+      range={range}
+      lens={lens}
+      customStartDate={customStartDate}
+      customEndDate={customEndDate}
+      periodLabel={periodLabel}
+      onRangeChange={setRange}
+      onLensChange={setLens}
+      showLensControl={showLensControl}
+      onCustomDatesChange={(nextStart, nextEnd) => {
+        setCustomStartDate(nextStart);
+        setCustomEndDate(nextEnd);
+      }}
+    />
+  );
+
+  if (periodTx.length === 0) {
+    return (
+      <motion.div {...pageTransition} className="space-y-4 pb-24">
+        {periodControl}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-14 text-center">
+          <p className="text-sm font-bold text-on-surface">No activity in this period</p>
+          <p className="mt-1 text-xs text-on-surface-variant">Choose another period or add transactions to generate the report.</p>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div {...pageTransition} className="space-y-4 pb-24">
 
       {/* ── Period, lens, and selected range controls ── */}
-      <PeriodSelector
-        range={range}
-        lens={lens}
-        customStartDate={customStartDate}
-        customEndDate={customEndDate}
-        periodLabel={periodLabel}
-        onRangeChange={setRange}
-        onLensChange={setLens}
-        onCustomDatesChange={(start, end) => {
-          setCustomStartDate(start);
-          setCustomEndDate(end);
-        }}
-      />
+      {periodControl}
 
       {extraImpact.count > 0 && (
         <div className="aura-section-surface px-4 py-2 text-xs font-semibold text-on-surface-variant">
@@ -359,17 +374,7 @@ export const InsightsPage = () => {
           iconBg="bg-accent-cyan"
           surfaceClassName="aura-kpi-primary"
           valueClassName={totals.net >= 0 ? "text-secondary" : "text-tertiary"}
-        />
-        <KpiCard
-          label="Safe to Spend"
-          value={formatCurrency(safeToSpend.remaining)}
-          change={null}
-          positive={true}
-          sub={`of ${formatCurrency(safeToSpend.effectiveLimit)} safe limit`}
-          icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-          iconBg={safeToSpend.remaining <= 0 ? 'bg-tertiary' : 'bg-primary'}
-          surfaceClassName={safeToSpend.remaining <= 0 ? 'aura-kpi-warning' : 'aura-kpi-primary'}
-          valueClassName={safeToSpend.remaining <= 0 ? 'text-tertiary' : 'text-primary'}
+          className="col-span-2"
         />
       </div>
 

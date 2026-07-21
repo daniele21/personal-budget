@@ -82,7 +82,7 @@ export function useNotificationScheduler({ transactions, recurring, budgetStatus
             title: `${bill.name} reminder`,
             body,
             type: 'recurring',
-            route: '/recurring',
+            route: '/planning/recurring',
             dedupeKey: `recurring:${todayKey}:${bill.id}:${occurrenceKey}`,
           });
         });

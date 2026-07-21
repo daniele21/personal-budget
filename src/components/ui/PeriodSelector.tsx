@@ -3,11 +3,10 @@ import { CalendarDays, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { BottomSheet } from './BottomSheet';
 import { Input } from './Input';
-import { LensSelector } from './LensSelector';
+import { AnalyticsLensControl } from './AnalyticsLensControl';
+import type { AnalyticsLens } from '../../domain/finance';
 
 export type RangeKey = '1M' | 'LM' | '3M' | '6M' | '12M' | 'CUSTOM';
-export type InsightsLens = 'actual' | 'normalized';
-
 export const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
   { key: '1M', label: 'This month' },
   { key: 'LM', label: 'Last month' },
@@ -65,13 +64,14 @@ export function getRangeDates(key: RangeKey, anchorYear: number, anchorMonth: nu
 
 interface PeriodSelectorProps {
   range: RangeKey;
-  lens: InsightsLens;
+  lens: AnalyticsLens;
   customStartDate: string;
   customEndDate: string;
   periodLabel: string;
   onRangeChange: (range: RangeKey) => void;
-  onLensChange: (lens: InsightsLens) => void;
+  onLensChange: (lens: AnalyticsLens) => void;
   onCustomDatesChange: (startDate: string, endDate: string) => void;
+  showLensControl?: boolean;
 }
 
 export function PeriodSelector({
@@ -83,6 +83,7 @@ export function PeriodSelector({
   onRangeChange,
   onLensChange,
   onCustomDatesChange,
+  showLensControl = true,
 }: PeriodSelectorProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [tempStart, setTempStart] = useState(customStartDate);
@@ -103,7 +104,7 @@ export function PeriodSelector({
 
   return (
     <>
-      <div className="grid grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] items-center gap-2">
+      <div className={cn('grid items-center gap-2', showLensControl ? 'grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)]' : 'grid-cols-2')}>
         <label className="relative min-w-0">
           <span className="sr-only">Select period</span>
           <select
@@ -122,7 +123,9 @@ export function PeriodSelector({
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
         </label>
 
-        <LensSelector value={lens} onChange={onLensChange} className="mx-0 max-w-[9.25rem] shrink-0" />
+        {showLensControl && (
+          <AnalyticsLensControl value={lens} onChange={onLensChange} className="mx-0 max-w-[9.25rem] shrink-0" />
+        )}
 
         {range === 'CUSTOM' ? (
           <button

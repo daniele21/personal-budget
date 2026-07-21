@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Bell, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Bell, MoreHorizontal, Search } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { GlobalSearch } from './GlobalSearch';
@@ -39,10 +39,9 @@ function useVariant(explicitVariant?: TopBarVariant): TopBarVariant {
   if (pathname === '/') return 'dashboard';
   if (pathname === '/transactions' || pathname === '/history') return 'transactions';
   if (pathname === '/budgets') return 'budgets';
-  if (pathname === '/insights') return 'insights';
-  if (pathname === '/compare' || pathname === '/year-review') return 'reports';
+  if (pathname.startsWith('/reports') || pathname === '/insights' || pathname === '/compare' || pathname === '/year-review') return 'reports';
   // Sub-pages: any path that isn't a top-level nav tab
-  const topLevel = ['/', '/transactions', '/history', '/budgets', '/insights', '/compare', '/more'];
+  const topLevel = ['/', '/transactions', '/history', '/budgets', '/reports', '/insights', '/compare', '/more'];
   if (!topLevel.includes(pathname)) return 'back';
   return 'default';
 }
@@ -50,6 +49,7 @@ function useVariant(explicitVariant?: TopBarVariant): TopBarVariant {
 export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: TopBarProps) => {
   const { user } = useApp();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const notifications = useNotifications();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
@@ -76,6 +76,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
         ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') ||
         (!isTyping && event.key === '/');
       if (isShortcut) {
+        if (pathname === '/transactions' || pathname === '/history') return;
         event.preventDefault();
         setIsSearchOpen(true);
         return;
@@ -87,7 +88,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [navigate]);
+  }, [navigate, pathname]);
 
   // ── Shared action buttons ───────────────────────────────────────────
   const SearchBtn = (
@@ -115,6 +116,17 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
         </span>
       )}
     </button>
+  );
+
+  const MoreLink = (
+    <Link
+      to="/more"
+      aria-label="More"
+      aria-current={pathname === '/more' ? 'page' : undefined}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+    >
+      <MoreHorizontal className="h-5 w-5" />
+    </Link>
   );
 
   const AvatarLink = showProfile && user ? (
@@ -148,7 +160,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'dashboard') {
     return (
       <>
-        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
           <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             {/* Left: brand icon + greeting */}
             <div className="flex min-w-0 items-center gap-2.5">
@@ -163,6 +175,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {MoreLink}
               {AvatarLink}
             </div>
           </div>
@@ -173,23 +186,22 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
     );
   }
 
-  // Transactions: large title + filter icon + search icon
+  // Transactions: local search belongs to the page, so the shell stays quiet.
   if (variant === 'transactions') {
     return (
       <>
-        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
           <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
               <h1 className="min-w-0 truncate font-headline text-xl font-extrabold text-primary">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
-              {SearchBtn}
               {NotificationBtn}
+              {MoreLink}
             </div>
           </div>
         </header>
-        <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
         <NotificationCenter isOpen={isNotificationCenterOpen} onClose={() => setIsNotificationCenterOpen(false)} />
       </>
     );
@@ -199,7 +211,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'insights') {
     return (
       <>
-        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
           <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
@@ -208,6 +220,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {MoreLink}
             </div>
           </div>
         </header>
@@ -221,7 +234,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'reports') {
     return (
       <>
-        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
           <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
@@ -229,13 +242,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
-              <button
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="More options"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
+              {NotificationBtn}
+              {MoreLink}
             </div>
           </div>
         </header>
@@ -249,7 +257,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'budgets') {
     return (
       <>
-        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
           <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-3 px-4 sm:max-w-xl sm:px-5 md:max-w-2xl">
             <div className="flex min-w-0 items-center gap-2.5">
               <HomeLogoLink />
@@ -258,6 +266,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {MoreLink}
             </div>
           </div>
         </header>
@@ -271,7 +280,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   if (variant === 'back') {
     return (
       <>
-        <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+        <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
           <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-3 sm:max-w-xl sm:px-5 md:max-w-2xl">
             {BackBtn}
             <HomeLogoLink />
@@ -280,6 +289,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             </h1>
             <div className="ml-auto flex shrink-0 items-center gap-0.5">
               {SearchBtn}
+              {MoreLink}
               {AvatarLink}
             </div>
           </div>
@@ -293,7 +303,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   // Default: logo + title + full action bar
   return (
     <>
-      <header className="aura-topbar fixed top-0 z-50 w-full bg-surface-container-lowest/92 shadow-[0_8px_28px_-22px_rgba(0,52,97,0.32)] backdrop-blur-xl">
+      <header className="aura-topbar fixed top-0 z-50 w-full border-b border-outline-variant/15 bg-surface-container-lowest">
         <div className="mx-auto flex h-14 max-w-md items-center gap-2.5 px-3 sm:max-w-xl sm:px-5 md:max-w-2xl">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <HomeLogoLink className="h-9 w-9" />
@@ -304,6 +314,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             {SearchBtn}
             {NotificationBtn}
+            {MoreLink}
             {AvatarLink}
           </div>
         </div>

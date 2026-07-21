@@ -1,5 +1,8 @@
 # Aura Finance Compact Layout Redesign Plan
 
+> [!NOTE]
+> Decision discovery is complete. The approved direction and task-level delivery status are tracked in [`08-ux-simplification-progress-plan.md`](./08-ux-simplification-progress-plan.md). The option analysis below remains as historical rationale and must not be treated as an open approval gate.
+
 ## Executive Assessment
 
 The proposed layout direction is applicable and mostly aligned with the current product strategy.
@@ -43,7 +46,7 @@ The gap is not data model capability. The gap is interaction architecture and vi
 - `CalendarPage` and `RecurringPage` overlap conceptually and should be consolidated through a segmented view.
 - `InsightsPage` and `ComparePage` contain the right logic, but need the proposed report hierarchy: period selector, KPI cards, one primary chart, ranked breakdown, expandable insights.
 
-## Decisions That Need Confirmation
+## Decision Analysis (Resolved)
 
 ### 1. Bottom Navigation Information Architecture
 
@@ -69,9 +72,7 @@ Cons:
 - Option B leaves Budgets less prominent even though Safe to Spend depends on budgets.
 - Option C preserves current terminology and clutter, so it does not fully deliver the proposed UX.
 
-Recommendation: Option A. Use `Transactions` instead of `History`, keep the central Add action, expose `Budgets` as the fourth tab, and add `More` for Reports, Calendar/Recurring, Profile, Year Review, Import, and Admin when applicable.
-
-Confirmation needed before implementation.
+Resolution: use `Home | Transactions | Add | Budgets | Reports` in five equally spaced slots. Add remains a centered global action rather than a navigation destination; Reports remains directly reachable as the only full analytics area, while More moves to a fixed `…` action in every header.
 
 ### 2. Dashboard Primary Metric
 
@@ -97,9 +98,7 @@ Cons:
 - Option B weakens the new layout direction.
 - Option C can become visually dense and harder to scan.
 
-Recommendation: Option A.
-
-Confirmation needed before implementation.
+Resolution: Option A is approved. Safe to Spend remains the primary Home metric, with Actual as the default and a minimal `Actual | Net` control.
 
 ### 3. Calendar And Recurring Consolidation
 
@@ -125,9 +124,7 @@ Cons:
 - Option B may keep duplicated logic alive.
 - Option C misses a major part of the proposed layout.
 
-Recommendation: Option A, while preserving `/calendar` and `/recurring` as deep links into the appropriate segment.
-
-Confirmation needed before implementation.
+Resolution: Option A is approved, while preserving `/calendar` and `/recurring` as deep links into the appropriate segment.
 
 ### 4. Transaction Row Tap Behavior
 
@@ -153,9 +150,7 @@ Cons:
 - Option B keeps detail and edit responsibilities mixed.
 - Option C may feel inconsistent.
 
-Recommendation: Option A, with swipe-to-edit retained for fast editing where already supported.
-
-Confirmation needed before implementation.
+Resolution: keep the current details-first behavior, with edit as an explicit action and swipe-to-edit retained where already supported.
 
 ## Safe Assumptions
 
@@ -533,23 +528,8 @@ If future implementation adds analytics tracking, remote sync behavior, AI insig
 
 ## Recommended Delivery Order
 
-1. Confirm the four UX decisions.
-2. Build shared UI primitives.
-3. Update navigation and shell.
-4. Redesign Dashboard.
-5. Redesign Transactions.
-6. Redesign Budgets.
-7. Consolidate Calendar/Recurring.
-8. Redesign Reports/Compare.
-9. Run full regression and visual QA.
-10. Sync strategy, delivery, UX, visual, and privacy docs.
+The approved order now lives in [`08-ux-simplification-progress-plan.md`](./08-ux-simplification-progress-plan.md). Its dependency-aware milestones replace this proposal sequence for execution and progress reporting.
 
 ## Immediate Next Step
 
-Confirm these recommended decisions before coding:
-
-- Bottom nav: `Home`, `Transactions`, `Add`, `Budgets`, `More`
-- Dashboard primary: Safe to Spend first
-- Planning: merge Calendar and Recurring with segmented views
-- Transaction tap: details first, edit as explicit action
-
+Use [`08-ux-simplification-progress-plan.md`](./08-ux-simplification-progress-plan.md) as the implementation tracker. Complete its M0 baseline screenshots and regression-test map before starting shared components or route changes.

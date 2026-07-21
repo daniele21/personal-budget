@@ -2,64 +2,54 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import {
-  BarChart3,
   CalendarDays,
   ChevronRight,
   Cloud,
-  ReceiptText,
+  FileUp,
+  Moon,
   Settings,
   ShieldCheck,
-  Trophy,
-  UserCircle,
-  WalletCards,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Card } from '../components/ui';
+import { Card, Switch } from '../components/ui';
 import { PwaInstallButton } from '../components/PwaInstallButton';
 import { pageTransition } from '../utils/motion';
 
 /**
  * Primary links shown in the More page.
  *
- * Note: Insights and Reports are in the bottom nav directly,
- * so they do NOT appear here. Transactions and Budgets are here
- * since the nav slots are taken by Insights/Reports.
+ * This secondary tools/settings area is reached from the fixed header More action.
+ * Reports stays in the bottom navigation and does not appear here.
  */
 const primaryLinks = [
   {
-    to: '/transactions',
-    label: 'Transactions',
-    description: 'Browse, search, filter, and import transactions.',
-    icon: ReceiptText,
-  },
-  {
-    to: '/budgets',
-    label: 'Budgets',
-    description: 'Set category limits and track monthly progress.',
-    icon: WalletCards,
-  },
-  {
-    to: '/calendar',
-    label: 'Calendar & recurring',
+    to: '/planning',
+    label: 'Planning',
     description: 'Plan upcoming payments and recurring entries.',
     icon: CalendarDays,
   },
   {
-    to: '/year-review',
-    label: 'Year in Review',
-    description: 'Scan annual highlights and spending shifts.',
-    icon: Trophy,
+    to: '/profile#data-management',
+    label: 'Import & export',
+    description: 'Move transaction and budget data in or out of Aura.',
+    icon: FileUp,
   },
   {
-    to: '/profile',
-    label: 'Profile & backup',
-    description: 'Manage account, categories, privacy, and backup.',
-    icon: UserCircle,
+    to: '/profile#privacy-backup',
+    label: 'Privacy & backup',
+    description: 'Review storage and encrypted backup controls.',
+    icon: Cloud,
+  },
+  {
+    to: '/profile#settings',
+    label: 'Settings',
+    description: 'Manage categories, goals, notifications, and account preferences.',
+    icon: Settings,
   },
 ];
 
 export function MorePage() {
-  const { isAdmin, cloudBackupEnabled, backupStatus } = useApp();
+  const { isAdmin, cloudBackupEnabled, backupStatus, isDarkMode, setIsDarkMode } = useApp();
   const links = isAdmin
     ? [
         ...primaryLinks,
@@ -78,6 +68,23 @@ export function MorePage() {
         <p className="text-micro font-bold uppercase text-on-surface-variant">More</p>
         <h2 className="font-headline text-2xl font-extrabold text-primary">Tools and settings</h2>
       </section>
+
+      <Card as="section" className="flex items-center justify-between gap-4" aria-labelledby="appearance-title">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-low text-primary">
+            <Moon className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h3 id="appearance-title" className="text-sm font-bold text-on-surface">Dark mode</h3>
+            <p className="text-xs text-on-surface-variant">Use a darker interface theme</p>
+          </div>
+        </div>
+        <Switch
+          checked={isDarkMode}
+          onChange={() => setIsDarkMode(!isDarkMode)}
+          label="Toggle dark mode"
+        />
+      </Card>
 
       <Card as="section" className="space-y-0 p-3">
         {links.map((item, i) => {
@@ -108,33 +115,13 @@ export function MorePage() {
         })}
       </Card>
 
-      <Card as="section" className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-headline text-base font-semibold text-on-surface">Install Aura</h3>
-          <p className="mt-0.5 text-xs text-on-surface-variant">
-            Add the app to your device for quicker access.
-          </p>
-        </div>
-        <PwaInstallButton />
-      </Card>
+      <PwaInstallButton />
 
-      {/* ── Status cards ── */}
-      <section className="grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 shadow-sm shadow-primary/5">
-          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-            <Cloud className="h-4 w-4" />
-          </div>
-          <p className="text-micro font-bold uppercase text-on-surface-variant">Backup</p>
-          <p className="mt-1 text-sm font-extrabold text-on-surface">
-            {cloudBackupEnabled ? backupStatus : 'Local only'}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-3 shadow-sm shadow-primary/5">
-          <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Settings className="h-4 w-4" />
-          </div>
-          <p className="text-micro font-bold uppercase text-on-surface-variant">Privacy</p>
-          <p className="mt-1 text-sm font-extrabold text-on-surface">User controlled</p>
+      <section className="flex items-center gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-4 py-3" aria-label="Privacy and backup status">
+        <ShieldCheck className="h-5 w-5 shrink-0 text-secondary" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-on-surface">Your data remains user controlled</p>
+          <p className="text-xs text-on-surface-variant">{cloudBackupEnabled ? `Encrypted backup: ${backupStatus}` : 'Stored locally; cloud backup is off'}</p>
         </div>
       </section>
     </motion.div>

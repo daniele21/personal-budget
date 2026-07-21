@@ -36,22 +36,27 @@ function transaction(overrides: Partial<Transaction> = {}): Transaction {
 }
 
 function renderDashboard(transactions: Transaction[]) {
-  mockUseApp.mockReturnValue({
-    transactions,
-    setTransactions: vi.fn(),
-    budgets: [],
-    recurring: [],
-    accounts: [],
-    monthlyTotals: calculateTotals(transactions),
-    monthlyBudget: 3000,
-    monthlyTransactions: transactions,
-    momChange: null,
-    recentTransactions: transactions,
-    isHydrated: true,
-    categories: ['Salary', 'Food', 'Travel'],
-    addCategory: vi.fn(),
-    selectedMonth: new Date(),
-    setSelectedMonth: vi.fn(),
+  mockUseApp.mockImplementation(() => {
+    const [analyticsLens, setAnalyticsLens] = React.useState<'actual' | 'normalized'>('actual');
+    return {
+      transactions,
+      setTransactions: vi.fn(),
+      budgets: [],
+      recurring: [],
+      accounts: [],
+      monthlyTotals: calculateTotals(transactions),
+      monthlyBudget: 3000,
+      monthlyTransactions: transactions,
+      momChange: null,
+      recentTransactions: transactions,
+      isHydrated: true,
+      categories: ['Salary', 'Food', 'Travel'],
+      addCategory: vi.fn(),
+      selectedMonth: new Date(),
+      setSelectedMonth: vi.fn(),
+      analyticsLens,
+      setAnalyticsLens,
+    };
   });
 
   return render(
@@ -73,7 +78,7 @@ describe('Dashboard safe-to-spend lens', () => {
 
     expect(screen.getByText('€2,300.00')).toBeInTheDocument();
 
-    await user.click(screen.getAllByRole('radio', { name: 'Net' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Net of extras' }));
 
     expect(screen.getByText('€2,900.00')).toBeInTheDocument();
     expect(screen.getByText(/spent of €3,000\.00/)).toBeInTheDocument();
@@ -101,7 +106,7 @@ describe('Dashboard safe-to-spend lens', () => {
   it('presents the period before the primary metric and keeps ordinary expenses neutral', () => {
     renderDashboard([transaction({ amount: 100 })]);
 
-    const monthSnapshot = screen.getByText('Monthly snapshot');
+    const monthSnapshot = screen.getAllByText(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }))[0];
     const primaryMetric = screen.getByText('Available to spend');
     expect(monthSnapshot.compareDocumentPosition(primaryMetric) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
@@ -111,6 +116,8 @@ describe('Dashboard safe-to-spend lens', () => {
     expect(expenseAmount).toBeDefined();
     expect(expenseAmount).toHaveClass('text-on-surface');
     expect(expenseAmount).not.toHaveClass('text-tertiary');
+    expect(screen.getByRole('img', { name: 'Cash flow trend for the selected month' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View report' })).toHaveAttribute('href', '/reports');
   });
 
   it('marks the hero as over budget only after the effective limit is exceeded', () => {

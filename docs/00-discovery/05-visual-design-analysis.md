@@ -2,7 +2,22 @@
 
 > **Scope**: Audit e piano di miglioramento del sistema grafico per portare Aura a un livello visivo premium  
 > **Baseline**: Material Design 3 tokens · Tailwind 4 `@theme` · Manrope + Inter · Lucide Icons  
-> **Last Updated**: 2026-07-05 — aggiornato dopo applicazione brand kit PNG, shell Aura, login, PWA assets e densità UI compatta
+> **Last Updated**: 2026-07-21 — aggiornato dopo la riduzione visuale M8
+
+## Regole visuali implementate — 2026-07-21
+
+Questa sezione descrive lo stato corrente e sostituisce le indicazioni sperimentali precedenti su halo, gradient border ed elevation diffuse.
+
+- Le card standard usano una superficie semantica uniforme, bordo sottile e sola separazione minima; non usano gradienti, glow o hover elevation.
+- Control surface, tab e navigazione restano neutri. Le pseudo-superfici sfocate sono disattivate per card e controlli standard.
+- Ogni schermata può avere al massimo un focal point inverso. Home usa Available to Spend; Budgets usa Monthly Category Budgets.
+- Il colore comunica azione o stato: verde per positivo, ambra per soglia, rosso solo per condizioni negative o oltre limite.
+- Home usa un’unica sparkline compatta per il cash flow invece del grafico a colonne completo.
+- Budgets usa una barra lineare e percentuale esplicita; il grande gauge duplicato è stato rimosso.
+- More e le superfici di lettura sono neutrali e condividono la stessa gerarchia in modalità chiara e scura.
+- Importi e percentuali principali usano cifre tabulari; i controlli mantengono label accessibili e target adeguati.
+
+La verifica automatica copre struttura e semantica. Il confronto visuale ai viewport baseline resta da eseguire quando sarà disponibile una sessione browser controllabile.
 
 ## Visual polish v1 — 2026-07-21
 

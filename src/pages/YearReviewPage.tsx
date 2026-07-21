@@ -14,11 +14,19 @@ import { formatCurrency } from '../utils/formatters';
 import { pageTransition } from '../utils/motion';
 import { cn } from '../lib/utils';
 
-export function YearReviewPage() {
+interface YearReviewPageProps {
+  analyticsLens?: AnalyticsLens;
+  onAnalyticsLensChange?: (lens: AnalyticsLens) => void;
+  showLensControl?: boolean;
+}
+
+export function YearReviewPage({ analyticsLens: controlledLens, onAnalyticsLensChange, showLensControl = true }: YearReviewPageProps = {}) {
   const { transactions } = useApp();
   const { toast } = useToast();
   const [year, setYear] = useState(new Date().getFullYear());
-  const [analyticsLens, setAnalyticsLens] = useState<'actual' | 'normalized'>('actual');
+  const [localLens, setLocalLens] = useState<AnalyticsLens>('actual');
+  const analyticsLens = controlledLens ?? localLens;
+  const setAnalyticsLens = onAnalyticsLensChange ?? setLocalLens;
   const visibleTransactions = useMemo(() => filterByAnalyticsLens(transactions, analyticsLens), [transactions, analyticsLens]);
   const review = useMemo(() => getAnnualReview(visibleTransactions, year), [visibleTransactions, year]);
 
@@ -48,11 +56,13 @@ export function YearReviewPage() {
           </div>
         </div>
 
-        <LensSelector
-          value={analyticsLens}
-          onChange={setAnalyticsLens}
-          className="mx-0 max-w-[9.25rem] shrink-0"
-        />
+        {showLensControl && analyticsLens !== 'extras' && (
+          <LensSelector
+            value={analyticsLens}
+            onChange={setAnalyticsLens}
+            className="mx-0 max-w-[9.25rem] shrink-0"
+          />
+        )}
       </div>
 
       <AnnualSummaryCards review={review} />

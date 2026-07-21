@@ -1,64 +1,38 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Bell, Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { APP_CONFIG } from '../constants';
-import { RecurringExpense, RecurringFrequency } from '../types';
+import { RecurringExpense } from '../types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { CategoryPicker } from '../components/CategoryPicker';
-import { Button, Card, EmptyState, Input, SegmentedControl, Switch } from '../components/ui';
+import { Button, Card, EmptyState } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { RecurringEntryCard } from '../components/RecurringEntryCard';
 import { haptics } from '../utils/haptics';
 import { pageTransition } from '../utils/motion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
-  getDefaultRecurringEndDate,
   getRecurringFrequencyLabel,
   getRecurringReminderLabel,
   getRecurringReminderSettings,
   getRecurringDraftStartDate,
   getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
-  getUtcDayOfMonth,
   isRecurringActiveInMonth,
 } from '../domain/recurring';
-
-const recurringFrequencyOptions: Array<{ value: RecurringFrequency; label: string }> = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-];
-
-const recurringReminderOptions = [
-  { value: 0, label: 'Due date' },
-  { value: 1, label: '1 day before' },
-  { value: 3, label: '3 days before' },
-  { value: 7, label: '7 days before' },
-];
+import { PlanningTabs } from '../components/planning/PlanningTabs';
+import { RecurringFormFields } from '../components/planning/RecurringFormFields';
+import { saveRecurringItem } from '../domain/recurringForm';
+import { useRecurringForm } from '../hooks/useRecurringForm';
 
 export const RecurringPage = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const { recurring, setRecurring, categories, addCategory } = useApp();
-  const [isAdding, setIsAdding] = useState(false);
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewDate, setViewDate] = useState(new Date());
 
-  const [newName, setNewName] = useState('');
-  const [newAmount, setNewAmount] = useState('');
-  const [newStartDate, setNewStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [newEndDate, setNewEndDate] = useState('');
-  const [newCategory, setNewCategory] = useState(categories[0]);
-  const [newFrequency, setNewFrequency] = useState<RecurringFrequency>('monthly');
-  const [newReminderEnabled, setNewReminderEnabled] = useState(false);
-  const [newReminderLeadDays, setNewReminderLeadDays] = useState(1);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const recurringDialogRef = useRef<HTMLDivElement>(null);
 
@@ -68,118 +42,40 @@ export const RecurringPage = () => {
     selectedDay,
   );
 
-  const resetForm = () => {
-    setIsAdding(false);
-    setEditingId(null);
-    setNewName('');
-    setNewAmount('');
-    setNewStartDate(getCreateStartDate());
-    setNewEndDate('');
-    setNewCategory(categories[0]);
-    setNewFrequency('monthly');
-    setNewReminderEnabled(false);
-    setNewReminderLeadDays(1);
-  };
+  const recurringForm = useRecurringForm({
+    defaultStartDate: getCreateStartDate(),
+    defaultCategory: categories[0] || 'Housing',
+  });
 
-  useFocusTrap(recurringDialogRef, isAdding, resetForm);
-
-  const openCreateRecurring = () => {
-    setEditingId(null);
-    setNewName('');
-    setNewAmount('');
-    setNewStartDate(getCreateStartDate());
-    setNewEndDate('');
-    setNewCategory(categories[0]);
-    setNewFrequency('monthly');
-    setNewReminderEnabled(false);
-    setNewReminderLeadDays(1);
-    setIsAdding(true);
-  };
+  useFocusTrap(recurringDialogRef, recurringForm.isOpen, recurringForm.reset);
 
   const handleAddRecurring = () => {
-    const trimmedName = newName.trim();
-    if (!trimmedName) {
-      toast('Please enter a bill name', 'warning');
+    const result = recurringForm.build(recurring);
+    if (result.error) {
+      const messages = {
+        name: 'Please enter a bill name',
+        amount: 'Please enter a valid amount greater than 0',
+        startDate: 'Please select a start date',
+        dateRange: 'End date must be after the start date',
+      };
+      toast(messages[result.error], 'warning');
       return;
     }
-
-    const parsedAmount = parseFloat(newAmount);
-    if (!newAmount || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast('Please enter a valid amount greater than 0', 'warning');
-      return;
-    }
-
-    if (!newStartDate) {
-      toast('Please select a start date', 'warning');
-      return;
-    }
-
-    const startDate = new Date(`${newStartDate}T00:00:00.000Z`).toISOString();
-    const endDate = newEndDate
-      ? new Date(`${newEndDate}T00:00:00.000Z`).toISOString()
-      : getDefaultRecurringEndDate(startDate);
-
-    if (new Date(endDate) < new Date(startDate)) {
-      toast('End date must be after the start date', 'warning');
-      return;
-    }
-
-    const existingOverrides = editingId
-      ? recurring.find((item) => item.id === editingId)?.overrides ?? []
-      : [];
-
-    const newBill: RecurringExpense = {
-      id: editingId || Math.random().toString(36).substr(2, 9),
-      name: trimmedName,
-      amount: parsedAmount,
-      startDate,
-      endDate,
-      dayOfMonth: getUtcDayOfMonth(startDate),
-      category: newCategory,
-      type: 'expense',
-      frequency: newFrequency,
-      priority: true,
-      reminder: {
-        enabled: newReminderEnabled,
-        leadDays: newReminderLeadDays,
-      },
-      overrides: existingOverrides,
-    };
-
-    if (editingId) {
-      setRecurring(recurring.map((item) => (item.id === editingId ? newBill : item)));
-      toast('Recurring bill updated', 'success');
-    } else {
-      setRecurring([...recurring, newBill]);
-      toast('Recurring bill added', 'success');
-    }
-
-    resetForm();
-  };
-
-  const handleEdit = (bill: RecurringExpense) => {
-    setEditingId(bill.id);
-    setNewName(bill.name);
-    setNewAmount(bill.amount.toString());
-    setNewStartDate(getUtcDateInputValue(bill.startDate));
-    setNewEndDate(getUtcDateInputValue(bill.endDate));
-    setNewCategory(bill.category);
-    setNewFrequency(bill.frequency ?? 'monthly');
-    const reminder = getRecurringReminderSettings(bill);
-    setNewReminderEnabled(reminder.enabled);
-    setNewReminderLeadDays(reminder.leadDays);
-    setIsAdding(true);
+    setRecurring(saveRecurringItem(recurring, result.item, recurringForm.editingId));
+    toast(recurringForm.editingId ? 'Recurring bill updated' : 'Recurring bill added', 'success');
+    recurringForm.reset();
   };
 
   const handleDelete = (id: string) => {
     const deleted = recurring.find((item) => item.id === id);
-    setRecurring(recurring.filter((item) => item.id !== id));
+    const remaining = recurring.filter((item) => item.id !== id);
+    setRecurring(remaining);
     setDeleteId(null);
     haptics.warning();
     toast('Recurring bill removed', 'info', 5000, deleted ? {
       label: 'Undo',
       onClick: () => {
-        setRecurring([...recurring, deleted]);
+        setRecurring([...remaining, deleted]);
         haptics.success();
       },
     } : undefined);
@@ -195,17 +91,7 @@ export const RecurringPage = () => {
       {...pageTransition}
       className="space-y-4 pb-24"
     >
-      <SegmentedControl
-        ariaLabel="Planning view"
-        value="recurring"
-        onChange={(value) => {
-          if (value === 'calendar') navigate('/calendar');
-        }}
-        options={[
-          { value: 'calendar', label: 'Calendar' },
-          { value: 'recurring', label: 'Recurring' },
-        ]}
-      />
+      <PlanningTabs activeView="recurring" />
 
       <Card as="section">
         <div className="flex justify-between items-center mb-6">
@@ -214,7 +100,7 @@ export const RecurringPage = () => {
           </h2>
           <div className="flex gap-2">
             <button
-              onClick={openCreateRecurring}
+              onClick={recurringForm.openCreate}
               className="p-2 bg-primary/10 hover:bg-primary/20 rounded-full transition-colors"
               aria-label="Add recurring bill"
             >
@@ -277,9 +163,9 @@ export const RecurringPage = () => {
         </div>
       </Card>
 
-      {isAdding && (
+      {recurringForm.isOpen && (
         <div className="fixed inset-0 z-[160] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-          <button type="button" aria-label="Close recurring form" className="absolute inset-0" onClick={resetForm} />
+          <button type="button" aria-label="Close recurring form" className="absolute inset-0" onClick={recurringForm.reset} />
           <motion.div
             ref={recurringDialogRef}
             role="dialog"
@@ -290,139 +176,50 @@ export const RecurringPage = () => {
             className="relative z-10 w-full max-w-md max-h-[88vh] overflow-hidden rounded-t-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 sm:rounded-3xl"
           >
             <div className="flex items-center justify-between border-b border-outline-variant/10 px-6 py-5">
-              <h3 id="recurring-form-title" className="font-headline font-bold text-primary">{editingId ? 'Edit Recurring Bill' : 'Add Recurring Bill'}</h3>
-              <button onClick={resetForm}><X className="w-5 h-5 text-on-surface-variant" /></button>
+              <h3 id="recurring-form-title" className="font-headline font-bold text-primary">{recurringForm.editingId ? 'Edit Recurring Bill' : 'Add Recurring Bill'}</h3>
+              <button onClick={recurringForm.reset}><X className="w-5 h-5 text-on-surface-variant" /></button>
             </div>
 
             <div className="max-h-[calc(88vh-80px)] overflow-y-auto overscroll-contain px-6 py-5">
-              <div className="space-y-3 pb-24">
-                <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(148px,0.8fr)] gap-3 items-stretch">
-                  <div className="rounded-2xl bg-surface-container-high px-4 py-3 min-h-[72px] flex flex-col">
-                    <label className="block text-micro font-bold text-on-surface-variant mb-2">
-                      Bill Name
-                    </label>
-                    <input
-                      className="flex-1 w-full bg-transparent border-none p-0 text-lg font-headline font-bold text-on-surface placeholder:text-on-surface-variant/45 focus:ring-0 leading-none"
-                      placeholder="e.g. Mortgage"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      data-autofocus="true"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsAmountKeypadOpen(true)}
-                    className="rounded-2xl bg-surface-container-high px-4 py-3 min-h-[72px] text-left transition-all hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-primary flex flex-col"
-                  >
-                    <span className="block text-micro font-bold text-on-surface-variant mb-2">
-                      Amount ({APP_CONFIG.currency})
-                    </span>
-                    <span className="mt-auto text-lg font-headline font-extrabold text-primary leading-none">
-                      {APP_CONFIG.currency}{newAmount || '0.00'}
-                    </span>
-                  </button>
-                </div>
-                <div className="rounded-2xl bg-surface-container-high p-4 space-y-2.5">
-                  <div>
-                    <p className="text-micro font-bold text-on-surface-variant">Schedule Window</p>
-                    <p className="text-xs text-on-surface-variant mt-1 leading-snug">Start and end stay on the exact calendar day you choose.</p>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 [grid-template-columns:repeat(4,minmax(0,1fr))]">
-                    {recurringFrequencyOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setNewFrequency(option.value)}
-                        className={cn(
-                          'min-h-11 whitespace-nowrap rounded-xl px-1.5 py-2 text-[0.6875rem] font-bold transition-all',
-                          newFrequency === option.value
-                            ? 'bg-primary text-on-primary'
-                            : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="Start Date"
-                      type="date"
-                      value={newStartDate}
-                      onChange={(e) => setNewStartDate(e.target.value)}
-                    />
-                    <Input
-                      label="End Date"
-                      type="date"
-                      value={newEndDate}
-                      onChange={(e) => setNewEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <p className="text-micro font-medium text-on-surface-variant leading-snug">
-                  If you leave the end date empty, the recurring bill stays active for 1 year from the start date.
-                </p>
-                <div className="rounded-2xl bg-surface-container-high p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                        <Bell className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-on-surface">Reminder</p>
-                        <p className="text-micro text-on-surface-variant">Local notification before this recurring item is due.</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={newReminderEnabled}
-                      onChange={() => setNewReminderEnabled((current) => !current)}
-                      label="Recurring reminder"
-                    />
-                  </div>
-                  {newReminderEnabled && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {recurringReminderOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setNewReminderLeadDays(option.value)}
-                          className={cn(
-                            'rounded-xl px-2 py-2 text-xs font-bold transition-all',
-                            newReminderLeadDays === option.value
-                              ? 'bg-secondary text-on-primary'
-                              : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-lowest',
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <CategoryPicker
-                  categories={categories}
-                  value={newCategory}
-                  onChange={setNewCategory}
-                  onAddCategory={addCategory}
-                />
-              </div>
+              <RecurringFormFields
+                name={recurringForm.draft.name}
+                amount={recurringForm.draft.amount}
+                startDate={recurringForm.draft.startDate}
+                endDate={recurringForm.draft.endDate}
+                category={recurringForm.draft.category}
+                type={recurringForm.draft.type}
+                frequency={recurringForm.draft.frequency}
+                reminderEnabled={recurringForm.draft.reminderEnabled}
+                reminderLeadDays={recurringForm.draft.reminderLeadDays}
+                categories={categories}
+                onNameChange={(value) => recurringForm.setField('name', value)}
+                onAmountClick={() => setIsAmountKeypadOpen(true)}
+                onStartDateChange={(value) => recurringForm.setField('startDate', value)}
+                onEndDateChange={(value) => recurringForm.setField('endDate', value)}
+                onCategoryChange={(value) => recurringForm.setField('category', value)}
+                onTypeChange={(value) => recurringForm.setField('type', value)}
+                onFrequencyChange={(value) => recurringForm.setField('frequency', value)}
+                onReminderEnabledChange={(value) => recurringForm.setField('reminderEnabled', value)}
+                onReminderLeadDaysChange={(value) => recurringForm.setField('reminderLeadDays', value)}
+                onAddCategory={addCategory}
+              />
             </div>
 
             <div className="absolute inset-x-0 bottom-0 border-t border-outline-variant/10 bg-surface-container-lowest/95 px-6 py-4 backdrop-blur flex gap-3">
-              {editingId && (
+              {recurringForm.editingId && (
                 <Button
                   variant="danger"
                   className="flex-1"
                   onClick={() => {
-                    setDeleteId(editingId);
-                    setIsAdding(false);
+                    setDeleteId(recurringForm.editingId);
+                    recurringForm.reset();
                   }}
                 >
                   Delete
                 </Button>
               )}
-              <Button className={editingId ? "flex-[2]" : "w-full"} onClick={handleAddRecurring}>
-                {editingId ? 'Update' : 'Add Bill'}
+              <Button className={recurringForm.editingId ? "flex-[2]" : "w-full"} onClick={handleAddRecurring}>
+                {recurringForm.editingId ? 'Update' : 'Add Bill'}
               </Button>
             </div>
           </motion.div>
@@ -431,8 +228,8 @@ export const RecurringPage = () => {
       <NumericKeypadModal
         isOpen={isAmountKeypadOpen}
         onClose={() => setIsAmountKeypadOpen(false)}
-        onConfirm={setNewAmount}
-        initialValue={newAmount || '0.00'}
+        onConfirm={(value) => recurringForm.setField('amount', value)}
+        initialValue={recurringForm.draft.amount || '0.00'}
       />
 
       <section className="space-y-4">
@@ -450,7 +247,7 @@ export const RecurringPage = () => {
               category={item.category}
               type={item.type}
               onDelete={() => setDeleteId(item.id)}
-              onEdit={() => handleEdit(item)}
+              onEdit={() => recurringForm.openEdit(item)}
               reminderLabel={getRecurringReminderSettings(item).enabled ? getRecurringReminderLabel(getRecurringReminderSettings(item)) : undefined}
               subtitle={`Starts ${getUtcDateInputValue(item.startDate)} • ${getRecurringFrequencyLabel(item.frequency)} • ${item.category}`}
               title={item.name}
@@ -461,7 +258,7 @@ export const RecurringPage = () => {
                 icon={<RefreshCw className="w-10 h-10" />}
                 title="No recurring bills yet"
                 description="Create rent, subscriptions, salary, or other repeating entries."
-                action={<Button size="md" onClick={openCreateRecurring}>Add recurring bill</Button>}
+                action={<Button size="md" onClick={recurringForm.openCreate}>Add recurring bill</Button>}
               />
             </div>
           )}

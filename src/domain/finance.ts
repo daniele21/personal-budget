@@ -14,6 +14,7 @@ import {
 // ─── Transaction Filtering ──────────────────────────────────────────
 
 export type AnalyticsLens = 'actual' | 'normalized' | 'extras';
+export type PrimaryAnalyticsLens = Extract<AnalyticsLens, 'actual' | 'normalized'>;
 
 export function getTransactionReportingClass(transaction: Transaction): TransactionReportingClass {
   if (transaction.sourceRecurringId) return 'regular';

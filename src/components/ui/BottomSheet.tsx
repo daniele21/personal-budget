@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -31,7 +32,7 @@ export function BottomSheet({
   useFocusTrap(dialogRef, isOpen, onClose);
   const titleId = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-sheet-title`;
 
-  return (
+  const sheet = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -85,4 +86,6 @@ export function BottomSheet({
       )}
     </AnimatePresence>
   );
+
+  return typeof document === 'undefined' ? sheet : createPortal(sheet, document.body);
 }

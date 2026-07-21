@@ -14,6 +14,7 @@ import { useApp } from '../context/AppContext';
 import { upsertRecurringOverride } from '../domain/recurring';
 import { Card } from '../components/ui';
 import { ReportingTreatmentToggle } from '../components/ExtraFlagToggle';
+import { ReportingTreatmentInfo } from '../components/ReportingTreatmentInfo';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
@@ -142,7 +143,7 @@ export const AddTransaction = () => {
           : 'Transaction saved!',
       'success',
     );
-    navigate('/history');
+    navigate('/transactions');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,11 +222,14 @@ export const AddTransaction = () => {
           <div className="mb-4 flex items-center justify-between gap-3">
             <label className="block text-on-surface-variant text-micro font-bold">Transaction Title</label>
             {!transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
-              <ReportingTreatmentToggle
-                value={reportingClass}
-                type={type}
-                onChange={setReportingClass}
-              />
+              <div className="flex items-center gap-1">
+                <ReportingTreatmentInfo />
+                <ReportingTreatmentToggle
+                  value={reportingClass}
+                  type={type}
+                  onChange={setReportingClass}
+                />
+              </div>
             )}
           </div>
           {id && transactions.find((transaction) => transaction.id === id)?.sourceRecurringId && (
@@ -263,7 +267,7 @@ export const AddTransaction = () => {
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1">
             <label htmlFor="transaction-payment-method" className="block text-on-surface-variant text-xs font-bold">Payment Method</label>
-            <select 
+            <select
               id="transaction-payment-method"
               className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full appearance-none"
               value={paymentMethod}
@@ -284,7 +288,7 @@ export const AddTransaction = () => {
               {attachmentUrl && (
                 <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-outline-variant/20">
                   <img src={attachmentUrl} alt="Attachment" className="w-full h-full object-cover" />
-                  <button 
+                  <button
                     onClick={() => setAttachmentUrl(undefined)}
                     className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
                   >
@@ -292,7 +296,7 @@ export const AddTransaction = () => {
                   </button>
                 </div>
               )}
-              <button 
+              <button
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1 text-primary text-micro font-bold hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors"
               >
@@ -300,16 +304,16 @@ export const AddTransaction = () => {
                 <span>{attachmentUrl ? 'Change' : 'Attach'}</span>
               </button>
             </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleFileChange} 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
             />
           </div>
-          <textarea 
-            className="w-full bg-surface-container-highest border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary-container min-h-[100px] resize-none placeholder:text-on-surface-variant/50" 
+          <textarea
+            className="w-full bg-surface-container-highest border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary-container min-h-[100px] resize-none placeholder:text-on-surface-variant/50"
             placeholder="Add some details about this transaction..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}

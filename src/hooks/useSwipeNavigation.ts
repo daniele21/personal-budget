@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { haptics } from '../utils/haptics';
 
-const MAIN_ROUTES = ['/', '/history', '/add', '/insights', '/calendar'];
+const MAIN_ROUTES = ['/', '/transactions', '/budgets', '/reports', '/more'];
 const EDGE_ZONE = 28;
 const TRIGGER_DISTANCE = 96;
 

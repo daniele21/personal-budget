@@ -5,6 +5,8 @@ export { Input, Select } from './Input';
 export { EmptyState } from './EmptyState';
 export { Skeleton } from './Skeleton';
 export { LensSelector } from './LensSelector';
+export { AnalyticsLensControl } from './AnalyticsLensControl';
+export type { PrimaryAnalyticsLens } from './AnalyticsLensControl';
 export { SegmentedControl } from './SegmentedControl';
 export { AccordionSection } from './AccordionSection';
 export { BottomSheet } from './BottomSheet';

@@ -1,15 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  ArrowDown,
-  ArrowUp,
   CalendarRange,
   ChevronDown,
   Check,
   Filter,
-  FileUp,
   Search,
-  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -18,12 +14,11 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
-import { AccordionSection, Button, Input, SegmentedControl } from '../components/ui';
+import { Button, Input, SegmentedControl } from '../components/ui';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
 import { haptics } from '../utils/haptics';
 import { upsertRecurringOverride } from '../domain/recurring';
-import { FinancialTrajectoryCard } from '../components/history/FinancialTrajectoryCard';
 import { TransactionHistoryList } from '../components/history/TransactionHistoryList';
 import { ImportWizardDialog } from '../components/import/ImportWizardDialog';
 import { slidePageTransition } from '../utils/motion';
@@ -217,7 +212,6 @@ export const HistoryPage = () => {
     return (l === 'normalized' || l === 'actual') ? l : 'actual';
   });
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
-  const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
@@ -251,6 +245,8 @@ export const HistoryPage = () => {
     } else {
       setTransactionTypeFilter('all');
     }
+
+    if (params.get('import') === '1') setIsImportWizardOpen(true);
   }, [location.search]);
 
   const deleteTransaction = (id: string) => {
@@ -375,22 +371,6 @@ export const HistoryPage = () => {
     sortDirection !== 'desc' ||
     periodPreset !== 'current-month'
   );
-
-  const chartData = useMemo(() => Finance
-    .sortTransactions(filteredTransactions, 'date', 'asc')
-    .reduce((acc: { date: string; balance: number }[], t) => {
-      const date = new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const lastBalance = acc.length > 0 ? acc[acc.length - 1].balance : 0;
-      const newBalance = t.type === 'income' ? lastBalance + t.amount : lastBalance - t.amount;
-      
-      const existing = acc.find(d => d.date === date);
-      if (existing) {
-        existing.balance = newBalance;
-      } else {
-        acc.push({ date, balance: newBalance });
-      }
-      return acc;
-    }, []), [filteredTransactions]);
 
   const toggleCategory = (category: string) => {
     setSelectedCategories((current) => (
@@ -535,11 +515,6 @@ export const HistoryPage = () => {
       {...slidePageTransition}
       className="space-y-4 pb-24"
     >
-      <section className="space-y-1 px-1">
-        <p className="text-micro font-bold uppercase text-on-surface-variant">Transactions</p>
-        <h2 className="font-headline text-2xl font-extrabold text-primary">Recent activity</h2>
-      </section>
-
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <SegmentedControl
@@ -554,14 +529,6 @@ export const HistoryPage = () => {
             size="compact"
           />
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsImportWizardOpen(true)}
-              className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-outline-variant/10 bg-surface-container-lowest px-3 py-1.5 text-xs font-bold text-on-surface shadow-sm transition-all hover:bg-primary hover:text-on-primary hover:border-primary"
-            >
-              <FileUp className="h-3.5 w-3.5" />
-              <span>Import</span>
-            </button>
             {hasNonDefaultFilters && (
               <button
                 type="button"
@@ -581,8 +548,8 @@ export const HistoryPage = () => {
               <Search className="w-4 h-4 text-on-surface-variant/50" />
             </div>
             <input 
-              className="w-full bg-surface-container-highest border-none rounded-full h-8 pl-9 pr-3 focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-on-surface-variant/50 transition-all text-xs" 
-              placeholder="Search..." 
+              className="w-full bg-surface-container-highest border-none rounded-full h-11 pl-10 pr-3 focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-on-surface-variant/50 transition-all text-sm"
+              placeholder="Search transactions"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -602,23 +569,9 @@ export const HistoryPage = () => {
             <span>Filters</span>
             <ChevronDown className="h-3 w-3 opacity-70" />
           </button>
-          <button
-            type="button"
-            onClick={() => setIsSortSheetOpen(true)}
-            className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm transition-all',
-              sortOption !== 'date-desc'
-                ? 'border-primary bg-primary text-on-primary'
-                : 'border-outline-variant/10 bg-surface-container-lowest text-on-surface',
-            )}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>Sort</span>
-            <ChevronDown className="h-3 w-3 opacity-70" />
-          </button>
         </div>
         <div className="space-y-2 px-1">
-          {activeChips.length > 0 ? (
+          {activeChips.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               {activeChips.map((chip) => (
                 <button
@@ -632,23 +585,15 @@ export const HistoryPage = () => {
                 </button>
               ))}
             </div>
-          ) : (
-            <p className="text-xs font-semibold text-on-surface-variant">
-              Active: {periodLabel} · {categoriesLabel}
-            </p>
           )}
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold text-on-surface-variant">{resultsLabel}</p>
-            <p className="text-xs font-medium text-on-surface-variant">Sorted by {sortLabel.toLowerCase()}</p>
-          </div>
+          {hasNonDefaultFilters && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-on-surface-variant">{resultsLabel}</p>
+              <p className="text-xs font-medium text-on-surface-variant">Sorted by {sortLabel.toLowerCase()}</p>
+            </div>
+          )}
         </div>
       </section>
-
-      <AccordionSection title="Financial trajectory" count={chartData.length}>
-        <FinancialTrajectoryCard data={chartData} />
-      </AccordionSection>
-
-
 
       <TransactionHistoryList
         transactions={filteredTransactions}
@@ -812,6 +757,35 @@ export const HistoryPage = () => {
               />
             </div>
           </div>
+          <div className="rounded-2xl bg-surface-container-low p-4">
+            <div className="mb-3">
+              <p className="text-micro font-bold text-on-surface-variant">Sort</p>
+              <p className="mt-1 text-xs text-on-surface-variant">Choose how transactions are ordered.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'date-desc' as const, label: 'Newest' },
+                { key: 'date-asc' as const, label: 'Oldest' },
+                { key: 'amount-desc' as const, label: 'Highest amount' },
+                { key: 'amount-asc' as const, label: 'Lowest amount' },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  aria-pressed={sortOption === option.key}
+                  onClick={() => applySortOption(option.key)}
+                  className={cn(
+                    'min-h-10 rounded-xl px-3 py-2 text-xs font-bold transition-colors',
+                    sortOption === option.key
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container-high text-on-surface-variant',
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
@@ -828,81 +802,6 @@ export const HistoryPage = () => {
               Done
             </button>
           </div>
-        </div>
-      </FilterSheet>
-
-      <FilterSheet
-        isOpen={isSortSheetOpen}
-        title="Sort"
-        subtitle="Choose the ordering that matches the question you are asking of the history list."
-        onClose={() => setIsSortSheetOpen(false)}
-      >
-        <div className="space-y-4">
-          {[
-            {
-              key: 'date-desc' as const,
-              label: 'Newest first',
-              icon: ArrowDown,
-              description: 'Most recent transactions at the top.',
-            },
-            {
-              key: 'date-asc' as const,
-              label: 'Oldest first',
-              icon: ArrowUp,
-              description: 'Start from the oldest transaction.',
-            },
-            {
-              key: 'amount-desc' as const,
-              label: 'Highest amount',
-              icon: ArrowDown,
-              description: 'Largest amounts first.',
-            },
-            {
-              key: 'amount-asc' as const,
-              label: 'Lowest amount',
-              icon: ArrowUp,
-              description: 'Smallest amounts first.',
-            },
-          ].map((option) => {
-            const active = sortOption === option.key;
-            const Icon = option.icon;
-
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => {
-                  applySortOption(option.key);
-                  setIsSortSheetOpen(false);
-                }}
-                className={cn(
-                  'flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all',
-                  active
-                    ? 'border-primary bg-primary/10 text-on-surface'
-                    : 'border-outline-variant/10 bg-surface-container-low text-on-surface',
-                )}
-              >
-                <span className="flex items-start gap-3">
-                  <span className={cn(
-                    'mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl',
-                    active ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-primary',
-                  )}>
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-bold">{option.label}</span>
-                    <span className="mt-1 block text-xs text-on-surface-variant">{option.description}</span>
-                  </span>
-                </span>
-                <span className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-full border',
-                  active ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/20',
-                )}>
-                  {active && <Check className="h-3 w-3" />}
-                </span>
-              </button>
-            );
-          })}
         </div>
       </FilterSheet>
     </motion.div>

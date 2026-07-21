@@ -93,7 +93,7 @@ export function searchAura(source: SearchSource, rawQuery: string, limit = 30): 
         entity: 'recurring',
         title: item.name,
         subtitle: `${item.category} · day ${item.dayOfMonth}`,
-        route: '/recurring',
+        route: '/planning/recurring',
         amount: item.type === 'income' ? item.amount : -item.amount,
         score,
       });
