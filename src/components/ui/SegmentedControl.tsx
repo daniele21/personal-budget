@@ -16,6 +16,7 @@ interface SegmentedControlProps<T extends string> {
   className?: string;
   optionClassName?: string;
   ariaLabel: string;
+  tone?: 'primary' | 'positive';
   /**
    * Visual size variant:
    * - `default` — standard height (min-h-9)
@@ -37,14 +38,23 @@ export function SegmentedControl<T extends string>({
   className,
   optionClassName,
   ariaLabel,
+  tone = 'primary',
   size = 'default',
 }: SegmentedControlProps<T>) {
   const activeLayoutId = React.useId();
+  const activeToneClasses = tone === 'positive'
+    ? 'bg-secondary shadow-secondary/15'
+    : 'bg-primary shadow-primary/12';
+  const activeTextClasses = tone === 'positive' ? 'text-surface' : 'text-on-primary';
+  const focusToneClasses = tone === 'positive'
+    ? 'focus-visible:ring-secondary/35'
+    : 'focus-visible:ring-primary/30';
 
   return (
     <div
       role="group"
       aria-label={ariaLabel}
+      data-tone={tone}
       className={cn(
         'inline-flex items-center gap-0.5 rounded-full bg-surface-container-low p-1 border border-outline-variant/15',
         className,
@@ -63,12 +73,13 @@ export function SegmentedControl<T extends string>({
             className={cn(
               // Base
               'relative flex-1 rounded-full px-4 font-bold transition-all duration-200 active:scale-[0.96]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+              'focus-visible:outline-none focus-visible:ring-2',
+              focusToneClasses,
               // Size
               size === 'default' ? 'min-h-8 py-1.5 text-xs' : 'min-h-6 py-1 text-[10px]',
               // Active / inactive text colors
               isActive
-                ? 'text-on-primary'
+                ? activeTextClasses
                 : 'text-on-surface-variant hover:text-on-surface',
               optionClassName,
             )}
@@ -77,7 +88,7 @@ export function SegmentedControl<T extends string>({
               <motion.span
                 layoutId={activeLayoutId}
                 transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                className="absolute inset-0 rounded-full bg-primary shadow-sm shadow-primary/12"
+                className={cn('absolute inset-0 rounded-full shadow-sm', activeToneClasses)}
               />
             )}
             <span className="relative z-10 inline-flex min-w-0 items-center justify-center gap-1.5">

@@ -74,7 +74,7 @@ export const CategoryPicker = ({
           className={cn(
             'flex w-full items-center text-left transition-all focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60',
             density === 'compact'
-              ? 'h-full min-h-16 gap-2.5 rounded-none bg-transparent px-3.5 py-3 hover:bg-surface-container-low disabled:hover:bg-transparent'
+              ? 'h-full min-h-16 gap-2.5 rounded-none bg-transparent px-3.5 py-3 hover:bg-primary/5 disabled:hover:bg-transparent'
               : 'gap-3 rounded-2xl bg-surface-container-high px-4 py-3 hover:bg-surface-container-low disabled:hover:bg-surface-container-high',
           )}
           aria-haspopup="listbox"
@@ -82,10 +82,15 @@ export const CategoryPicker = ({
           aria-label={`${label}: ${selectedCategory || 'not selected'}. Choose category`}
         >
           <div className={cn(
-            'flex flex-shrink-0 items-center justify-center bg-surface-container-lowest',
-            density === 'compact' ? 'h-8 w-8 rounded-lg' : 'h-10 w-10 rounded-xl',
+            'flex flex-shrink-0 items-center justify-center',
+            density === 'compact'
+              ? 'h-8 w-8 rounded-lg bg-primary text-on-primary shadow-sm shadow-primary/20'
+              : 'h-10 w-10 rounded-xl bg-surface-container-lowest',
           )}>
-            <CategoryIcon category={selectedCategory} className="w-4 h-4 text-primary" />
+            <CategoryIcon
+              category={selectedCategory}
+              className={cn('h-4 w-4', density === 'compact' ? 'text-on-primary' : 'text-primary')}
+            />
           </div>
           <div className="min-w-0 flex-1">
             {density === 'compact' && (

@@ -24,6 +24,7 @@ export const AddTransaction = () => {
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [category, setCategory] = useState(categories[0]);
   const [title, setTitle] = useState('');
+  const [titleError, setTitleError] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [reportingClass, setReportingClass] = useState<TransactionReportingClass | undefined>(undefined);
   const [date, setDate] = useState(() => getLocalDateInputValue());
@@ -32,6 +33,7 @@ export const AddTransaction = () => {
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
   const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const editingTransaction = id ? transactions.find((transaction) => transaction.id === id) : undefined;
 
   useEffect(() => {
@@ -74,9 +76,13 @@ export const AddTransaction = () => {
   const handleSave = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
+      setTitleError('Enter a title to describe this transaction.');
+      titleInputRef.current?.focus();
       toast('Please enter a title', 'warning');
       return;
     }
+
+    setTitleError(null);
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -188,12 +194,27 @@ export const AddTransaction = () => {
         }}
         className="space-y-3"
       >
-        <Card as="section" className="overflow-hidden p-0 text-center">
-          <div className="border-b border-outline-variant/10 p-2.5">
+        <Card
+          as="section"
+          aria-label={`${type === 'expense' ? 'Expense' : 'Income'} amount entry`}
+          data-transaction-type={type}
+          className="relative overflow-hidden p-0 text-center"
+        >
+          <motion.div
+            key={type}
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            className={`aura-transaction-entry-wash aura-transaction-entry-wash-${type}`}
+          />
+
+          <div className="relative z-[1] border-b border-outline-variant/15 p-2.5">
             <SegmentedControl
               value={type}
               onChange={setType}
               ariaLabel="Transaction type"
+              tone={type === 'income' ? 'positive' : 'primary'}
               className="w-full border-0 bg-surface-container-low"
               optionClassName="min-h-9"
               options={[
@@ -203,19 +224,29 @@ export const AddTransaction = () => {
             />
           </div>
 
-          <div className="px-4 py-4">
-            <p className="mb-1 text-micro font-bold uppercase tracking-wide text-on-surface-variant">Amount</p>
+          <div className="relative z-[1] px-4 py-4">
+            <p className={`mb-1 text-micro font-bold uppercase tracking-wide ${
+              type === 'income' ? 'text-secondary' : 'text-primary'
+            }`}>Amount</p>
             <button
               type="button"
               onClick={() => setIsKeypadOpen(true)}
               className="group relative inline-flex min-h-12 max-w-full items-baseline justify-center rounded-xl px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               aria-label={`Edit amount, currently ${APP_CONFIG.currency}${amount}`}
             >
-              <span className="mr-1.5 font-headline text-xl font-bold text-on-surface-variant">{APP_CONFIG.currency}</span>
-              <span className="truncate font-headline text-4xl font-extrabold tabular-nums text-primary transition-transform group-active:scale-[0.98]">
+              <span className={`mr-1.5 font-headline text-xl font-bold ${
+                type === 'income' ? 'text-secondary/70' : 'text-primary/70'
+              }`}>{APP_CONFIG.currency}</span>
+              <span className={`truncate font-headline text-4xl font-extrabold tabular-nums transition-colors group-active:scale-[0.98] ${
+                type === 'income' ? 'text-secondary' : 'text-primary'
+              }`}>
                 {amount}
               </span>
-              <Pencil className="ml-2 h-3.5 w-3.5 shrink-0 text-primary/45 transition-colors group-hover:text-primary" />
+              <Pencil className={`ml-2 h-3.5 w-3.5 shrink-0 transition-colors ${
+                type === 'income'
+                  ? 'text-secondary/45 group-hover:text-secondary'
+                  : 'text-primary/45 group-hover:text-primary'
+              }`} />
             </button>
           </div>
 
@@ -233,28 +264,56 @@ export const AddTransaction = () => {
           </p>
         )}
 
-        <Card className="overflow-hidden p-0">
-          <div className="px-3.5 py-3">
-            <label htmlFor="transaction-title" className="mb-1.5 block text-micro font-bold text-on-surface-variant">Title</label>
+        <Card tone="primary" colorized className="space-y-2 overflow-hidden p-2">
+          <div className="aura-card-inverse px-3.5 py-3.5">
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <label htmlFor="transaction-title" className="text-micro font-extrabold uppercase tracking-wide text-inverse-on-surface-variant">
+                Transaction title
+              </label>
+              <span className="rounded-full bg-inverse-on-surface/10 px-2 py-1 text-micro font-bold text-inverse-on-surface ring-1 ring-inset ring-inverse-on-surface/15">
+                Required
+              </span>
+            </div>
             <input
+              ref={titleInputRef}
               id="transaction-title"
               required
-              className="w-full border-0 bg-transparent p-0 text-sm font-bold text-on-surface outline-none placeholder:font-normal placeholder:text-on-surface-variant/60 focus:ring-0"
-              placeholder="Weekly groceries"
+              aria-invalid={Boolean(titleError)}
+              aria-describedby={titleError ? 'transaction-title-error' : 'transaction-title-hint'}
+              className={`min-h-12 w-full rounded-xl border bg-surface-container-lowest px-3.5 py-3 text-sm font-bold text-on-surface shadow-sm outline-none transition placeholder:font-normal placeholder:text-on-surface-variant/55 focus:ring-2 ${
+                titleError
+                  ? 'border-tertiary/60 focus:border-tertiary focus:ring-tertiary/15'
+                  : 'border-inverse-on-surface/20 hover:border-inverse-on-surface/35 focus:border-inverse-accent/70 focus:ring-inverse-accent/25'
+              }`}
+              placeholder="e.g. Weekly groceries"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (titleError) setTitleError(null);
+              }}
             />
+            {titleError ? (
+              <p id="transaction-title-error" role="alert" className="mt-1.5 text-xs font-medium text-inverse-danger">
+                {titleError}
+              </p>
+            ) : (
+              <p id="transaction-title-hint" className="mt-1.5 text-xs text-inverse-on-surface-variant">
+                Briefly describe this transaction
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 border-t border-outline-variant/10">
-            <CategoryPicker
-              categories={categories}
-              value={category}
-              density="compact"
-              onChange={setCategory}
-              onAddCategory={(name) => { addCategory(name); setCategory(name); }}
-            />
-            <div className="flex min-h-16 min-w-0 flex-col justify-center border-l border-outline-variant/10 px-3.5 py-3">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-outline-variant/20 bg-outline-variant/30 shadow-sm shadow-primary/5">
+            <div className="bg-surface-container-lowest">
+              <CategoryPicker
+                categories={categories}
+                value={category}
+                density="compact"
+                onChange={setCategory}
+                onAddCategory={(name) => { addCategory(name); setCategory(name); }}
+              />
+            </div>
+            <div className="flex min-h-16 min-w-0 flex-col justify-center bg-surface-container-lowest px-3.5 py-3 transition-colors focus-within:bg-primary/5 hover:bg-surface-container-low">
               <label htmlFor="transaction-date" className="mb-0.5 block text-micro font-bold text-on-surface-variant">Date</label>
               <input
                 id="transaction-date"
@@ -268,7 +327,13 @@ export const AddTransaction = () => {
           </div>
 
           {!editingTransaction?.sourceRecurringId && (
-            <div className="flex min-h-14 items-center justify-between gap-3 border-t border-outline-variant/10 px-3.5 py-2.5">
+            <div className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 shadow-sm transition-colors ${
+              reportingClass === 'extra'
+                ? 'border-accent-amber/30 bg-accent-amber/10 shadow-accent-amber/5'
+                : reportingClass === 'reimbursement'
+                  ? 'border-secondary/30 bg-secondary/10 shadow-secondary/5'
+                  : 'border-outline-variant/20 bg-surface-container-lowest shadow-primary/5'
+            }`}>
               <div className="flex min-w-0 items-center gap-1">
                 <p className="text-xs font-bold text-on-surface-variant">Treatment</p>
                 <ReportingTreatmentInfo />
@@ -286,7 +351,10 @@ export const AddTransaction = () => {
             description="Payment, notes & receipt"
             open={isMoreOptionsOpen}
             onOpenChange={setIsMoreOptionsOpen}
-            className="rounded-none border-x-0 border-b-0 bg-transparent shadow-none"
+            statusColor="primary"
+            className={`rounded-2xl border-outline-variant/20 shadow-sm shadow-primary/5 transition-colors ${
+              isMoreOptionsOpen ? 'bg-primary/5' : 'bg-surface-container-lowest'
+            }`}
           >
             <div className="space-y-4">
               <div className="flex flex-col gap-1 rounded-xl bg-surface-container-low p-3">

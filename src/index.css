@@ -251,6 +251,29 @@
   background: color-mix(in srgb, var(--color-surface-container-lowest) 92%, var(--aura-tone));
 }
 
+/** Subtle semantic atmosphere behind the Add Transaction type and amount. */
+.aura-transaction-entry-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--aura-entry-tone) 8%, transparent) 0%,
+    transparent 54%,
+    color-mix(in srgb, var(--aura-entry-soft) 11%, transparent) 100%
+  );
+}
+
+.aura-transaction-entry-wash-expense {
+  --aura-entry-tone: var(--color-primary);
+  --aura-entry-soft: var(--color-accent-cyan);
+}
+
+.aura-transaction-entry-wash-income {
+  --aura-entry-tone: var(--color-secondary);
+  --aura-entry-soft: var(--color-accent-lime);
+}
+
 .aura-card-elevated.aura-card-colorized::after {
   content: none;
 }

@@ -54,7 +54,7 @@ export function ReportingTreatmentToggle({ value, type, onChange, className }: R
   ];
 
   return (
-    <div className={cn('inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-container-high p-1', className)}>
+    <div className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border border-outline-variant/20 bg-surface-container-high p-1 shadow-inner', className)}>
       {options.map((option) => {
         const selected = value === option.value;
         return (
@@ -71,7 +71,7 @@ export function ReportingTreatmentToggle({ value, type, onChange, className }: R
                 ? 'border-accent-amber/50 bg-accent-amber/15 text-accent-amber shadow-sm'
                 : selected
                   ? 'border-secondary/45 bg-secondary-container/35 text-secondary shadow-sm'
-                  : 'border-transparent bg-transparent text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface',
+                  : 'border-outline-variant/15 bg-surface-container-lowest text-on-surface-variant shadow-sm hover:border-primary/20 hover:text-on-surface',
             )}
           >
             {option.label}

@@ -60,12 +60,33 @@ describe('AddTransaction progressive disclosure', () => {
     renderPage();
 
     const typeControl = screen.getByRole('group', { name: 'Transaction type' });
+    expect(typeControl).toHaveAttribute('data-tone', 'primary');
+    expect(screen.getByRole('region', { name: 'Expense amount entry' })).toHaveAttribute('data-transaction-type', 'expense');
+
     await user.click(within(typeControl).getByRole('button', { name: 'Income' }));
 
     expect(within(typeControl).getByRole('button', { name: 'Income' })).toHaveAttribute('aria-pressed', 'true');
+    expect(typeControl).toHaveAttribute('data-tone', 'positive');
+    expect(screen.getByRole('region', { name: 'Income amount entry' })).toHaveAttribute('data-transaction-type', 'income');
     expect(screen.getByRole('button', { name: 'Save income' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark as refund' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Save (expense|income)/i })).toHaveLength(1);
+  });
+
+  it('makes the required title field explicit and focuses it after a blocked save', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const titleInput = screen.getByRole('textbox', { name: 'Transaction title' });
+    expect(titleInput).toHaveAttribute('placeholder', 'e.g. Weekly groceries');
+    expect(screen.getByText('Required')).toBeInTheDocument();
+    expect(screen.getByText('Briefly describe this transaction')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save expense' }));
+
+    expect(titleInput).toHaveFocus();
+    expect(titleInput).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a title to describe this transaction.');
   });
 
   it('opens advanced fields when editing meaningful existing values', () => {
