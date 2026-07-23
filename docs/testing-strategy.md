@@ -78,6 +78,44 @@ This runs:
 - all Vitest tests
 - production build
 
+## Local E2E Authentication Harness
+
+Browser automation uses one synthetic, non-admin identity and never signs in to Firebase:
+
+- command: `npm run dev:e2e`;
+- local origin: `http://127.0.0.1:4173`;
+- identity: `Aura E2E Test User` / `e2e-user@aura.invalid`;
+- implementation: `src/e2e/useE2EAuth.ts` selected through the build-time `@auth-runtime` alias.
+
+The bypass is fail-closed. It is available only when Vite serves in `e2e` mode, binds to loopback with a strict port, has no admin privileges, contains no Firebase credentials, and cannot be built into a deployable bundle. `vite build --mode=e2e` must fail. Normal development, test, and production modes always resolve `src/hooks/useFirebaseAuth.ts`.
+
+E2E scenarios must load synthetic fixtures after the authenticated shell starts. They must not use real email addresses, financial data, receipts, Firebase projects, or production browser profiles.
+
+Run the browser suite with:
+
+```sh
+npm run test:e2e
+```
+
+Run unit, component, build, and browser gates together with:
+
+```sh
+npm run test:full
+```
+
+The Playwright suite contains 29 project cases across desktop Chromium, desktop WebKit, Pixel 5/iPhone 13 emulation, and a service-worker-enabled Chromium project. Its recovery journeys include:
+
+- synthetic non-admin authentication without a login prompt;
+- encrypted export through the real browser download flow;
+- exact export → local deletion → import → restore → reload equivalence;
+- wrong-passphrase rejection with unchanged current data;
+- tampered-archive rejection with unchanged current data;
+- mandatory safety-copy download before replacing a non-empty workspace.
+
+The recovery comparison reads every canonical AppData section, portable notification/appearance preferences, custom reminders, and the referenced IndexedDB receipt. Additional browser tests reload from all 11 restore-journal statuses; exercise 320/360/390/430 px layouts; scan light/dark archive surfaces with axe; verify focus trapping/restoration and reduced motion; record bounded typical-workspace resource evidence; and verify the production manifest/service-worker registration lifecycle. Playwright retains trace, screenshot, and video evidence on failure.
+
+Physical-device Safari/Chrome, actual installed-PWA execution, manual screen-reader output, and the approximately 32 MiB least-capable-mobile measurement remain manual M7 release gates.
+
 ## Extra Transaction Analytics Coverage
 
 The extra transaction feature has regression coverage for:
@@ -89,6 +127,32 @@ The extra transaction feature has regression coverage for:
 - Budgets defaulting to actual spend while showing net-of-extras context
 - domain-level analytics lens totals
 - data-model normalization that strips stale extra markers from recurring transactions
+
+## Portable Archive Foundation Coverage
+
+Milestones M0-M6 of Aura Portable Archive V1 establish the format, local-data boundaries, transactional restore services, and product entrypoints. M7 real-browser hardening remains release-blocking.
+
+Current automated coverage includes:
+
+- strict V1 manifest, AppData, preference, attachment, and header validation;
+- missing sections, invalid amounts/dates, unknown fields, duplicate IDs and recurring occurrences;
+- future schema rejection and explicit identity migration routing for V1;
+- enforced `migrate → validate → normalize` ordering;
+- deterministic canonical JSON and SHA-256 integrity checks;
+- missing, orphaned, malformed, and tampered attachment cases;
+- attachment inventory, restore-scoped staging, failed-write cleanup, commit, rollback, orphan cleanup, and preservation of unrelated IndexedDB entries;
+- portable preference defaults, legacy partial preference normalization, strict reminder validation, and exclusion of session/cloud flags;
+- complete snapshot collection through domain, repository, and service boundaries;
+- Add Transaction regression coverage after moving direct IndexedDB access into `attachmentRepository`.
+- plaintext and AES-GCM encrypted codec round trips, wrong passphrase, tampering, signature rejection, size limits, cancellation, and production-reader self-verification;
+- local-only preflight, encrypted unlock, restore-preview counts, and no localStorage mutation during inspection;
+- binary archive classification before spreadsheet parsing, with regression proof that renamed archives invoke neither the spreadsheet parser nor Gemini;
+- ordered restore-journal checkpoints, safety-copy confirmation, staged attachments, persisted read-back equivalence, quota/staging failure, injected commit failure with rollback, startup cleanup, and post-core resume;
+- cloud-backup suppression while a restore journal is active and provider hydration gated behind startup recovery.
+- encrypted-default export UI, plaintext acknowledgement, content counts, safety-copy confirmation/download, transaction-only CSV separation, and temporary object-URL revocation;
+- empty-target replacement, declined safety download, fresh salt/IV metadata, and a 5,000-transaction codec fixture.
+
+M7 has automated Chromium/WebKit wipe-and-restore acceptance, mobile viewport emulation, every restore-journal status through real Chromium reloads, responsive/keyboard/axe checks, and PWA shell lifecycle coverage. It must still complete physical-device browser/PWA acceptance, manual screen-reader verification, and mobile-memory measurements before the archive feature can ship.
 
 ## When To Add More Tests
 
@@ -104,4 +168,3 @@ Add or update tests when a change affects:
 - user-visible financial totals
 
 Manual QA is acceptable only as a supplement. It should not replace automated regression coverage for financial calculations or data model behavior.
-

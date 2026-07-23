@@ -21,6 +21,9 @@ export function useFocusTrap<T extends HTMLElement>(ref: RefObject<T | null>, ac
 
     const root = ref.current;
     if (!root) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
 
     const focusable = Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)) as HTMLElement[];
     const preferredFocus = root.querySelector('[data-autofocus="true"]') as HTMLElement | null;
@@ -45,6 +48,11 @@ export function useFocusTrap<T extends HTMLElement>(ref: RefObject<T | null>, ac
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
   }, [active, ref]);
 }

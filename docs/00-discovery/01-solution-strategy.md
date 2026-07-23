@@ -12,6 +12,18 @@ Chosen: opt-in encrypted backup with visible status.
 
 Rationale: financial records are sensitive; users should know when data leaves the device. Firestore stores only encrypted backup payloads tied to the authenticated UID.
 
+### Portable Disaster Recovery Archive
+
+Chosen: add a versioned, local-only `.aura` archive as the complete manual disaster-recovery mechanism, separate from transaction CSV import/export and the existing cloud-backup transport.
+
+Rationale: CSV is appropriate for analysis and interoperability, but it cannot reconstruct the complete workspace or safely represent attachments, preferences, integrity metadata, and schema evolution. V1 therefore includes canonical `AppData`, referenced attachments, notification preferences, custom reminders, and appearance preference while excluding identity, session, cache, notification-history, navigation, and cloud-enablement state.
+
+Archive processing happens entirely in the browser and is classified before spreadsheet parsing or AI categorization. Passphrase protection is selected by default but is not mandatory because a forgotten passphrase would make disaster recovery impossible. Encryption keys derive from the user-provided passphrase with per-archive random parameters and are never bound to Firebase UID.
+
+Restore is replace-only in V1. The application validates, migrates, normalizes, stages, safety-protects, commits, and verifies the complete archive. A restore journal and staged attachments provide deterministic resume or rollback behavior across localStorage and IndexedDB. Core-data corruption blocks restore before mutation; damaged attachments may be reported as warnings and restored only after explicit confirmation.
+
+The archive codec may later be reused by cloud backup, but V1 does not assume that the current Firestore transport can store arbitrary attachment volume or use the same persistence layout. The technical format and recovery protocol are fixed in [`ADR 0001`](../../adr/0001-aura-portable-archive-v1.md), and delivery progress is tracked in [`10-portable-archive-progress-plan.md`](./10-portable-archive-progress-plan.md).
+
 ### Data Model
 
 Chosen: keep the persisted app data model centralized in `src/data/model.ts`.
@@ -116,3 +128,5 @@ Rationale: the admin should decide who can access the app, not read personal fin
 - Local-only notifications are simpler and more private than cloud push, but they cannot guarantee delivery when the browser or installed PWA is not allowed to run.
 - Year-in-review sharing uses text summary sharing/copy in v1; PNG export remains a future option to avoid adding a heavy DOM capture dependency.
 - PWA install prompting depends on browser support. iOS cannot trigger native installation from JavaScript, so the app shows manual install instructions instead.
+- A complete portable archive increases client memory and implementation complexity because it includes attachments and must bridge localStorage and IndexedDB; explicit limits, staging, self-verification, and a restore journal are required from V1.
+- Optional plaintext export preserves recoverability for users who cannot retain a passphrase, but exposes sensitive financial and receipt data; encryption remains selected by default and plaintext requires an explicit warning.

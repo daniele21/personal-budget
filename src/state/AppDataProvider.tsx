@@ -275,6 +275,7 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   // Save changes to repositories/localStorage in an effect to keep the reducer pure
   useEffect(() => {
     if (!isHydrated) return;
+    if (localStorage.getItem(STORAGE_KEYS.restoreInProgress) === 'true') return;
     appDataRepository.saveAppData(state);
     localStorage.setItem(STORAGE_KEYS.onboardingComplete, String(state.onboardingComplete));
     if (state.initialDataChoice) {
@@ -287,7 +288,8 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   // Dispatch wrapper to execute async/side-effect operations (e.g. attachment deletion)
   const dispatch = useCallback((action: AppDataAction) => {
     if (action.type === 'transaction/deleted') {
-      attachmentRepository.deleteAttachment(action.id);
+      attachmentRepository.deleteAttachment(action.id)
+        .catch(err => console.error('[AppDataProvider] Error deleting IDB attachment:', err));
     } else if (action.type === 'data/reset') {
       appDataRepository.clear();
       localStorage.removeItem(STORAGE_KEYS.onboardingComplete);

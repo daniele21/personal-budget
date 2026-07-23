@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2 } from 'lucide-react';
+import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, FileArchive, LockKeyhole } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
-import { Transaction, Budget } from '../types';
+import type { PreparedRestore } from '../domain/archive';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CategoryManagerDialog } from '../components/CategoryManagerDialog';
 import { NotificationPreferences } from '../components/NotificationPreferences';
@@ -23,6 +23,10 @@ import {
   restoreCategoryName,
 } from '../domain/categories';
 import { pageTransition } from '../utils/motion';
+import { ExportArchiveDialog } from '../components/archive/ExportArchiveDialog';
+import { ImportArchiveDialog } from '../components/archive/ImportArchiveDialog';
+import { RestoreArchiveConfirmDialog } from '../components/archive/RestoreArchiveConfirmDialog';
+import { downloadBlob } from '../services/archive/archiveDownload';
 
 export const ProfilePage = () => {
   const { toast } = useToast();
@@ -39,6 +43,12 @@ export const ProfilePage = () => {
   const [showResetLocalDialog, setShowResetLocalDialog] = useState(false);
   const [showResetAllDialog, setShowResetAllDialog] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [showExportArchiveDialog, setShowExportArchiveDialog] = useState(false);
+  const [showImportArchiveDialog, setShowImportArchiveDialog] = useState(false);
+  const [restoreCandidate, setRestoreCandidate] = useState<{
+    prepared: PreparedRestore;
+    passphrase?: string;
+  } | null>(null);
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
   const [goalCurrent, setGoalCurrent] = useState('');
@@ -68,6 +78,25 @@ export const ProfilePage = () => {
     () => getCategoryUsageCounts({ transactions, budgets, recurring }),
     [transactions, budgets, recurring],
   );
+  const portableAppData = useMemo(() => ({
+    transactions,
+    budgets,
+    recurring,
+    accounts,
+    categories,
+    archivedCategories,
+    savingsGoals,
+    monthlyBudget,
+  }), [
+    accounts,
+    archivedCategories,
+    budgets,
+    categories,
+    monthlyBudget,
+    recurring,
+    savingsGoals,
+    transactions,
+  ]);
 
   const handleResetLocal = () => {
     resetAll();
@@ -164,8 +193,7 @@ export const ProfilePage = () => {
     toast('Obiettivo rimosso', 'info');
   };
 
-  const handleExport = () => {
-    // Export Transactions
+  const handleExportTransactionsCsv = () => {
     const transactionsCsv = Papa.unparse(transactions.map((transaction) => ({
       id: transaction.id,
       amount: transaction.amount,
@@ -184,27 +212,16 @@ export const ProfilePage = () => {
       reportingNote: transaction.reportingNote ?? '',
     })));
     const transactionsBlob = new Blob([transactionsCsv], { type: 'text/csv;charset=utf-8;' });
-    const transactionsUrl = URL.createObjectURL(transactionsBlob);
-    const transactionsLink = document.createElement('a');
-    transactionsLink.setAttribute('href', transactionsUrl);
-    transactionsLink.setAttribute('download', `aura_transactions_${new Date().toISOString().split('T')[0]}.csv`);
-    transactionsLink.click();
-
-    // Export Budgets
-    setTimeout(() => {
-      const budgetsCsv = Papa.unparse(budgets);
-      const budgetsBlob = new Blob([budgetsCsv], { type: 'text/csv;charset=utf-8;' });
-      const budgetsUrl = URL.createObjectURL(budgetsBlob);
-      const budgetsLink = document.createElement('a');
-      budgetsLink.setAttribute('href', budgetsUrl);
-      budgetsLink.setAttribute('download', `aura_budgets_${new Date().toISOString().split('T')[0]}.csv`);
-      budgetsLink.click();
-    }, 500);
+    downloadBlob(
+      transactionsBlob,
+      `aura_transactions_${new Date().toISOString().split('T')[0]}.csv`,
+    );
   };
 
   return (
     <motion.div 
       {...pageTransition}
+      data-testid="profile-page"
       className="space-y-5 pb-24"
     >
       <Card variant="inverse" tone={netWorth >= 0 ? 'positive' : 'danger'} as="section" className="space-y-4">
@@ -399,7 +416,53 @@ export const ProfilePage = () => {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-headline font-bold text-primary">Data Management</h3>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-5">
+          <div id="privacy-backup" className="scroll-mt-24 space-y-3">
+            <div className="flex items-start gap-3 border-b border-outline-variant/15 pb-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <FileArchive className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-on-surface">Complete Aura archive</p>
+                <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">Use one verified file to rebuild your local workspace, including receipts and supported preferences. Processing stays on this device.</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowExportArchiveDialog(true)}
+              className="group flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl bg-primary p-4 text-on-primary shadow-md shadow-primary/15 transition-all hover:bg-primary-container active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span className="flex min-w-0 items-center gap-3 text-left">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15"><LockKeyhole className="h-5 w-5" /></span>
+                <span>
+                  <span className="block text-sm font-headline font-extrabold">Export complete archive</span>
+                  <span className="block text-micro font-medium text-on-primary/75">Passphrase protection selected by default</span>
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-on-primary/70 transition-transform group-hover:translate-x-0.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowImportArchiveDialog(true)}
+              className="group flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-4 text-on-surface transition-all hover:bg-surface-container-low active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span className="flex min-w-0 items-center gap-3 text-left">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Upload className="h-4 w-4" /></span>
+                <span>
+                  <span className="block text-sm font-bold">Import Aura archive</span>
+                  <span className="block text-micro text-on-surface-variant">Verify, preview, create safety protection, then replace</span>
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant/50 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+
+          <div className="border-t border-outline-variant/15 pt-5">
+            <p className="mb-3 text-xs font-bold text-on-surface">Transaction interoperability</p>
+            <p className="mb-3 text-micro leading-relaxed text-on-surface-variant">CSV is for analysis or moving transaction rows. It is not a complete backup and does not include receipts, accounts, recurring rules, goals, or preferences.</p>
+          </div>
           {/* Compact action grid — 2 columns */}
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -413,17 +476,19 @@ export const ProfilePage = () => {
             </button>
 
             <button
-              onClick={handleExport}
+              onClick={handleExportTransactionsCsv}
               className="flex flex-col items-center gap-3 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/5 hover:bg-surface-container-high active:scale-[0.98] transition-all"
             >
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Download className="w-5 h-5 text-primary" />
               </div>
-              <p className="text-xs font-bold text-on-surface">Export CSV</p>
+              <p className="text-xs font-bold text-on-surface">Export transactions CSV</p>
             </button>
           </div>
 
-          <div id="privacy-backup" className="scroll-mt-24" />
+          <div className="border-t border-outline-variant/15 pt-5">
+            <p className="mb-3 text-xs font-bold text-on-surface">Optional cloud backup</p>
+          </div>
           <button
             onClick={handleBackupNow}
             disabled={isBackingUp || !cloudBackupEnabled}
@@ -474,14 +539,14 @@ export const ProfilePage = () => {
             <div>
               <p className="text-sm font-bold text-on-surface">Importa transazioni</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Usa il nuovo wizard intelligente con IA per caricare file Excel o CSV.
+                Carica estratti conto Excel o CSV. I file generici vengono inviati a Google Gemini dopo il consenso; gli export CSV Aura restano locali.
               </p>
             </div>
             <Link
               to="/transactions?import=1"
               className="w-full py-3 bg-primary text-on-primary rounded-xl text-xs font-bold shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
             >
-              Vai alla cronologia per importare
+              Import bank statement or CSV
             </Link>
           </div>
         </div>
@@ -535,13 +600,13 @@ export const ProfilePage = () => {
           <div className="space-y-2">
             <button 
               onClick={() => setShowResetLocalDialog(true)}
-              className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary/70 font-headline font-extrabold text-xs border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+              className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary font-headline font-extrabold text-xs border border-dashed border-tertiary/30 rounded-2xl hover:bg-tertiary/5 transition-colors"
             >
               Cancella dati locali
             </button>
             <button 
               onClick={() => setShowResetAllDialog(true)}
-              className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary/70 font-headline font-extrabold text-xs border border-dashed border-tertiary/20 rounded-2xl hover:bg-tertiary/5 hover:text-tertiary transition-colors"
+              className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary font-headline font-extrabold text-xs border border-dashed border-tertiary/30 rounded-2xl hover:bg-tertiary/5 transition-colors"
             >
               Cancella tutto (locale + backup cloud)
             </button>
@@ -580,6 +645,31 @@ export const ProfilePage = () => {
         onRestore={handleRestoreCategory}
         onClose={() => setShowCategoryDialog(false)}
       />
+
+      <ExportArchiveDialog
+        isOpen={showExportArchiveDialog}
+        data={portableAppData}
+        onClose={() => setShowExportArchiveDialog(false)}
+      />
+
+      <ImportArchiveDialog
+        isOpen={showImportArchiveDialog}
+        onClose={() => setShowImportArchiveDialog(false)}
+        onPrepared={({ prepared, passphrase }) => {
+          setShowImportArchiveDialog(false);
+          setRestoreCandidate({ prepared, passphrase });
+        }}
+      />
+
+      {restoreCandidate && (
+        <RestoreArchiveConfirmDialog
+          isOpen
+          prepared={restoreCandidate.prepared}
+          archivePassphrase={restoreCandidate.passphrase}
+          onCancel={() => setRestoreCandidate(null)}
+          onComplete={() => window.location.reload()}
+        />
+      )}
     </motion.div>
   );
 };

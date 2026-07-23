@@ -12,6 +12,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pushBackup, pullBackup, deleteBackup, BackupPayload } from '../lib/backup';
+import { STORAGE_KEYS } from '../data/storageKeys';
 
 const LAST_BACKUP_KEY = 'aura_last_backup_date';
 type BackupStatus = 'idle' | 'syncing' | 'success' | 'error' | 'skipped';
@@ -42,6 +43,10 @@ function hasBackupData(data: BackupPayload | null): data is BackupPayload {
   );
 }
 
+function restoreIsInProgress(): boolean {
+  return window.localStorage.getItem(STORAGE_KEYS.restoreInProgress) === 'true';
+}
+
 export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData }: UseCloudBackupOptions) {
   const backupInFlight = useRef(false);
   const backupCheckUid = useRef<string | null>(null);
@@ -57,6 +62,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
   });
 
   useEffect(() => {
+    if (restoreIsInProgress()) return;
     if (!enabled) {
       setBackupAvailable(false);
       setBackupStatus('idle');
@@ -65,6 +71,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
 
   // ─── On login: check if local is empty & cloud backup exists ───
   useEffect(() => {
+    if (restoreIsInProgress()) return;
     if (!uid) {
       backupCheckUid.current = null;
       setBackupAvailable(false);
@@ -100,6 +107,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
 
   // ─── Auto daily backup (non-blocking, only if data exists) ─────
   useEffect(() => {
+    if (restoreIsInProgress()) return;
     if (!uid) return;
     if (!enabled) return;
     if (backupInFlight.current) return;
@@ -127,6 +135,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
 
   // ─── Manual restore ─────────────────────────────────────────────
   const restoreFromCloud = useCallback(async (): Promise<boolean> => {
+    if (restoreIsInProgress()) return false;
     if (!uid) return false;
     const data = await pullBackup(uid);
     if (!data) return false;
@@ -152,6 +161,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
 
   // Manual immediate push (for UI-triggered testing)
   const pushNow = useCallback(async (): Promise<boolean> => {
+    if (restoreIsInProgress()) return false;
     if (!uid) return false;
     if (!enabled) {
       setBackupStatus('skipped');

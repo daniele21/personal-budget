@@ -1,5 +1,15 @@
 # Delivery Plan
 
+## Current Initiative: Aura Portable Archive V1
+
+Aura Portable Archive V1 will add one versioned `.aura` file for complete, local-only disaster recovery while preserving transaction CSV as a separate interoperability feature.
+
+The initiative is recovery-complete from V1: canonical app data, referenced attachments, notification preferences, custom reminders, and appearance preference are in scope. Restore is replace-only, passphrase protection is selected by default, archive processing never enters the AI-assisted import path, and cross-storage replacement uses staging, safety protection, a restore journal, and persisted read-back verification.
+
+Task-level milestones, dependencies, tests, privacy/security work, resource limits, risks, progress updates, and done criteria are tracked in [`10-portable-archive-progress-plan.md`](./10-portable-archive-progress-plan.md). M0-M6 implementation is complete. Automated M7 browser hardening is complete; M7-M8 release closure remains conditional on physical-device/PWA, manual screen-reader, and mobile-memory verification plus resolution of the documented privacy-governance baseline gap.
+
+User-facing behavior is specified in [`docs/specs/portable-archive-v1.md`](../specs/portable-archive-v1.md). Deployment, rollback, recovery, and privacy-safe diagnostics are defined in [`docs/03-operations/portable-archive-runbook.md`](../03-operations/portable-archive-runbook.md).
+
 ## Current Implementation Slice
 
 - Simplify the primary shell to `Home | Transactions | Add | Budgets | Reports`, with five equally spaced slots and Add at the center; keep More as a secondary tools/settings area reached from a fixed `…` action in every header.
@@ -19,6 +29,21 @@
 - Typecheck with `npm run lint`.
 - Unit tests with `npm run test`.
 - Production build with `npm run build`.
+- Real-browser encrypted export → wipe → import → replace → reload comparison on supported desktop/mobile and installed-PWA targets.
+- Keyboard, screen-reader-label, reduced-motion, light/dark, and 320/360/390/430 px checks.
+
+## Portable Archive Release Readiness — 2026-07-23
+
+- Automated gate: `npm run test:regression` passed end to end; TypeScript, all 273 Vitest tests across 48 files, and production build are green.
+- Configuration/migrations: no runtime environment variable, backend migration, provider, or production dependency was added. Playwright is a development-only dependency; the client introduces only local archive/journal/staging keys.
+- Compatibility: transaction CSV remains readable; the old two-download CSV action is replaced by one explicitly transaction-only CSV; `.aura` is classified before spreadsheet/Gemini processing.
+- Rollback: revert the client bundle only after active V1 restore journals are resolved; keep a recovery-capable bundle available for affected clients.
+- Privacy/cost: archive processing is local-only; no new subprocessor, transfer, AI call, hosted storage, or usage-based cost is introduced.
+- Automated hardening: encrypted/plaintext round trips, fresh salt/IV, wrong password, tampering, large fixture, local-only preflight, AI isolation, safety-copy refusal, empty/non-empty restore, quota/write failure, rollback, resume, and object-URL revocation are covered.
+- Release decision: **not ready for general release** until physical-device/installed-PWA, manual screen-reader, approximately 32 MiB mobile-memory acceptance, and privacy-owner governance confirmation are recorded.
+- Automated Chromium/WebKit, mobile viewport, restore-checkpoint reload, PWA shell, responsive, keyboard, reduced-motion, and axe QA is complete. Physical mobile/PWA, manual screen-reader, and approximately 32 MiB least-capable-device evidence remain pending.
+- Browser automation uses a synthetic non-admin identity through loopback-only `npm run dev:e2e`; the bypass cannot be enabled by runtime data and `vite build --mode=e2e` is rejected. All 29 Playwright project cases pass, including exact encrypted export → deletion → restore equivalence, rejection safety, non-empty safety-copy replacement, and all 11 restore-journal statuses.
+- The execution-ready browser/PWA checklist is [`docs/07-qa/portable-archive-browser-acceptance.md`](../07-qa/portable-archive-browser-acceptance.md).
 
 ## UX Simplification Release Readiness — 2026-07-21
 
@@ -61,7 +86,7 @@ The current UX simplification milestones M0-M9 are defined and tracked in [`08-u
 ## Follow-Up Candidates
 
 - Migrate categories from string names to stable IDs with archived metadata.
-- Add schema validation for LocalStorage, CSV import, and backup restore payloads.
+- Extend the portable archive's strict validation approach to general LocalStorage and CSV inputs after the V1 archive path is complete.
 - Improve PWA offline behavior and update/install lifecycle.
 - Add user-facing export for report summaries.
 - Add PNG export for year-in-review if report sharing needs visual output.

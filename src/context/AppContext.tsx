@@ -9,6 +9,7 @@ import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
 import { buildDemoData } from '../data/demoData';
 import { PrimaryAnalyticsLens } from '../domain/finance';
+import { RestoreRecoveryGate } from '../components/archive/RestoreRecoveryGate';
 
 // ─── Legacy Context Shape (compatible facade) ───────────────────────
 
@@ -359,15 +360,17 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   return (
-    <AuthProvider>
-      <PreferencesProvider>
-        <AppDataProvider>
-          <BackupProvider>
-            <MainAppWrapper>{children}</MainAppWrapper>
-          </BackupProvider>
-        </AppDataProvider>
-      </PreferencesProvider>
-    </AuthProvider>
+    <RestoreRecoveryGate>
+      <AuthProvider>
+        <PreferencesProvider>
+          <AppDataProvider>
+            <BackupProvider>
+              <MainAppWrapper>{children}</MainAppWrapper>
+            </BackupProvider>
+          </AppDataProvider>
+        </PreferencesProvider>
+      </AuthProvider>
+    </RestoreRecoveryGate>
   );
 };
 

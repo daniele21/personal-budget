@@ -26,6 +26,7 @@ export const STORAGE_KEYS = {
   customReminders: 'aura_custom_reminders',
   notificationRecords: 'aura_notification_records',
   lastNotificationCheck: 'aura_last_notification_check',
+  restoreInProgress: 'aura_restore_in_progress',
 } as const;
 
 export type StorageKey = keyof typeof STORAGE_KEYS;

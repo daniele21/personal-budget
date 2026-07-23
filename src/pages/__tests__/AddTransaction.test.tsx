@@ -9,7 +9,12 @@ const mockUseApp = vi.fn();
 
 vi.mock('../../context/AppContext', () => ({ useApp: () => mockUseApp() }));
 vi.mock('../../components/Toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('idb-keyval', () => ({ get: vi.fn().mockResolvedValue(undefined), set: vi.fn(), del: vi.fn() }));
+vi.mock('idb-keyval', () => ({
+  get: vi.fn().mockResolvedValue(undefined),
+  set: vi.fn(),
+  del: vi.fn(),
+  keys: vi.fn().mockResolvedValue([]),
+}));
 
 function renderPage(path = '/add') {
   return render(

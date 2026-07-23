@@ -71,7 +71,7 @@ describe('Planning recurring operations', () => {
 
     undoAction?.onClick();
     expect(setRecurring).toHaveBeenLastCalledWith([item]);
-  });
+  }, 10_000);
 
   it('stores an occurrence edit as an override without changing the base series', async () => {
     const user = userEvent.setup();

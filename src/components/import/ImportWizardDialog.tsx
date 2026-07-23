@@ -30,6 +30,7 @@ import {
   type CategorizedTransaction,
 } from '../../domain/transactionCategorizer';
 import type { Transaction } from '../../types';
+import { isAuraPortableArchive } from '../../services/archive/archiveReader';
 
 type WizardStep = 'upload' | 'processing' | 'review' | 'summary';
 
@@ -128,6 +129,11 @@ export function ImportWizardDialog({ isOpen, onClose }: ImportWizardDialogProps)
     setProgress(0);
 
     try {
+      // Portable archives are private restore artifacts and must never reach
+      // spreadsheet parsing or Gemini, even when renamed with a CSV extension.
+      if (await isAuraPortableArchive(selectedFile)) {
+        throw new Error('Complete Aura archive detected. Use Import Aura archive from Privacy & Backup.');
+      }
       // 1. Parse the spreadsheet client-side
       const parsed = await parseSpreadsheetFile(selectedFile);
       const auraExportTransactions = parseAuraExportRows(parsed.rawRows);

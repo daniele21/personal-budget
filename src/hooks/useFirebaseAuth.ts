@@ -14,16 +14,8 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { isEmailAllowed, isAdmin } from '../lib/allowedUsers';
-import { User } from '../types';
-
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  isAdmin: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
-}
+import type { AuthRuntimeState } from '../auth/AuthRuntime';
+import type { User } from '../types';
 
 function mapFirebaseUser(fbUser: FirebaseUser): User {
   return {
@@ -34,7 +26,7 @@ function mapFirebaseUser(fbUser: FirebaseUser): User {
   };
 }
 
-export function useFirebaseAuth(): AuthState {
+export function useFirebaseAuth(): AuthRuntimeState {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

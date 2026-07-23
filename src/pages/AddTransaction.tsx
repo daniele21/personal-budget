@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Pencil, X, Camera } from 'lucide-react';
-import { get, set, del } from 'idb-keyval';
 import { APP_CONFIG } from '../constants';
 import { Transaction, TransactionReportingClass } from '../types';
 import { CategoryPicker } from '../components/CategoryPicker';
@@ -14,6 +13,7 @@ import { AccordionSection, Button, Card, SegmentedControl } from '../components/
 import { ReportingTreatmentToggle } from '../components/ExtraFlagToggle';
 import { ReportingTreatmentInfo } from '../components/ReportingTreatmentInfo';
 import { getLocalDateInputValue } from '../utils/dates';
+import { attachmentRepository } from '../repositories/attachmentRepository';
 
 export const AddTransaction = () => {
   const { id } = useParams<{ id: string }>();
@@ -57,7 +57,7 @@ export const AddTransaction = () => {
         );
         
         // Load attachment from IndexedDB
-        get(`attachment_${id}`).then(val => {
+        attachmentRepository.getAttachment(id).then(val => {
           if (val) {
             setAttachmentUrl(val);
             setIsMoreOptionsOpen(true);
@@ -117,9 +117,9 @@ export const AddTransaction = () => {
     };
 
     if (attachmentUrl && attachmentUrl !== 'indexeddb') {
-      await set(`attachment_${transactionId}`, attachmentUrl);
+      await attachmentRepository.saveAttachment(transactionId, attachmentUrl);
     } else if (!attachmentUrl) {
-      await del(`attachment_${transactionId}`);
+      await attachmentRepository.deleteAttachment(transactionId);
     }
 
     if (id) {

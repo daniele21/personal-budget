@@ -2,19 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { STORAGE_KEYS } from '../data/storageKeys';
 import { CustomReminder, NotificationPreferences, NotificationRecord } from '../types';
 import { useLocalStorage } from './useLocalStorage';
-
-const DEFAULT_PREFERENCES: NotificationPreferences = {
-  enabled: false,
-  budgetAlerts: true,
-  recurringReminders: true,
-  customReminders: true,
-  reminderLeadDays: 1,
-};
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../repositories/portablePreferencesRepository';
 
 export function useNotifications() {
   const [preferences, setPreferences] = useLocalStorage<NotificationPreferences>(
     STORAGE_KEYS.notificationPreferences,
-    DEFAULT_PREFERENCES,
+    DEFAULT_NOTIFICATION_PREFERENCES,
   );
   const [reminders, setReminders] = useLocalStorage<CustomReminder[]>(STORAGE_KEYS.customReminders, []);
   const [records, setRecords] = useLocalStorage<NotificationRecord[]>(STORAGE_KEYS.notificationRecords, []);
@@ -33,13 +26,13 @@ export function useNotifications() {
     const nextPermission = await Notification.requestPermission();
     setPermission(nextPermission);
     if (nextPermission === 'granted') {
-      setPreferences((current) => ({ ...DEFAULT_PREFERENCES, ...current, enabled: true }));
+      setPreferences((current) => ({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...current, enabled: true }));
     }
     return nextPermission;
   }, [setPreferences]);
 
   const updatePreferences = useCallback((patch: Partial<NotificationPreferences>) => {
-    setPreferences((current) => ({ ...DEFAULT_PREFERENCES, ...current, ...patch }));
+    setPreferences((current) => ({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...current, ...patch }));
   }, [setPreferences]);
 
   const addRecord = useCallback((record: Omit<NotificationRecord, 'id' | 'createdAt' | 'read'>) => {
@@ -99,7 +92,7 @@ export function useNotifications() {
   }, [permission, preferences.enabled]);
 
   return {
-    preferences: { ...DEFAULT_PREFERENCES, ...preferences },
+    preferences: { ...DEFAULT_NOTIFICATION_PREFERENCES, ...preferences },
     updatePreferences,
     permission,
     requestPermission,
