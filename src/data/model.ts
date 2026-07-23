@@ -60,6 +60,36 @@ export const INITIAL_APP_DATA: AppData = {
   monthlyBudget: APP_CONFIG.defaultMonthlyBudget,
 };
 
+/**
+ * Project an AppData-compatible object onto the canonical persisted shape.
+ *
+ * TypeScript structural typing allows richer objects such as AppDataState to be
+ * passed where AppData is expected. This explicit projection prevents UI or
+ * workflow metadata from crossing persistence, archive, and backup boundaries.
+ */
+export function projectAppData(data: AppData): AppData {
+  return {
+    transactions: data.transactions.map(migrateLegacyDemoAttachmentReference),
+    budgets: data.budgets,
+    recurring: data.recurring,
+    accounts: data.accounts,
+    categories: data.categories,
+    archivedCategories: data.archivedCategories,
+    savingsGoals: data.savingsGoals,
+    monthlyBudget: data.monthlyBudget,
+  };
+}
+
+function migrateLegacyDemoAttachmentReference(transaction: Transaction): Transaction {
+  if (!transaction.attachmentUrl?.startsWith('https://images.unsplash.com/')) {
+    return transaction;
+  }
+  return {
+    ...transaction,
+    attachmentUrl: undefined,
+  };
+}
+
 function arrayOrDefault<T>(value: unknown, fallback: T[]): T[] {
   return Array.isArray(value) ? value as T[] : fallback;
 }
@@ -69,19 +99,20 @@ function numberOrDefault(value: unknown, fallback: number): number {
 }
 
 function normalizeTransaction(transaction: Transaction): Transaction {
-  const reportingClass = transaction.sourceRecurringId
+  const migratedTransaction = migrateLegacyDemoAttachmentReference(transaction);
+  const reportingClass = migratedTransaction.sourceRecurringId
     ? undefined
-    : transaction.reportingClass === 'extra'
+    : migratedTransaction.reportingClass === 'extra'
       ? 'extra'
-      : transaction.type === 'income' && transaction.reportingClass === 'reimbursement'
+      : migratedTransaction.type === 'income' && migratedTransaction.reportingClass === 'reimbursement'
         ? 'reimbursement'
       : undefined;
-  const reportingNote = reportingClass && typeof transaction.reportingNote === 'string'
-    ? transaction.reportingNote.trim()
+  const reportingNote = reportingClass && typeof migratedTransaction.reportingNote === 'string'
+    ? migratedTransaction.reportingNote.trim()
     : '';
 
   return {
-    ...transaction,
+    ...migratedTransaction,
     reportingClass,
     reportingNote: reportingNote || undefined,
   };
@@ -123,11 +154,12 @@ export function normalizeAppData(input: AppDataInput = {}): AppData {
 }
 
 export function syncAppData(data: AppData, today: Date = new Date()): AppData {
+  const canonical = projectAppData(data);
   const recurring = normalizeRecurringExpenses(data.recurring);
   return {
-    ...data,
+    ...canonical,
     recurring,
-    transactions: syncRecurringTransactions(recurring, data.transactions, today).map(normalizeTransaction),
+    transactions: syncRecurringTransactions(recurring, canonical.transactions, today).map(normalizeTransaction),
   };
 }
 

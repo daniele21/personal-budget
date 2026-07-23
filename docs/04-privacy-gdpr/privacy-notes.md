@@ -15,6 +15,16 @@ These features do not introduce:
 
 Financial data remains local unless the user explicitly enables the existing encrypted Firestore backup.
 
+The optional Firestore backup retains the latest three encrypted `AppData`
+snapshots per authenticated UID in one user-scoped document. Each snapshot has a
+creation timestamp and stable opaque version ID; Firestore does not receive
+decrypted financial content. The user can restore an exact version or delete the
+cloud document, which removes all three managed versions. Restoring an older
+version replaces newer local financial data after explicit confirmation. This
+history adds no provider, recipient, data category, or transfer beyond the
+existing Firebase backup, but it increases the encrypted backup retention from
+one recoverable state to three.
+
 ## Demo Data
 
 When no local financial data exists, Aura Finance can populate a local demo ledger so the user can evaluate dashboard, budget, recurring, and reporting flows without entering personal data.

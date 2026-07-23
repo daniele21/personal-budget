@@ -38,6 +38,8 @@ Required when adding or changing persisted fields:
 - generated demo data
 - recurring transaction sync
 - field normalization and defaulting
+- rejection or explicit projection of non-domain fields from richer application state
+- migration of legacy demo-only attachment URLs before strict persistence
 
 Command:
 
@@ -63,6 +65,17 @@ Command:
 ```sh
 npm run test:react
 ```
+
+### Cloud Backup Version History
+
+Cloud-backup changes require coverage for:
+
+- transactional newest-first rotation capped at three encrypted snapshots;
+- creation timestamp, stable version ID, checksum, and read-back verification;
+- listing only decryptable and structurally valid versions;
+- exact selected-version restore with no silent fallback;
+- automatic fallback only when the normal newest-first recovery path encounters corruption;
+- version selection, date display, replacement confirmation, loading, empty, and error states.
 
 ## Regression Gate For Large Changes
 
@@ -115,6 +128,17 @@ The Playwright suite contains 29 project cases across desktop Chromium, desktop 
 The recovery comparison reads every canonical AppData section, portable notification/appearance preferences, custom reminders, and the referenced IndexedDB receipt. Additional browser tests reload from all 11 restore-journal statuses; exercise 320/360/390/430 px layouts; scan light/dark archive surfaces with axe; verify focus trapping/restoration and reduced motion; record bounded typical-workspace resource evidence; and verify the production manifest/service-worker registration lifecycle. Playwright retains trace, screenshot, and video evidence on failure.
 
 Physical-device Safari/Chrome, actual installed-PWA execution, manual screen-reader output, and the approximately 32 MiB least-capable-mobile measurement remain manual M7 release gates.
+
+PWA installation coverage verifies:
+
+- stable manifest identity, root scope/start URL, standalone display, and 192/512 icons;
+- immediate service-worker registration and active root scope;
+- global capture of `beforeinstallprompt` before lazy route components mount;
+- one-shot native prompt invocation and accepted/dismissed state handling;
+- first-access dialog sequencing after initial-data selection/onboarding and
+  browser-local one-time suppression after it is shown;
+- browser-only top-bar install affordance backed by the same retained prompt;
+- install-action suppression in standalone mode and manual Safari guidance on iOS.
 
 ## Extra Transaction Analytics Coverage
 

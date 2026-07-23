@@ -4,12 +4,28 @@
 
 ### Changed
 
+- Added a one-time browser-local PWA install dialog after the authenticated
+  first-access setup, with a native Chromium install action, Safari instructions
+  on iOS, and persistent retry actions in the top bar and under More.
+- Cloud backup now retains the latest three timestamped encrypted versions per
+  user, rotates them transactionally across devices, and lets the user select
+  the exact version to restore from onboarding or Data & Privacy.
 - Added a local-only synthetic authentication adapter and a 29-case Playwright matrix covering Chromium, WebKit, mobile emulation, encrypted export/deletion/restore equivalence, rejection safety, all restore-journal reload states, accessibility/responsive behavior, bounded resource evidence, and PWA shell registration; the non-admin bypass is loopback-only and cannot be built or deployed.
 - Made Add Transaction more compact by grouping type with amount, placing essential fields in one dense form, keeping optional details behind `More options`, and keeping the contextual save action reachable above the bottom navigation.
 - Added Aura Portable Archive V1 under Data Management: one encrypted-by-default, self-verified `.aura` export; local-only unlock and preview; safety-protected replace restore; startup recovery; and clear separation from transaction CSV and AI-assisted bank-statement import. General release remains gated on physical-device/installed-PWA, manual screen-reader, and approximately 32 MiB mobile-memory QA.
 
 ### Fixed
 
+- Captured Chromium’s one-shot PWA install event at application startup,
+  registered the service worker immediately, and made the More install action
+  invoke the native installer on supported Android and desktop browsers while
+  preserving Safari instructions for iOS.
+- Removed invalid remote demo-image values from transaction attachment references
+  and migrated existing demo copies before strict persistence, preventing
+  `attachmentUrl is too long` save failures.
+- Projected extended application state onto canonical `AppData` before strict
+  local persistence, preventing onboarding metadata from being rejected as an
+  unsupported Archive V1 field.
 - Restored keyboard focus to the invoking control when archive and confirmation dialogs close.
 - Separated expense month-over-month change from net cash-flow change on Home.
 - Limited the current Planning summary to recurring payments due today or later and clarified past/current/future labels.

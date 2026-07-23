@@ -12,6 +12,14 @@ Chosen: opt-in encrypted backup with visible status.
 
 Rationale: financial records are sensitive; users should know when data leaves the device. Firestore stores only encrypted backup payloads tied to the authenticated UID.
 
+Each UID keeps the latest three encrypted `AppData` snapshots inside one
+Firestore document. Rotation is transactional, every snapshot carries a stable
+version ID and creation timestamp, and the user can select an exact version from
+empty-workspace recovery or Data & Privacy. Explicit selection never falls back
+to a different version; automatic corruption recovery may still try older valid
+slots. The detailed contract is defined in
+[`cloud-backup-version-history.md`](../specs/cloud-backup-version-history.md).
+
 ### Portable Disaster Recovery Archive
 
 Chosen: add a versioned, local-only `.aura` archive as the complete manual disaster-recovery mechanism, separate from transaction CSV import/export and the existing cloud-backup transport.
@@ -29,6 +37,11 @@ The archive codec may later be reused by cloud backup, but V1 does not assume th
 Chosen: keep the persisted app data model centralized in `src/data/model.ts`.
 
 Rationale: transactions, budgets, recurring entries, accounts, categories, savings goals, and monthly budget must have one canonical shape shared by local storage, cloud backup, demo data, and app context. The context may orchestrate React state, but it should not define a parallel data contract. The model layer owns initial app data, normalization of restored or partial data, recurring transaction sync, and financial emptiness checks.
+
+Application state may extend `AppData` with UI and workflow metadata such as
+onboarding status. Persistence boundaries must project richer state onto the
+explicit canonical `AppData` fields before strict schema validation; they must
+not weaken the archive schema or implicitly serialize top-level metadata.
 
 Accounts use `openingBalance`, not a live balance. Total Net Worth is defined as the sum of account opening balances plus the net result of every transaction in the ledger. Persisted local or backup data that still uses the legacy `balance` field is normalized to `openingBalance` when loaded. A future live-balance model would require transactions to be assigned to accounts and is intentionally outside the current scope.
 
@@ -108,11 +121,28 @@ Recurring items may carry their own reminder setting, including due-date reminde
 
 Known limitation: web notifications are browser and platform dependent. On iOS, reliable notification behavior requires the app to be installed as a PWA on supported versions.
 
-### Mobile PWA Install Action
+### PWA Install Action
 
-Chosen: show a mobile-only install action in the authenticated More area only when installation or platform-specific guidance is relevant.
+Chosen: on the first eligible authenticated browser access, show one install
+dialog after initial-data selection and onboarding have completed. Keep a
+compact install action in the authenticated top bar and the descriptive action
+in More for later use. The top-bar action remains visible whenever Aura is
+running as a browser tab and falls back to browser-menu guidance when no native
+prompt exists. The introductory dialog and More action appear only when the
+browser exposes a real native prompt or when iOS guidance is actionable.
 
-Rationale: Aura Finance is mobile-first and already ships a manifest and service worker, but installation is occasional rather than a primary daily action. The surface appears on mobile browsers only when the app is not already running in standalone mode and the app can offer either installation or useful platform guidance. Android/Chrome can use the browser `beforeinstallprompt` event for a native install action when Chrome exposes it. iOS requires concise manual guidance through Safari, Share, and Add to Home Screen because Chrome and Edge on iOS cannot open the native PWA install prompt.
+Rationale: Aura Finance already ships a manifest and service worker, but
+installation is most discoverable during the first successful setup but remains
+an occasional action afterward. A browser-local flag prevents the introductory
+dialog from appearing again once it has actually been shown; dismissing it does
+not remove the persistent top-bar and More actions. Chromium can
+emit the one-shot `beforeinstallprompt` event during initial page load, before
+the lazy-loaded More route mounts, so the app captures and retains it from the
+main entrypoint. The button then invokes the native prompt on supported Android
+and desktop Chromium browsers. iOS requires concise manual guidance through
+Safari, Share, Add to Home Screen, and Open as Web App because JavaScript cannot
+open a native install prompt there. The action is hidden after installation or
+when no real installation path is available.
 
 ### Admin
 

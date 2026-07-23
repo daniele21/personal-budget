@@ -11,7 +11,15 @@
  * - Never blocks the UI or throws errors to the user.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { pushBackup, pullBackup, deleteBackup, BackupPayload } from '../lib/backup';
+import {
+  pushBackup,
+  pullBackup,
+  pullBackupVersion,
+  listBackupVersions,
+  deleteBackup,
+  BackupPayload,
+  BackupVersion,
+} from '../lib/backup';
 import { STORAGE_KEYS } from '../data/storageKeys';
 
 const LAST_BACKUP_KEY = 'aura_last_backup_date';
@@ -32,17 +40,6 @@ interface UseCloudBackupOptions {
   applyData: (data: BackupPayload) => void;
 }
 
-function hasBackupData(data: BackupPayload | null): data is BackupPayload {
-  if (!data) return false;
-  return (
-    (data.transactions?.length ?? 0) > 0 ||
-    (data.budgets?.length ?? 0) > 0 ||
-    (data.recurring?.length ?? 0) > 0 ||
-    (data.savingsGoals?.length ?? 0) > 0 ||
-    (data.accounts?.length ?? 0) > 0
-  );
-}
-
 function restoreIsInProgress(): boolean {
   return window.localStorage.getItem(STORAGE_KEYS.restoreInProgress) === 'true';
 }
@@ -52,6 +49,8 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
   const backupCheckUid = useRef<string | null>(null);
   const [backupAvailable, setBackupAvailable] = useState(false);
   const [backupCheckComplete, setBackupCheckComplete] = useState(false);
+  const [backupVersions, setBackupVersions] = useState<BackupVersion[]>([]);
+  const [backupVersionsLoading, setBackupVersionsLoading] = useState(false);
   const [backupStatus, setBackupStatus] = useState<BackupStatus>('idle');
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => {
     try {
@@ -75,6 +74,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
     if (!uid) {
       backupCheckUid.current = null;
       setBackupAvailable(false);
+      setBackupVersions([]);
       setBackupCheckComplete(true);
       return;
     }
@@ -92,9 +92,10 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
     backupCheckUid.current = uid;
     setBackupAvailable(false);
     setBackupCheckComplete(false);
-    pullBackup(uid).then((data) => {
+    listBackupVersions(uid).then((versions) => {
       if (cancelled) return;
-      if (hasBackupData(data)) {
+      setBackupVersions(versions);
+      if (versions.length > 0) {
         setBackupAvailable(true);
       }
       setBackupCheckComplete(true);
@@ -134,10 +135,25 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
   }, [uid, enabled, getData, isLocalEmpty]);
 
   // ─── Manual restore ─────────────────────────────────────────────
-  const restoreFromCloud = useCallback(async (): Promise<boolean> => {
+  const refreshBackupVersions = useCallback(async (): Promise<BackupVersion[]> => {
+    if (!uid) {
+      setBackupVersions([]);
+      return [];
+    }
+    setBackupVersionsLoading(true);
+    const versions = await listBackupVersions(uid);
+    setBackupVersions(versions);
+    setBackupAvailable(versions.length > 0);
+    setBackupVersionsLoading(false);
+    return versions;
+  }, [uid]);
+
+  const restoreFromCloud = useCallback(async (versionId?: string): Promise<boolean> => {
     if (restoreIsInProgress()) return false;
     if (!uid) return false;
-    const data = await pullBackup(uid);
+    const data = versionId
+      ? await pullBackupVersion(uid, versionId)
+      : await pullBackup(uid);
     if (!data) return false;
     applyData(data);
     setBackupAvailable(false);
@@ -154,6 +170,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
       localStorage.removeItem(LAST_BACKUP_KEY);
       setLastBackupDate(null);
       setBackupAvailable(false);
+      setBackupVersions([]);
       setBackupStatus('idle');
     }
     return ok;
@@ -182,11 +199,24 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
         // ignore storage errors
       }
       setBackupStatus('success');
+      await refreshBackupVersions();
     } else {
       setBackupStatus('error');
     }
     return ok;
-  }, [uid, enabled, getData, isLocalEmpty]);
+  }, [uid, enabled, getData, isLocalEmpty, refreshBackupVersions]);
 
-  return { restoreFromCloud, backupAvailable, backupCheckComplete, dismissRestore, deleteCloudBackup, pushNow, backupStatus, lastBackupDate };
+  return {
+    restoreFromCloud,
+    refreshBackupVersions,
+    backupVersions,
+    backupVersionsLoading,
+    backupAvailable,
+    backupCheckComplete,
+    dismissRestore,
+    deleteCloudBackup,
+    pushNow,
+    backupStatus,
+    lastBackupDate,
+  };
 }

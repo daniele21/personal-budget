@@ -7,9 +7,11 @@ import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } fro
 import * as Finance from '../domain/finance';
 import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
+import { PwaFirstAccessDialog } from '../components/PwaFirstAccessDialog';
 import { buildDemoData } from '../data/demoData';
 import { PrimaryAnalyticsLens } from '../domain/finance';
 import { RestoreRecoveryGate } from '../components/archive/RestoreRecoveryGate';
+import type { BackupVersion } from '../lib/backup';
 
 // ─── Legacy Context Shape (compatible facade) ───────────────────────
 
@@ -29,6 +31,8 @@ interface AppState {
   backupAvailable: boolean;
   backupStatus: 'idle' | 'syncing' | 'success' | 'error' | 'skipped';
   lastBackupDate: string | null;
+  backupVersions: BackupVersion[];
+  backupVersionsLoading: boolean;
   onboardingComplete: boolean;
   authLoading: boolean;
   authError: string | null;
@@ -70,7 +74,8 @@ interface AppState {
   deleteRecurring: (id: string) => void;
   addCategory: (name: string) => void;
   resetAll: () => void;
-  restoreFromCloud: () => Promise<boolean>;
+  refreshBackupVersions: () => Promise<BackupVersion[]>;
+  restoreFromCloud: (versionId?: string) => Promise<boolean>;
   dismissRestore: () => void;
   deleteCloudBackup: () => Promise<boolean>;
   pushBackupNow: () => Promise<boolean>;
@@ -125,6 +130,9 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     backupStatus,
     lastBackupDate,
     backupCheckComplete,
+    backupVersions,
+    backupVersionsLoading,
+    refreshBackupVersions,
     restoreFromCloud,
     dismissRestore,
     deleteCloudBackup,
@@ -141,13 +149,14 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     dispatch({ type: 'data/hydrated', data: demo });
   }, [dispatch]);
 
-  const handleRestoreBackup = useCallback(async () => {
-    const restored = await restoreFromCloud();
+  const handleRestoreBackup = useCallback(async (versionId: string) => {
+    const restored = await restoreFromCloud(versionId);
     if (restored) {
       setCloudBackupEnabled(true);
       dispatch({ type: 'onboarding/initial-choice', choice: 'restored' });
       dispatch({ type: 'onboarding/completed', complete: true });
     }
+    return restored;
   }, [restoreFromCloud, setCloudBackupEnabled, dispatch]);
 
   const handleStartBlank = useCallback(() => {
@@ -212,6 +221,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     backupAvailable,
     backupStatus,
     lastBackupDate,
+    backupVersions,
+    backupVersionsLoading,
     onboardingComplete: state.onboardingComplete,
     authLoading,
     authError,
@@ -250,6 +261,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     deleteRecurring,
     addCategory,
     resetAll,
+    refreshBackupVersions,
     restoreFromCloud,
     dismissRestore,
     deleteCloudBackup,
@@ -274,6 +286,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     backupAvailable,
     backupStatus,
     lastBackupDate,
+    backupVersions,
+    backupVersionsLoading,
     authLoading,
     authError,
     isAdmin,
@@ -308,6 +322,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     deleteRecurring,
     addCategory,
     resetAll,
+    refreshBackupVersions,
     restoreFromCloud,
     dismissRestore,
     deleteCloudBackup,
@@ -331,6 +346,13 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     isLocalEmpty() &&
     state.initialDataChoice === null
   );
+  const showOnboardingDialog = (
+    isLoggedIn &&
+    !showInitialDataDialog &&
+    !state.onboardingComplete &&
+    state.initialDataChoice === 'blank' &&
+    isLocalEmpty()
+  );
 
   return (
     <LegacyAppContext.Provider value={value}>
@@ -338,12 +360,13 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
       <InitialDataDialog
         isOpen={showInitialDataDialog}
         backupAvailable={backupAvailable}
+        backupVersions={backupVersions}
         onRestoreBackup={handleRestoreBackup}
         onStartBlank={handleStartBlank}
         onUseDemoData={handleUseDemoData}
       />
       <OnboardingDialog
-        isOpen={isLoggedIn && !showInitialDataDialog && !state.onboardingComplete && state.initialDataChoice === 'blank' && isLocalEmpty()}
+        isOpen={showOnboardingDialog}
         monthlyBudget={state.monthlyBudget}
         onSetMonthlyBudget={setMonthlyBudget}
         onAddCategory={addCategory}
@@ -351,6 +374,15 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
         cloudBackupEnabled={cloudBackupEnabled}
         onSetCloudBackupEnabled={setCloudBackupEnabled}
         onComplete={() => setOnboardingComplete(true)}
+      />
+      <PwaFirstAccessDialog
+        isEligible={
+          isLoggedIn &&
+          isHydrated &&
+          state.onboardingComplete &&
+          !showInitialDataDialog &&
+          !showOnboardingDialog
+        }
       />
     </LegacyAppContext.Provider>
   );

@@ -9,6 +9,7 @@ import {
   Cloud,
   FileArchive,
   LockKeyhole,
+  History,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { PreparedRestore } from '../domain/archive';
@@ -21,6 +22,7 @@ import { ExportArchiveDialog } from '../components/archive/ExportArchiveDialog';
 import { ImportArchiveDialog } from '../components/archive/ImportArchiveDialog';
 import { RestoreArchiveConfirmDialog } from '../components/archive/RestoreArchiveConfirmDialog';
 import { downloadBlob } from '../services/archive/archiveDownload';
+import { CloudBackupRestoreDialog } from '../components/CloudBackupRestoreDialog';
 
 export function DataPrivacyPage() {
   const { toast } = useToast();
@@ -37,6 +39,10 @@ export function DataPrivacyPage() {
     setCloudBackupEnabled,
     backupStatus,
     lastBackupDate,
+    backupVersions,
+    backupVersionsLoading,
+    refreshBackupVersions,
+    restoreFromCloud,
     deleteCloudBackup,
     pushBackupNow,
     resetAll,
@@ -47,6 +53,7 @@ export function DataPrivacyPage() {
   const [showResetAllDialog, setShowResetAllDialog] = useState(false);
   const [showExportArchiveDialog, setShowExportArchiveDialog] = useState(false);
   const [showImportArchiveDialog, setShowImportArchiveDialog] = useState(false);
+  const [showCloudRestoreDialog, setShowCloudRestoreDialog] = useState(false);
   const [restoreCandidate, setRestoreCandidate] = useState<{
     prepared: PreparedRestore;
     passphrase?: string;
@@ -96,6 +103,21 @@ export function DataPrivacyPage() {
     setIsBackingUp(false);
     if (ok) toast('Backup pushed to cloud successfully', 'success');
     else toast('Backup failed or skipped (no local data / offline)', 'error');
+  };
+
+  const handleOpenCloudRestore = () => {
+    setShowCloudRestoreDialog(true);
+    void refreshBackupVersions();
+  };
+
+  const handleCloudRestore = async (versionId: string): Promise<boolean> => {
+    const restored = await restoreFromCloud(versionId);
+    if (restored) {
+      toast('Backup ripristinato sul dispositivo', 'success');
+    } else {
+      toast('Impossibile ripristinare il backup selezionato', 'error');
+    }
+    return restored;
   };
 
   const handleExportTransactionsCsv = async () => {
@@ -307,6 +329,25 @@ export function DataPrivacyPage() {
               </button>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleOpenCloudRestore}
+            className="group flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-4 text-on-surface transition-all hover:bg-surface-container-low active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            <span className="flex min-w-0 items-center gap-3 text-left">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                <History className="h-4 w-4" />
+              </span>
+              <span>
+                <span className="block text-sm font-bold">Ripristina backup cloud</span>
+                <span className="block text-micro text-on-surface-variant">
+                  Scegli tra le ultime 3 versioni salvate
+                </span>
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-on-surface-variant/50 transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
       </section>
 
@@ -386,6 +427,14 @@ export function DataPrivacyPage() {
           onComplete={() => window.location.reload()}
         />
       )}
+
+      <CloudBackupRestoreDialog
+        isOpen={showCloudRestoreDialog}
+        versions={backupVersions}
+        isLoading={backupVersionsLoading}
+        onClose={() => setShowCloudRestoreDialog(false)}
+        onRestore={handleCloudRestore}
+      />
     </motion.div>
   );
 }

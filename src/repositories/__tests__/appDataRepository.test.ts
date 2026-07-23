@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { appDataRepository } from '../appDataRepository';
 import { STORAGE_KEYS } from '../../data/storageKeys';
+import { INITIAL_APP_DATA } from '../../data/model';
 
 const storedValues = new Map<string, string>();
 const localStorageMock: Storage = {
@@ -41,5 +42,46 @@ describe('appDataRepository', () => {
 
     // External key should remain intact
     expect(window.localStorage.getItem('external_third_party_key')).toBe('should_remain');
+  });
+
+  it('persists only canonical AppData fields when passed extended application state', () => {
+    const extendedState = {
+      ...INITIAL_APP_DATA,
+      onboardingComplete: true,
+      initialDataChoice: 'demo',
+    };
+
+    expect(() => {
+      appDataRepository.saveAppDataStrict(extendedState);
+    }).not.toThrow();
+
+    expect(window.localStorage.getItem(STORAGE_KEYS.transactions)).toBe(JSON.stringify([]));
+    expect(window.localStorage.getItem(STORAGE_KEYS.monthlyBudget)).toBe(
+      JSON.stringify(INITIAL_APP_DATA.monthlyBudget),
+    );
+    expect(window.localStorage.getItem(STORAGE_KEYS.onboardingComplete)).toBeNull();
+    expect(window.localStorage.getItem(STORAGE_KEYS.initialDataChoice)).toBeNull();
+  });
+
+  it('migrates legacy remote demo receipt URLs before strict persistence', () => {
+    appDataRepository.saveAppDataStrict({
+      ...INITIAL_APP_DATA,
+      transactions: [{
+        id: 'legacy-demo-receipt',
+        amount: 25,
+        type: 'expense',
+        category: 'Shopping',
+        date: '2026-04-10T00:00:00.000Z',
+        title: 'Demo purchase',
+        description: '',
+        paymentMethod: 'Card',
+        attachmentUrl: 'https://images.unsplash.com/photo-demo?auto=format&fit=crop&w=400',
+      }],
+    });
+
+    const transactions = JSON.parse(
+      window.localStorage.getItem(STORAGE_KEYS.transactions) ?? '[]',
+    );
+    expect(transactions[0]).not.toHaveProperty('attachmentUrl');
   });
 });

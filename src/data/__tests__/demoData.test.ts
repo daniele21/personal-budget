@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildDemoData } from '../demoData';
+import { validateAppData } from '../../domain/archive';
 
 describe('buildDemoData', () => {
   it('creates a complete local demo dataset for the selected month', () => {
@@ -12,6 +13,7 @@ describe('buildDemoData', () => {
     expect(demoData.savingsGoals.length).toBeGreaterThan(0);
     expect(demoData.monthlyBudget).toBeGreaterThan(0);
     expect(demoData.archivedCategories).toEqual([]);
+    expect(() => validateAppData(demoData)).not.toThrow();
   });
 
   it('keeps current-month transactions in the runtime month', () => {
@@ -24,7 +26,7 @@ describe('buildDemoData', () => {
     expect(currentMonthTransactions.every((transaction) => transaction.date.startsWith('2026-04'))).toBe(true);
   });
 
-  it('showcases advanced app features (12-month depth, reporting classes, attachments, accounts, recurring overrides)', () => {
+  it('showcases advanced app features without claiming unavailable receipt attachments', () => {
     const demoData = buildDemoData(new Date(2026, 3, 27));
 
     // 12-month span coverage
@@ -41,9 +43,9 @@ describe('buildDemoData', () => {
     const unverifiedTx = demoData.transactions.filter((t) => t.verified === false);
     expect(unverifiedTx.length).toBeGreaterThan(0);
 
-    // Attachments showcase
+    // Demo data must not claim IndexedDB attachments it did not create.
     const attachmentTx = demoData.transactions.filter((t) => Boolean(t.attachmentUrl));
-    expect(attachmentTx.length).toBeGreaterThan(0);
+    expect(attachmentTx).toEqual([]);
 
     // Accounts diversity (checking, savings, credit, cash)
     const accountTypes = new Set(demoData.accounts.map((a) => a.type));

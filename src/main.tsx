@@ -5,7 +5,11 @@ import App from './App.tsx';
 import { ToastProvider } from './components/Toast';
 import { AppProvider } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { initializePwaInstall } from './services/pwaInstallService';
 import './index.css';
+
+// Capture Chromium's one-shot install event before lazy routes can miss it.
+initializePwaInstall();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -22,9 +26,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
-      console.log('ServiceWorker registration failed: ', err);
-    });
+  navigator.serviceWorker.register('/sw.js').catch(err => {
+    console.warn('ServiceWorker registration failed: ', err);
   });
 }

@@ -158,7 +158,6 @@ export function buildDemoTransactions(now = new Date()): Transaction[] {
       description: 'Schermo supplementare per postazione',
       paymentMethod: 'Credit card',
       verified: true,
-      attachmentUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=400&q=80',
       reportingClass: 'extra',
       reportingNote: 'Acquisto hardware straordinario per lavoro da remoto',
     },
@@ -445,7 +444,6 @@ export function buildDemoTransactions(now = new Date()): Transaction[] {
     description: 'Prenotazione vacanza estiva',
     paymentMethod: 'Credit card',
     verified: true,
-    attachmentUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80',
     reportingClass: 'extra',
     reportingNote: 'Spesa straordinaria vacanze estive',
   });

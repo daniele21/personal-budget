@@ -7,6 +7,8 @@ import { DataPrivacyPage } from '../DataPrivacyPage';
 
 const mocks = vi.hoisted(() => ({
   setCloudBackupEnabled: vi.fn(),
+  refreshBackupVersions: vi.fn(),
+  restoreFromCloud: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -24,6 +26,29 @@ vi.mock('../../context/AppContext', () => ({
     setCloudBackupEnabled: mocks.setCloudBackupEnabled,
     backupStatus: 'idle',
     lastBackupDate: null,
+    backupVersions: [
+      {
+        id: 'latest',
+        createdAt: '2026-07-23T12:00:00.000Z',
+        isLatest: true,
+        position: 0,
+      },
+      {
+        id: 'previous',
+        createdAt: '2026-07-22T12:00:00.000Z',
+        isLatest: false,
+        position: 1,
+      },
+      {
+        id: 'oldest',
+        createdAt: '2026-07-21T12:00:00.000Z',
+        isLatest: false,
+        position: 2,
+      },
+    ],
+    backupVersionsLoading: false,
+    refreshBackupVersions: mocks.refreshBackupVersions,
+    restoreFromCloud: mocks.restoreFromCloud,
     deleteCloudBackup: vi.fn(),
     pushBackupNow: vi.fn(),
     resetAll: vi.fn(),
@@ -59,5 +84,25 @@ describe('DataPrivacyPage', () => {
     const switchBtn = screen.getByRole('switch', { name: 'Attiva backup cloud' });
     await user.click(switchBtn);
     expect(mocks.setCloudBackupEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it('lets the user select and restore one of the three cloud backup versions', async () => {
+    mocks.restoreFromCloud.mockResolvedValueOnce(true);
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <DataPrivacyPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /Ripristina backup cloud/i }));
+    expect(mocks.refreshBackupVersions).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole('radio', { name: /Backup precedente 1/i }));
+    await user.click(screen.getByRole('button', { name: /Ripristina la versione selezionata/i }));
+    await user.click(screen.getByRole('button', { name: 'Conferma' }));
+
+    expect(mocks.restoreFromCloud).toHaveBeenCalledWith('previous');
+    expect(mocks.toast).toHaveBeenCalledWith('Backup ripristinato sul dispositivo', 'success');
   });
 });

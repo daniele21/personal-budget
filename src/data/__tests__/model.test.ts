@@ -3,6 +3,7 @@ import {
   INITIAL_APP_DATA,
   isFinancialDataEmpty,
   normalizeAppData,
+  projectAppData,
   syncAppData,
 } from '../model';
 import { RecurringExpense, Transaction } from '../../types';
@@ -23,6 +24,19 @@ function recurring(overrides: Partial<RecurringExpense> = {}): RecurringExpense 
 }
 
 describe('central app data model', () => {
+  it('projects richer application state onto the exact canonical AppData shape', () => {
+    const extendedState = {
+      ...INITIAL_APP_DATA,
+      onboardingComplete: true,
+      initialDataChoice: 'demo',
+    };
+    const projected = projectAppData(extendedState);
+
+    expect(projected).toEqual(INITIAL_APP_DATA);
+    expect(projected).not.toHaveProperty('onboardingComplete');
+    expect(projected).not.toHaveProperty('initialDataChoice');
+  });
+
   it('normalizes partial persisted data through one canonical shape', () => {
     const data = normalizeAppData({
       categories: ['Housing'],
@@ -113,6 +127,25 @@ describe('central app data model', () => {
     expect(data.transactions.find((transaction) => transaction.id === 'expense-reimbursement')?.reportingClass).toBeUndefined();
     expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingClass).toBeUndefined();
     expect(data.transactions.find((transaction) => transaction.id === 'rec-extra')?.reportingNote).toBeUndefined();
+  });
+
+  it('removes legacy remote demo receipt URLs from the canonical attachment reference', () => {
+    const data = normalizeAppData({
+      ...INITIAL_APP_DATA,
+      transactions: [{
+        id: 'legacy-demo-receipt',
+        amount: 25,
+        type: 'expense',
+        category: 'Shopping',
+        date: '2026-04-10T00:00:00.000Z',
+        title: 'Demo purchase',
+        description: '',
+        paymentMethod: 'Card',
+        attachmentUrl: 'https://images.unsplash.com/photo-demo?auto=format&fit=crop&w=400',
+      }],
+    });
+
+    expect(data.transactions[0].attachmentUrl).toBeUndefined();
   });
 
   it('migrates legacy account balances to opening balances without double semantics', () => {

@@ -6,6 +6,7 @@ import { GlobalSearch } from './GlobalSearch';
 import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { BrandMark } from './BrandMark';
+import { PwaInstallButton } from './PwaInstallButton';
 
 /**
  * Supported header variants for different pages.
@@ -118,6 +119,8 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
     </button>
   );
 
+  const InstallBtn = <PwaInstallButton variant="icon" />;
+
   const MoreLink = (
     <Link
       to="/more"
@@ -175,6 +178,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {InstallBtn}
               {MoreLink}
               {AvatarLink}
             </div>
@@ -198,6 +202,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               {NotificationBtn}
+              {InstallBtn}
               {MoreLink}
             </div>
           </div>
@@ -220,6 +225,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {InstallBtn}
               {MoreLink}
             </div>
           </div>
@@ -243,6 +249,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {InstallBtn}
               {MoreLink}
             </div>
           </div>
@@ -266,6 +273,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             <div className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
+              {InstallBtn}
               {MoreLink}
             </div>
           </div>
@@ -289,6 +297,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
             </h1>
             <div className="ml-auto flex shrink-0 items-center gap-0.5">
               {SearchBtn}
+              {InstallBtn}
               {MoreLink}
               {AvatarLink}
             </div>
@@ -314,6 +323,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             {SearchBtn}
             {NotificationBtn}
+            {InstallBtn}
             {MoreLink}
             {AvatarLink}
           </div>

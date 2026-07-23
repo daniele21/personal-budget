@@ -8,7 +8,7 @@ import {
 const SUPPORTED_WIDTHS = [320, 360, 390, 430];
 
 async function waitForVisualStability(page: import('@playwright/test').Page) {
-  await expect(page.getByTestId('profile-page')).toHaveCSS('opacity', '1');
+  await expect(page.getByTestId('data-privacy-page')).toHaveCSS('opacity', '1');
 }
 
 function seriousViolations(results: Awaited<ReturnType<AxeBuilder['analyze']>>) {
@@ -30,7 +30,7 @@ test.describe('Aura M7 browser quality', () => {
     for (const width of SUPPORTED_WIDTHS) {
       await test.step(`${width}px`, async () => {
         await page.setViewportSize({ width, height: 760 });
-        await page.goto('/profile');
+        await page.goto('/data');
 
         const pageGeometry = await page.evaluate(() => ({
           viewportWidth: window.innerWidth,
@@ -62,7 +62,7 @@ test.describe('Aura M7 browser quality', () => {
   test('has no serious WCAG A/AA violations in light and dark archive surfaces @cross-browser', async ({ page }) => {
     // Avoid sampling colors while the route-level opacity transition is midway.
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/profile');
+    await page.goto('/data');
     await waitForVisualStability(page);
     const lightResults = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -72,7 +72,7 @@ test.describe('Aura M7 browser quality', () => {
     await page.goto('/more');
     await page.getByRole('switch', { name: 'Toggle dark mode' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
-    await page.goto('/profile');
+    await page.goto('/data');
     await page.getByRole('button', { name: 'Export complete archive' }).click();
     const dialog = page.getByRole('dialog', { name: 'Export complete Aura archive' });
     await expect(dialog).toBeVisible();
@@ -87,7 +87,7 @@ test.describe('Aura M7 browser quality', () => {
 
   test('traps and restores keyboard focus while respecting reduced motion @cross-browser', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/profile');
+    await page.goto('/data');
     const opener = page.getByRole('button', { name: 'Export complete archive' });
     await opener.focus();
     await page.keyboard.press('Enter');
@@ -109,8 +109,10 @@ test.describe('Aura M7 browser quality', () => {
     const manifest = await page.evaluate(async () => {
       const response = await fetch('/manifest.json');
       const body = await response.json() as {
+        id: string;
         name: string;
         display: string;
+        scope: string;
         start_url: string;
         icons: Array<{ sizes: string }>;
       };
@@ -121,7 +123,9 @@ test.describe('Aura M7 browser quality', () => {
     });
 
     expect(manifest.name).toBeTruthy();
+    expect(manifest.id).toBe('/');
     expect(manifest.display).toBe('standalone');
+    expect(manifest.scope).toBe('/');
     expect(manifest.resolvedStartUrl).toBe('/');
     expect(manifest.icons.map((icon) => icon.sizes)).toEqual(
       expect.arrayContaining(['192x192', '512x512']),

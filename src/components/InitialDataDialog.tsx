@@ -1,13 +1,16 @@
 import React, { useEffect, useRef } from 'react';
-import { Cloud, Database, Sparkles } from 'lucide-react';
+import { Check, Cloud, Database, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { Button } from './ui/Button';
+import type { BackupVersion } from '../lib/backup';
+import { formatBackupDate } from '../utils/backupDates';
 
 interface InitialDataDialogProps {
   isOpen: boolean;
   backupAvailable: boolean;
-  onRestoreBackup: () => void;
+  backupVersions: BackupVersion[];
+  onRestoreBackup: (versionId: string) => Promise<boolean>;
   onStartBlank: () => void;
   onUseDemoData: () => void;
 }
@@ -15,18 +18,31 @@ interface InitialDataDialogProps {
 export function InitialDataDialog({
   isOpen,
   backupAvailable,
+  backupVersions,
   onRestoreBackup,
   onStartBlank,
   onUseDemoData,
 }: InitialDataDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const demoButtonRef = useRef<HTMLButtonElement>(null);
-  useFocusTrap(dialogRef, isOpen, onStartBlank);
+  const [selectedVersionId, setSelectedVersionId] = React.useState('');
+  const [isRestoring, setIsRestoring] = React.useState(false);
+  const [restoreError, setRestoreError] = React.useState(false);
+  useFocusTrap(dialogRef, isOpen, isRestoring ? undefined : onStartBlank);
 
   useEffect(() => {
     if (!isOpen) return;
-    demoButtonRef.current?.focus();
-  }, [isOpen]);
+    setSelectedVersionId(backupVersions[0]?.id ?? '');
+    setRestoreError(false);
+  }, [backupVersions, isOpen]);
+
+  const handleRestore = async () => {
+    if (!selectedVersionId || isRestoring) return;
+    setIsRestoring(true);
+    setRestoreError(false);
+    const restored = await onRestoreBackup(selectedVersionId);
+    setIsRestoring(false);
+    if (!restored) setRestoreError(true);
+  };
 
   if (!isOpen) return null;
 
@@ -57,26 +73,69 @@ export function InitialDataDialog({
 
         <div className="space-y-3">
           {backupAvailable && (
-            <button
-              type="button"
-              onClick={onRestoreBackup}
-              className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-primary px-4 py-3 text-left text-on-primary shadow-md shadow-primary/15 transition-all active:scale-[0.98]"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+            <div className="space-y-3">
+              <div
+                className="overflow-hidden rounded-2xl border border-outline-variant/20"
+                role="radiogroup"
+                aria-label="Versione backup da ripristinare"
+              >
+                {backupVersions.map((version, index) => {
+                  const selected = version.id === selectedVersionId;
+                  return (
+                    <button
+                      key={version.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={isRestoring}
+                      onClick={() => setSelectedVersionId(version.id)}
+                      className={`flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors disabled:pointer-events-none disabled:opacity-60 ${
+                        index > 0 ? 'border-t border-outline-variant/15' : ''
+                      } ${selected ? 'bg-primary/10 text-primary' : 'bg-surface-container-lowest text-on-surface'}`}
+                    >
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                        selected ? 'bg-primary text-on-primary' : 'bg-surface-container-high'
+                      }`}>
+                        {selected ? <Check className="h-4 w-4" /> : <Cloud className="h-4 w-4" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold">
+                          {version.isLatest ? 'Ultimo backup' : `Backup precedente ${version.position}`}
+                        </span>
+                        <span className="block text-xs text-on-surface-variant">
+                          {formatBackupDate(version.createdAt)}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {restoreError && (
+                <p role="alert" className="text-xs font-medium text-error">
+                  Impossibile ripristinare la versione selezionata. Riprova quando sei online.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleRestore}
+                disabled={!selectedVersionId || isRestoring}
+                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-on-primary shadow-md shadow-primary/15 transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+              >
                 <Cloud className="h-5 w-5" />
-              </span>
-              <span>
-                <span className="block font-headline text-sm font-extrabold">Ripristina backup</span>
-                <span className="block text-xs opacity-85">Recupera i dati cifrati salvati su Firestore.</span>
-              </span>
-            </button>
+                <span className="font-headline text-sm font-extrabold">
+                  {isRestoring ? 'Ripristino in corso...' : 'Ripristina backup selezionato'}
+                </span>
+              </button>
+            </div>
           )}
 
           <button
-            ref={demoButtonRef}
             type="button"
             onClick={onUseDemoData}
-            className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-secondary-container px-4 py-3 text-left text-on-secondary-container transition-all active:scale-[0.98]"
+            disabled={isRestoring}
+            className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-secondary-container px-4 py-3 text-left text-on-secondary-container transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/15">
               <Sparkles className="h-5 w-5" />
@@ -87,7 +146,7 @@ export function InitialDataDialog({
             </span>
           </button>
 
-          <Button type="button" variant="secondary" fullWidth onClick={onStartBlank}>
+          <Button type="button" variant="secondary" fullWidth disabled={isRestoring} onClick={onStartBlank}>
             <Database className="h-4 w-4" />
             Parti da zero
           </Button>

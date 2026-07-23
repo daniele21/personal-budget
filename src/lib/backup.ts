@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, runTransaction, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import type { BackupPayload } from '../data/model';
 import { validateAppData, sha256String } from '../domain/archive';
@@ -6,17 +6,25 @@ import { validateAppData, sha256String } from '../domain/archive';
 export type { BackupPayload };
 
 export interface BackupSlot {
+  id: string;
   ciphertext: string;
   iv: string;
   payloadSha256: string;
   createdAt: string;
 }
 
+export interface BackupVersion {
+  id: string;
+  createdAt: string | null;
+  isLatest: boolean;
+  position: number;
+}
+
 export interface BackupDocData {
   ciphertext: string;
   iv: string;
   payloadSha256?: string;
-  slots?: BackupSlot[];
+  slots?: Array<Partial<BackupSlot> & Pick<BackupSlot, 'ciphertext' | 'iv'>>;
   updatedAt?: unknown;
 }
 
@@ -62,6 +70,97 @@ async function decrypt(ciphertext: string, iv: string, key: CryptoKey): Promise<
     base64ToArrayBuffer(ciphertext),
   );
   return new TextDecoder().decode(buffer);
+}
+
+function timestampToIso(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const timestamp = Date.parse(value);
+    return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
+  }
+  if (value && typeof value === 'object') {
+    const timestamp = value as {
+      toDate?: () => Date;
+      seconds?: number;
+      nanoseconds?: number;
+    };
+    if (typeof timestamp.toDate === 'function') {
+      const date = timestamp.toDate();
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+    if (typeof timestamp.seconds === 'number') {
+      return new Date(
+        (timestamp.seconds * 1_000) + Math.floor((timestamp.nanoseconds ?? 0) / 1_000_000),
+      ).toISOString();
+    }
+  }
+  return null;
+}
+
+function createVersionId(createdAt: string, payloadSha256: string): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `${createdAt}-${payloadSha256.slice(0, 16)}`;
+}
+
+function normalizeSlot(
+  slot: Partial<BackupSlot> & Pick<BackupSlot, 'ciphertext' | 'iv'>,
+  fallbackCreatedAt: string | null,
+  index: number,
+): BackupSlot {
+  const createdAt = timestampToIso(slot.createdAt) ?? fallbackCreatedAt ?? '';
+  const payloadSha256 = typeof slot.payloadSha256 === 'string' ? slot.payloadSha256 : '';
+  return {
+    id: typeof slot.id === 'string' && slot.id
+      ? slot.id
+      : `${payloadSha256 || 'legacy'}:${createdAt}:${index}`,
+    ciphertext: slot.ciphertext,
+    iv: slot.iv,
+    payloadSha256,
+    createdAt,
+  };
+}
+
+function getHistoricalSlots(docData: BackupDocData): BackupSlot[] {
+  const fallbackCreatedAt = timestampToIso(docData.updatedAt);
+  if (Array.isArray(docData.slots) && docData.slots.length > 0) {
+    return docData.slots
+      .filter((slot) => typeof slot?.ciphertext === 'string' && typeof slot?.iv === 'string')
+      .slice(0, 3)
+      .map((slot, index) => normalizeSlot(slot, fallbackCreatedAt, index));
+  }
+  if (docData.ciphertext && docData.iv) {
+    return [
+      normalizeSlot(
+        {
+          ciphertext: docData.ciphertext,
+          iv: docData.iv,
+          payloadSha256: docData.payloadSha256,
+          createdAt: fallbackCreatedAt ?? undefined,
+        },
+        fallbackCreatedAt,
+        0,
+      ),
+    ];
+  }
+  return [];
+}
+
+async function decryptAndValidateSlot(
+  slot: Pick<BackupSlot, 'ciphertext' | 'iv' | 'payloadSha256'>,
+  key: CryptoKey,
+): Promise<BackupPayload | null> {
+  try {
+    const json = await decrypt(slot.ciphertext, slot.iv, key);
+    if (slot.payloadSha256) {
+      const sha = await sha256String(json);
+      if (sha !== slot.payloadSha256) return null;
+    }
+    const parsed = JSON.parse(json) as BackupPayload;
+    const validation = validateAppData(parsed);
+    if (validation.warnings.some((warning) => warning.severity === 'error')) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -112,57 +211,54 @@ export async function pushBackup(uid: string, data: BackupPayload): Promise<bool
     const { ciphertext, iv } = await encrypt(json, key);
     console.log('[Backup] Ciphertext size (base64 chars):', ciphertext.length);
 
-    // R2: Multi-slot rotation - fetch existing document to preserve history
-    const existingSlots: BackupSlot[] = [];
-    try {
-      const snap = await getDoc(doc(db, BACKUP_COLLECTION, uid));
-      if (snap.exists()) {
-        const existingData = snap.data() as BackupDocData;
-        if (Array.isArray(existingData.slots) && existingData.slots.length > 0) {
-          existingSlots.push(...existingData.slots);
-        } else if (existingData.ciphertext && existingData.iv) {
-          existingSlots.push({
-            ciphertext: existingData.ciphertext,
-            iv: existingData.iv,
-            payloadSha256: existingData.payloadSha256 ?? '',
-            createdAt: new Date().toISOString(),
-          });
-        }
-      }
-    } catch (fetchErr) {
-      console.warn('[Backup] Could not fetch existing backup for rotation history:', fetchErr);
-    }
-
+    const createdAt = new Date().toISOString();
     const newSlot: BackupSlot = {
+      id: createVersionId(createdAt, payloadSha256),
       ciphertext,
       iv,
       payloadSha256,
-      createdAt: new Date().toISOString(),
+      createdAt,
     };
-    const slots = [newSlot, ...existingSlots].slice(0, 3);
 
-    await setDoc(doc(db, BACKUP_COLLECTION, uid), {
-      ciphertext,
-      iv,
-      payloadSha256,
-      slots,
-      updatedAt: serverTimestamp(),
+    // R2: Transactional rotation prevents concurrent devices from dropping
+    // one another's history between the read and write.
+    const backupRef = doc(db, BACKUP_COLLECTION, uid);
+    await runTransaction(db, async (transaction) => {
+      const existingSnap = await transaction.get(backupRef);
+      const existingSlots = existingSnap.exists()
+        ? getHistoricalSlots(existingSnap.data() as BackupDocData)
+        : [];
+      const slots = [newSlot, ...existingSlots].slice(0, 3);
+
+      transaction.set(backupRef, {
+        ciphertext,
+        iv,
+        payloadSha256,
+        slots,
+        updatedAt: serverTimestamp(),
+      });
     });
 
     // R3: Read-back verification
-    const readBackSnap = await getDoc(doc(db, BACKUP_COLLECTION, uid));
+    const readBackSnap = await getDoc(backupRef);
     if (!readBackSnap.exists()) {
-      console.warn('[Backup] Read-back verification failed: document not found after setDoc');
+      console.warn('[Backup] Read-back verification failed: document not found after transaction');
       return false;
     }
 
     const readBackData = readBackSnap.data() as BackupDocData;
-    if (readBackData.payloadSha256 && readBackData.payloadSha256 !== payloadSha256) {
+    const readBackSlot = getHistoricalSlots(readBackData)
+      .find((slot) => slot.id === newSlot.id);
+    if (!readBackSlot) {
+      console.warn('[Backup] Read-back verification failed: written version not found');
+      return false;
+    }
+    if (readBackSlot.payloadSha256 && readBackSlot.payloadSha256 !== payloadSha256) {
       console.warn('[Backup] Read-back verification failed: SHA-256 mismatch');
       return false;
     }
 
-    const decryptedJson = await decrypt(readBackData.ciphertext, readBackData.iv, key);
+    const decryptedJson = await decrypt(readBackSlot.ciphertext, readBackSlot.iv, key);
     const readBackSha = await sha256String(decryptedJson);
     if (readBackSha !== payloadSha256) {
       console.warn('[Backup] Read-back verification failed: decrypted payload SHA-256 mismatch');
@@ -193,32 +289,15 @@ export async function pullBackup(uid: string): Promise<BackupPayload | null> {
     const docData = snap.data() as BackupDocData;
     const key = await deriveKey(uid);
 
-    const tryDecryptAndValidate = async (
-      ciphertext: string,
-      iv: string,
-      expectedSha?: string,
-    ): Promise<BackupPayload | null> => {
-      try {
-        const json = await decrypt(ciphertext, iv, key);
-        if (expectedSha) {
-          const sha = await sha256String(json);
-          if (sha !== expectedSha) return null;
-        }
-        const parsed = JSON.parse(json) as BackupPayload;
-        const validation = validateAppData(parsed);
-        if (validation.warnings.some((w) => w.severity === 'error')) return null;
-        return parsed;
-      } catch {
-        return null;
-      }
-    };
-
     // 1. Try root backup slot
     if (docData.ciphertext && docData.iv) {
-      const rootResult = await tryDecryptAndValidate(
-        docData.ciphertext,
-        docData.iv,
-        docData.payloadSha256,
+      const rootResult = await decryptAndValidateSlot(
+        {
+          ciphertext: docData.ciphertext,
+          iv: docData.iv,
+          payloadSha256: docData.payloadSha256 ?? '',
+        },
+        key,
       );
       if (rootResult) {
         console.log('[Backup] Pulled primary backup successfully');
@@ -228,14 +307,10 @@ export async function pullBackup(uid: string): Promise<BackupPayload | null> {
     }
 
     // 2. Fallback: Try historical slots in order
-    if (Array.isArray(docData.slots)) {
-      for (let i = 0; i < docData.slots.length; i++) {
-        const slot = docData.slots[i];
-        const slotResult = await tryDecryptAndValidate(
-          slot.ciphertext,
-          slot.iv,
-          slot.payloadSha256 || undefined,
-        );
+    const slots = getHistoricalSlots(docData);
+    if (slots.length > 0) {
+      for (let i = 0; i < slots.length; i++) {
+        const slotResult = await decryptAndValidateSlot(slots[i], key);
         if (slotResult) {
           console.log(`[Backup] Recovered valid backup from historical slot #${i + 1}`);
           return slotResult;
@@ -247,6 +322,59 @@ export async function pullBackup(uid: string): Promise<BackupPayload | null> {
     return null;
   } catch (err) {
     console.warn('[Backup] Pull failed:', err);
+    return null;
+  }
+}
+
+/**
+ * List the valid encrypted backup versions available for explicit restore.
+ * Invalid or corrupted slots are omitted instead of being offered to the user.
+ */
+export async function listBackupVersions(uid: string): Promise<BackupVersion[]> {
+  try {
+    const snap = await getDoc(doc(db, BACKUP_COLLECTION, uid));
+    if (!snap.exists()) return [];
+
+    const slots = getHistoricalSlots(snap.data() as BackupDocData);
+    const key = await deriveKey(uid);
+    const versions: BackupVersion[] = [];
+    for (let index = 0; index < slots.length; index++) {
+      const data = await decryptAndValidateSlot(slots[index], key);
+      if (!data) continue;
+      versions.push({
+        id: slots[index].id,
+        createdAt: slots[index].createdAt || null,
+        isLatest: index === 0,
+        position: index,
+      });
+    }
+    return versions;
+  } catch (err) {
+    console.warn('[Backup] Version listing failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Pull one explicitly selected backup version.
+ * Deliberately does not fall back to another slot: the restored data must match
+ * the version the user selected.
+ */
+export async function pullBackupVersion(
+  uid: string,
+  versionId: string,
+): Promise<BackupPayload | null> {
+  try {
+    const snap = await getDoc(doc(db, BACKUP_COLLECTION, uid));
+    if (!snap.exists()) return null;
+
+    const slot = getHistoricalSlots(snap.data() as BackupDocData)
+      .find((candidate) => candidate.id === versionId);
+    if (!slot) return null;
+
+    return decryptAndValidateSlot(slot, await deriveKey(uid));
+  } catch (err) {
+    console.warn('[Backup] Selected version pull failed:', err);
     return null;
   }
 }
@@ -265,4 +393,3 @@ export async function deleteBackup(uid: string): Promise<boolean> {
     return false;
   }
 }
-

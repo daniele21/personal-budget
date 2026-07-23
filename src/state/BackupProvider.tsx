@@ -5,7 +5,7 @@ import { useAuth } from './AuthProvider';
 import { useAppData } from './AppDataProvider';
 import { useCloudBackup } from '../hooks/useCloudBackup';
 import { BackupPayload, syncAppData, isFinancialDataEmpty, normalizeAppData } from '../data/model';
-import { backupRepository } from '../repositories/backupRepository';
+import type { BackupVersion } from '../lib/backup';
 
 interface BackupContextType {
   cloudBackupEnabled: boolean;
@@ -14,7 +14,10 @@ interface BackupContextType {
   backupStatus: 'idle' | 'syncing' | 'success' | 'error' | 'skipped';
   lastBackupDate: string | null;
   backupCheckComplete: boolean;
-  restoreFromCloud: () => Promise<boolean>;
+  backupVersions: BackupVersion[];
+  backupVersionsLoading: boolean;
+  refreshBackupVersions: () => Promise<BackupVersion[]>;
+  restoreFromCloud: (versionId?: string) => Promise<boolean>;
   dismissRestore: () => void;
   deleteCloudBackup: () => Promise<boolean>;
   pushBackupNow: () => Promise<boolean>;
@@ -62,6 +65,9 @@ export const BackupProvider = ({ children }: { children: React.ReactNode }) => {
     restoreFromCloud,
     backupAvailable,
     backupCheckComplete,
+    backupVersions,
+    backupVersionsLoading,
+    refreshBackupVersions,
     dismissRestore,
     deleteCloudBackup,
     pushNow,
@@ -91,6 +97,9 @@ export const BackupProvider = ({ children }: { children: React.ReactNode }) => {
         backupStatus,
         lastBackupDate,
         backupCheckComplete,
+        backupVersions,
+        backupVersionsLoading,
+        refreshBackupVersions,
         restoreFromCloud,
         dismissRestore,
         deleteCloudBackup,

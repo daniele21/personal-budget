@@ -71,7 +71,7 @@ export async function seedPortableWorkspace(page: Page): Promise<void> {
     keys: STORAGE_KEYS,
   });
 
-  await page.goto('/profile');
+  await page.goto('/data');
   await expect(page.getByRole('button', { name: 'Export complete archive' })).toBeVisible();
   await page.evaluate(async ({ transactionId, dataUrl }) => {
     const repositoryModule = '/src/repositories/attachmentRepository.ts';
@@ -126,7 +126,7 @@ async function downloadToBuffer(download: Download): Promise<DownloadedArchive> 
 }
 
 export async function exportEncryptedArchive(page: Page): Promise<DownloadedArchive> {
-  await page.goto('/profile');
+  await page.goto('/data');
   await page.getByRole('button', { name: 'Export complete archive' }).click();
   const dialog = page.getByRole('dialog', { name: 'Export complete Aura archive' });
   await expect(dialog).toBeVisible();
@@ -143,7 +143,7 @@ export async function exportEncryptedArchive(page: Page): Promise<DownloadedArch
 }
 
 export async function openArchiveImport(page: Page, archive: DownloadedArchive): Promise<void> {
-  await page.goto('/profile');
+  await page.goto('/data');
   await page.getByRole('button', { name: 'Import Aura archive' }).click();
   const dialog = page.getByRole('dialog', { name: 'Import Aura archive' });
   await dialog.locator('input[type="file"]').setInputFiles({
@@ -171,7 +171,7 @@ export async function continueToRestore(page: Page): Promise<void> {
 }
 
 export async function wipeLocalDataThroughUi(page: Page): Promise<void> {
-  await page.goto('/profile');
+  await page.goto('/data');
   await page.evaluate(() => {
     window.sessionStorage.setItem('aura_e2e_keep_empty_shell_after_reset', 'true');
   });

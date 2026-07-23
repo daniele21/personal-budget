@@ -1,4 +1,11 @@
-import { pushBackup, pullBackup, deleteBackup, BackupPayload } from '../lib/backup';
+import {
+  pushBackup,
+  pullBackup,
+  pullBackupVersion,
+  listBackupVersions,
+  deleteBackup,
+  BackupPayload,
+} from '../lib/backup';
 
 export const backupRepository = {
   async pushBackup(uid: string, data: BackupPayload): Promise<boolean> {
@@ -7,6 +14,14 @@ export const backupRepository = {
 
   async pullBackup(uid: string): Promise<BackupPayload | null> {
     return pullBackup(uid);
+  },
+
+  async pullBackupVersion(uid: string, versionId: string): Promise<BackupPayload | null> {
+    return pullBackupVersion(uid, versionId);
+  },
+
+  async listBackupVersions(uid: string) {
+    return listBackupVersions(uid);
   },
 
   async deleteBackup(uid: string): Promise<boolean> {

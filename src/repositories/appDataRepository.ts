@@ -1,4 +1,9 @@
-import { AppData, INITIAL_APP_DATA, normalizeAppData } from '../data/model';
+import {
+  AppData,
+  INITIAL_APP_DATA,
+  normalizeAppData,
+  projectAppData,
+} from '../data/model';
 import { validateAppData } from '../domain/archive';
 import { STORAGE_KEYS } from '../data/storageKeys';
 
@@ -43,7 +48,7 @@ export const appDataRepository = {
   },
 
   saveAppDataStrict(data: AppData): void {
-    const validated = validateAppData(data).value;
+    const validated = validateAppData(projectAppData(data)).value;
     window.localStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(validated.transactions));
     window.localStorage.setItem(STORAGE_KEYS.budgets, JSON.stringify(validated.budgets));
     window.localStorage.setItem(STORAGE_KEYS.recurring, JSON.stringify(validated.recurring));
