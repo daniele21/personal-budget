@@ -56,7 +56,9 @@ export const appDataRepository = {
 
   clear(): void {
     try {
-      localStorage.clear();
+      Object.values(STORAGE_KEYS).forEach((key) => {
+        window.localStorage.removeItem(key);
+      });
     } catch (error) {
       console.error('[AppDataRepository] Error clearing localStorage:', error);
     }
