@@ -515,7 +515,7 @@ export const HistoryPage = () => {
       {...slidePageTransition}
       className="space-y-4 pb-24"
     >
-      <section className="flex flex-col gap-2">
+      <section data-tour-id="history-controls" className="flex flex-col gap-2">
         <div className="order-2 flex items-center justify-between gap-2">
           <SegmentedControl
             ariaLabel="Transaction type filter"
@@ -594,14 +594,16 @@ export const HistoryPage = () => {
         </div>
       </section>
 
-      <TransactionHistoryList
-        transactions={filteredTransactions}
-        hasBaseTransactions={hasBaseTransactions}
-        onOpenDetails={setDetailTransaction}
-        onQuickEdit={setQuickEditTransaction}
-        onDelete={setDeleteId}
-        sortKey={sortKey}
-      />
+      <div data-tour-id="history-list">
+        <TransactionHistoryList
+          transactions={filteredTransactions}
+          hasBaseTransactions={hasBaseTransactions}
+          onOpenDetails={setDetailTransaction}
+          onQuickEdit={setQuickEditTransaction}
+          onDelete={setDeleteId}
+          sortKey={sortKey}
+        />
+      </div>
 
       <ConfirmDialog
         isOpen={deleteId !== null}

@@ -654,7 +654,11 @@ export function ComparePage({
   );
 
   return (
-    <motion.div {...pageTransition} className="space-y-4 pb-24">
+    <motion.div
+      {...pageTransition}
+      data-tour-id={initialTab === 'spending' ? 'reports-categories' : 'reports-compare'}
+      className="space-y-4 pb-24"
+    >
 
       {/* ── Period, lens, and selected range controls ── */}
       <PeriodSelector

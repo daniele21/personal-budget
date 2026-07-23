@@ -29,7 +29,7 @@ export function CalendarGrid({
   const today = new Date();
 
   return (
-    <Card className="p-4">
+    <Card data-tour-id="planning-calendar" className="p-4">
       <div className="grid grid-cols-7 mb-2">
         {DAYS.map((day) => (
           <div key={day} className="text-center text-micro font-bold text-on-surface-variant">{day}</div>

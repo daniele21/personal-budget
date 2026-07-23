@@ -8,6 +8,15 @@ import { cn } from '../lib/utils';
  *
  *  Home  Transactions  [+]  Budgets  Reports
  */
+interface NavItem {
+  path: string;
+  icon: React.ElementType;
+  label: string;
+  aliases: string[];
+  action?: boolean;
+  tourId: string;
+}
+
 export const BottomNav = () => {
   const location = useLocation();
 
@@ -17,12 +26,14 @@ export const BottomNav = () => {
       icon: LayoutDashboard,
       label: 'Home',
       aliases: [],
+      tourId: 'bottom-nav-home',
     },
     {
       path: '/transactions',
       icon: ReceiptText,
       label: 'Transactions',
       aliases: ['/history'],
+      tourId: 'bottom-nav-transactions',
     },
     {
       path: '/add',
@@ -30,18 +41,21 @@ export const BottomNav = () => {
       label: 'Add transaction',
       aliases: [],
       action: true,
+      tourId: 'bottom-nav-add',
     },
     {
       path: '/budgets',
       icon: WalletCards,
       label: 'Budgets',
       aliases: [],
+      tourId: 'bottom-nav-budgets',
     },
     {
       path: '/reports',
       icon: BarChart3,
       label: 'Reports',
       aliases: ['/reports/categories', '/reports/compare', '/reports/year', '/insights', '/compare', '/year-review'],
+      tourId: 'bottom-nav-reports',
     },
   ];
 
@@ -53,6 +67,11 @@ export const BottomNav = () => {
       aria-label="Main navigation"
       className="fixed bottom-0 z-50 w-full border-t border-outline-variant/20 bg-surface-container-lowest safe-area-bottom"
     >
+      <div
+        data-tour-id="primary-navigation"
+        className="pointer-events-none absolute inset-x-0 -top-5 bottom-0 mx-auto max-w-2xl"
+        aria-hidden="true"
+      />
       <div className="mx-auto grid max-w-2xl grid-cols-5 items-end pb-1 pt-1">
         {navItems.map((item, index) => (
           item.action
@@ -66,14 +85,6 @@ export const BottomNav = () => {
 
 // ── NavTab sub-component ─────────────────────────────────────────────────────
 
-interface NavItem {
-  path: string;
-  icon: React.ElementType;
-  label: string;
-  aliases: string[];
-  action?: boolean;
-}
-
 function renderNavTab(item: NavItem, isActive: boolean) {
   const Icon = item.icon;
 
@@ -81,6 +92,7 @@ function renderNavTab(item: NavItem, isActive: boolean) {
     <Link
       key={item.path}
       to={item.path}
+      data-tour-id={item.tourId}
       aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
@@ -121,6 +133,7 @@ function renderAddAction(item: NavItem, isActive: boolean) {
     <Link
       key={item.path}
       to={item.path}
+      data-tour-id={item.tourId}
       aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className="flex min-h-12 min-w-0 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"

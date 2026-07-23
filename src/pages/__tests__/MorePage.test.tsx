@@ -27,7 +27,7 @@ describe('MorePage navigation', () => {
     expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute('href', '/settings');
     expect(screen.queryByText('Budgets')).not.toBeInTheDocument();
     expect(screen.queryByText('Year in Review')).not.toBeInTheDocument();
-    expect(screen.getByText('Private by design')).toBeInTheDocument();
-    expect(screen.getByText('Local-first data and secure optional backup')).toBeInTheDocument();
+    expect(screen.queryByText('Private by design')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Data & privacy/i })).toHaveLength(1);
   });
 });

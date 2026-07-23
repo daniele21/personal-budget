@@ -95,6 +95,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   const SearchBtn = (
     <button
       type="button"
+      data-tour-id="topbar-search"
       onClick={() => setIsSearchOpen(true)}
       className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       aria-label="Search"
@@ -106,6 +107,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   const NotificationBtn = (
     <button
       type="button"
+      data-tour-id="topbar-notifications"
       onClick={() => setIsNotificationCenterOpen(true)}
       className="relative flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       aria-label="Notifications"
@@ -124,6 +126,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   const MoreLink = (
     <Link
       to="/more"
+      data-tour-id="topbar-more"
       aria-label="More"
       aria-current={pathname === '/more' ? 'page' : undefined}
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -170,12 +173,12 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
               <HomeLogoLink />
               <div className="min-w-0">
                 <h1 className="min-w-0 truncate font-headline text-sm font-semibold text-primary">
-                  Monthly overview
+                  Aura Finance
                 </h1>
               </div>
             </div>
             {/* Right: search + notifications + avatar */}
-            <div className="flex shrink-0 items-center gap-0.5">
+            <div data-tour-id="topbar-actions" className="flex shrink-0 items-center gap-0.5">
               {SearchBtn}
               {NotificationBtn}
               {InstallBtn}

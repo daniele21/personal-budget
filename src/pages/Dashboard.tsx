@@ -15,6 +15,7 @@ import {
   Card,
   EmptyState,
   FocalSummaryCard,
+  InfoPopover,
   LensSelector,
   Skeleton,
 } from '../components/ui';
@@ -174,21 +175,24 @@ export const Dashboard = () => {
   return (
     <motion.div {...pageTransition} className="space-y-3 pb-24">
       {/* ── 1. Month navigator ─────────────────────────────────────────── */}
-      <div className="aura-control-surface grid grid-cols-[2rem_minmax(0,1fr)_auto_2rem] items-center gap-2 rounded-2xl px-3 py-2.5">
+      <div
+        data-tour-id="home-period"
+        className="aura-control-surface grid grid-cols-[2rem_minmax(0,1fr)_auto_2rem] items-center gap-2 rounded-2xl px-3 py-2.5"
+      >
         <button onClick={handlePrevMonth} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/6 text-primary transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Previous month">
           <ChevronLeft className="h-4 w-4 text-primary" />
         </button>
         <p className="min-w-0 truncate text-center text-sm font-semibold text-primary sm:text-base">
           {formatMonthLabel(selectedMonth)}
         </p>
-        <LensSelector value={lens} onChange={setLens} className="mx-0 w-[7.5rem] shrink-0" />
+        <LensSelector value={lens} onChange={setLens} showInfo className="mx-0 w-[7.5rem] shrink-0" />
         <button onClick={handleNextMonth} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/6 text-primary transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25" aria-label="Next month">
           <ChevronRight className="h-4 w-4 text-primary" />
         </button>
       </div>
 
       {/* ── 2. Safe to Spend Hero ─────────────────────────────────────── */}
-      <Link to="/budgets" className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:opacity-90">
+      <Link to="/budgets" data-tour-id="safe-to-spend" className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:opacity-90">
         <FocalSummaryCard
           tone={isOverBudget ? 'danger' : usedPercent > 80 ? 'warning' : 'primary'}
           className="py-4"
@@ -197,7 +201,27 @@ export const Dashboard = () => {
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-1.5">
                 <h2 className="font-headline text-sm font-medium text-inverse-on-surface-variant">Available to spend</h2>
-                <Info className="h-3.5 w-3.5 text-inverse-on-surface-variant/70" />
+                <InfoPopover
+                  title="Available to Spend Calculation"
+                  eyebrow="Safe-to-Spend"
+                  subtitle="How your remaining monthly spending power is calculated."
+                  iconClassName="text-inverse-on-surface-variant/70 hover:text-inverse-on-surface"
+                >
+                  <div className="space-y-3">
+                    <p>
+                      Your <strong>Available to Spend</strong> amount shows how much money you can safely spend during the rest of the current month without going over budget.
+                    </p>
+                    <section className="rounded-2xl border border-primary/15 bg-primary/5 p-3">
+                      <p className="font-bold text-on-surface">Formula:</p>
+                      <p className="mt-1 font-mono text-xs text-primary font-semibold">
+                        Min(Monthly Budget Target, Actual Income) − Spent Expenses
+                      </p>
+                    </section>
+                    <p className="text-on-surface-variant">
+                      If your actual income in a given month is lower than your set budget target, Aura automatically caps your spending limit at your actual income to protect your cash flow.
+                    </p>
+                  </div>
+                </InfoPopover>
               </div>
               {isHydrated ? (
                 <p
@@ -233,7 +257,7 @@ export const Dashboard = () => {
       </Link>
 
       {/* ── 3. Monthly summary ─────────────────────────────────────────── */}
-      <Card className="grid grid-cols-2 p-0">
+      <Card data-tour-id="home-monthly-summary" className="grid grid-cols-2 p-0">
         <Link to="/transactions?type=income" className="aura-metric-positive min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-on-surface-variant">Income</p>
@@ -253,7 +277,7 @@ export const Dashboard = () => {
       </Card>
 
       {/* ── 5. Cash flow chart ─────────────────────────────────────────── */}
-      <Card className="space-y-3 p-4">
+      <Card data-tour-id="home-cash-flow" className="space-y-3 p-4">
         <div className="flex items-center justify-between">
           <h3 className="font-headline text-base font-semibold text-on-surface">Cash flow</h3>
           <span className="text-xs font-medium text-on-surface-variant">
@@ -288,7 +312,7 @@ export const Dashboard = () => {
       )}
 
       {/* ── 8. Recent transactions ─────────────────────────────────────── */}
-      <section className="aura-card p-4" aria-label="Recent transactions">
+      <section data-tour-id="home-recent" className="aura-card p-4" aria-label="Recent transactions">
         <div className="mb-2 flex items-center justify-between">
             <h3 className="font-headline text-base font-semibold text-on-surface">Recent transactions</h3>
             <Link

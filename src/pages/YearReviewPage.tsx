@@ -41,7 +41,7 @@ export function YearReviewPage({ analyticsLens: controlledLens, onAnalyticsLensC
   };
 
   return (
-    <motion.div {...pageTransition} className="space-y-4 pb-24">
+    <motion.div {...pageTransition} data-tour-id="reports-year" className="space-y-4 pb-24">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-micro font-bold text-on-surface-variant">Year in Review</p>

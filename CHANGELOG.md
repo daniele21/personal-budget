@@ -4,6 +4,17 @@
 
 ### Changed
 
+- Expanded the guided tour from a route-level overview to a 27-step operating
+  journey across Home, transaction entry, history, budgets, reports, global
+  tools, and planning. Each step now auto-scrolls to a stable feature region,
+  tracks it during motion, and moves the explanation above or below the
+  spotlight without obscuring it on mobile viewports. Route changes now
+  spotlight the selected destination control instead of showing an “Opening”
+  card; the current primary navigation item remains highlighted throughout the
+  tour, while Reports/Planning tabs are highlighted during handoff and their
+  dedicated steps. Step motion is limited to a subtle fade.
+- Removed the duplicate clickable “Private by design” callout from More; Data &
+  Privacy now has one unambiguous entry point in the tools list.
 - Added a one-time browser-local PWA install dialog after the authenticated
   first-access setup, with a native Chromium install action, Safari instructions
   on iOS, and persistent retry actions in the top bar and under More.

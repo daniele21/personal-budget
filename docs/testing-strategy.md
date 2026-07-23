@@ -129,6 +129,22 @@ The recovery comparison reads every canonical AppData section, portable notifica
 
 Physical-device Safari/Chrome, actual installed-PWA execution, manual screen-reader output, and the approximately 32 MiB least-capable-mobile measurement remain manual M7 release gates.
 
+## Guided Tour Coverage
+
+The guided-tour browser journey verifies every configured step rather than a
+fixed subset of route transitions. For each step it checks:
+
+- the expected route, heading, and stable feature target;
+- successful target discovery after lazy route rendering;
+- automatic spotlight tracking and an explanation panel that does not overlap
+  the highlighted viewport region;
+- persistent highlighting of the current primary destination, plus explicit
+  Reports/Planning destination highlighting during route-transition handoffs;
+- completion persistence and manual replay/skip behavior.
+
+Pure layout tests also cover top, bottom, and oversized-target positioning on
+mobile viewport dimensions.
+
 PWA installation coverage verifies:
 
 - stable manifest identity, root scope/start URL, standalone display, and 192/512 icons;

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { TopBar } from './TopBar';
 import { BottomNav } from './BottomNav';
+import { GuidedTour } from './GuidedTour';
 import { useApp } from '../context/AppContext';
+import { useGuidedTour, wasTourCompleted } from '../hooks/useGuidedTour';
 import { useNotificationScheduler } from '../hooks/useNotificationScheduler';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
@@ -15,10 +17,34 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, title }: LayoutProps) => {
-  const { transactions, recurring, budgetStatuses } = useApp();
+  const { transactions, recurring, budgetStatuses, isHydrated } = useApp();
   const { toast } = useToast();
   useNotificationScheduler({ transactions, recurring, budgetStatuses });
   useSwipeNavigation();
+
+  const tour = useGuidedTour();
+
+  // Listen for manual trigger from MorePage or auto-start on first access
+  useEffect(() => {
+    const handleStartTourEvent = () => {
+      tour.startTour();
+    };
+
+    window.addEventListener('aura:start-guided-tour', handleStartTourEvent);
+    return () => window.removeEventListener('aura:start-guided-tour', handleStartTourEvent);
+  }, [tour]);
+
+  // Auto-start on first access once app is hydrated
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!wasTourCompleted()) {
+      const timer = setTimeout(() => {
+        tour.startTour();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isHydrated]);
+
   const pull = usePullToRefresh({
     onRefresh: () => {
       haptics.success();
@@ -48,6 +74,20 @@ export const Layout = ({ children, title }: LayoutProps) => {
         </AnimatePresence>
       </main>
       <BottomNav />
+      <GuidedTour
+        isActive={tour.isActive}
+        isTransitioning={tour.isTransitioning}
+        transitionDestination={tour.transitionDestination}
+        currentStepIndex={tour.currentStepIndex}
+        currentStep={tour.currentStep}
+        totalSteps={tour.totalSteps}
+        targetRect={tour.targetRect}
+        navigationRects={tour.navigationRects}
+        transitionRect={tour.transitionRect}
+        onNext={tour.nextStep}
+        onPrev={tour.prevStep}
+        onSkip={tour.skipTour}
+      />
     </div>
   );
 };

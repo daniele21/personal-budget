@@ -33,7 +33,10 @@ export function CalendarMonthSummary({ total, count, nextPayment, period }: Cale
       : 'text-inverse-on-surface-variant';
 
   return (
-    <FocalSummaryCard tone={daysUntil !== null && daysUntil <= 3 ? 'danger' : daysUntil !== null && daysUntil <= 7 ? 'warning' : 'primary'}>
+    <FocalSummaryCard
+      data-tour-id="planning-summary"
+      tone={daysUntil !== null && daysUntil <= 3 ? 'danger' : daysUntil !== null && daysUntil <= 7 ? 'warning' : 'primary'}
+    >
       <div>
         <p className="text-xs font-semibold text-inverse-on-surface-variant">
           {period === 'past'

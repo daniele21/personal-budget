@@ -197,6 +197,7 @@ export const AddTransaction = () => {
         <Card
           as="section"
           aria-label={`${type === 'expense' ? 'Expense' : 'Income'} amount entry`}
+          data-tour-id="add-entry"
           data-transaction-type={type}
           className="relative overflow-hidden p-0 text-center"
         >
@@ -264,70 +265,78 @@ export const AddTransaction = () => {
           </p>
         )}
 
-        <Card tone="primary" colorized className="space-y-2 overflow-hidden p-2">
-          <div className="aura-card-inverse px-3.5 py-3.5">
-            <div className="mb-1.5 flex items-center justify-between gap-3">
-              <label htmlFor="transaction-title" className="text-micro font-extrabold uppercase tracking-wide text-inverse-on-surface-variant">
-                Transaction title
-              </label>
-              <span className="rounded-full bg-inverse-on-surface/10 px-2 py-1 text-micro font-bold text-inverse-on-surface ring-1 ring-inset ring-inverse-on-surface/15">
-                Required
-              </span>
-            </div>
-            <input
-              ref={titleInputRef}
-              id="transaction-title"
-              required
-              aria-invalid={Boolean(titleError)}
-              aria-describedby={titleError ? 'transaction-title-error' : 'transaction-title-hint'}
-              className={`min-h-12 w-full rounded-xl border bg-surface-container-lowest px-3.5 py-3 text-sm font-bold text-on-surface shadow-sm outline-none transition placeholder:font-normal placeholder:text-on-surface-variant/55 focus:ring-2 ${
-                titleError
-                  ? 'border-tertiary/60 focus:border-tertiary focus:ring-tertiary/15'
-                  : 'border-inverse-on-surface/20 hover:border-inverse-on-surface/35 focus:border-inverse-accent/70 focus:ring-inverse-accent/25'
-              }`}
-              placeholder="e.g. Weekly groceries"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (titleError) setTitleError(null);
-              }}
-            />
-            {titleError ? (
-              <p id="transaction-title-error" role="alert" className="mt-1.5 text-xs font-medium text-inverse-danger">
-                {titleError}
-              </p>
-            ) : (
-              <p id="transaction-title-hint" className="mt-1.5 text-xs text-inverse-on-surface-variant">
-                Briefly describe this transaction
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-outline-variant/20 bg-outline-variant/30 shadow-sm shadow-primary/5">
-            <div className="bg-surface-container-lowest">
-              <CategoryPicker
-                categories={categories}
-                value={category}
-                density="compact"
-                onChange={setCategory}
-                onAddCategory={(name) => { addCategory(name); setCategory(name); }}
-              />
-            </div>
-            <div className="flex min-h-16 min-w-0 flex-col justify-center bg-surface-container-lowest px-3.5 py-3 transition-colors focus-within:bg-primary/5 hover:bg-surface-container-low">
-              <label htmlFor="transaction-date" className="mb-0.5 block text-micro font-bold text-on-surface-variant">Date</label>
+        <Card
+          tone="primary"
+          colorized
+          className="space-y-2 overflow-hidden p-2"
+        >
+          <div data-tour-id="add-details" className="space-y-2">
+            <div className="aura-card-inverse px-3.5 py-3.5">
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <label htmlFor="transaction-title" className="text-micro font-extrabold uppercase tracking-wide text-inverse-on-surface-variant">
+                  Transaction title
+                </label>
+                <span className="rounded-full bg-inverse-on-surface/10 px-2 py-1 text-micro font-bold text-inverse-on-surface ring-1 ring-inset ring-inverse-on-surface/15">
+                  Required
+                </span>
+              </div>
               <input
-                id="transaction-date"
+                ref={titleInputRef}
+                id="transaction-title"
                 required
-                type="date"
-                className="min-w-0 w-full border-0 bg-transparent p-0 font-headline text-xs font-bold text-primary focus:ring-0"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                aria-invalid={Boolean(titleError)}
+                aria-describedby={titleError ? 'transaction-title-error' : 'transaction-title-hint'}
+                className={`min-h-12 w-full rounded-xl border bg-surface-container-lowest px-3.5 py-3 text-sm font-bold text-on-surface shadow-sm outline-none transition placeholder:font-normal placeholder:text-on-surface-variant/55 focus:ring-2 ${
+                  titleError
+                    ? 'border-tertiary/60 focus:border-tertiary focus:ring-tertiary/15'
+                    : 'border-inverse-on-surface/20 hover:border-inverse-on-surface/35 focus:border-inverse-accent/70 focus:ring-inverse-accent/25'
+                }`}
+                placeholder="e.g. Weekly groceries"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (titleError) setTitleError(null);
+                }}
               />
+              {titleError ? (
+                <p id="transaction-title-error" role="alert" className="mt-1.5 text-xs font-medium text-inverse-danger">
+                  {titleError}
+                </p>
+              ) : (
+                <p id="transaction-title-hint" className="mt-1.5 text-xs text-inverse-on-surface-variant">
+                  Briefly describe this transaction
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-outline-variant/20 bg-outline-variant/30 shadow-sm shadow-primary/5">
+              <div className="bg-surface-container-lowest">
+                <CategoryPicker
+                  categories={categories}
+                  value={category}
+                  density="compact"
+                  onChange={setCategory}
+                  onAddCategory={(name) => { addCategory(name); setCategory(name); }}
+                />
+              </div>
+              <div className="flex min-h-16 min-w-0 flex-col justify-center bg-surface-container-lowest px-3.5 py-3 transition-colors focus-within:bg-primary/5 hover:bg-surface-container-low">
+                <label htmlFor="transaction-date" className="mb-0.5 block text-micro font-bold text-on-surface-variant">Date</label>
+                <input
+                  id="transaction-date"
+                  required
+                  type="date"
+                  className="min-w-0 w-full border-0 bg-transparent p-0 font-headline text-xs font-bold text-primary focus:ring-0"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
           {!editingTransaction?.sourceRecurringId && (
-            <div className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 shadow-sm transition-colors ${
+            <div
+              data-tour-id="reporting-treatment"
+              className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 shadow-sm transition-colors ${
               reportingClass === 'extra'
                 ? 'border-accent-amber/30 bg-accent-amber/10 shadow-accent-amber/5'
                 : reportingClass === 'reimbursement'
@@ -346,17 +355,18 @@ export const AddTransaction = () => {
             </div>
           )}
 
-          <AccordionSection
-            title="More options"
-            description="Payment, notes & receipt"
-            open={isMoreOptionsOpen}
-            onOpenChange={setIsMoreOptionsOpen}
-            statusColor="primary"
-            className={`rounded-2xl border-outline-variant/20 shadow-sm shadow-primary/5 transition-colors ${
-              isMoreOptionsOpen ? 'bg-primary/5' : 'bg-surface-container-lowest'
-            }`}
-          >
-            <div className="space-y-4">
+          <div data-tour-id="add-more-options">
+            <AccordionSection
+              title="More options"
+              description="Payment, notes & receipt"
+              open={isMoreOptionsOpen}
+              onOpenChange={setIsMoreOptionsOpen}
+              statusColor="primary"
+              className={`rounded-2xl border-outline-variant/20 shadow-sm shadow-primary/5 transition-colors ${
+                isMoreOptionsOpen ? 'bg-primary/5' : 'bg-surface-container-lowest'
+              }`}
+            >
+              <div className="space-y-4">
               <div className="flex flex-col gap-1 rounded-xl bg-surface-container-low p-3">
                 <label htmlFor="transaction-payment-method" className="text-micro font-bold text-on-surface-variant">Payment method</label>
                 <select
@@ -413,8 +423,9 @@ export const AddTransaction = () => {
                   </button>
                 </div>
               )}
-            </div>
-          </AccordionSection>
+              </div>
+            </AccordionSection>
+          </div>
         </Card>
 
         <div className="sticky bottom-[4.25rem] z-20 -mx-1 rounded-2xl bg-surface/90 p-1 backdrop-blur-md">

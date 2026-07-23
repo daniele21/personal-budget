@@ -263,7 +263,10 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
     return (
       <motion.div {...pageTransition} className="space-y-4 pb-24">
         {periodControl}
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-14 text-center">
+        <div
+          data-tour-id="reports-empty"
+          className="flex flex-col items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-14 text-center"
+        >
           <p className="text-sm font-bold text-on-surface">No activity in this period</p>
           <p className="mt-1 text-xs text-on-surface-variant">Choose another period or add transactions to generate the report.</p>
         </div>
@@ -283,7 +286,10 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
         </div>
       )}
 
-      <FocalSummaryCard tone={expenseChange !== null && expenseChange > 0 ? 'warning' : 'primary'}>
+      <FocalSummaryCard
+        data-tour-id="reports-overview-summary"
+        tone={expenseChange !== null && expenseChange > 0 ? 'warning' : 'primary'}
+      >
         <div>
           <p className="text-xs font-semibold text-inverse-on-surface-variant">Spent</p>
           <p className="mt-1 font-headline text-4xl font-extrabold tabular-nums text-inverse-on-surface">
@@ -303,6 +309,7 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
       {/* ── Rolling spending pace ── */}
       {rollingStart <= rollingEnd && (
         <button
+          data-tour-id="reports-spending-pace"
           onClick={() => setIsAvgTrendOpen(true)}
           className="aura-section-surface aura-section-tone-warning w-full p-4 text-left transition-colors active:scale-[0.995]"
           aria-label="Open spending pace trend"
@@ -330,7 +337,7 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
       )}
 
       {/* ── Overview chart: bars (Income, Expenses) + line (Net Cash Flow) ── */}
-      <div className="aura-card aura-card-tone-primary space-y-3 p-4">
+      <div data-tour-id="reports-overview-chart" className="aura-card aura-card-tone-primary space-y-3 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-on-surface">Overview</h3>
         </div>

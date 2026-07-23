@@ -13,6 +13,7 @@ export function PlanningTabs({ activeView }: { activeView: PlanningView }) {
   return (
     <nav
       aria-label="Planning views"
+      data-tour-id="planning-tabs"
       className="grid grid-cols-2 rounded-xl border border-outline-variant/20 bg-surface-container-low p-1"
     >
       {PLANNING_VIEWS.map((view) => (

@@ -18,9 +18,12 @@ export function ReportsPage({ view }: { view: ReportView }) {
 
   return (
     <div className="space-y-4">
-      <ReportTabs activeView={view} />
+      <div data-tour-id="reports-navigation">
+        <ReportTabs activeView={view} />
+      </div>
       <button
         type="button"
+        data-tour-id="reports-options"
         aria-label={`View options, ${lensLabel}`}
         onClick={() => setIsViewOptionsOpen(true)}
         className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -31,10 +34,12 @@ export function ReportsPage({ view }: { view: ReportView }) {
         </span>
         <span className="text-xs font-semibold text-on-surface-variant">{lensLabel}</span>
       </button>
-      {view === 'overview' && <InsightsPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
-      {view === 'categories' && <ComparePage initialTab="spending" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
-      {view === 'compare' && <ComparePage initialTab="compare" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
-      {view === 'year' && <YearReviewPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
+      <div data-tour-id="reports-content">
+        {view === 'overview' && <InsightsPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
+        {view === 'categories' && <ComparePage initialTab="spending" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
+        {view === 'compare' && <ComparePage initialTab="compare" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
+        {view === 'year' && <YearReviewPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
+      </div>
       <BottomSheet
         isOpen={isViewOptionsOpen}
         title="View options"

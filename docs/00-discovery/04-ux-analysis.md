@@ -8,6 +8,30 @@
 
 L’architettura operativa implementata usa cinque slot equivalenti nella bottom navigation: `Home | Transactions | Add | Budgets | Reports`. Add è l’azione centrale; More è raggiungibile dal controllo `…` fisso in ogni variante della TopBar, mentre l’avatar apre Profile.
 
+### Tour guidato adattivo — 2026-07-23
+
+- Il tour segue un percorso operativo di 27 step: Home, inserimento,
+  transazioni, budget, report, strumenti globali, More e Planning.
+- Reports ha passaggi dedicati per totale del periodo, Spending pace, grafico
+  income/expenses/net, Categories, Compare e Year in Review.
+- Gli step puntano a regioni funzionali stabili della schermata, non alle sole
+  destinazioni di navigazione.
+- A ogni cambio step o route, il target viene portato automaticamente al centro
+  quando è scrollabile; la posizione viene rimisurata durante scroll,
+  transizioni, resize e variazioni dimensionali.
+- Il pannello sceglie dinamicamente lo spazio sopra o sotto il target. Le regioni
+  molto alte vengono mostrate attraverso una finestra di spotlight limitata, in
+  modo che spiegazione e componente restino entrambi visibili sui viewport
+  mobile.
+- I cambi di route oscurano brevemente la pagina e mettono in risalto il
+  controllo di destinazione selezionato, senza mostrare una card “Opening”.
+  L’item attivo della navigazione primaria resta evidenziato durante il tour;
+  i tab Reports/Planning vengono evidenziati durante l’handoff e negli step che
+  li descrivono, evitando highlight obsoleti sotto la top bar.
+- Il cambio tra step sulla stessa pagina usa soltanto una dissolvenza di 120 ms.
+- La navigazione da tastiera mantiene frecce avanti/indietro, focus intrappolato
+  nel dialog e rispetto di `prefers-reduced-motion`.
+
 ## Color Hierarchy Refinement — 2026-07-21
 
 - La navigazione primaria e la TopBar restano invariate.

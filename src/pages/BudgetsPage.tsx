@@ -146,6 +146,7 @@ export const BudgetsPage = () => {
 
       {/* ── 1. Monthly category-budget health ── */}
       <FocalSummaryCard
+        data-tour-id="budget-summary"
         tone={progress >= 100 ? 'danger' : progress >= 80 ? 'warning' : 'primary'}
         className="space-y-4"
       >
@@ -201,19 +202,20 @@ export const BudgetsPage = () => {
       </FocalSummaryCard>
 
       {/* ── 2. Budget progress list ── */}
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div>
-          <h2 className="text-sm font-bold text-on-surface">Categories</h2>
-          <p className="text-[10px] font-semibold text-on-surface-variant">Limits apply only to the categories listed below</p>
+      <div data-tour-id="budget-categories" className="space-y-4">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <div>
+            <h2 className="text-sm font-bold text-on-surface">Categories</h2>
+            <p className="text-[10px] font-semibold text-on-surface-variant">Limits apply only to the categories listed below</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={handleOpenAddBudget} aria-label="Add category budget">
+            <Plus className="h-3.5 w-3.5" />
+            Add budget
+          </Button>
         </div>
-        <Button size="sm" variant="secondary" onClick={handleOpenAddBudget} aria-label="Add category budget">
-          <Plus className="h-3.5 w-3.5" />
-          Add budget
-        </Button>
-      </div>
 
-      {budgets.length > 0 ? (
-        <Card className="space-y-0 p-3">
+        {budgets.length > 0 ? (
+          <Card className="space-y-0 p-3">
           <div className="space-y-0 divide-y divide-outline-variant/20">
             {budgets.map((budget) => {
               const spent = getSpentForCategory(budget.category);
@@ -289,17 +291,18 @@ export const BudgetsPage = () => {
               );
             })}
           </div>
-        </Card>
-      ) : (
-        <Card>
-          <EmptyState
-            icon={<PieChart className="h-10 w-10" />}
-            title="No budgets yet"
-            description="Create category limits to track progress through the month."
-            action={<Button size="md" onClick={handleOpenAddBudget}>Add budget</Button>}
-          />
-        </Card>
-      )}
+          </Card>
+        ) : (
+          <Card>
+            <EmptyState
+              icon={<PieChart className="h-10 w-10" />}
+              title="No budgets yet"
+              description="Create category limits to track progress through the month."
+              action={<Button size="md" onClick={handleOpenAddBudget}>Add budget</Button>}
+            />
+          </Card>
+        )}
+      </div>
 
       {/* ── 3. Budget alerts ── */}
       {alerts.length > 0 && (
