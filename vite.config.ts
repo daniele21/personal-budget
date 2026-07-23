@@ -25,6 +25,39 @@ export default defineConfig(({ mode, command }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      // ExcelJS is an intentionally on-demand import used only for .xlsx parsing.
+      // Keep the general warning ceiling just above its current minified size.
+      chunkSizeWarningLimit: 1_000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+
+            if (id.includes('/@firebase/') || id.includes('/firebase/')) return 'firebase';
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/react-router/') ||
+              id.includes('/react-router-dom/') ||
+              id.includes('/scheduler/')
+            ) {
+              return 'react-vendor';
+            }
+            if (
+              id.includes('/motion/') ||
+              id.includes('/motion-dom/') ||
+              id.includes('/motion-utils/')
+            ) {
+              return 'motion';
+            }
+            if (id.includes('/@google/genai/')) return 'google-genai';
+
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       ...(isE2EMode
         ? {

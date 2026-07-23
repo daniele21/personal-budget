@@ -1,24 +1,71 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MotionConfig } from 'motion/react';
 import { useApp } from './context/AppContext';
 
 import { Dashboard } from './pages/Dashboard';
-import { HistoryPage } from './pages/HistoryPage';
-import { AddTransaction } from './pages/AddTransaction';
-import { BudgetsPage } from './pages/BudgetsPage';
-import { RecurringPage } from './pages/RecurringPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { CalendarPage } from './pages/CalendarPage';
-import { AdminPage } from './pages/AdminPage';
 import { Login } from './pages/Login';
-import { MorePage } from './pages/MorePage';
-import { ReportsPage } from './pages/ReportsPage';
 
 // Components
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BrandMark } from './components/BrandMark';
+
+const HistoryPage = lazy(() =>
+  import('./pages/HistoryPage').then(({ HistoryPage }) => ({ default: HistoryPage })),
+);
+const AddTransaction = lazy(() =>
+  import('./pages/AddTransaction').then(({ AddTransaction }) => ({ default: AddTransaction })),
+);
+const BudgetsPage = lazy(() =>
+  import('./pages/BudgetsPage').then(({ BudgetsPage }) => ({ default: BudgetsPage })),
+);
+const RecurringPage = lazy(() =>
+  import('./pages/RecurringPage').then(({ RecurringPage }) => ({ default: RecurringPage })),
+);
+const ProfilePage = lazy(() =>
+  import('./pages/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })),
+);
+const CalendarPage = lazy(() =>
+  import('./pages/CalendarPage').then(({ CalendarPage }) => ({ default: CalendarPage })),
+);
+const AdminPage = lazy(() =>
+  import('./pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })),
+);
+const MorePage = lazy(() =>
+  import('./pages/MorePage').then(({ MorePage }) => ({ default: MorePage })),
+);
+const ReportsPage = lazy(() =>
+  import('./pages/ReportsPage').then(({ ReportsPage }) => ({ default: ReportsPage })),
+);
+
+function RouteLoading() {
+  return (
+    <div
+      className="flex min-h-[40vh] items-center justify-center gap-3 text-sm font-semibold text-on-surface-variant"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
+        aria-hidden="true"
+      />
+      Loading page…
+    </div>
+  );
+}
+
+function RoutePage({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Layout title={title}>
+      <ErrorBoundary>
+        <Suspense fallback={<RouteLoading />}>
+          {children}
+        </Suspense>
+      </ErrorBoundary>
+    </Layout>
+  );
+}
 
 export default function App() {
   const { isLoggedIn, authLoading, authError, signInWithGoogle, isAdmin } = useApp();
@@ -41,27 +88,27 @@ export default function App() {
           <Login onSignIn={signInWithGoogle} error={authError} />
         ) : (
           <Routes>
-            <Route path="/" element={<Layout title="Dashboard"><ErrorBoundary><Dashboard /></ErrorBoundary></Layout>} />
-            <Route path="/transactions" element={<Layout title="Transactions"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
-            <Route path="/history" element={<Layout title="Transactions"><ErrorBoundary><HistoryPage /></ErrorBoundary></Layout>} />
-            <Route path="/add" element={<Layout title="Add Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
-            <Route path="/edit/:id" element={<Layout title="Edit Transaction"><ErrorBoundary><AddTransaction /></ErrorBoundary></Layout>} />
-            <Route path="/budgets" element={<Layout title="Budgets"><ErrorBoundary><BudgetsPage /></ErrorBoundary></Layout>} />
-            <Route path="/recurring" element={<Layout title="Planning"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
-            <Route path="/profile" element={<Layout title="Profile"><ErrorBoundary><ProfilePage /></ErrorBoundary></Layout>} />
-            <Route path="/calendar" element={<Layout title="Planning"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
-            <Route path="/planning" element={<Layout title="Planning"><ErrorBoundary><CalendarPage /></ErrorBoundary></Layout>} />
-            <Route path="/planning/recurring" element={<Layout title="Planning"><ErrorBoundary><RecurringPage /></ErrorBoundary></Layout>} />
-            <Route path="/reports" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="overview" /></ErrorBoundary></Layout>} />
-            <Route path="/reports/categories" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="categories" /></ErrorBoundary></Layout>} />
-            <Route path="/reports/compare" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="compare" /></ErrorBoundary></Layout>} />
-            <Route path="/reports/year" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="year" /></ErrorBoundary></Layout>} />
-            <Route path="/insights" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="overview" /></ErrorBoundary></Layout>} />
-            <Route path="/compare" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="compare" /></ErrorBoundary></Layout>} />
-            <Route path="/year-review" element={<Layout title="Reports"><ErrorBoundary><ReportsPage view="year" /></ErrorBoundary></Layout>} />
-            <Route path="/more" element={<Layout title="More"><ErrorBoundary><MorePage /></ErrorBoundary></Layout>} />
+            <Route path="/" element={<RoutePage title="Dashboard"><Dashboard /></RoutePage>} />
+            <Route path="/transactions" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
+            <Route path="/history" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
+            <Route path="/add" element={<RoutePage title="Add Transaction"><AddTransaction /></RoutePage>} />
+            <Route path="/edit/:id" element={<RoutePage title="Edit Transaction"><AddTransaction /></RoutePage>} />
+            <Route path="/budgets" element={<RoutePage title="Budgets"><BudgetsPage /></RoutePage>} />
+            <Route path="/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
+            <Route path="/profile" element={<RoutePage title="Profile"><ProfilePage /></RoutePage>} />
+            <Route path="/calendar" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
+            <Route path="/planning" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
+            <Route path="/planning/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
+            <Route path="/reports" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
+            <Route path="/reports/categories" element={<RoutePage title="Reports"><ReportsPage view="categories" /></RoutePage>} />
+            <Route path="/reports/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
+            <Route path="/reports/year" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
+            <Route path="/insights" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
+            <Route path="/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
+            <Route path="/year-review" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
+            <Route path="/more" element={<RoutePage title="More"><MorePage /></RoutePage>} />
             {isAdmin && (
-              <Route path="/admin" element={<Layout title="Admin"><ErrorBoundary><AdminPage /></ErrorBoundary></Layout>} />
+              <Route path="/admin" element={<RoutePage title="Admin"><AdminPage /></RoutePage>} />
             )}
           </Routes>
         )}

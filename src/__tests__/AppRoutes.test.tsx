@@ -48,40 +48,40 @@ afterEach(() => {
 });
 
 describe('canonical application routes', () => {
-  it('renders the canonical Reports route', () => {
+  it('renders the canonical Reports route', async () => {
     renderRoute('/reports');
-    expect(screen.getByText('Reports overview page')).toBeInTheDocument();
+    expect(await screen.findByText('Reports overview page')).toBeInTheDocument();
   });
 
-  it('renders the canonical Planning route', () => {
+  it('renders the canonical Planning route', async () => {
     renderRoute('/planning');
-    expect(screen.getByText('Planning page')).toBeInTheDocument();
+    expect(await screen.findByText('Planning page')).toBeInTheDocument();
   });
 
-  it('renders the canonical recurring Planning view and preserves its legacy alias', () => {
+  it('renders the canonical recurring Planning view and preserves its legacy alias', async () => {
     const { unmount } = renderRoute('/planning/recurring');
-    expect(screen.getByText('Recurring page')).toBeInTheDocument();
+    expect(await screen.findByText('Recurring page')).toBeInTheDocument();
     unmount();
 
     renderRoute('/recurring');
-    expect(screen.getByText('Recurring page')).toBeInTheDocument();
+    expect(await screen.findByText('Recurring page')).toBeInTheDocument();
   });
 
-  it('preserves legacy report and transaction aliases', () => {
+  it('preserves legacy report and transaction aliases', async () => {
     const { unmount } = renderRoute('/insights');
-    expect(screen.getByText('Reports overview page')).toBeInTheDocument();
+    expect(await screen.findByText('Reports overview page')).toBeInTheDocument();
     unmount();
 
     renderRoute('/history');
-    expect(screen.getByText('Transactions page')).toBeInTheDocument();
+    expect(await screen.findByText('Transactions page')).toBeInTheDocument();
   });
 
-  it('routes canonical report views and legacy aliases to the matching content', () => {
+  it('routes canonical report views and legacy aliases to the matching content', async () => {
     const { unmount } = renderRoute('/reports/categories');
-    expect(screen.getByText('Reports categories page')).toBeInTheDocument();
+    expect(await screen.findByText('Reports categories page')).toBeInTheDocument();
     unmount();
 
     renderRoute('/compare');
-    expect(screen.getByText('Reports compare page')).toBeInTheDocument();
+    expect(await screen.findByText('Reports compare page')).toBeInTheDocument();
   });
 });

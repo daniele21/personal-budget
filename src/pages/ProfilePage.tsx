@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Download, Upload, ShieldCheck, ChevronRight, Settings, LogOut, Shield, PieChart, RefreshCw, Tags, Cloud, Target, Trash2, FileArchive, LockKeyhole } from 'lucide-react';
-import Papa from 'papaparse';
 import { formatCurrency } from '../utils/formatters';
 import { INITIAL_ACCOUNTS, APP_CONFIG } from '../constants';
 import type { PreparedRestore } from '../domain/archive';
@@ -193,7 +192,8 @@ export const ProfilePage = () => {
     toast('Obiettivo rimosso', 'info');
   };
 
-  const handleExportTransactionsCsv = () => {
+  const handleExportTransactionsCsv = async () => {
+    const { default: Papa } = await import('papaparse');
     const transactionsCsv = Papa.unparse(transactions.map((transaction) => ({
       id: transaction.id,
       amount: transaction.amount,

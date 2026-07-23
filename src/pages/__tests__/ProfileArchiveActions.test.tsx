@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -66,10 +66,12 @@ describe('Profile archive actions', () => {
     expect(screen.getByText('Complete import dialog open')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Export transactions CSV/i }));
-    expect(mocks.downloadBlob).toHaveBeenCalledOnce();
-    expect(mocks.downloadBlob).toHaveBeenCalledWith(
-      expect.any(Blob),
-      expect.stringMatching(/^aura_transactions_.*\.csv$/),
-    );
+    await waitFor(() => {
+      expect(mocks.downloadBlob).toHaveBeenCalledOnce();
+      expect(mocks.downloadBlob).toHaveBeenCalledWith(
+        expect.any(Blob),
+        expect.stringMatching(/^aura_transactions_.*\.csv$/),
+      );
+    });
   });
 });
