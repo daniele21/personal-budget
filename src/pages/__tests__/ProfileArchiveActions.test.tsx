@@ -41,8 +41,6 @@ vi.mock('../../context/AppContext', () => ({
 }));
 
 vi.mock('../../components/Toast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
-vi.mock('../../components/NotificationPreferences', () => ({ NotificationPreferences: () => null }));
-vi.mock('../../components/profile/AccountList', () => ({ AccountList: () => null }));
 vi.mock('../../components/archive/ExportArchiveDialog', () => ({
   ExportArchiveDialog: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div>Complete export dialog open</div> : null,
 }));
@@ -51,12 +49,12 @@ vi.mock('../../components/archive/ImportArchiveDialog', () => ({
 }));
 vi.mock('../../services/archive/archiveDownload', () => ({ downloadBlob: mocks.downloadBlob }));
 
-import { ProfilePage } from '../ProfilePage';
+import { DataPrivacyPage } from '../DataPrivacyPage';
 
-describe('Profile archive actions', () => {
+describe('Data & Privacy archive actions', () => {
   it('keeps complete archive actions distinct from the transaction-only CSV workflow', async () => {
     const user = userEvent.setup();
-    render(<MemoryRouter><ProfilePage /></MemoryRouter>);
+    render(<MemoryRouter><DataPrivacyPage /></MemoryRouter>);
 
     expect(screen.getByText(/CSV is for analysis or moving transaction rows/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Export complete archive/i }));

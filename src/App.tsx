@@ -26,6 +26,12 @@ const RecurringPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })),
 );
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then(({ SettingsPage }) => ({ default: SettingsPage })),
+);
+const DataPrivacyPage = lazy(() =>
+  import('./pages/DataPrivacyPage').then(({ DataPrivacyPage }) => ({ default: DataPrivacyPage })),
+);
 const CalendarPage = lazy(() =>
   import('./pages/CalendarPage').then(({ CalendarPage }) => ({ default: CalendarPage })),
 );
@@ -96,6 +102,8 @@ export default function App() {
             <Route path="/budgets" element={<RoutePage title="Budgets"><BudgetsPage /></RoutePage>} />
             <Route path="/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
             <Route path="/profile" element={<RoutePage title="Profile"><ProfilePage /></RoutePage>} />
+            <Route path="/settings" element={<RoutePage title="Settings"><SettingsPage /></RoutePage>} />
+            <Route path="/data" element={<RoutePage title="Data & Privacy"><DataPrivacyPage /></RoutePage>} />
             <Route path="/calendar" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
             <Route path="/planning" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
             <Route path="/planning/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />

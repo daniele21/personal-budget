@@ -4,14 +4,12 @@ import { Link } from 'react-router-dom';
 import {
   CalendarDays,
   ChevronRight,
-  Cloud,
-  FileUp,
-  Moon,
+  Database,
   Settings,
   ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Card, Switch } from '../components/ui';
+import { Card } from '../components/ui';
 import { PwaInstallButton } from '../components/PwaInstallButton';
 import { pageTransition } from '../utils/motion';
 
@@ -29,27 +27,21 @@ const primaryLinks = [
     icon: CalendarDays,
   },
   {
-    to: '/profile#data-management',
-    label: 'Import & export',
-    description: 'Move transaction and budget data in or out of Aura.',
-    icon: FileUp,
+    to: '/data',
+    label: 'Data & privacy',
+    description: 'Manage backups, archives, CSV exports, and privacy controls.',
+    icon: Database,
   },
   {
-    to: '/profile#privacy-backup',
-    label: 'Privacy & backup',
-    description: 'Review storage and encrypted backup controls.',
-    icon: Cloud,
-  },
-  {
-    to: '/profile#settings',
+    to: '/settings',
     label: 'Settings',
-    description: 'Manage categories, goals, notifications, and account preferences.',
+    description: 'Manage monthly budget, categories, notifications, goals, and theme.',
     icon: Settings,
   },
 ];
 
 export function MorePage() {
-  const { isAdmin, cloudBackupEnabled, backupStatus, isDarkMode, setIsDarkMode } = useApp();
+  const { isAdmin, cloudBackupEnabled, backupStatus } = useApp();
   const links = isAdmin
     ? [
         ...primaryLinks,
@@ -70,7 +62,7 @@ export function MorePage() {
       </section>
 
       <Link
-        to="/profile#privacy-backup"
+        to="/data"
         className="flex items-center gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       >
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary">
@@ -112,19 +104,6 @@ export function MorePage() {
             </Link>
           );
         })}
-      </Card>
-
-      <Card as="section" className="flex items-center justify-between gap-4" aria-labelledby="appearance-title">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Moon className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h3 id="appearance-title" className="text-sm font-bold text-on-surface">Dark mode</h3>
-            <p className="text-xs text-on-surface-variant">Use a darker interface theme</p>
-          </div>
-        </div>
-        <Switch checked={isDarkMode} onChange={() => setIsDarkMode(!isDarkMode)} label="Toggle dark mode" />
       </Card>
 
       <PwaInstallButton />
