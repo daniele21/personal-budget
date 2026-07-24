@@ -11,20 +11,18 @@ import {
 import { cn } from '../lib/utils';
 import { CategoryBadge } from '../components/ui/CategoryBadge';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { Button, Input, SegmentedControl } from '../components/ui';
 import { Transaction } from '../types';
 import * as Finance from '../domain/finance';
 import { haptics } from '../utils/haptics';
-import { upsertRecurringOverride } from '../domain/recurring';
 import { TransactionHistoryList } from '../components/history/TransactionHistoryList';
 import { ImportWizardDialog } from '../components/import/ImportWizardDialog';
 import { slidePageTransition } from '../utils/motion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TransactionDetailSheet } from '../components/transactions/TransactionDetailSheet';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 type PeriodPreset = 'current-month' | 'last-month' | '3-months' | 'all' | 'custom';
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -170,15 +168,12 @@ export const HistoryPage = () => {
     transactions,
     setTransactions,
     deleteTransaction: ctxDeleteTransaction,
-    categories: appCategories,
-    addCategory,
-    recurring,
-    setRecurring,
   } = useApp();
   const currentMonthRange = useMemo(() => getCurrentMonthRange(), []);
   const lastMonthRange = useMemo(() => getLastMonthRange(), []);
   const lastThreeMonthsRange = useMemo(() => getLastThreeMonthsRange(), []);
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
   const [search, setSearch] = useState('');
@@ -214,7 +209,6 @@ export const HistoryPage = () => {
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
-  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
 
   useEffect(() => {
@@ -262,37 +256,6 @@ export const HistoryPage = () => {
       },
     } : undefined);
   };
-
-  const saveQuickEdit = (nextTransaction: Transaction) => {
-    const existingTransaction = transactions.find((transaction) => transaction.id === nextTransaction.id);
-    setTransactions(transactions.map((transaction) => (
-      transaction.id === nextTransaction.id ? nextTransaction : transaction
-    )));
-
-    if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
-      setRecurring(recurring.map((bill) => (
-        bill.id === existingTransaction.sourceRecurringId
-          ? upsertRecurringOverride(bill, {
-            monthKey: existingTransaction.sourceMonthKey,
-            occurrenceKey: existingTransaction.sourceMonthKey,
-            amount: nextTransaction.amount,
-            type: nextTransaction.type,
-            category: nextTransaction.category,
-            title: nextTransaction.title,
-            description: nextTransaction.description,
-            paymentMethod: nextTransaction.paymentMethod,
-            date: nextTransaction.date,
-          })
-          : bill
-      )));
-    }
-
-    setQuickEditTransaction(null);
-    haptics.success();
-    toast('Transaction updated', 'success');
-  };
-
-
 
   const rangeStart = useMemo(() => new Date(`${startDate}T00:00:00`), [startDate]);
   const rangeEnd = useMemo(() => new Date(`${endDate}T23:59:59.999`), [endDate]);
@@ -599,7 +562,7 @@ export const HistoryPage = () => {
           transactions={filteredTransactions}
           hasBaseTransactions={hasBaseTransactions}
           onOpenDetails={setDetailTransaction}
-          onQuickEdit={setQuickEditTransaction}
+          onEdit={(transaction) => navigate(`/edit/${transaction.id}`)}
           onDelete={setDeleteId}
           sortKey={sortKey}
         />
@@ -615,24 +578,12 @@ export const HistoryPage = () => {
         onCancel={() => setDeleteId(null)}
       />
 
-      <TransactionQuickEditDialog
-        transaction={quickEditTransaction}
-        categories={appCategories}
-        onAddCategory={addCategory}
-        onClose={() => setQuickEditTransaction(null)}
-        onSave={saveQuickEdit}
-        onDelete={(id) => {
-          setQuickEditTransaction(null);
-          setDeleteId(id);
-        }}
-      />
-
       <TransactionDetailSheet
         transaction={detailTransaction}
         onClose={() => setDetailTransaction(null)}
         onEdit={(transaction) => {
           setDetailTransaction(null);
-          setQuickEditTransaction(transaction);
+          navigate(`/edit/${transaction.id}`);
         }}
         onDelete={(id) => {
           setDetailTransaction(null);

@@ -78,7 +78,7 @@ The current UX simplification milestones M0-M9 are defined and tracked in [`08-u
 4. Year in review: annual finance calculations, summary, trend chart, heatmap, category shifts, share text.
 5. Local notifications: typed preferences/reminders/records, scheduler hook, profile preferences, notification center, service worker message/click handling.
 6. UX quality pass: contextual TopBar back navigation, consistent empty states, undo toasts for destructive actions, haptics, pull-to-refresh feedback, reduced-motion support, focus trap baseline, and ARIA fixes.
-7. Advanced UX pass: swipe-to-action transaction rows, inline quick-edit sheet, batch selection with category change/export/delete, edge swipe navigation between primary pages, and desktop shortcuts.
+7. Advanced UX pass: swipe-to-action transaction rows, batch selection with category change/export/delete, edge swipe navigation between primary pages, and desktop shortcuts. The former inline quick-edit sheet was later consolidated into the shared `/edit/:id` form to keep create and edit behavior consistent.
 8. Visual design pass: accent color tokens, typography tokens, stronger dark-mode containers, category icon theme configuration, animated counters, sparklines, radial safe-to-spend gauge, and replacement of hardcoded chart accents in new/updated surfaces.
 9. Mobile PWA install action: browser install event handling, iOS manual add-to-home-screen guidance, standalone suppression, and later relocation from the header to More.
 10. Verification and documentation sync: typecheck, unit tests, production build, strategy and delivery docs.

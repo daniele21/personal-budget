@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   ChevronLeft,
@@ -31,7 +31,6 @@ import {
 } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
-import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TransactionDetailSheet } from '../components/transactions/TransactionDetailSheet';
 import { Transaction } from '../types';
@@ -52,13 +51,12 @@ export const Dashboard = () => {
     netMomChange,
     recentTransactions,
     isHydrated,
-    categories,
-    addCategory,
     selectedMonth,
     setSelectedMonth,
     analyticsLens: lens,
     setAnalyticsLens: setLens,
   } = useApp();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Side-effect hooks (budget alerts)
@@ -66,7 +64,6 @@ export const Dashboard = () => {
 
   // ── Derived state ─────────────────────────────────────────────────
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
-  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const filteredTransactions = useMemo(
     () => filterByAnalyticsLens(transactions, lens),
@@ -123,13 +120,6 @@ export const Dashboard = () => {
   };
 
   // ── Transaction handlers ───────────────────────────────────────────
-  const saveQuickEdit = (nextTransaction: Transaction) => {
-    setTransactions(transactions.map((t) => (t.id === nextTransaction.id ? nextTransaction : t)));
-    setQuickEditTransaction(null);
-    haptics.success();
-    toast('Transaction updated', 'success');
-  };
-
   const handleDeleteTransaction = (id: string) => {
     const deleted = transactions.find((t) => t.id === id);
     if (!deleted) return;
@@ -399,23 +389,12 @@ export const Dashboard = () => {
         onConfirm={() => transactionToDelete && handleDeleteTransaction(transactionToDelete)}
         onCancel={() => setTransactionToDelete(null)}
       />
-      <TransactionQuickEditDialog
-        transaction={quickEditTransaction}
-        categories={categories}
-        onAddCategory={addCategory}
-        onClose={() => setQuickEditTransaction(null)}
-        onSave={saveQuickEdit}
-        onDelete={(id) => {
-          setQuickEditTransaction(null);
-          setTransactionToDelete(id);
-        }}
-      />
       <TransactionDetailSheet
         transaction={detailTransaction}
         onClose={() => setDetailTransaction(null)}
         onEdit={(transaction) => {
           setDetailTransaction(null);
-          setQuickEditTransaction(transaction);
+          navigate(`/edit/${transaction.id}`);
         }}
         onDelete={(id) => {
           setDetailTransaction(null);

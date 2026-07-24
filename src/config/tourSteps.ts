@@ -64,7 +64,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/',
     section: 'Home',
     title: 'Recent transactions',
-    description: 'Review the latest activity. Tap a row for details, quick editing, or deletion.',
+    description: 'Review the latest activity. Tap a row for details, then use Edit to open the complete transaction form.',
     placement: 'top',
   },
   {

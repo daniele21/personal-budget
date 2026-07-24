@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Consolidated every transaction edit entry point onto the same prefilled form
+  used by Add Transaction, removing the divergent quick-edit dialog from Home,
+  History, swipe actions, and Calendar.
 - Expanded the guided tour from a route-level overview to a 27-step operating
   journey across Home, transaction entry, history, budgets, reports, global
   tools, and planning. Each step now auto-scrolls to a stable feature region,

@@ -15,7 +15,7 @@ interface TransactionHistoryListProps {
   transactions: Transaction[];
   hasBaseTransactions: boolean;
   onOpenDetails: (transaction: Transaction) => void;
-  onQuickEdit: (transaction: Transaction) => void;
+  onEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
   sortKey?: string;
 }
@@ -35,7 +35,7 @@ export function TransactionHistoryList({
   transactions,
   hasBaseTransactions,
   onOpenDetails,
-  onQuickEdit,
+  onEdit,
   onDelete,
   sortKey,
 }: TransactionHistoryListProps) {
@@ -70,7 +70,7 @@ export function TransactionHistoryList({
             className="border-b border-outline-variant/20 last:border-b-0"
           >
             <SwipeableRow
-              onEdit={() => onQuickEdit(transaction)}
+              onEdit={() => onEdit(transaction)}
               onDelete={() => onDelete(transaction.id)}
             >
               {/* Tap target — full-width button with the compact row layout */}
@@ -148,7 +148,7 @@ export function TransactionHistoryList({
                 className="border-b border-outline-variant/20 last:border-b-0"
               >
                 <SwipeableRow
-                  onEdit={() => onQuickEdit(transaction)}
+                  onEdit={() => onEdit(transaction)}
                   onDelete={() => onDelete(transaction.id)}
                 >
                   {/* Tap target — full-width button with the compact row layout */}
@@ -197,4 +197,3 @@ export function TransactionHistoryList({
     </section>
   );
 }
-

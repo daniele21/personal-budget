@@ -54,7 +54,7 @@ Use for user-facing flows where the UI is the contract.
 Required for major changes to:
 
 - transaction create/edit flows
-- quick edit flows
+- edit entry points from transaction details, history swipe actions, and calendar
 - history rows and batch actions
 - reports and analytics lenses
 - budget summaries

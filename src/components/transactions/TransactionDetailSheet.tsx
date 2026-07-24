@@ -5,7 +5,6 @@ import {
   FileText,
   MessageSquarePlus,
   Pencil,
-  Split,
   Tag,
   Trash2,
 } from 'lucide-react';
@@ -77,7 +76,6 @@ function DetailRow({
  *  - Category icon + amount + date header
  *  - Payment method, Category (with dot badge), Tags, Notes
  *  - "Add note" link
- *  - "Split transaction" secondary action (UI-only placeholder)
  *  - Delete + Edit footer buttons
  */
 export function TransactionDetailSheet({
@@ -191,14 +189,6 @@ export function TransactionDetailSheet({
           </button>
         )}
 
-        {/* ── Split transaction (UI placeholder) ── */}
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-primary transition-colors hover:bg-surface-container-low"
-        >
-          <Split className="h-4 w-4" />
-          Split transaction
-        </button>
       </div>
     </BottomSheet>
   );

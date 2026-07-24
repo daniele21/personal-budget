@@ -186,7 +186,7 @@ Existing regression-test map:
 | Budgets | `src/pages/__tests__/BudgetsPage.test.tsx` | Compact lens, category hierarchy, alerts, and simplified hero |
 | Current Insights | `src/pages/__tests__/InsightsPage.test.tsx` | Migrate coverage to unified Reports views and aliases |
 | Transaction list | `src/components/history/__tests__/TransactionHistoryList.test.tsx` | Combined filter/sort sheet, default metadata, import relocation, and route behavior |
-| Transaction quick edit | `src/components/__tests__/TransactionQuickEditDialog.test.tsx` | Preserve quick-edit behavior after Transactions simplification |
+| Transaction edit | `src/pages/__tests__/AddTransaction.test.tsx` | Preserve one shared create/edit form and route every edit entry point through `/edit/:id` |
 | Navigation and routes | No dedicated coverage | Add BottomNav, TopBar, canonical route, alias, and active-state tests |
 | Add Transaction | No dedicated page coverage | Add progressive-disclosure, CTA, validation, and reporting-treatment tests |
 | Planning pages | No dedicated page coverage | Add tab routing, shared form, CRUD, reminder, override, and undo tests |
@@ -324,7 +324,7 @@ Tasks:
 - [x] Show result metadata only when search, filters, or non-default sorting make it useful.
 - [x] Move Import out of the primary control row and into More through a direct import entry.
 - [x] Remove Financial Trajectory after its primary cash-flow reading exists in Reports.
-- [ ] Preserve transaction grouping, detail sheet, quick edit, swipe actions, batch actions, export, delete, and undo.
+- [x] Preserve transaction grouping, detail sheet, swipe edit actions, batch actions, export, delete, and undo; consolidate editing into the shared Add/Edit form.
 - [ ] Keep transaction rows neutral for ordinary expenses and semantic for income or exceptional states.
 - [ ] Add regression tests for search, filtering, sorting, grouping, batch actions, detail, edit, delete, and undo.
 

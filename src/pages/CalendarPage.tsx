@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, RefreshCw, X, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatters';
@@ -11,7 +12,6 @@ import { APP_CONFIG } from '../constants';
 import { Button, EmptyState, Input } from '../components/ui';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { TransactionQuickEditDialog } from '../components/TransactionQuickEditDialog';
 import { useToast } from '../components/Toast';
 import { haptics } from '../utils/haptics';
 import { pageTransition } from '../utils/motion';
@@ -46,6 +46,7 @@ const getMonthDays = (year: number, month: number) => {
 
 export const CalendarPage = () => {
   const { transactions, setTransactions, recurring, setRecurring, categories, addCategory } = useApp();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -56,7 +57,6 @@ export const CalendarPage = () => {
   const [isAmountKeypadOpen, setIsAmountKeypadOpen] = useState(false);
   const [recurringActionTarget, setRecurringActionTarget] = useState<RecurringExpense | null>(null);
   const [occurrenceTarget, setOccurrenceTarget] = useState<RecurringExpense | null>(null);
-  const [quickEditTransaction, setQuickEditTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [occurrenceName, setOccurrenceName] = useState('');
   const [occurrenceAmount, setOccurrenceAmount] = useState('');
@@ -278,35 +278,6 @@ export const CalendarPage = () => {
     } : undefined);
   };
 
-  const saveQuickEdit = (nextTransaction: Transaction) => {
-    const existingTransaction = transactions.find((transaction) => transaction.id === nextTransaction.id);
-    setTransactions(transactions.map((transaction) => (
-      transaction.id === nextTransaction.id ? nextTransaction : transaction
-    )));
-
-    if (existingTransaction?.sourceRecurringId && existingTransaction.sourceMonthKey) {
-      setRecurring(recurring.map((bill) => (
-        bill.id === existingTransaction.sourceRecurringId
-          ? upsertRecurringOverride(bill, {
-            monthKey: existingTransaction.sourceMonthKey,
-            occurrenceKey: existingTransaction.sourceMonthKey,
-            amount: nextTransaction.amount,
-            type: nextTransaction.type,
-            category: nextTransaction.category,
-            title: nextTransaction.title,
-            description: nextTransaction.description,
-            paymentMethod: nextTransaction.paymentMethod,
-            date: nextTransaction.date,
-          })
-          : bill
-      )));
-    }
-
-    setQuickEditTransaction(null);
-    haptics.success();
-    toast('Transaction updated', 'success');
-  };
-
   const handleDeleteTransaction = (id: string) => {
     const deleted = transactions.find(t => t.id === id);
     if (!deleted) return;
@@ -430,7 +401,7 @@ export const CalendarPage = () => {
               {selectedTx.map((tx) => (
                 <button
                   key={tx.id}
-                  onClick={() => setQuickEditTransaction(tx)}
+                  onClick={() => navigate(`/edit/${tx.id}`)}
                   className="flex w-full items-center gap-3 bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/5 text-left active:scale-[0.98] transition-all"
                 >
                   <CategoryBadge category={tx.category} size="md" className="flex-shrink-0" />
@@ -692,17 +663,6 @@ export const CalendarPage = () => {
         variant="danger"
         onConfirm={() => transactionToDelete && handleDeleteTransaction(transactionToDelete)}
         onCancel={() => setTransactionToDelete(null)}
-      />
-      <TransactionQuickEditDialog
-        transaction={quickEditTransaction}
-        categories={categories}
-        onAddCategory={addCategory}
-        onClose={() => setQuickEditTransaction(null)}
-        onSave={saveQuickEdit}
-        onDelete={(id) => {
-          setQuickEditTransaction(null);
-          setTransactionToDelete(id);
-        }}
       />
       <NumericKeypadModal
         isOpen={isAmountKeypadOpen}
