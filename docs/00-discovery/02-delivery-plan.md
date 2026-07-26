@@ -1,5 +1,27 @@
 # Delivery Plan
 
+## Planned Initiative: Android Companion And Payment Detection
+
+Aura will add a Capacitor-based Android distribution without replacing the PWA. The first native feature is optional, local-only detection of EUR card-payment candidates from supported and user-selected notification sources.
+
+M0 decision closure is complete for a synthetic technical spike. No real notification implementation should start until the privacy, ownership, backup, deletion, fixture, and release gates in the tracker satisfy the applicable Definition of Ready. A synthetic notification source is sufficient for the technical spike; selection of the first real payment app is a pre-pilot gate rather than a reason to guess package IDs or collect personal notifications.
+
+The execution source of truth is [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). The accepted runtime and idempotent acceptance decisions are [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
+
+Current engineering baseline:
+
+- Node 25.1.0 and Java 21 are available;
+- Capacitor 8 can run on older Android versions, but Aura deliberately supports Android 16/API 36 only in the first release;
+- min/compile/target SDK are all 36;
+- the Android SDK command-line toolchain and API 36 emulator are available; Android Studio is optional for the current CLI workflow and is not installed;
+- Capacitor 8 and the versioned Android project are present, with bundled production assets and no remote `server.url`;
+- the first-party Kotlin Credential Manager bridge compiles and is invoked on API 36; successful Firebase login awaits a real isolated debug OAuth configuration;
+- Android debug bundling fails closed without dedicated non-production Firebase/OAuth values and disables Gemini;
+- `npm run test:regression` passes with TypeScript, 61 Vitest files/315 tests, and the Vite production build;
+- the current Playwright baseline is documented but not green: observed archive E2E cases remain on Home with the Guided Tour open and time out waiting for `Export complete archive`.
+
+Current delivery decision: **M0 is complete and M1-M2 are in progress. The Capacitor shell builds and launches on Android 16/API 36, and the native auth bridge is implemented; real OAuth login, storage flows and signed-distribution evidence remain open. Aura is not ready to read real financial notifications or begin a user pilot until the external gates in the tracker are closed**.
+
 ## Current Initiative: Aura Portable Archive V1
 
 Aura Portable Archive V1 will add one versioned `.aura` file for complete, local-only disaster recovery while preserving transaction CSV as a separate interoperability feature.

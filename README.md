@@ -81,6 +81,10 @@ Aura Finance follows a local-first model:
 
 For operational details, see [privacy-notes.md](docs/04-privacy-gdpr/privacy-notes.md), [project-brief.md](product/project-brief.md), and [solution-strategy.md](docs/00-discovery/01-solution-strategy.md).
 
+The two designated administrator accounts are defined in
+`src/config/adminAccess.ts` and mirrored by the `isAdmin()` helper in
+`firestore.rules`. Regression tests fail if the two policies diverge.
+
 ## Tech Stack
 
 | Area | Technology |
@@ -143,6 +147,66 @@ Prerequisite: Node.js installed.
 
 The app is served by Vite on port `3000`.
 
+## Android Development
+
+Aura also ships the same React application inside a Capacitor Android shell.
+The PWA remains an independent, supported distribution; payment detection will
+be an Android-only capability behind a platform adapter.
+
+The current Android baseline is Android 16/API 36 only. Local development
+requires JDK 21 and an Android SDK containing platform and build tools 36.
+Android Studio is optional for the command-line workflow.
+
+```bash
+npm run android:sync:debug
+npm run android:test
+npm run android:lint
+npm run android:assemble:debug
+```
+
+Create an ignored `.env.android-debug.local` with every
+`VITE_ANDROID_FIREBASE_*` value shown in `.env.example`. The debug build refuses
+to start without this isolated non-production Firebase/OAuth configuration and
+does not inherit the normal web values. The Android OAuth client must match
+`com.staituned.aura.debug` and the debug signing certificate; Credential
+Manager uses the Web client ID generated as an Android resource from
+`google-services.json`. The client ID is not passed through the Capacitor
+bridge.
+
+`android:sync:debug` rebuilds and copies the isolated debug bundle.
+`android:sync` is reserved for the normal production bundle. Both keep
+Capacitor logging and WebView debugging disabled. Use
+`android:sync:diagnostic` only for an explicitly local diagnostic build.
+`android:test` intentionally runs the debug unit-test variant because the local
+`google-services.json` contains only the non-production debug client. Release
+tests and builds require a production client for `com.staituned.aura`.
+
+To diagnose the Android Google sign-in flow:
+
+```bash
+npm run android:sync:diagnostic
+bash scripts/run-android-gradle.sh assembleDebug
+adb logcat -c
+adb logcat -v color AuraGoogleAuth:V Capacitor/Console:V '*:S'
+```
+
+Authentication diagnostics identify only the failing stage, a bounded error
+code, the exception class, and sanitized native stack frames. They never log
+the Google ID token, OAuth client ID, email, credential payload, exception
+message, or Firebase user profile. Expected outcomes such as
+`AUTH_NO_CREDENTIAL` are warnings; unexpected provider, parsing, or clear-state
+failures are errors. Native diagnostics are emitted only when Android marks the
+installed application as debuggable, while WebView console forwarding requires
+the explicit diagnostic sync above.
+
+The generated debug application uses `com.staituned.aura.debug` and the
+`Aura Dev` label. Signing files, `google-services.json`, local SDK paths, and
+keystores must remain outside source control. The notification listener and
+payment parser are not implemented yet. The native Credential Manager bridge is
+implemented, and the local non-production OAuth configuration has been
+validated. Successful sign-in still requires a Google account and credential
+provider on the test device.
+
 ## Firebase Setup
 
 In the Firebase project:
@@ -166,6 +230,14 @@ Main collections:
 | `npm run test` | Run Vitest tests |
 | `npm run test:watch` | Start Vitest in watch mode |
 | `npm run build` | Generate the production build |
+| `npm run build:android:debug` | Build with required isolated Android debug Firebase/OAuth values |
+| `npm run android:sync` | Build and copy the normal production bundle into Android |
+| `npm run android:sync:debug` | Build and copy the isolated Android debug bundle |
+| `npm run android:sync:diagnostic` | Debug sync with WebView/Capacitor diagnostics enabled |
+| `npm run android:assemble:debug` | Sync and assemble the debug APK |
+| `npm run android:test` | Run Android debug unit tests with JDK 21 |
+| `npm run android:lint` | Run Android lint |
+| `npm run android:doctor` | Inspect the Capacitor Android environment |
 | `npm run preview` | Serve the build locally |
 | `npm run firebase:login` | Sign in with the Firebase CLI |
 | `npm run deploy:hosting` | Build and deploy to Firebase Hosting |

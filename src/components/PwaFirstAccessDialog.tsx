@@ -7,6 +7,7 @@ import {
   getPwaInstallServerSnapshot,
   getPwaInstallSnapshot,
   getPwaManualInstallMode,
+  isPwaInstallSupported,
   isPwaStandalone,
   promptPwaInstall,
   subscribePwaInstall,
@@ -23,6 +24,7 @@ function wasAlreadyShown(): boolean {
 }
 
 export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) {
+  const isSupported = isPwaInstallSupported();
   const [dismissed, setDismissed] = useState(wasAlreadyShown);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installError, setInstallError] = useState(false);
@@ -35,6 +37,7 @@ export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) 
   );
   const hasInstallPath = installState.canPrompt || manualInstallMode !== null;
   const isOpen = (
+    isSupported &&
     isEligible &&
     !dismissed &&
     !installState.isInstalled &&

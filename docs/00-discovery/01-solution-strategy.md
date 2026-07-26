@@ -4,7 +4,44 @@
 
 Aura Finance remains a local-first personal budget PWA. Cloud storage is limited to an explicit opt-in encrypted backup used for restore across devices.
 
+Aura also gains a companion Android distribution through Capacitor. The PWA remains supported; the Android app packages the same React build and adds native capabilities behind typed adapters. Production Android builds use bundled web assets rather than a remote `server.url`.
+
 ## Decisions
+
+### Android Companion And Payment Detection
+
+Chosen: add an Android Capacitor companion while retaining the PWA, then implement optional local payment detection through a custom Kotlin plugin.
+
+Rationale: notification access requires Android native APIs, but Aura's existing React UI, financial domain, storage behavior, accessibility work, cloud backup, and archive workflows should not be duplicated. Capacitor provides the smallest native boundary that satisfies the requirement.
+
+Platform baseline:
+
+- Android application ID: `com.staituned.aura`, with final Play availability and namespace-control verification before publication;
+- Capacitor 8;
+- `minSdk` 36; the first release supports Android 16 only;
+- `compileSdk` and `targetSdk` 36 for the planned 2026 release;
+- debug application suffix `.debug`, non-production Firebase/OAuth configuration, and debug signing isolated from release;
+- local bundled web assets in production;
+- Play internal testing, then closed beta, then explicit opt-in production rollout;
+- no iOS native application in the MVP.
+
+Payment-detection boundary:
+
+- disabled by default;
+- supported and user-selected packages only;
+- package gate before reading title/text extras;
+- deterministic Kotlin parsing with bundled rules and no network;
+- EUR card payments only in the first product pilot;
+- synthetic source for the technical spike;
+- no card/account identifiers, SMS, Accessibility Service, Open Banking, remote rules, LLM, or automatic transaction creation;
+- private lock-screen notification with a redacted public representation;
+- no custom candidate telemetry.
+
+`PaymentCandidate` is a native, short-lived workflow object and never becomes a second financial ledger. React begins an acceptance operation, receives a native-reserved UUID, creates a normal transaction using that UUID, verifies persistence, and completes the native operation. On interruption, recovery checks the reserved transaction ID in canonical `AppData`. This provides idempotence without adding source-package, rule, fingerprint, or candidate fields to `Transaction`.
+
+Native candidates, preferences, fingerprints, and tombstones are excluded from Aura cloud backup, portable archives, Android cloud backup, and device-to-device transfer. The structured candidate payload is authenticated and encrypted with a non-exportable Android Keystore key. Detection is suspended without an active owner, native data is partitioned by a hash of the Firebase UID, and logout, account change, local reset, and total deletion purge the native store.
+
+Detailed progress and unresolved external gates are tracked in [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). Runtime and acceptance decisions are fixed in [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
 
 ### Cloud Backup
 
@@ -146,9 +183,12 @@ when no real installation path is available.
 
 ### Admin
 
-Chosen: admin manages access allowlist only.
+Chosen: designated administrators manage the access allowlist only.
 
-Rationale: the admin should decide who can access the app, not read personal financial records.
+Rationale: administrators should decide who can access the app, not read
+personal financial records. Application admin configuration and Firestore
+authorization rules must remain synchronized and are covered by a regression
+test.
 
 ## Accepted Tradeoffs
 

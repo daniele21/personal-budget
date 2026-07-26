@@ -5,6 +5,7 @@ import {
   getPwaManualInstallMode,
   getPwaInstallServerSnapshot,
   getPwaInstallSnapshot,
+  isPwaInstallSupported,
   isPwaStandalone,
   promptPwaInstall,
   subscribePwaInstall,
@@ -15,6 +16,7 @@ interface PwaInstallButtonProps {
 }
 
 export function PwaInstallButton({ variant = 'row' }: PwaInstallButtonProps) {
+  const isSupported = isPwaInstallSupported();
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installMessage, setInstallMessage] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export function PwaInstallButton({ variant = 'row' }: PwaInstallButtonProps) {
   }, [isPanelOpen]);
 
   const shouldShow = (
+    isSupported &&
     !installState.isInstalled &&
     !isPwaStandalone() &&
     (isIcon || installState.canPrompt || isIos || isPanelOpen)

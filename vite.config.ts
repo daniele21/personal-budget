@@ -1,12 +1,16 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { resolveAuthRuntime } from './vite.auth-runtime';
+import { createAndroidDebugEnvOverrides } from './vite.android-runtime';
 
 export default defineConfig(({ mode, command }) => {
   const isE2EMode = mode === 'e2e';
   const authRuntime = resolveAuthRuntime(mode, command);
+  const environment = loadEnv(mode, process.cwd(), '');
+  createAndroidDebugEnvOverrides(mode, environment);
 
   return {
     plugins: [react(), tailwindcss()],

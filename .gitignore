@@ -6,6 +6,7 @@ playwright-report/
 test-results/
 .DS_Store
 *.log
+*.swp
 .env*
 !.env.example
 .firebase/*

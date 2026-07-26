@@ -1,3 +1,5 @@
+import { getPlatformCapabilities } from '../platform/platformCapabilities';
+
 export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
@@ -24,6 +26,7 @@ let snapshot: PwaInstallSnapshot = {
 };
 
 export function isPwaStandalone(): boolean {
+  if (!isPwaInstallSupported()) return false;
   if (typeof window === 'undefined') return false;
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -32,6 +35,7 @@ export function isPwaStandalone(): boolean {
 }
 
 export function getPwaManualInstallMode(): PwaManualInstallMode {
+  if (!isPwaInstallSupported()) return null;
   if (typeof navigator === 'undefined') return null;
   const isIos = (
     /iphone|ipad|ipod/i.test(navigator.userAgent) ||
@@ -58,6 +62,7 @@ function publish(next: PwaInstallSnapshot): void {
  * recreated later if a route-level button missed it.
  */
 export function initializePwaInstall(): void {
+  if (!isPwaInstallSupported()) return;
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   publish({ canPrompt: false, isInstalled: isPwaStandalone() });
@@ -72,6 +77,10 @@ export function initializePwaInstall(): void {
     deferredPrompt = null;
     publish({ canPrompt: false, isInstalled: true });
   });
+}
+
+export function isPwaInstallSupported(): boolean {
+  return getPlatformCapabilities().pwaInstallSupported;
 }
 
 export function subscribePwaInstall(listener: () => void): () => void {

@@ -19,12 +19,20 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
+import {
+  ADMIN_EMAILS,
+  PRIMARY_ADMIN_EMAIL,
+  isAdminEmail,
+} from '../config/adminAccess';
 import { db } from './firebase';
 import { STORAGE_KEYS } from '../data/storageKeys';
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-export const ADMIN_EMAIL = 'danielemoltisanti@gmail.com';
+export {
+  ADMIN_EMAILS,
+  PRIMARY_ADMIN_EMAIL,
+} from '../config/adminAccess';
 const COLLECTION = 'allowedUsers';
 
 // ─── Hashing helpers ────────────────────────────────────────────────
@@ -74,16 +82,20 @@ function writeCache(entries: CachedAllowedUser[]): void {
 // ─── Admin check ────────────────────────────────────────────────────
 
 export function isAdmin(email: string): boolean {
-  return email.toLowerCase().trim() === ADMIN_EMAIL;
+  return isAdminEmail(email);
 }
 
 // ─── Read / check allowlist ─────────────────────────────────────────
 
-/** Pre-computed admin hash (populated lazily). */
-let _adminHash: string | null = null;
-async function adminHash(): Promise<string> {
-  if (!_adminHash) _adminHash = await hashEmail(ADMIN_EMAIL);
-  return _adminHash;
+/** Pre-computed admin hashes (populated lazily). */
+let _adminHashes: Set<string> | null = null;
+async function adminHashes(): Promise<Set<string>> {
+  if (!_adminHashes) {
+    _adminHashes = new Set(
+      await Promise.all(ADMIN_EMAILS.map((email) => hashEmail(email))),
+    );
+  }
+  return _adminHashes;
 }
 
 /**
@@ -94,7 +106,7 @@ async function adminHash(): Promise<string> {
  */
 export async function isEmailAllowed(email: string): Promise<boolean> {
   const lower = email.toLowerCase().trim();
-  if (lower === ADMIN_EMAIL) return true;
+  if (isAdminEmail(lower)) return true;
 
   const h = await hashEmail(lower);
 
@@ -123,9 +135,9 @@ export async function isEmailAllowed(email: string): Promise<boolean> {
 export async function getAllowedUsers(): Promise<CachedAllowedUser[]> {
   try {
     const snapshot = await getDocs(collection(db, COLLECTION));
-    const ah = await adminHash();
+    const protectedAdminHashes = await adminHashes();
     const entries: CachedAllowedUser[] = snapshot.docs
-      .filter((d) => d.id !== ah) // admin not shown in list
+      .filter((d) => !protectedAdminHashes.has(d.id))
       .map((d) => {
         const data = d.data();
         return {
@@ -165,8 +177,8 @@ export async function addAllowedEmail(email: string): Promise<void> {
 
 /** Remove an email from the allowlist by its hash. */
 export async function removeAllowedUser(hash: string): Promise<void> {
-  const ah = await adminHash();
-  if (hash === ah) throw new Error('Cannot remove admin');
+  const protectedAdminHashes = await adminHashes();
+  if (protectedAdminHashes.has(hash)) throw new Error('Cannot remove admin');
 
   await deleteDoc(doc(db, COLLECTION, hash));
 

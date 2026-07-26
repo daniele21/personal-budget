@@ -18,15 +18,6 @@ const firebaseConfig = {
 
 const firestoreDatabaseId = import.meta.env.VITE_FIRESTORE_DATABASE_ID || 'budget-db';
 
-// Debug: remove after confirming config loads
-console.log('[Firebase] Config loaded:', {
-  apiKey: firebaseConfig.apiKey ? '✓' : '✗ MISSING',
-  authDomain: firebaseConfig.authDomain ? '✓' : '✗ MISSING',
-  projectId: firebaseConfig.projectId ? '✓' : '✗ MISSING',
-  appId: firebaseConfig.appId ? '✓' : '✗ MISSING',
-  firestoreDatabaseId,
-});
-
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

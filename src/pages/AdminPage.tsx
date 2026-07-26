@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { getAllowedUsers, addAllowedEmail, removeAllowedUser, ADMIN_EMAIL, type CachedAllowedUser } from '../lib/allowedUsers';
+import {
+  getAllowedUsers,
+  addAllowedEmail,
+  removeAllowedUser,
+  ADMIN_EMAILS,
+  PRIMARY_ADMIN_EMAIL,
+  type CachedAllowedUser,
+} from '../lib/allowedUsers';
 import { Shield, UserPlus, Trash2, Loader2, AlertCircle, WifiOff } from 'lucide-react';
 import { GeminiModelSelector } from '../components/admin/GeminiModelSelector';
 import { GeminiUsageDashboard } from '../components/admin/GeminiUsageDashboard';
@@ -93,14 +100,18 @@ export const AdminPage = () => {
         </div>
       )}
 
-      {/* Admin badge */}
-      <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-3">
-        <Shield className="w-5 h-5 text-primary flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-on-surface">Admin</p>
-          <p className="text-xs text-on-surface-variant">{ADMIN_EMAIL}</p>
+      {/* Admin badges */}
+      <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-start gap-3">
+        <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-on-surface">Administrators</p>
+          {ADMIN_EMAILS.map((email) => (
+            <p key={email} className="text-xs text-on-surface-variant break-all">
+              {email}
+            </p>
+          ))}
         </div>
-        <span className="ml-auto text-micro font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+        <span className="ml-auto flex-shrink-0 text-micro font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
           Always allowed
         </span>
       </div>
@@ -190,7 +201,9 @@ export const AdminPage = () => {
 
       {/* ── Gemini Model Selector ──────────────────────────────── */}
       <div className="border-t border-outline-variant/10 pt-6">
-        <GeminiModelSelector adminEmail={user?.email || ADMIN_EMAIL} />
+        <GeminiModelSelector
+          adminEmail={user?.email || PRIMARY_ADMIN_EMAIL}
+        />
       </div>
 
       {/* ── Gemini Usage Dashboard ─────────────────────────────── */}

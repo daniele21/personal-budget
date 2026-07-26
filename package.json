@@ -7,6 +7,14 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "dev:e2e": "vite --mode=e2e",
     "build": "vite build",
+    "build:android:debug": "node --import tsx scripts/build-android-debug.ts",
+    "android:assemble:debug": "npm run android:sync:debug && bash scripts/run-android-gradle.sh assembleDebug",
+    "android:doctor": "cap doctor android",
+    "android:lint": "bash scripts/run-android-gradle.sh lint",
+    "android:sync": "npm run build && cap sync android",
+    "android:sync:debug": "npm run build:android:debug && cap sync android",
+    "android:sync:diagnostic": "npm run build:android:debug && CAPACITOR_WEB_CONTENTS_DEBUG=true cap sync android",
+    "android:test": "bash scripts/run-android-gradle.sh testDebugUnitTest",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "deploy:hosting": "bash scripts/deploy-hosting.sh",
@@ -21,6 +29,8 @@
     "test:regression": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
+    "@capacitor/android": "8.4.2",
+    "@capacitor/core": "8.4.2",
     "@google/genai": "^1.51.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -44,6 +54,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@capacitor/cli": "8.4.2",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

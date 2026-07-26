@@ -7,6 +7,8 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
+  GoogleAuthProvider,
+  signInWithCredential,
   signInWithPopup,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -14,7 +16,16 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { isEmailAllowed, isAdmin } from '../lib/allowedUsers';
+import { PRIMARY_ADMIN_EMAIL } from '../config/adminAccess';
+import {
+  createGoogleAuthDiagnostic,
+  formatGoogleAuthDiagnostic,
+  type GoogleAuthStage,
+} from '../auth/authDiagnostics';
+import { signInWithGoogleForPlatform } from '../auth/googleAuthOrchestrator';
 import type { AuthRuntimeState } from '../auth/AuthRuntime';
+import { getPlatformCapabilities } from '../platform/platformCapabilities';
+import { NativeGoogleAuth } from '../platform/nativeGoogleAuth';
 import type { User } from '../types';
 
 function mapFirebaseUser(fbUser: FirebaseUser): User {
@@ -43,7 +54,9 @@ export function useFirebaseAuth(): AuthRuntimeState {
             await firebaseSignOut(auth);
             setUser(null);
             setAdminFlag(false);
-            setError('Il tuo account non ha il permesso di accedere. Scrivi a info@staituned.com per richiedere l\'accesso.');
+            setError(
+              `Il tuo account non ha il permesso di accedere. Scrivi a ${PRIMARY_ADMIN_EMAIL} per richiedere l'accesso.`,
+            );
             setLoading(false);
             return;
           }
@@ -74,12 +87,40 @@ export function useFirebaseAuth(): AuthRuntimeState {
 
   const signInWithGoogle = useCallback(async () => {
     setError(null);
+    let diagnosticStage: GoogleAuthStage = 'runtime_detection';
     try {
-      await signInWithPopup(auth, googleProvider);
+      const { platform } = getPlatformCapabilities();
+      diagnosticStage =
+        platform === 'android' ? 'android_configuration' : 'web_popup';
+      await signInWithGoogleForPlatform(
+        platform,
+        import.meta.env.VITE_FIREBASE_WEB_CLIENT_ID,
+        {
+          webPopupSignIn: async () => {
+            diagnosticStage = 'web_popup';
+            await signInWithPopup(auth, googleProvider);
+          },
+          nativeCredentialSignIn: async () => {
+            diagnosticStage = 'credential_manager';
+            const result = await NativeGoogleAuth.signIn();
+            return result.idToken;
+          },
+          firebaseIdTokenSignIn: async (idToken) => {
+            diagnosticStage = 'firebase_exchange';
+            const credential = GoogleAuthProvider.credential(idToken);
+            await signInWithCredential(auth, credential);
+          },
+        },
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign-in failed';
       setError(message);
-      console.error('[Auth] Google sign-in failed:', message);
+      console.error(
+        '[Auth] Google sign-in failed ' +
+          formatGoogleAuthDiagnostic(
+            createGoogleAuthDiagnostic(diagnosticStage, err),
+          ),
+      );
     }
   }, []);
 
@@ -89,10 +130,18 @@ export function useFirebaseAuth(): AuthRuntimeState {
     setAdminFlag(false);
     try {
       await firebaseSignOut(auth);
+      if (getPlatformCapabilities().platform === 'android') {
+        await NativeGoogleAuth.signOut().catch(() => undefined);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign-out failed';
       setError(message);
-      console.error('[Auth] Sign-out failed:', message);
+      console.error(
+        '[Auth] Sign-out failed ' +
+          formatGoogleAuthDiagnostic(
+            createGoogleAuthDiagnostic('sign_out', err),
+          ),
+      );
     }
   }, []);
 

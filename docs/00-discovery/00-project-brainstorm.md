@@ -8,6 +8,71 @@ Discovery status: **Converged for delivery planning** on 2026-07-22.
 
 The living implementation tracker is [`10-portable-archive-progress-plan.md`](./10-portable-archive-progress-plan.md).
 
+## Next Initiative: Android Payment Detection
+
+Discovery status: **converged for a synthetic technical spike; M0 complete** on 2026-07-25. Real financial sources and signed distribution remain behind the external gates below.
+
+Aura will continue as a PWA and gain a companion Android distribution through Capacitor. The Android build reuses the React product and adds a narrow Kotlin capability for opt-in notification-based payment candidates. The initiative does not turn the PWA into a deprecated fallback and does not create a separate financial domain.
+
+### Problem
+
+Users already receive a device notification after many card payments but must later re-enter amount, merchant, date, and category in Aura. This creates friction, omissions, and transcription errors.
+
+### Approved Direction
+
+- Keep PWA and Android available in parallel.
+- Use one React/Vite product with platform adapters.
+- Use Capacitor 8 and a custom Kotlin plugin rather than a React Native or full-native rewrite.
+- Use package `com.staituned.aura` as the Android application ID, subject to final Play Console availability and domain-control verification before publication.
+- Support Android 16/API 36 only in the first release, with min/target/compile SDK 36.
+- Keep payment detection off by default.
+- Process only supported and explicitly selected packages.
+- Check the package before reading notification extras.
+- Parse locally with bundled deterministic rules.
+- Create a short-lived native candidate and require explicit review.
+- Keep native code away from canonical `AppData`; React remains the only transaction writer.
+- Reserve the final transaction UUID during native acceptance so cross-storage recovery does not require detection metadata in `Transaction`.
+- Exclude notification text, card/account identifiers, pending candidates, native preferences, and tombstones from network, Aura backup/archive, and Android system backup.
+- Use a synthetic notification producer for the technical spike.
+- Start product validation with EUR card payments and at most one or two real apps after fixture governance is approved.
+
+### Alternatives Considered
+
+#### Replace The PWA With A Native App
+
+Rejected. It would remove browser and desktop access, split delivery, and duplicate mature React behavior without improving the core detection capability.
+
+#### React Native Or Full Kotlin Rewrite
+
+Rejected for the MVP. It provides deeper native control but duplicates UI, domain logic, accessibility work, testing, and release maintenance.
+
+#### Keep PWA Only
+
+Rejected for the feature because a PWA cannot read notifications posted by other Android apps.
+
+#### Read SMS Or Use Accessibility Service
+
+Rejected. Both expand sensitive access beyond the minimum needed for the approved use case.
+
+#### Cloud Or LLM Parsing
+
+Rejected. Notification text is financial context and deterministic app-specific templates are sufficient for the pilot.
+
+#### Persist Detection Metadata In Every Transaction
+
+Rejected. Native acceptance instead reserves the final normal transaction ID and retains dedupe tombstones only for their short retention window.
+
+### Remaining External Gates
+
+- Verify `com.staituned.aura` availability in Play Console and confirm control of the `staituned.com` namespace before the first signed distributable.
+- Install Android Studio 2025.2.1 or newer and Android SDK 36.
+- Assign named product, Android, React, QA, security, privacy, and release owners.
+- Select the first real payment app after a user-approved, redacted fixture source exists.
+- Complete lawful-basis, role-allocation, data-inventory, retention, and DPIA screening with the privacy owner.
+- Confirm Play Console developer verification, app signing, Data Safety, and prominent-disclosure evidence.
+
+The living tracker is [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). Architecture decisions are recorded in [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
+
 ## Problem
 
 The existing CSV export is suitable for analysis and interoperability, but it cannot reconstruct Aura after local data loss. It exports transactions and budgets as separate downloads, while import restores only transactions and otherwise routes generic spreadsheet data through the AI-assisted bank-statement workflow.

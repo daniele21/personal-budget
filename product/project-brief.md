@@ -14,7 +14,8 @@ Individuals who want a private, lightweight way to manage personal finances from
 - Optional encrypted cloud backup, enabled only by explicit user opt-in.
 - Clear monthly and weekly reporting.
 - Preserved historical data for accurate reports.
-- Admin access control through an allowlist, without admin access to users' financial data.
+- Access control through two designated administrator accounts and an allowlist,
+  without administrator access to users' financial data.
 - Portable archive and core financial workflows do not use AI; the separate generic bank-statement import may use Gemini only after explicit disclosure and consent.
 
 ## Current Scope
@@ -40,8 +41,27 @@ Individuals who want a private, lightweight way to manage personal finances from
 
 Delivery scope and progress are tracked in [`docs/00-discovery/10-portable-archive-progress-plan.md`](../docs/00-discovery/10-portable-archive-progress-plan.md).
 
+## Planned Android Initiative
+
+Aura will retain the existing PWA and add a companion Android distribution based on Capacitor. Both distributions share the React application and canonical financial domain; Android-only capabilities are isolated behind typed platform adapters and native Kotlin plugins.
+
+The first planned native capability is optional payment detection from notifications:
+
+- disabled by default;
+- limited to explicitly supported and user-selected payment apps;
+- parsed locally with deterministic app-specific rules;
+- never routed to Gemini, Firebase, analytics, or another network service;
+- persisted first as a short-lived native `PaymentCandidate`;
+- converted into a normal Aura transaction only after explicit user review;
+- excluded from Aura cloud backup, portable archives, and Android system backup while pending.
+
+The technical spike uses a synthetic notification source. The first real payment app is selected only after a privacy-approved fixture process and verified package/template evidence exist. EUR card payments are the initial product scope; generic incoming transfers, salary, P2P, card identifiers, Open Banking, remote rules, and automatic posting remain outside the MVP.
+
+Strategy, dependencies, quality gates, governance work, and progress are tracked in [`docs/00-discovery/11-android-payment-detection-progress-plan.md`](../docs/00-discovery/11-android-payment-detection-progress-plan.md).
+
 ## Non-Scope
 
 - AI recommendations or automated financial advice.
 - Admin visibility into users' financial records.
 - Bank account aggregation or open banking integrations.
+- Replacing or deprecating the PWA when the Android companion is introduced.
