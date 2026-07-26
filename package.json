@@ -11,6 +11,8 @@
     "android:assemble:debug": "npm run android:sync:debug && bash scripts/run-android-gradle.sh assembleDebug",
     "android:doctor": "cap doctor android",
     "android:lint": "bash scripts/run-android-gradle.sh lint",
+    "android:simulate:wallet-notification": "node scripts/simulate-wallet-notification.mjs",
+    "android:simulate:wallet-notification:cleanup": "node scripts/simulate-wallet-notification.mjs --cleanup",
     "android:test:instrumentation": "bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest",
     "android:sync": "npm run build && cap sync android",
     "android:sync:debug": "npm run build:android:debug && cap sync android",

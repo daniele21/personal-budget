@@ -29,8 +29,8 @@ public final class SyntheticNotificationActivity extends Activity {
             NOTIFICATION_ID,
             new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Synthetic payment")
-                .setContentText("EUR 12.34 at Synthetic Merchant")
+                .setContentTitle("Pagamento effettuato")
+                .setContentText("12,34 € presso Negozio di prova · Wallet simulato")
                 .build()
         );
         finish();

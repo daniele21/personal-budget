@@ -241,6 +241,30 @@ See
 [`android-payment-detection-security.md`](docs/01-architecture/android-payment-detection-security.md)
 for the threat model, data lifecycle and remaining privacy/DPIA gates.
 
+To display a Wallet-like notification using only static synthetic data on an
+Android emulator:
+
+```bash
+npm run android:simulate:wallet-notification
+```
+
+The notification remains visible for 30 seconds by default. The command refuses
+physical devices, enables the listener only for the simulation, and then
+disables it, clears the synthetic settings, and uninstalls the test source. To
+change the duration or select one emulator when multiple are connected:
+
+```bash
+ANDROID_SERIAL=emulator-5556 AURA_SIMULATION_SECONDS=60 \
+  npm run android:simulate:wallet-notification
+```
+
+If a previous run was forcibly terminated, cleanup is idempotent:
+
+```bash
+ANDROID_SERIAL=emulator-5556 \
+  npm run android:simulate:wallet-notification:cleanup
+```
+
 ## Firebase Setup
 
 In the Firebase project:
@@ -273,6 +297,8 @@ Main collections:
 | `npm run android:test:instrumentation` | Run Aura instrumentation tests on a connected API 36 device |
 | `npm run android:verify:webview` | Verify routing, persisted WebView storage, attachment storage, and deep-link delivery |
 | `npm run android:lint` | Run Android lint |
+| `npm run android:simulate:wallet-notification` | Display a temporary synthetic Wallet-like notification on an emulator |
+| `npm run android:simulate:wallet-notification:cleanup` | Revoke and remove any remaining simulation state |
 | `npm run android:doctor` | Inspect the Capacitor Android environment |
 | `npm run preview` | Serve the build locally |
 | `npm run firebase:login` | Sign in with the Firebase CLI |

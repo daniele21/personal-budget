@@ -745,6 +745,9 @@ Evidenze M4 al 2026-07-26:
 - test instrumentation installa la test APK separata, concede temporaneamente
   il listener, pubblica una notifica statica sintetica, riceve un solo callback
   con UI Aura non avviata, quindi revoca accesso e purga lo store;
+- `android:simulate:wallet-notification` consente QA visuale solo su emulatore,
+  per 30 secondi di default, e ripristina listener, settings e test APK; supporta
+  `ANDROID_SERIAL`, durata limitata e cleanup idempotente;
 - 10 instrumentation test passati su Android 16/API 36;
 - nessun parser M5, candidato M6, notifica Aura M7 o dato reale è stato
   introdotto. Process recreation e reboot restano il gate tecnico M4 aperto.

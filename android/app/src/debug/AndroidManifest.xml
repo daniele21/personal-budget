@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="com.staituned.aura.permission.POST_SYNTHETIC_TEST_NOTIFICATION" />
+
+    <application>
+        <activity
+            android:name=".SyntheticPaymentDetectionSetupActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+    </application>
 </manifest>

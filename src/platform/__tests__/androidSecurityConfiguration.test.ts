@@ -106,4 +106,26 @@ describe('Android security configuration', () => {
       listener.indexOf('notification.notification'),
     );
   });
+
+  it('keeps Wallet simulation emulator-only and self-cleaning', () => {
+    const packageManifest = JSON.parse(readProjectFile('package.json')) as {
+      scripts: Record<string, string>;
+    };
+    const simulation = readProjectFile(
+      'scripts/simulate-wallet-notification.mjs',
+    );
+    const testSourceBuild = readProjectFile(
+      'android/notification-test-source/build.gradle',
+    );
+
+    expect(
+      packageManifest.scripts['android:simulate:wallet-notification'],
+    ).toContain('simulate-wallet-notification.mjs');
+    expect(simulation).toContain("getprop', 'ro.kernel.qemu");
+    expect(simulation).toContain('ANDROID_SERIAL');
+    expect(simulation).toContain('disallow_listener');
+    expect(simulation).toContain("uninstall', sourcePackage");
+    expect(simulation).toContain('finally');
+    expect(testSourceBuild).toContain('variantBuilder.buildType != "debug"');
+  });
 });

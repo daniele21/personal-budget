@@ -50,6 +50,10 @@
 - Added a separate signature-protected synthetic notification APK and API 36
   end-to-end instrumentation test. No real payment-app identifier, fixture,
   parser, candidate persistence or off-device transfer was introduced.
+- Added an emulator-only `android:simulate:wallet-notification` command with a
+  static Italian Wallet-like fixture, bounded display duration, multi-emulator
+  selection, interrupt-safe cleanup, listener revocation and automatic removal
+  of the synthetic source APK.
 
 ### Changed
 
