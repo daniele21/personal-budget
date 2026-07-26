@@ -59,8 +59,9 @@ that debug profile. Debuggable builds may emit local auth diagnostics limited
 to the failing stage, bounded error code, exception class and sanitized stack
 frames. Exception messages, ID tokens, OAuth client IDs, emails, credential
 payloads and Firebase profiles are excluded; release builds emit no native auth
-diagnostics. A successful end-to-end sign-in and logout test remains required
-with the approved debug OAuth client before pilot readiness.
+diagnostics. The user reported a successful manual sign-in on 2026-07-26;
+logout, token refresh, offline/session expiry, allowlist role, and account
+switch remain separate pilot-readiness checks.
 
 ## Portable Archive Export And Restore
 
@@ -93,7 +94,11 @@ The engineering processing record and privacy-owner approval checklist are maint
 
 ## Planned Android Payment Detection
 
-Aura plans an optional Android-only capability that processes notifications from supported and explicitly selected payment apps to prepare a transaction candidate. This processing is not implemented yet.
+Aura plans an optional Android-only capability that processes notifications
+from supported and explicitly selected payment apps to prepare a transaction
+candidate. The M3 privacy/security foundation is implemented, but notification
+processing itself is not: there is no listener, parser, candidate database, or
+Aura payment notification.
 
 The approved engineering boundary is:
 
@@ -108,10 +113,20 @@ The approved engineering boundary is:
 - redacted lock-screen notification by default;
 - purge on logout, owner change, local reset, total deletion, or explicit detection-data deletion.
 
+The current native bridge temporarily receives the authenticated Firebase UID
+only to derive a Keystore-backed HMAC owner partition. It stores neither the
+UID, email, nor token. Purge is journaled and recoverable; total deletion also
+removes the payment-detection Keystore keys. AES-GCM candidate encryption and
+opaque IDs are implemented as primitives for the future repository, without
+creating or processing candidate records in M3.
+
 Local-only processing reduces recipient, transfer, breach, and vendor exposure but does not remove the need for transparency, minimization, security, retention, rights handling, or a documented lawful basis. Android grants notification access to the listener as a whole; Aura's per-app restriction is an application-enforced control and must be described honestly before the user opens system settings.
 
 Unlike portable archive processing, notification detection is ongoing background monitoring of financial context. A DPIA screening is therefore required before real-user testing. The repository still lacks the legal source register, controller/processor role allocation, processor RoPA, and lawful-basis decision required by `AGENTS.md`; the privacy owner must resolve or explicitly accept those gaps before a commercial GDPR-readiness claim or production rollout.
 
 No new processor or cross-border transfer is planned. This conclusion depends on verified Android backup exclusion and the absence of custom telemetry. Adding remote rules, diagnostics uploads, analytics, AI, or server-side parsing requires a new privacy and subprocessor review.
 
-The planned processing record and approval checklist are maintained in [`android-payment-detection-processing-record.md`](./android-payment-detection-processing-record.md).
+The processing record and approval checklist are maintained in
+[`android-payment-detection-processing-record.md`](./android-payment-detection-processing-record.md);
+the implemented security boundary and threat model are in
+[`android-payment-detection-security.md`](../01-architecture/android-payment-detection-security.md).

@@ -45,14 +45,14 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-07-25
+Ultimo aggiornamento: 2026-07-26
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
 | M0. Decisioni, discovery e baseline | Completato | Strategia, ADR, spec, privacy record e baseline web registrati; i gate che richiedono dati reali o Play sono separati e tracciati |
-| M1. Fondazione Capacitor e doppia distribuzione | In corso | Shell e build debug Firebase-isolated verificate; restano storage e flussi dati autenticati in WebView |
-| M2. Runtime di piattaforma, autenticazione e lifecycle | In corso | Credential Manager e scambio token in memoria implementati; configurazione OAuth reale, login completo e lifecycle restano aperti |
-| M3. Fondazione privacy e sicurezza Android | Non iniziato | Attende M0-M2 |
+| M1. Fondazione Capacitor e doppia distribuzione | In corso | Shell, routing, localStorage, IndexedDB e attachment store verificati su API 36; restano i flussi archive/CSV autenticati e la configurazione production |
+| M2. Runtime di piattaforma, autenticazione e lifecycle | In corso | Login Google positivo verificato manualmente; runtime bridge, resume, deep link, boundary notifiche e coordinamento purge implementati; restano session lifecycle completa, allowlist/admin e target autenticato |
+| M3. Fondazione privacy e sicurezza Android | In corso | Owner isolation, purge journal, Keystore/AES-GCM, backup exclusion, WebView/CSP, R8 e test API 36 implementati; restano gate privacy/DPIA, listener/PendingIntent futuri e QA fisica |
 | M4. Notification listener e configurazione utente | Non iniziato | Attende M2-M3 |
 | M5. Rule engine nativo e corpus di fixture | Non iniziato | Attende M0 e M4 |
 | M6. Repository candidati, retention e deduplicazione | Non iniziato | Attende M3 e M5 |
@@ -62,7 +62,7 @@ Ultimo aggiornamento: 2026-07-25
 | M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
-Focus corrente: **M1 — predisporre il toolchain Android e realizzare la fondazione Capacitor senza leggere notifiche finanziarie reali**.
+Focus corrente: **M3 — consolidare e approvare i confini privacy/security senza leggere notifiche finanziarie reali**.
 
 ## Direzione approvata
 
@@ -506,9 +506,9 @@ Task:
 - [ ] Separare Firebase/OAuth non-production e production, incluse le coppie package/certificato; la configurazione debug reale è verificata, mentre client e firma production restano un gate release.
 - [x] Provare che debug/E2E non incorporano credenziali Firebase production; la prova di scrittura resta non applicabile finché il progetto debug non è configurato.
 - [x] Non inserire chiavi di firma o segreti nel repository.
-- [ ] Verificare routing React su cold start, reload e deep link; cold start sulla schermata login verificato su API 36.
-- [ ] Verificare persistenza localStorage dopo chiusura e riapertura.
-- [ ] Verificare persistenza IndexedDB e allegati.
+- [x] Verificare routing React su cold start, reload e deep link; cold start, reload di `/reports` e consegna del deep link debug verificati su API 36.
+- [x] Verificare persistenza localStorage dopo chiusura e riapertura.
+- [x] Verificare persistenza IndexedDB e allegati.
 - [ ] Verificare export/import `.aura` nella WebView.
 - [ ] Verificare import CSV e isolamento Gemini.
 - [x] Nascondere install prompt PWA nella build nativa.
@@ -527,14 +527,21 @@ Exit criteria:
 - nessun secret è presente nel bundle o nel repository;
 - il codice web non richiede Capacitor per funzionare.
 
-Evidenze M1 al 2026-07-25:
+Evidenze M1 al 2026-07-26:
 
-- `npm run test:regression`: TypeScript, 61 file/315 test Vitest e build Vite passati;
+- `npm run test:regression`: TypeScript, 69 file/337 test Vitest e build Vite passati;
 - `bash scripts/run-android-gradle.sh test lint assembleDebug`: 198 task, build riuscita;
 - APK debug: 11,6 MB prima del bridge auth; 14,3 MB con Kotlin, Credential Manager e Google ID, application ID `com.staituned.aura.debug`, min/target SDK 36;
 - cold start su emulatore Android 16/API 36 in 1,433 secondi, activity visibile e nessun crash applicativo;
 - configurazione generata con logging e WebView debugging disattivati, nessun `server.url`, mixed content disabilitato;
 - manifest finale con backup, device transfer e cleartext disabilitati;
+- `npm run android:verify:webview`: origine locale `https://localhost`, platform
+  Android, cold start, reload BrowserRouter di `/reports`, persistenza dopo
+  force-stop di localStorage, IndexedDB e chiave nel database reale
+  `keyval-store` degli allegati, più consegna del deep link debug;
+- `npm run android:test:instrumentation`: 2 test passati su emulatore
+  Android 16/API 36 per package debug isolato, `allowBackup=false` e risoluzione
+  interna del deep link;
 - entry bundle web passata da 260,43 kB/72,55 kB gzip a 269,18 kB/75,87 kB gzip;
 - `npm audit --omit=dev` non è verde per 18 advisory nella dependency tree esistente; nessun aggiornamento automatico è stato applicato.
 
@@ -552,7 +559,7 @@ Task:
 - [x] Implementare adapter web con `paymentDetectionSupported=false`.
 - [x] Implementare adapter Android Capacitor con `paymentDetectionSupported=false` finché il plugin non esiste.
 - [x] Migrare il codice PWA install a un adapter e disabilitarlo in native.
-- [ ] Migrare notifiche browser/native a un boundary comune senza cambiare semantica.
+- [x] Migrare notifiche browser/native a un boundary comune senza cambiare semantica.
 - [x] Configurare Firebase Android debug app, package
   `com.staituned.aura.debug`, fingerprint SHA e Web client ID usato da
   Credential Manager.
@@ -567,11 +574,11 @@ Task:
   codice limitato, classe eccezione e stack frame sanitizzati.
 - [ ] Verificare allowlist e admin role con lo stesso Firebase UID della PWA.
 - [ ] Verificare login, logout, token refresh, offline e session expiry.
-- [ ] Definire lifecycle hooks per cold start, resume e process recreation.
-- [ ] Esporre evento `appResumed` al provider di payment detection.
-- [ ] Definire navigazione da deep link con utente autenticato e non autenticato.
+- [x] Definire lifecycle hooks per cold start, resume e process recreation.
+- [x] Esporre evento `appResumed` al futuro provider di payment detection tramite subscription typed.
+- [x] Definire navigazione da deep link con utente autenticato e non autenticato.
 - [ ] Conservare candidate target durante login senza esporre dati nella URL.
-- [ ] Definire logout coordinato con purge/suspend nativo.
+- [x] Definire logout coordinato con purge/suspend nativo.
 - [ ] Testare cambio account senza riuso dei dati del precedente owner.
 - [x] Aggiungere test unitari degli adapter.
 - [ ] Aggiungere test di integrazione auth Android.
@@ -585,8 +592,9 @@ Evidenze M2 al 2026-07-26:
 - Credential Manager invocato su Android 16 con calling package
   `com.staituned.aura.debug`, senza `DEVELOPER_ERROR` o crash;
 - l'AVD API 36 senza provider/account Google ha restituito
-  `AUTH_NO_CREDENTIAL`; il login positivo resta da verificare su immagine
-  Google Play o dispositivo fisico con account di test;
+  `AUTH_NO_CREDENTIAL`; il 2026-07-26 l'utente ha inoltre riferito esito
+  positivo del login manuale con il proprio account su un ambiente
+  Google-capable. Logout, refresh, expiry, offline e ruolo restano test separati;
 - diagnostica auth protetta da variante debuggable e testata per escludere
   messaggi, token simulati, email e payload non attendibili;
 - test runtime diagnostico su API 36: Logcat espone
@@ -596,6 +604,15 @@ Evidenze M2 al 2026-07-26:
   `serverClientId`, variabili `VITE_*`, client ID Google ed email;
 - `android:test` esegue `testDebugUnitTest`, evitando di richiedere il client
   Firebase production non ancora configurato.
+- plugin first-party `NativeAppRuntime` compilato e verificato su API 36:
+  emette resume, conserva l'app URL fino al completamento del login e accetta
+  soltanto route allowlisted senza query o fragment finanziari;
+- il boundary notifiche conserva le Notification API e il service worker sul
+  web e non li invoca nella WebView Android;
+- il coordinatore `purgeNativePaymentData` è fail-closed quando il futuro plugin
+  esiste e no-op esplicito finché M3-M6 non introducono il repository nativo;
+- 2 instrumentation test Android e i contract test React coprono package,
+  backup flag, deep-link resolution, target pre-login e acknowledge post-login.
 
 Exit criteria:
 
@@ -608,40 +625,67 @@ Exit criteria:
 
 Goal: fissare i controlli prima di leggere notifiche reali.
 
-Stato: **Non iniziato**
+Stato: **In corso**
 
 Dipendenze: M0-M2.
 
 Task:
 
-- [ ] Creare data-flow diagram con trust boundaries Android, WebView, Room e Firebase.
-- [ ] Creare threat model per listener, bridge, deep link, storage e multi-account.
-- [ ] Documentare dati elaborati, persistiti, esclusi e cancellati.
-- [ ] Implementare owner key hash senza email o token.
-- [ ] Definire purge atomico di candidati, tombstone e preferenze.
-- [ ] Collegare purge a logout, cambio owner, reset locale e cancellazione totale.
-- [ ] Configurare `android:allowBackup` e/o `data-extraction-rules` secondo D-106.
-- [ ] Escludere Room, preferenze e chiavi da cloud backup e D2D.
-- [ ] Aggiungere test adb/backup o procedura ripetibile che dimostri l'esclusione.
-- [ ] Disabilitare cleartext traffic non necessario.
-- [ ] Impedire navigazione WebView verso origini non approvate.
-- [ ] Non usare `server.url` remoto in release.
-- [ ] Verificare CSP e superfici XSS rilevanti per le API bridge.
-- [ ] Assicurare che il bridge non esponga testo grezzo.
-- [ ] Assicurare che service e receiver non necessari siano `exported=false`.
+- [x] Creare data-flow diagram con trust boundaries Android, WebView, Room e Firebase.
+- [x] Creare threat model per listener, bridge, deep link, storage e multi-account.
+- [x] Documentare dati elaborati, persistiti, esclusi e cancellati.
+- [x] Implementare owner key hash senza email o token.
+- [x] Definire purge journaled e recuperabile di candidati, tombstone e preferenze.
+- [x] Collegare purge a logout, cambio owner, reset locale e cancellazione totale.
+- [x] Configurare `android:allowBackup` e `data-extraction-rules` secondo D-106.
+- [x] Escludere Room, preferenze e chiavi da cloud backup e D2D.
+- [x] Aggiungere test di configurazione e instrumentation ripetibili che dimostrano
+  flag e regole di esclusione; la prova OEM/D2D fisica resta in M9.
+- [x] Disabilitare cleartext traffic non necessario.
+- [x] Impedire navigazione WebView verso origini non approvate.
+- [x] Non usare `server.url` remoto in release.
+- [x] Verificare CSP e superfici XSS rilevanti per le API bridge.
+- [x] Assicurare che il bridge non esponga testo grezzo.
+- [x] Assicurare che service e receiver Aura non necessari siano `exported=false`.
 - [ ] Verificare che il solo `NotificationListenerService` bindabile dal sistema sia protetto da `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` e non esponga azioni applicative.
 - [ ] Usare PendingIntent immutable quando possibile.
-- [ ] Usare ID candidato non prevedibili.
-- [ ] Definire cifratura per merchant persistito o eliminarlo se non necessario.
-- [ ] Definire comportamento in caso di chiave Keystore invalidata.
-- [ ] Rimuovere log dinamici dal percorso nativo release.
-- [ ] Configurare R8 o controllo equivalente per evitare log debug in produzione.
-- [ ] Verificare che crash reporting e breadcrumbs non ricevano candidate fields.
-- [ ] Definire notifica Aura `VISIBILITY_PRIVATE` con public version redatta.
-- [ ] Preparare disclosure che spieghi l'ampiezza del permesso Android e il filtro interno.
-- [ ] Preparare flussi di revoca, sospensione e cancellazione.
-- [ ] Aggiornare privacy notes, data inventory, retention e processing record.
+- [x] Usare ID candidato non prevedibili.
+- [x] Definire cifratura AES-GCM dell'intero payload strutturato, incluso il merchant.
+- [x] Definire comportamento in caso di chiave Keystore invalidata.
+- [x] Rimuovere log dinamici dal percorso nativo release.
+- [x] Configurare R8 per shrinking e rimozione dei log debug in produzione.
+- [x] Verificare che non sia installato un crash-reporting/breadcrumb SDK e che il
+  bridge M3 non contenga candidate fields.
+- [x] Definire notifica Aura `VISIBILITY_PRIVATE` con public version redatta.
+- [x] Preparare disclosure che spieghi l'ampiezza del permesso Android e il filtro interno.
+- [x] Preparare flussi di revoca, sospensione e cancellazione.
+- [x] Aggiornare architettura security, data inventory, retention e processing record.
 - [ ] Registrare screening DPIA e decisione privacy owner.
+
+Evidenze M3 al 2026-07-26:
+
+- [`android-payment-detection-security.md`](../01-architecture/android-payment-detection-security.md)
+  contiene DFD, trust boundaries, data lifecycle, threat model, disclosure,
+  deletion flows e controlli futuri M4/M7;
+- owner Firebase registrato nativamente soltanto dopo allowlist, derivato con
+  HMAC-SHA256 e chiave Android Keystore; UID, email e token non sono persistiti;
+- purge journaled e recuperabile su logout, account change, reset locale e
+  cancellazione totale; il cambio owner è fail-closed;
+- primitive AES-GCM con AAD owner/ID/schema e ID opachi da 144 bit verificate
+  su Android 16/API 36;
+- `allowBackup=false`, regole exhaustive cloud/D2D, cleartext disabilitato,
+  WebView limitata a `https://localhost`, CSP senza `unsafe-eval`, nessun
+  `server.url`;
+- R8 e resource shrinking release attivi, chiamate `android.util.Log` rimosse
+  in release, nessun crash SDK installato;
+- `android:test:instrumentation`: 6 test passati su API 36; test TypeScript di
+  configurazione e bridge passati;
+- `bash scripts/run-android-gradle.sh testDebugUnitTest lintDebug assembleDebug`:
+  145 task, build riuscita;
+- nessun listener, parser, database candidato o notifica Aura esiste ancora:
+  i task component-specific restano correttamente aperti per M4/M7;
+- base giuridica, ruoli, RoPA e DPIA restano bloccati sul privacy owner; questa
+  implementazione non autorizza l'uso di notifiche reali.
 
 Exit criteria:
 
@@ -1214,7 +1258,7 @@ Vietato:
 | R-005 | Android backup trasferisce Room | Media | Alta | Backup/data extraction exclusion test | Android/Security | Aperto |
 | R-006 | Candidati visibili dopo cambio account | Media | Critica | owner hash, purge/logout integration | Security/React | Aperto |
 | R-007 | Doppia transazione tra Room e AppData | Media | Alta | acceptance journal e transaction ID prenotato | Android/React | Aperto |
-| R-008 | Login Google fallisce in WebView | Bassa | Alta | bridge Credential Manager compilato e invocato su API 36; resta prova end-to-end con OAuth debug reale | Android | Mitigazione in corso |
+| R-008 | Login Google fallisce in WebView | Bassa | Alta | configurazione OAuth debug verificata e bridge Credential Manager invocato su API 36; resta prova end-to-end su provider/account Google reale | Android | Mitigazione in corso |
 | R-009 | Play Store considera disclosure insufficiente | Media | Alta | prominent disclosure, review pre-release | Privacy/Release | Aperto |
 | R-010 | Lock screen espone spese | Media | Alta | private/public redacted notification | UX/Security | Aperto |
 | R-011 | OEM termina o limita il listener | Media | Media | device matrix, stato visibile, recovery | QA/Android | Aperto |
@@ -1309,6 +1353,8 @@ Next: prossima task verificabile
 | 2026-07-25 | M1 | Installato il toolchain CLI Android, aggiunti Capacitor 8 e il progetto Android versionato, isolati PWA install/service worker tramite capability runtime | `capacitor.config.ts`, `android/`, `src/platform/`, script npm e Gradle | Completare storage, auth e flussi dati nella WebView |
 | 2026-07-25 | M1 | Build debug finale avviata su emulatore Android 16/API 36; baseline di supporto ristretta ad API 36 per decisione D-113 | APK 11,6 MB, cold start 1,433 s, screenshot e logcat locale; min/compile/target 36 | Completare storage/auth e registrare dispositivo fisico in M9 |
 | 2026-07-25 | M1/M2 | Implementati isolamento Firebase/OAuth debug fail-closed e plugin Kotlin Credential Manager; il bridge viene invocato su API 36 e gestisce `NoCredential` senza crash | Scan bundle senza config Firebase production, 61 file/315 test, Gradle 198 task, APK 14,3 MB, cold start 1,055 s | Fornire OAuth/Firebase debug reale e verificare login, UID, logout e session recovery |
+| 2026-07-26 | M1/M2 | Implementati runtime bridge first-party, resume, deep link allowlisted, target pre-login, boundary notifiche web/native e coordinamento purge per logout/reset | `android:verify:webview`, 2 instrumentation test API 36, 68 file/332 test Vitest, Gradle test/lint/assemble verde | Verificare login positivo, UID/allowlist, session lifecycle e flussi archive/CSV autenticati |
+| 2026-07-26 | M2/M3 | Login Google positivo riferito dall'utente; implementati owner boundary HMAC, purge journaled, AES-GCM/ID opachi, backup exclusion, WebView/CSP e release hardening senza introdurre il listener | 69 file/337 test Vitest, build Vite, 145 task Gradle, 6 instrumentation test API 36 e `android:verify:webview` verdi | Ottenere privacy-owner/DPIA; completare lifecycle auth e QA fisica prima di M4 reale |
 
 ## Release Evidence
 
@@ -1316,25 +1362,26 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 
 | Evidenza | Stato | Riferimento |
 |---|---|---|
-| TypeScript lint | Passato | `npm run test:regression`, 2026-07-25 |
-| Vitest | Passato | 61 file e 315 test, 2026-07-25 |
-| Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-25 |
+| TypeScript lint | Passato | `npm run test:regression`, 2026-07-26 |
+| Vitest | Passato | 69 file e 337 test, 2026-07-26 |
+| Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Baseline non verde | `npm run test:e2e`: 1 passato, 6 falliti, 1 interrotto, 23 non eseguiti; tutti i fallimenti osservati attendono `Export complete archive` con Guided Tour aperta |
-| Gradle unit test | Passato | `npm run android:test`, JDK 21/API 36, 2026-07-25 |
-| Android instrumentation | Non eseguito | Da registrare |
-| Android lint | Passato | `npm run android:lint`, 2026-07-25 |
-| Android debug build | Passato | APK 14,3 MB, `com.staituned.aura.debug`, min/target 36, cold start 1,055 s su emulatore Android 16/API 36 |
-| Android auth bridge | Parziale positivo | Credential Manager invocato; `NoCredential` mostrato senza crash su emulatore privo di account. Success path attende OAuth debug reale |
+| Gradle unit test | Passato | `testDebugUnitTest`, JDK 21/API 36, 2026-07-26 |
+| Android instrumentation | Passato | 6 test `:app:connectedDebugAndroidTest` su emulatore Android 16/API 36, 2026-07-26 |
+| Android lint | Passato | `lintDebug`, 2026-07-26 |
+| Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |
+| Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
+| Android auth bridge | Parziale positivo | Configurazione debug verificata, `NoCredential` gestito senza crash e login positivo riferito dall'utente il 2026-07-26; lifecycle, ruolo e account switch restano aperti |
 | Debug Firebase isolation | Passato | Build rifiutata senza `VITE_ANDROID_FIREBASE_*`; bundle sintetico verificato senza API key, auth domain, sender ID o app ID production |
 | Signed internal build | Non eseguito | Da registrare |
 | Physical device matrix | Non eseguito | Da registrare |
 | Network leakage check | Non eseguito | Da registrare |
 | Logcat leakage check | Non eseguito | Da registrare |
-| Android backup exclusion | Non eseguito | Da registrare |
-| Logout/reset purge | Non eseguito | Da registrare |
+| Android backup exclusion | Positivo engineering | `allowBackup=false` verificato sul manifest installato e regole cloud/D2D deny-all coperte da test; prova OEM fisica resta M9 |
+| Logout/reset purge | Primitive verificate | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale; integrazione Room resta M6 |
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
-| Security review | Non eseguita | Da registrare |
+| Security review | Engineering completata, owner aperto | Threat model M3 e controlli automatizzati registrati; approvazione security owner e componenti M4/M7 restano aperti |
 | Play/Data Safety review | Non eseguita | Da registrare |
 | Rollback rehearsal | Non eseguito | Da registrare |
 | Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |

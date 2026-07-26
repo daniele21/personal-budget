@@ -23,6 +23,7 @@ import { ImportArchiveDialog } from '../components/archive/ImportArchiveDialog';
 import { RestoreArchiveConfirmDialog } from '../components/archive/RestoreArchiveConfirmDialog';
 import { downloadBlob } from '../services/archive/archiveDownload';
 import { CloudBackupRestoreDialog } from '../components/CloudBackupRestoreDialog';
+import { purgeNativePaymentData } from '../platform/nativeDataLifecycle';
 
 export function DataPrivacyPage() {
   const { toast } = useToast();
@@ -82,12 +83,14 @@ export function DataPrivacyPage() {
     ],
   );
 
-  const handleResetLocal = () => {
+  const handleResetLocal = async () => {
+    await purgeNativePaymentData('local_reset');
     resetAll();
   };
 
   const handleResetAll = async () => {
     await deleteCloudBackup();
+    await purgeNativePaymentData('total_deletion');
     resetAll();
   };
 

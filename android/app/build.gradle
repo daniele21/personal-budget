@@ -27,7 +27,8 @@ android {
             resValue "string", "custom_url_scheme", "com.staituned.aura.debug"
         }
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

@@ -160,6 +160,7 @@ Android Studio is optional for the command-line workflow.
 ```bash
 npm run android:sync:debug
 npm run android:test
+npm run android:test:instrumentation
 npm run android:lint
 npm run android:assemble:debug
 ```
@@ -180,6 +181,21 @@ Capacitor logging and WebView debugging disabled. Use
 `android:test` intentionally runs the debug unit-test variant because the local
 `google-services.json` contains only the non-production debug client. Release
 tests and builds require a production client for `com.staituned.aura`.
+
+For a local API 36 emulator, the diagnostic WebView check verifies bundled
+assets, BrowserRouter reload, localStorage, IndexedDB, the actual attachment
+store, restart persistence, and debug deep-link delivery:
+
+```bash
+npm run android:sync:diagnostic
+bash scripts/run-android-gradle.sh assembleDebug
+npm run android:verify:webview
+```
+
+The script writes only temporary probe data into the debug application and
+removes it after verification. `android:test:instrumentation` runs the app-only
+instrumentation target, avoiding generated Capacitor library modules that do
+not contain Aura tests.
 
 To diagnose the Android Google sign-in flow:
 
@@ -203,9 +219,23 @@ The generated debug application uses `com.staituned.aura.debug` and the
 `Aura Dev` label. Signing files, `google-services.json`, local SDK paths, and
 keystores must remain outside source control. The notification listener and
 payment parser are not implemented yet. The native Credential Manager bridge is
-implemented, and the local non-production OAuth configuration has been
-validated. Successful sign-in still requires a Google account and credential
-provider on the test device.
+implemented, the local non-production OAuth configuration is validated, and a
+successful manual Google sign-in was reported on 2026-07-26.
+
+M3 installs only the security/privacy foundation: a Keystore-backed owner hash,
+recoverable purge for logout/account change/reset/deletion, authenticated
+encryption primitives, exhaustive backup/device-transfer exclusions,
+exact-origin WebView navigation, CSP and release log stripping. It does not read
+notifications or create payment candidates. The repeatable safe checks are:
+
+```bash
+npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts
+npm run android:test:instrumentation
+```
+
+See
+[`android-payment-detection-security.md`](docs/01-architecture/android-payment-detection-security.md)
+for the threat model, data lifecycle and remaining privacy/DPIA gates.
 
 ## Firebase Setup
 
@@ -236,6 +266,8 @@ Main collections:
 | `npm run android:sync:diagnostic` | Debug sync with WebView/Capacitor diagnostics enabled |
 | `npm run android:assemble:debug` | Sync and assemble the debug APK |
 | `npm run android:test` | Run Android debug unit tests with JDK 21 |
+| `npm run android:test:instrumentation` | Run Aura instrumentation tests on a connected API 36 device |
+| `npm run android:verify:webview` | Verify routing, persisted WebView storage, attachment storage, and deep-link delivery |
 | `npm run android:lint` | Run Android lint |
 | `npm run android:doctor` | Inspect the Capacitor Android environment |
 | `npm run preview` | Serve the build locally |

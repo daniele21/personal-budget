@@ -10,6 +10,7 @@ import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BrandMark } from './components/BrandMark';
+import { PlatformRuntimeBridge } from './platform/PlatformRuntimeBridge';
 
 const HistoryPage = lazy(() =>
   import('./pages/HistoryPage').then(({ HistoryPage }) => ({ default: HistoryPage })),
@@ -90,6 +91,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <Router>
+        <PlatformRuntimeBridge isLoggedIn={isLoggedIn} />
         {!isLoggedIn ? (
           <Login onSignIn={signInWithGoogle} error={authError} />
         ) : (

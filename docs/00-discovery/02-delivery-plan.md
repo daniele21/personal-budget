@@ -15,12 +15,19 @@ Current engineering baseline:
 - min/compile/target SDK are all 36;
 - the Android SDK command-line toolchain and API 36 emulator are available; Android Studio is optional for the current CLI workflow and is not installed;
 - Capacitor 8 and the versioned Android project are present, with bundled production assets and no remote `server.url`;
-- the first-party Kotlin Credential Manager bridge compiles and is invoked on API 36; successful Firebase login awaits a real isolated debug OAuth configuration;
+- the first-party Kotlin Credential Manager bridge compiles and is invoked on API 36; the isolated debug OAuth configuration is verified and the user reported a successful manual Google login on 2026-07-26;
 - Android debug bundling fails closed without dedicated non-production Firebase/OAuth values and disables Gemini;
-- `npm run test:regression` passes with TypeScript, 61 Vitest files/315 tests, and the Vite production build;
+- a first-party runtime bridge now carries allowlisted app URLs across login and emits resume events, while browser notifications remain isolated from the Android WebView;
+- repeatable API 36 verification proves bundled local origin, route reload, localStorage, IndexedDB, attachment-store persistence and deep-link delivery;
+- `npm run test:regression` passes with TypeScript, 69 Vitest files/337 tests, and the Vite production build;
+- Android unit test, lint and debug assemble pass (145 Gradle tasks); 6 M3 instrumentation tests pass on API 36;
+- M3 now provides Keystore-backed owner hashing, recoverable native purge,
+  authenticated-encryption primitives, exhaustive backup/D2D exclusions,
+  exact-origin WebView navigation, CSP, cleartext blocking and release R8/log
+  stripping without introducing a notification listener;
 - the current Playwright baseline is documented but not green: observed archive E2E cases remain on Home with the Guided Tour open and time out waiting for `Export complete archive`.
 
-Current delivery decision: **M0 is complete and M1-M2 are in progress. The Capacitor shell builds and launches on Android 16/API 36, and the native auth bridge is implemented; real OAuth login, storage flows and signed-distribution evidence remain open. Aura is not ready to read real financial notifications or begin a user pilot until the external gates in the tracker are closed**.
+Current delivery decision: **M0 is complete; M1-M3 are in progress. The Capacitor shell, persisted WebView storage, runtime lifecycle/deep-link bridge, native auth bridge and M3 privacy/security foundation are implemented; authenticated archive/CSV coverage, full auth/session lifecycle, production signing and external privacy/DPIA gates remain open. Aura is not ready to read real financial notifications or begin a user pilot until those gates are closed**.
 
 ## Current Initiative: Aura Portable Archive V1
 

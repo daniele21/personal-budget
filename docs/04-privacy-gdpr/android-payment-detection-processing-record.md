@@ -2,16 +2,23 @@
 
 ## Status
 
-- Processing state: planned, not implemented
+- Processing state: M3 security/privacy foundation implemented; notification
+  processing not implemented
 - Engineering direction: approved
 - Real-user processing: prohibited until privacy-owner approval
-- Last reviewed: 2026-07-25
+- Last reviewed: 2026-07-26
 - Tracker: [`11-android-payment-detection-progress-plan.md`](../00-discovery/11-android-payment-detection-progress-plan.md)
 - Feature spec: [`android-payment-detection-mvp.md`](../specs/android-payment-detection-mvp.md)
 
 This is an engineering governance record, not legal advice or certification.
 
 The legal-source register required by `AGENTS.md` is not present in this repository. No legal conclusion has therefore been validated against an authoritative project baseline; lawful basis, role allocation and DPIA outcome remain blocked on the privacy owner.
+
+The implemented M3 boundary is documented in
+[`android-payment-detection-security.md`](../01-architecture/android-payment-detection-security.md).
+It currently processes a Firebase UID transiently only to install a
+Keystore-backed hashed owner boundary. It does not read notification content,
+create candidates, or add a new off-device transfer.
 
 ## Processing Activity
 
@@ -123,6 +130,22 @@ Retention changes require product rationale, privacy review, tests, and document
 
 ## Security Measures
 
+Implemented in M3:
+
+- owner partition derived with HMAC-SHA256 and a non-exportable Android
+  Keystore key, without storing Firebase UID, email, or token;
+- purge journal and recovery for logout, account change, local reset, and total
+  deletion;
+- AES-GCM candidate-field primitive with owner, opaque candidate ID, and schema
+  version authenticated as associated data;
+- bundled WebView assets, exact-origin navigation allowlist, cleartext disabled,
+  restrictive CSP, Auto Backup disabled, and exhaustive cloud/D2D exclusions;
+- release R8/resource shrinking and Android log stripping;
+- no crash-reporting/breadcrumb SDK and no notification fields exposed by the
+  M3 bridge.
+
+Required in later milestones before real-notification processing:
+
 - package allow checks before extras;
 - finite package visibility declarations;
 - bundled deterministic rules;
@@ -131,12 +154,8 @@ Retention changes require product rationale, privacy review, tests, and document
 - no raw bridge DTO;
 - no production dynamic logging;
 - no custom candidate telemetry;
-- AES-GCM candidate payload protected by an Android Keystore key, with candidate/owner/schema context authenticated as associated data;
 - hashed fingerprints;
-- owner partition derived from Firebase UID without storing email;
 - suspend without active owner;
-- purge on logout, account switch, reset, and deletion;
-- bundled WebView assets and navigation allowlist;
 - internal/non-exported helpers and receivers;
 - immutable PendingIntent where possible;
 - private lock-screen notification;
@@ -253,10 +272,11 @@ Before release:
 - [ ] Privacy owner completes DPIA screening.
 - [ ] Privacy owner updates data inventory/RoPA.
 - [ ] Security owner approves threat model.
-- [ ] Security owner verifies backup exclusion.
+- [x] Engineering verifies manifest backup disablement and exhaustive source
+  exclusions; physical OEM/D2D acceptance remains a release gate.
 - [ ] QA verifies zero network requests from detection path.
 - [ ] QA verifies no sensitive logcat output.
-- [ ] QA verifies owner isolation and purge.
+- [x] Automated instrumentation verifies owner isolation and purge primitives.
 - [ ] Release owner completes Data Safety.
 - [ ] Release owner verifies prominent disclosure.
 - [ ] Release owner verifies package/developer identity.

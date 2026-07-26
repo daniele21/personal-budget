@@ -3,6 +3,11 @@ import { STORAGE_KEYS } from '../data/storageKeys';
 import { CustomReminder, NotificationPreferences, NotificationRecord } from '../types';
 import { useLocalStorage } from './useLocalStorage';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '../repositories/portablePreferencesRepository';
+import {
+  deliverLocalNotification,
+  getLocalNotificationPermission,
+  requestLocalNotificationPermission,
+} from '../services/platformNotificationService';
 
 export function useNotifications() {
   const [preferences, setPreferences] = useLocalStorage<NotificationPreferences>(
@@ -11,19 +16,14 @@ export function useNotifications() {
   );
   const [reminders, setReminders] = useLocalStorage<CustomReminder[]>(STORAGE_KEYS.customReminders, []);
   const [records, setRecords] = useLocalStorage<NotificationRecord[]>(STORAGE_KEYS.notificationRecords, []);
-  const [permission, setPermission] = useState<NotificationPermission>(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
-    return Notification.permission;
-  });
+  const [permission, setPermission] = useState<NotificationPermission>(
+    getLocalNotificationPermission,
+  );
 
   const unreadCount = useMemo(() => records.filter((record) => !record.read).length, [records]);
 
   const requestPermission = useCallback(async () => {
-    if (!('Notification' in window)) {
-      setPermission('denied');
-      return 'denied' as NotificationPermission;
-    }
-    const nextPermission = await Notification.requestPermission();
+    const nextPermission = await requestLocalNotificationPermission();
     setPermission(nextPermission);
     if (nextPermission === 'granted') {
       setPreferences((current) => ({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...current, enabled: true }));
@@ -75,20 +75,7 @@ export function useNotifications() {
 
   const notifyNative = useCallback(async (record: NotificationRecord) => {
     if (!preferences.enabled || permission !== 'granted') return;
-    if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.ready;
-      registration.active?.postMessage({
-        type: 'AURA_SHOW_NOTIFICATION',
-        payload: {
-          title: record.title,
-          body: record.body,
-          route: record.route,
-          tag: record.dedupeKey ?? record.id,
-        },
-      });
-      return;
-    }
-    new Notification(record.title, { body: record.body, data: { route: record.route } });
+    await deliverLocalNotification(record);
   }, [permission, preferences.enabled]);
 
   return {

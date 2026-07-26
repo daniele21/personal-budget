@@ -26,6 +26,10 @@ import { signInWithGoogleForPlatform } from '../auth/googleAuthOrchestrator';
 import type { AuthRuntimeState } from '../auth/AuthRuntime';
 import { getPlatformCapabilities } from '../platform/platformCapabilities';
 import { NativeGoogleAuth } from '../platform/nativeGoogleAuth';
+import {
+  purgeNativePaymentData,
+  registerNativePaymentOwner,
+} from '../platform/nativeDataLifecycle';
 import type { User } from '../types';
 
 function mapFirebaseUser(fbUser: FirebaseUser): User {
@@ -60,11 +64,31 @@ export function useFirebaseAuth(): AuthRuntimeState {
             setLoading(false);
             return;
           }
+          try {
+            await registerNativePaymentOwner(fbUser.uid);
+          } catch {
+            await firebaseSignOut(auth);
+            setUser(null);
+            setAdminFlag(false);
+            setError('Unable to prepare secure Android storage.');
+            setLoading(false);
+            return;
+          }
           setUser(mapFirebaseUser(fbUser));
           setAdminFlag(isAdmin(email));
         } catch {
           // If Firestore is unreachable, allow admin through, use cache for others
           if (isAdmin(email)) {
+            try {
+              await registerNativePaymentOwner(fbUser.uid);
+            } catch {
+              await firebaseSignOut(auth);
+              setUser(null);
+              setAdminFlag(false);
+              setError('Unable to prepare secure Android storage.');
+              setLoading(false);
+              return;
+            }
             setUser(mapFirebaseUser(fbUser));
             setAdminFlag(true);
           } else {
@@ -126,13 +150,14 @@ export function useFirebaseAuth(): AuthRuntimeState {
 
   const signOut = useCallback(async () => {
     setError(null);
-    setUser(null);
-    setAdminFlag(false);
     try {
+      await purgeNativePaymentData('logout');
       await firebaseSignOut(auth);
       if (getPlatformCapabilities().platform === 'android') {
         await NativeGoogleAuth.signOut().catch(() => undefined);
       }
+      setUser(null);
+      setAdminFlag(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign-out failed';
       setError(message);
