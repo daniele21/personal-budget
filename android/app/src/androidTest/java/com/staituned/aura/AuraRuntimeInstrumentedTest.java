@@ -3,6 +3,7 @@ package com.staituned.aura;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.Intent;
@@ -78,22 +79,26 @@ public class AuraRuntimeInstrumentedTest {
             )
         );
 
-        assertFalse(
-            "M3 must not introduce an Aura-owned service before the M4 listener.",
-            packageInfo.services != null
-                && java.util.Arrays.stream(packageInfo.services)
-                    .anyMatch(service ->
-                        service.name.startsWith("com.staituned.aura.")
-                    )
+        assertNotNull(packageInfo.services);
+        android.content.pm.ServiceInfo[] auraServices =
+            java.util.Arrays.stream(packageInfo.services)
+                .filter(service -> service.name.startsWith("com.staituned.aura."))
+                .toArray(android.content.pm.ServiceInfo[]::new);
+        assertEquals(
+            "Only the M4 notification listener may be Aura-owned.",
+            1,
+            auraServices.length
+        );
+        assertTrue(
+            auraServices[0].name.endsWith("AuraNotificationListenerService")
         );
         assertFalse(
-            "M3 must not request notification-listener access.",
-            packageInfo.services != null
-                && java.util.Arrays.stream(packageInfo.services)
-                    .anyMatch(service ->
-                        "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-                            .equals(service.permission)
-                    )
+            "The system-bound listener must not be exported.",
+            auraServices[0].exported
+        );
+        assertEquals(
+            "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
+            auraServices[0].permission
         );
         assertFalse(
             "M3 must not introduce an exported Aura-owned receiver.",

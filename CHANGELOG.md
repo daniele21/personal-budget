@@ -9,7 +9,7 @@
   application ID, backup exclusions, and reproducible JDK 21 Gradle commands.
 - Added explicit web/native capability detection so the Android shell does not
   register the PWA service worker or expose browser install prompts. The
-  payment-notification listener itself is not implemented yet.
+  payment-notification capability remains unavailable to the PWA.
 - Added a first-party Kotlin Credential Manager bridge for Android Google
   sign-in. Google ID tokens remain in memory and are exchanged through the
   existing Firebase JS session; no third-party auth plugin was introduced.
@@ -39,8 +39,17 @@
   stripping.
 - Added M3 threat model, data-flow/lifecycle documentation and API 36
   instrumentation coverage for owner isolation, purge, encryption, component
-  exposure, effective backup flag and cleartext policy. No notification
-  listener or real-notification processing was introduced.
+  exposure, effective backup flag and cleartext policy.
+- Added the M4 Android notification-listener foundation with separate
+  user-requested and OS-granted state, owner-scoped selected-source settings,
+  finite package visibility, settings navigation fallback and
+  `POST_NOTIFICATIONS` handling.
+- Added a package-before-extras gate that defers bounded title/text/bigText
+  extraction to a background executor and returns without touching extras for
+  unsupported or unselected packages.
+- Added a separate signature-protected synthetic notification APK and API 36
+  end-to-end instrumentation test. No real payment-app identifier, fixture,
+  parser, candidate persistence or off-device transfer was introduced.
 
 ### Changed
 

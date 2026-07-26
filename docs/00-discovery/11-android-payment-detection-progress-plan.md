@@ -52,8 +52,8 @@ Ultimo aggiornamento: 2026-07-26
 | M0. Decisioni, discovery e baseline | Completato | Strategia, ADR, spec, privacy record e baseline web registrati; i gate che richiedono dati reali o Play sono separati e tracciati |
 | M1. Fondazione Capacitor e doppia distribuzione | In corso | Shell, routing, localStorage, IndexedDB e attachment store verificati su API 36; restano i flussi archive/CSV autenticati e la configurazione production |
 | M2. Runtime di piattaforma, autenticazione e lifecycle | In corso | Login Google positivo verificato manualmente; runtime bridge, resume, deep link, boundary notifiche e coordinamento purge implementati; restano session lifecycle completa, allowlist/admin e target autenticato |
-| M3. Fondazione privacy e sicurezza Android | In corso | Owner isolation, purge journal, Keystore/AES-GCM, backup exclusion, WebView/CSP, R8 e test API 36 implementati; restano gate privacy/DPIA, listener/PendingIntent futuri e QA fisica |
-| M4. Notification listener e configurazione utente | Non iniziato | Attende M2-M3 |
+| M3. Fondazione privacy e sicurezza Android | In corso | Owner isolation, purge journal, Keystore/AES-GCM, backup exclusion, WebView/CSP, R8 e listener manifest verificati; restano gate privacy/DPIA, PendingIntent futuro e QA fisica |
+| M4. Notification listener e configurazione utente | In corso | Listener, opt-in/OS status, settings owner-scoped, catalogo esclusivamente sintetico e package-before-extras gate verificati; restano process/reboot QA e sorgenti reali bloccate |
 | M5. Rule engine nativo e corpus di fixture | Non iniziato | Attende M0 e M4 |
 | M6. Repository candidati, retention e deduplicazione | Non iniziato | Attende M3 e M5 |
 | M7. Bridge Capacitor, deep link e notifiche Aura | Non iniziato | Attende M4 e M6 |
@@ -529,7 +529,7 @@ Exit criteria:
 
 Evidenze M1 al 2026-07-26:
 
-- `npm run test:regression`: TypeScript, 69 file/337 test Vitest e build Vite passati;
+- `npm run test:regression`: TypeScript, 70 file/341 test Vitest e build Vite passati;
 - `bash scripts/run-android-gradle.sh test lint assembleDebug`: 198 task, build riuscita;
 - APK debug: 11,6 MB prima del bridge auth; 14,3 MB con Kotlin, Credential Manager e Google ID, application ID `com.staituned.aura.debug`, min/target SDK 36;
 - cold start su emulatore Android 16/API 36 in 1,433 secondi, activity visibile e nessun crash applicativo;
@@ -647,7 +647,7 @@ Task:
 - [x] Verificare CSP e superfici XSS rilevanti per le API bridge.
 - [x] Assicurare che il bridge non esponga testo grezzo.
 - [x] Assicurare che service e receiver Aura non necessari siano `exported=false`.
-- [ ] Verificare che il solo `NotificationListenerService` bindabile dal sistema sia protetto da `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` e non esponga azioni applicative.
+- [x] Verificare che il solo `NotificationListenerService` bindabile dal sistema sia protetto da `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` e non esponga azioni applicative.
 - [ ] Usare PendingIntent immutable quando possibile.
 - [x] Usare ID candidato non prevedibili.
 - [x] Definire cifratura AES-GCM dell'intero payload strutturato, incluso il merchant.
@@ -699,35 +699,55 @@ Exit criteria:
 
 Goal: ricevere notifiche in modo minimo, prevedibile e revocabile.
 
-Stato: **Non iniziato**
+Stato: **In corso**
 
 Dipendenze: M2-M3.
 
 Task:
 
-- [ ] Dichiarare `NotificationListenerService` nel manifest.
-- [ ] Dichiararlo bindabile dal sistema con il permesso `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`; nessun intent applicativo custom.
-- [ ] Implementare lettura dello stato di accesso alle notifiche.
-- [ ] Implementare apertura delle impostazioni Android con fallback.
-- [ ] Implementare `POST_NOTIFICATIONS` per notifiche Aura su versioni applicabili.
-- [ ] Separare `requestedEnabled` da `osPermissionGranted`.
-- [ ] Gestire permesso revocato senza perdere il controllo dei candidati esistenti.
-- [ ] Creare catalogo di package supportati con identificatori verificati.
-- [ ] Usare `<queries>` finite, senza `QUERY_ALL_PACKAGES`.
-- [ ] Elencare soltanto app supportate e installate.
-- [ ] Salvare la selezione utente nel repository nativo.
-- [ ] Leggere `packageName` prima degli extras.
-- [ ] Eseguire `return` immediato per package non supportato o non selezionato.
-- [ ] Estrarre soltanto title, text e bigText per package consentiti.
-- [ ] Imporre limite massimo all'input.
-- [ ] Spostare parsing e persistenza fuori dal main thread.
-- [ ] Gestire `onListenerConnected` e `onListenerDisconnected`.
-- [ ] Gestire notifiche aggiornate e rimosse.
+- [x] Dichiarare `NotificationListenerService` nel manifest.
+- [x] Dichiararlo bindabile dal sistema con il permesso `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`; nessun intent applicativo custom.
+- [x] Implementare lettura dello stato di accesso alle notifiche.
+- [x] Implementare apertura delle impostazioni Android con fallback.
+- [x] Implementare `POST_NOTIFICATIONS` per notifiche Aura su versioni applicabili.
+- [x] Separare `requestedEnabled` da `osPermissionGranted`.
+- [x] Gestire permesso revocato conservando opt-in e selezione; i candidati arriveranno in M6.
+- [x] Creare catalogo di package supportati con il solo identificatore della test APK controllata; nessun package reale è stato ipotizzato.
+- [x] Usare `<queries>` finite, senza `QUERY_ALL_PACKAGES`.
+- [x] Elencare soltanto app supportate e installate.
+- [x] Salvare la selezione utente nel repository nativo owner-scoped.
+- [x] Leggere `packageName` prima degli extras.
+- [x] Eseguire `return` immediato per package non supportato o non selezionato.
+- [x] Estrarre soltanto title, text e bigText per package consentiti.
+- [x] Imporre limite massimo di 512 caratteri per campo.
+- [x] Spostare estrazione e sink fuori dal callback tramite executor dedicato.
+- [x] Gestire `onListenerConnected` e `onListenerDisconnected`, incluso rebind.
+- [x] Gestire notifiche aggiornate attraverso lo stesso gate e rimozioni come no-op esplicito finché M6 non introduce il repository.
 - [ ] Gestire app chiusa, process recreation e riavvio dispositivo.
-- [ ] Non usare Accessibility Service o SMS.
-- [ ] Creare app sorgente di test controllata.
-- [ ] Aggiungere instrumentation test per package gate.
-- [ ] Provare che un package non selezionato non causa accesso agli extras nel codice applicativo.
+- [x] Non usare Accessibility Service o SMS.
+- [x] Creare app sorgente di test controllata, separata dall'APK Aura e protetta da permesso signature debug-only.
+- [x] Aggiungere instrumentation test per package gate e callback reale.
+- [x] Provare che un package non supportato o non selezionato non causa accesso agli extras nel codice applicativo.
+
+Evidenze M4 al 2026-07-26:
+
+- manifest installato: unico service Aura
+  `AuraNotificationListenerService`, `exported=false`, protetto da
+  `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`, senza azioni custom;
+- plugin first-party espone stato OS, stato richiesto, connessione listener,
+  permesso `POST_NOTIFICATIONS`, apertura settings con fallback, catalogo
+  installato e aggiornamento selezione validato;
+- `SupportedPaymentAppCatalog` contiene esclusivamente
+  `com.staituned.aura.syntheticnotifications`; nessun package bancario o
+  finanziario reale è presente;
+- test unitari provano che l'extractor non viene invocato per package
+  unsupported o non selezionato;
+- test instrumentation installa la test APK separata, concede temporaneamente
+  il listener, pubblica una notifica statica sintetica, riceve un solo callback
+  con UI Aura non avviata, quindi revoca accesso e purga lo store;
+- 10 instrumentation test passati su Android 16/API 36;
+- nessun parser M5, candidato M6, notifica Aura M7 o dato reale è stato
+  introdotto. Process recreation e reboot restano il gate tecnico M4 aperto.
 
 Exit criteria:
 
@@ -1355,6 +1375,7 @@ Next: prossima task verificabile
 | 2026-07-25 | M1/M2 | Implementati isolamento Firebase/OAuth debug fail-closed e plugin Kotlin Credential Manager; il bridge viene invocato su API 36 e gestisce `NoCredential` senza crash | Scan bundle senza config Firebase production, 61 file/315 test, Gradle 198 task, APK 14,3 MB, cold start 1,055 s | Fornire OAuth/Firebase debug reale e verificare login, UID, logout e session recovery |
 | 2026-07-26 | M1/M2 | Implementati runtime bridge first-party, resume, deep link allowlisted, target pre-login, boundary notifiche web/native e coordinamento purge per logout/reset | `android:verify:webview`, 2 instrumentation test API 36, 68 file/332 test Vitest, Gradle test/lint/assemble verde | Verificare login positivo, UID/allowlist, session lifecycle e flussi archive/CSV autenticati |
 | 2026-07-26 | M2/M3 | Login Google positivo riferito dall'utente; implementati owner boundary HMAC, purge journaled, AES-GCM/ID opachi, backup exclusion, WebView/CSP e release hardening senza introdurre il listener | 69 file/337 test Vitest, build Vite, 145 task Gradle, 6 instrumentation test API 36 e `android:verify:webview` verdi | Ottenere privacy-owner/DPIA; completare lifecycle auth e QA fisica prima di M4 reale |
+| 2026-07-26 | M4 | Implementati listener system-bound, stato opt-in/OS, settings owner-scoped, catalogo sintetico e gate package-before-extras con test source APK separata | 70 file/341 test Vitest, build Vite, 192 task Gradle, 10 instrumentation test API 36; test APK disinstallata automaticamente | Verificare process recreation e reboot; nessuna sorgente reale prima di privacy/DPIA e selezione prodotto |
 
 ## Release Evidence
 
@@ -1363,11 +1384,11 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Evidenza | Stato | Riferimento |
 |---|---|---|
 | TypeScript lint | Passato | `npm run test:regression`, 2026-07-26 |
-| Vitest | Passato | 69 file e 337 test, 2026-07-26 |
+| Vitest | Passato | 70 file e 341 test, 2026-07-26 |
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Baseline non verde | `npm run test:e2e`: 1 passato, 6 falliti, 1 interrotto, 23 non eseguiti; tutti i fallimenti osservati attendono `Export complete archive` con Guided Tour aperta |
 | Gradle unit test | Passato | `testDebugUnitTest`, JDK 21/API 36, 2026-07-26 |
-| Android instrumentation | Passato | 6 test `:app:connectedDebugAndroidTest` su emulatore Android 16/API 36, 2026-07-26 |
+| Android instrumentation | Passato | 10 test `:app:connectedDebugAndroidTest` su emulatore Android 16/API 36, inclusa sorgente sintetica end-to-end, 2026-07-26 |
 | Android lint | Passato | `lintDebug`, 2026-07-26 |
 | Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |
 | Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
@@ -1381,7 +1402,7 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Logout/reset purge | Primitive verificate | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale; integrazione Room resta M6 |
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
-| Security review | Engineering completata, owner aperto | Threat model M3 e controlli automatizzati registrati; approvazione security owner e componenti M4/M7 restano aperti |
+| Security review | Engineering M3-M4 completata, owner aperto | Threat model, listener manifest e package-before-extras gate registrati; approvazione security owner e componenti M7 restano aperti |
 | Play/Data Safety review | Non eseguita | Da registrare |
 | Rollback rehearsal | Non eseguito | Da registrare |
 | Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |

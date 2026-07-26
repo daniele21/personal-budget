@@ -64,6 +64,11 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
+    dependsOn(":notification-test-source:installDebug")
+    finalizedBy(":notification-test-source:uninstallDebug")
+}
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {

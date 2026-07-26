@@ -96,9 +96,11 @@ The engineering processing record and privacy-owner approval checklist are maint
 
 Aura plans an optional Android-only capability that processes notifications
 from supported and explicitly selected payment apps to prepare a transaction
-candidate. The M3 privacy/security foundation is implemented, but notification
-processing itself is not: there is no listener, parser, candidate database, or
-Aura payment notification.
+candidate. The M3 privacy/security foundation and an M4 listener are
+implemented. The listener is currently allowlisted only for a separate
+repository-controlled APK that emits one static synthetic fixture; there is no
+real payment-app package, parser, candidate database, or Aura payment
+notification.
 
 The approved engineering boundary is:
 

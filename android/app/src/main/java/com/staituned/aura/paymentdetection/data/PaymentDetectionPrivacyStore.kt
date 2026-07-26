@@ -21,7 +21,7 @@ internal class PaymentDetectionPrivacyStore(
     private val ownerKeyHasher: OwnerKeyHasher = OwnerKeyHasher(),
     private val candidateFieldProtector: CandidateFieldProtector =
         CandidateFieldProtector(),
-    namespace: String = DEFAULT_NAMESPACE,
+    private val namespace: String = DEFAULT_NAMESPACE,
 ) {
     private val preferencesName = "aura_${namespace}_private"
     private val candidateDatabaseName = "aura_${namespace}_candidates.db"
@@ -68,8 +68,14 @@ internal class PaymentDetectionPrivacyStore(
     internal fun hasActiveOwner(): Boolean =
         preferences.contains(ACTIVE_OWNER_KEY)
 
+    internal fun requireActiveOwnerHash(): String =
+        checkNotNull(preferences.getString(ACTIVE_OWNER_KEY, null)) {
+            "No active native owner."
+        }
+
     private fun completePurge(reason: NativePurgeReason) {
         context.deleteDatabase(candidateDatabaseName)
+        context.deleteSharedPreferences("aura_${namespace}_settings")
         if (reason == NativePurgeReason.TOTAL_DELETION) {
             ownerKeyHasher.deleteKey()
             candidateFieldProtector.deleteKey()

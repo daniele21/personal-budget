@@ -2,8 +2,8 @@
 
 ## Status
 
-- Processing state: M3 security/privacy foundation implemented; notification
-  processing not implemented
+- Processing state: M3 foundation and M4 synthetic listener implemented; real
+  payment-notification processing prohibited
 - Engineering direction: approved
 - Real-user processing: prohibited until privacy-owner approval
 - Last reviewed: 2026-07-26
@@ -16,9 +16,10 @@ The legal-source register required by `AGENTS.md` is not present in this reposit
 
 The implemented M3 boundary is documented in
 [`android-payment-detection-security.md`](../01-architecture/android-payment-detection-security.md).
-It currently processes a Firebase UID transiently only to install a
-Keystore-backed hashed owner boundary. It does not read notification content,
-create candidates, or add a new off-device transfer.
+It processes a Firebase UID transiently only to install a Keystore-backed
+hashed owner boundary. M4 tests read only a static synthetic notification from
+the repository-controlled test APK. No real notification content is read, no
+candidate is created, and no off-device transfer is added.
 
 ## Processing Activity
 

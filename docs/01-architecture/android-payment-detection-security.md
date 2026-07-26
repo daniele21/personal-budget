@@ -8,9 +8,11 @@ approval.
 
 As of 2026-07-26:
 
-- no `NotificationListenerService`, payment parser, candidate database, or Aura
-  payment notification exists;
-- no real or synthetic notification content is read by the application;
+- an M4 `NotificationListenerService` exists and is exercised only by a
+  separate controlled synthetic test APK;
+- no payment parser, candidate database, or Aura payment notification exists;
+- no real notification content is read; tests read only one static synthetic
+  title/text fixture from the controlled source APK;
 - the native bridge accepts only an authenticated Firebase UID for owner
   registration and a bounded purge reason;
 - real-notification work remains blocked by privacy-owner approval, the DPIA
@@ -20,7 +22,7 @@ As of 2026-07-26:
 
 ```mermaid
 flowchart LR
-    OS["Android OS notification service\nM4, not implemented"] -->|"system bind only"| L["Notification listener\nM4, not implemented"]
+    OS["Android OS notification service"] -->|"system bind only"| L["Notification listener\nM4 synthetic gate"]
     L -->|"allowlisted package; bounded fields"| R["Deterministic Kotlin rules\nM5, not implemented"]
     R -->|"structured candidate only"| DB["Private candidate store\nM6, not implemented"]
     KS["Android Keystore\nHMAC + AES-GCM keys"] --> DB
@@ -42,8 +44,8 @@ flowchart LR
 
 Trust boundaries:
 
-- Android grants notification access to the listener as a whole. M4 must check
-  the source package and user selection before reading notification extras.
+- Android grants notification access to the listener as a whole. The M4
+  listener checks the source package and user selection before reading extras.
 - Native storage is private to the application and is not an extension of
   React `AppData`.
 - The WebView is untrusted input to native plugins. Bridge arguments are
@@ -147,14 +149,15 @@ OEM device-to-device behavior remains a physical release gate.
 | Spoofed deep link leaks financial data | Allowlisted routes and opaque IDs; no financial URL values | M7 invalid-ID and intent tests |
 | Backup or device transfer exports data | `allowBackup=false` plus exhaustive exclusion rules | OEM physical transfer test |
 | Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge | M4-M7 logcat tests |
-| Exported component accepts app actions | No Aura service/receiver in M3; FileProvider non-exported | M4 listener manifest test |
-| Unsupported notification is inspected | No listener exists in M3 | M4 package-before-extras test |
+| Exported component accepts app actions | Listener and FileProvider non-exported; listener protected by the system bind permission | Recheck every manifest change |
+| Unsupported notification is inspected | Package/selection gate executes before the deferred extras extractor | Real-source review remains prohibited |
 
 ## Controls Required In Later Milestones
 
-M4 must declare only the system-bound listener with
+M4 declares only the non-exported system-bound listener with
 `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`, no custom application
-actions, and package/selection checks before extras. M7 must use immutable,
+actions, and package/selection checks before extras. Its catalog currently
+contains only the separate signature-protected synthetic test APK. M7 must use immutable,
 unique `PendingIntent` objects and a `VISIBILITY_PRIVATE` Aura notification with
 a fully redacted public version.
 

@@ -81,4 +81,29 @@ describe('Android security configuration', () => {
     expect(dependencies).not.toContain('@sentry/capacitor');
     expect(dependencies).not.toContain('@react-native-firebase/crashlytics');
   });
+
+  it('keeps the M4 listener system-bound and package visibility finite', () => {
+    const manifest = readProjectFile('android/app/src/main/AndroidManifest.xml');
+    const catalog = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/data/SupportedPaymentAppCatalog.kt',
+    );
+    const listener = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/listener/AuraNotificationListenerService.kt',
+    );
+
+    expect(manifest).toContain(
+      'android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"',
+    );
+    expect(manifest).toContain(
+      'android:name=".paymentdetection.listener.AuraNotificationListenerService"',
+    );
+    expect(manifest).not.toContain('QUERY_ALL_PACKAGES');
+    expect(manifest).not.toContain('android.permission.READ_SMS');
+    expect(manifest).not.toContain('android.permission.BIND_ACCESSIBILITY_SERVICE');
+    expect(catalog).toContain('com.staituned.aura.syntheticnotifications');
+    expect(catalog).not.toMatch(/\b(bank|wallet|paypal|revolut)\b/i);
+    expect(listener.indexOf('notification.packageName')).toBeLessThan(
+      listener.indexOf('notification.notification'),
+    );
+  });
 });

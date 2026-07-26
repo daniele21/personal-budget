@@ -217,16 +217,20 @@ the explicit diagnostic sync above.
 
 The generated debug application uses `com.staituned.aura.debug` and the
 `Aura Dev` label. Signing files, `google-services.json`, local SDK paths, and
-keystores must remain outside source control. The notification listener and
-payment parser are not implemented yet. The native Credential Manager bridge is
+keystores must remain outside source control. The M4 notification listener is
+implemented but allowlists only the repository-controlled synthetic test APK;
+the payment parser and real payment-app catalog are not implemented. The native Credential Manager bridge is
 implemented, the local non-production OAuth configuration is validated, and a
 successful manual Google sign-in was reported on 2026-07-26.
 
-M3 installs only the security/privacy foundation: a Keystore-backed owner hash,
+M3 installs the security/privacy foundation: a Keystore-backed owner hash,
 recoverable purge for logout/account change/reset/deletion, authenticated
 encryption primitives, exhaustive backup/device-transfer exclusions,
 exact-origin WebView navigation, CSP and release log stripping. It does not read
-notifications or create payment candidates. The repeatable safe checks are:
+real notifications or create payment candidates. M4 adds the system-bound
+listener, owner-scoped settings, OS/opt-in status, a package-before-extras gate,
+and a separate synthetic notification source installed automatically by the
+instrumentation task. The repeatable safe checks are:
 
 ```bash
 npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission
+        android:name="com.staituned.aura.permission.POST_SYNTHETIC_TEST_NOTIFICATION"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="false"
+        android:label="Aura Synthetic Notification Source"
+        android:supportsRtl="true">
+        <activity
+            android:name=".SyntheticNotificationActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:permission="com.staituned.aura.permission.POST_SYNTHETIC_TEST_NOTIFICATION"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="com.staituned.aura.test.POST_SYNTHETIC_PAYMENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
