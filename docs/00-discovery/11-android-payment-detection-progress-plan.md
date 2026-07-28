@@ -45,7 +45,7 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-07-26
+Ultimo aggiornamento: 2026-07-28
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -53,8 +53,8 @@ Ultimo aggiornamento: 2026-07-26
 | M1. Fondazione Capacitor e doppia distribuzione | In corso | Shell, routing, localStorage, IndexedDB e attachment store verificati su API 36; restano i flussi archive/CSV autenticati e la configurazione production |
 | M2. Runtime di piattaforma, autenticazione e lifecycle | In corso | Login Google positivo verificato manualmente; runtime bridge, resume, deep link, boundary notifiche e coordinamento purge implementati; restano session lifecycle completa, allowlist/admin e target autenticato |
 | M3. Fondazione privacy e sicurezza Android | In corso | Owner isolation, purge journal, Keystore/AES-GCM, backup exclusion, WebView/CSP, R8 e listener manifest verificati; restano gate privacy/DPIA, PendingIntent futuro e QA fisica |
-| M4. Notification listener e configurazione utente | In corso | Listener, opt-in/OS status, settings owner-scoped, catalogo esclusivamente sintetico e package-before-extras gate verificati; restano process/reboot QA e sorgenti reali bloccate |
-| M5. Rule engine nativo e corpus di fixture | Non iniziato | Attende M0 e M4 |
+| M4. Notification listener e configurazione utente | Completato | Listener, opt-in/OS status, settings owner-scoped e package-before-extras verificati; process recreation, rebind, reboot API 36 e revoca passati con sorgente sintetica |
+| M5. Rule engine nativo e corpus di fixture | Completato | Parser Kotlin versionato, fixture esclusivamente sintetiche, negative rules, tier, regex safety e benchmark verificati; nessuna sorgente reale |
 | M6. Repository candidati, retention e deduplicazione | Non iniziato | Attende M3 e M5 |
 | M7. Bridge Capacitor, deep link e notifiche Aura | Non iniziato | Attende M4 e M6 |
 | M8. UX React, review e creazione transazione | Non iniziato | Attende M2, M6 e M7 |
@@ -62,7 +62,7 @@ Ultimo aggiornamento: 2026-07-26
 | M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
-Focus corrente: **M3 — consolidare e approvare i confini privacy/security senza leggere notifiche finanziarie reali**.
+Focus corrente: **M6 — persistere candidati strutturati cifrati con retention e deduplicazione, mantenendo bloccate le sorgenti reali**.
 
 ## Direzione approvata
 
@@ -490,7 +490,7 @@ Evidenze:
 
 Goal: produrre una build Android avviabile senza degradare la PWA.
 
-Stato: **In corso**
+Stato: **Completato**
 
 Dipendenze: M0.
 
@@ -723,13 +723,13 @@ Task:
 - [x] Spostare estrazione e sink fuori dal callback tramite executor dedicato.
 - [x] Gestire `onListenerConnected` e `onListenerDisconnected`, incluso rebind.
 - [x] Gestire notifiche aggiornate attraverso lo stesso gate e rimozioni come no-op esplicito finché M6 non introduce il repository.
-- [ ] Gestire app chiusa, process recreation e riavvio dispositivo.
+- [x] Gestire app chiusa, process recreation e riavvio dispositivo.
 - [x] Non usare Accessibility Service o SMS.
 - [x] Creare app sorgente di test controllata, separata dall'APK Aura e protetta da permesso signature debug-only.
 - [x] Aggiungere instrumentation test per package gate e callback reale.
 - [x] Provare che un package non supportato o non selezionato non causa accesso agli extras nel codice applicativo.
 
-Evidenze M4 al 2026-07-26:
+Evidenze M4 al 2026-07-28:
 
 - manifest installato: unico service Aura
   `AuraNotificationListenerService`, `exported=false`, protetto da
@@ -748,9 +748,12 @@ Evidenze M4 al 2026-07-26:
 - `android:simulate:wallet-notification` consente QA visuale solo su emulatore,
   per 30 secondi di default, e ripristina listener, settings e test APK; supporta
   `ANDROID_SERIAL`, durata limitata e cleanup idempotente;
+- `android:verify:listener-recovery`, ristretto a un emulatore API 36 dedicato,
+  verifica detection iniziale, ricreazione forzata del processo, rebind,
+  detection dopo reboot e arresto dopo revoca; il probe debug persiste soltanto
+  contatori redatti e il cleanup rimuove accesso e test APK;
 - 10 instrumentation test passati su Android 16/API 36;
-- nessun parser M5, candidato M6, notifica Aura M7 o dato reale è stato
-  introdotto. Process recreation e reboot restano il gate tecnico M4 aperto.
+- nessun candidato M6, notifica Aura M7 o dato reale è stato introdotto.
 
 Exit criteria:
 
@@ -764,36 +767,53 @@ Exit criteria:
 
 Goal: riconoscere soltanto template sufficientemente affidabili.
 
-Stato: **Non iniziato**
+Stato: **Completato**
 
 Dipendenze: M0 e M4.
 
 Task:
 
-- [ ] Definire schema versionato delle regole.
-- [ ] Includere le regole nel bundle Android.
-- [ ] Implementare Unicode NFKC, spazi e limite input.
-- [ ] Normalizzare separatori decimali EUR.
-- [ ] Salvare importi in minor units.
-- [ ] Implementare negative rules con priorità assoluta.
-- [ ] Coprire OTP, login, saldo, promozioni, rifiuti, annullamenti e operazioni non supportate.
-- [ ] Implementare exact template match.
-- [ ] Implementare positive match soltanto per pattern approvati.
-- [ ] Rendere merchant facoltativo.
-- [ ] Non estrarre card/account identifiers.
-- [ ] Usare tier `exact`, `review`, `ignored` invece di presentare score non calibrati.
-- [ ] Precompilare regex e gestire errori per singola regola.
-- [ ] Vietare quantificatori annidati e pattern non lineari noti.
-- [ ] Inserire time budget o benchmark per ogni regola.
-- [ ] Creare fixture `accepted`, `rejected`, `ambiguous` per ogni app.
-- [ ] Usare fixture sintetiche finché il processo per esempi reali non è approvato.
-- [ ] Redigere e versionare esempi reali prima del commit.
-- [ ] Non includere dati personali nei nomi file, commit o issue.
-- [ ] Aggiungere test positivo e negativo per ogni pattern.
-- [ ] Aggiungere test locale/lingua/versione template.
-- [ ] Aggiungere test di input lungo e Unicode ostile.
-- [ ] Aggiungere benchmark di parsing.
-- [ ] Definire comportamento per valuta diversa da EUR: ignore nell'MVP.
+- [x] Definire schema versionato delle regole.
+- [x] Includere le regole nel bundle Android.
+- [x] Implementare Unicode NFKC, spazi e limite input.
+- [x] Normalizzare separatori decimali EUR.
+- [x] Salvare importi in minor units.
+- [x] Implementare negative rules con priorità assoluta.
+- [x] Coprire OTP, login, saldo, promozioni, rifiuti, annullamenti e operazioni non supportate.
+- [x] Implementare exact template match.
+- [x] Implementare positive match soltanto per pattern approvati.
+- [x] Rendere merchant facoltativo.
+- [x] Non estrarre card/account identifiers.
+- [x] Usare tier `exact`, `review`, `ignored` invece di presentare score non calibrati.
+- [x] Precompilare regex e gestire errori per singola regola.
+- [x] Vietare quantificatori annidati e pattern non lineari noti.
+- [x] Inserire time budget o benchmark per ogni regola.
+- [x] Creare fixture `accepted`, `rejected`, `ambiguous` per ogni app.
+- [x] Usare fixture sintetiche finché il processo per esempi reali non è approvato.
+- [x] Vincolare eventuali esempi reali a redazione e versionamento prima del commit; nessun esempio reale è presente.
+- [x] Non includere dati personali nei nomi file, commit o issue.
+- [x] Aggiungere test positivo e negativo per ogni pattern.
+- [x] Aggiungere test locale/lingua/versione template.
+- [x] Aggiungere test di input lungo e Unicode ostile.
+- [x] Aggiungere benchmark di parsing.
+- [x] Definire comportamento per valuta diversa da EUR: ignore nell'MVP.
+
+Evidenze M5 al 2026-07-28:
+
+- `PaymentRuleEngine` usa un rule set schema v1 incluso nel codice Android e
+  precompilato all'avvio del listener;
+- il corpus `synthetic-wallet-v1.fixture` contiene esclusivamente esempi
+  statici inventati per match exact, review, negative e ambiguous;
+- normalizzazione NFKC e limiti a 512 caratteri per campo precedono le regole;
+- importi EUR italiani e internazionali vengono convertiti in minor units;
+- OTP, login, saldo, promozioni, rifiuti, annullamenti, trasferimenti e valuta
+  non EUR vengono ignorati prima di ogni match positivo;
+- merchant compatibili con identificativi carta/conto vengono scartati;
+- pattern con backreference, lookbehind o quantificatori non lineari noti sono
+  rifiutati; una regola exact malformata viene isolata;
+- 10.000 parsing della fixture exact rispettano il budget automatizzato;
+- il listener conserva soltanto contatori redatti in memoria. Il testo grezzo
+  non entra in storage, bridge, log, Firebase, Gemini o analytics.
 
 Exit criteria:
 
@@ -1379,6 +1399,7 @@ Next: prossima task verificabile
 | 2026-07-26 | M1/M2 | Implementati runtime bridge first-party, resume, deep link allowlisted, target pre-login, boundary notifiche web/native e coordinamento purge per logout/reset | `android:verify:webview`, 2 instrumentation test API 36, 68 file/332 test Vitest, Gradle test/lint/assemble verde | Verificare login positivo, UID/allowlist, session lifecycle e flussi archive/CSV autenticati |
 | 2026-07-26 | M2/M3 | Login Google positivo riferito dall'utente; implementati owner boundary HMAC, purge journaled, AES-GCM/ID opachi, backup exclusion, WebView/CSP e release hardening senza introdurre il listener | 69 file/337 test Vitest, build Vite, 145 task Gradle, 6 instrumentation test API 36 e `android:verify:webview` verdi | Ottenere privacy-owner/DPIA; completare lifecycle auth e QA fisica prima di M4 reale |
 | 2026-07-26 | M4 | Implementati listener system-bound, stato opt-in/OS, settings owner-scoped, catalogo sintetico e gate package-before-extras con test source APK separata | 70 file/341 test Vitest, build Vite, 192 task Gradle, 10 instrumentation test API 36; test APK disinstallata automaticamente | Verificare process recreation e reboot; nessuna sorgente reale prima di privacy/DPIA e selezione prodotto |
+| 2026-07-28 | M4/M5 | Chiusa la recovery M4 e implementato il rule engine sintetico M5 con schema versionato, normalizzazione, negative rules, tier ed esclusione identificativi | `android:verify:listener-recovery` verde su process recreation/rebind/reboot/revoca API 36; 10 instrumentation test; unit corpus e benchmark 10.000 parsing verdi | Implementare M6 Room cifrato, retention e dedupe; nessuna sorgente reale prima di B-002/B-003/B-006 |
 
 ## Release Evidence
 
@@ -1387,11 +1408,12 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Evidenza | Stato | Riferimento |
 |---|---|---|
 | TypeScript lint | Passato | `npm run test:regression`, 2026-07-26 |
-| Vitest | Passato | 70 file e 341 test, 2026-07-26 |
+| Vitest | Passato | 70 file e 343 test, 2026-07-28 |
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Baseline non verde | `npm run test:e2e`: 1 passato, 6 falliti, 1 interrotto, 23 non eseguiti; tutti i fallimenti osservati attendono `Export complete archive` con Guided Tour aperta |
-| Gradle unit test | Passato | `testDebugUnitTest`, JDK 21/API 36, 2026-07-26 |
-| Android instrumentation | Passato | 10 test `:app:connectedDebugAndroidTest` su emulatore Android 16/API 36, inclusa sorgente sintetica end-to-end, 2026-07-26 |
+| Gradle unit test | Passato | `testDebugUnitTest`, incluso corpus M5 e benchmark 10.000 parsing, JDK 21/API 36, 2026-07-28 |
+| Android instrumentation | Passato | 10 test `:app:connectedDebugAndroidTest` su emulatore Android 16/API 36, inclusa detection exact sintetica end-to-end, 2026-07-28 |
+| Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca, 2026-07-28 |
 | Android lint | Passato | `lintDebug`, 2026-07-26 |
 | Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |
 | Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
@@ -1405,7 +1427,7 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Logout/reset purge | Primitive verificate | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale; integrazione Room resta M6 |
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
-| Security review | Engineering M3-M4 completata, owner aperto | Threat model, listener manifest e package-before-extras gate registrati; approvazione security owner e componenti M7 restano aperti |
+| Security review | Engineering M3-M5 completata, owner aperto | Threat model, listener gate, parser bounded e corpus sintetico registrati; approvazione security owner e componenti M6-M7 restano aperti |
 | Play/Data Safety review | Non eseguita | Da registrare |
 | Rollback rehearsal | Non eseguito | Da registrare |
 | Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |

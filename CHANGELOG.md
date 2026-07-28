@@ -54,6 +54,16 @@
   static Italian Wallet-like fixture, bounded display duration, multi-emulator
   selection, interrupt-safe cleanup, listener revocation and automatic removal
   of the synthetic source APK.
+- Added a dedicated-emulator M4 recovery verifier covering forced process
+  recreation, listener rebind, Android 16/API 36 reboot, post-reboot detection,
+  revocation, and idempotent cleanup using only redacted counters.
+- Added the M5 bundled deterministic Kotlin rule engine and synthetic fixture
+  corpus with bounded NFKC normalization, EUR minor-unit parsing, absolute
+  negative-rule priority, `exact`/`review`/`ignored` tiers, regex safety checks,
+  hostile-input coverage, identifier exclusion, and a 10,000-parse benchmark.
+  Raw notification strings remain in memory only; no candidate database,
+  bridge DTO, Aura proposal, real payment-app identifier, or network path was
+  introduced.
 
 ### Changed
 

@@ -19,8 +19,11 @@ Current engineering baseline:
 - Android debug bundling fails closed without dedicated non-production Firebase/OAuth values and disables Gemini;
 - a first-party runtime bridge now carries allowlisted app URLs across login and emits resume events, while browser notifications remain isolated from the Android WebView;
 - repeatable API 36 verification proves bundled local origin, route reload, localStorage, IndexedDB, attachment-store persistence and deep-link delivery;
-- `npm run test:regression` passes with TypeScript, 70 Vitest files/341 tests, and the Vite production build;
-- Android unit test, lint and debug assemble pass (192 Gradle tasks including the synthetic-source module); 10 instrumentation tests pass on API 36;
+- `npm run test:regression` passes with TypeScript, 70 Vitest files/343 tests,
+  and the Vite production build;
+- Android unit test, lint and debug assemble pass; 10 instrumentation tests
+  pass on API 36, and the dedicated recovery verifier passes process
+  recreation, rebind, reboot and revocation;
 - M3 now provides Keystore-backed owner hashing, recoverable native purge,
   authenticated-encryption primitives, exhaustive backup/D2D exclusions,
   exact-origin WebView navigation, CSP, cleartext blocking and release R8/log
@@ -29,9 +32,18 @@ Current engineering baseline:
   settings, finite installed-source discovery and a verified
   package-before-extras gate. The only catalog entry is a separate controlled
   synthetic test APK; real payment-app sources remain blocked;
+- M5 now provides a bundled, versioned deterministic Kotlin rule engine for the
+  controlled synthetic source, including negative rules, exact/review/ignored
+  tiers, EUR minor-unit parsing, regex/input bounds and a synthetic corpus.
+  No candidate persistence or Aura proposal exists yet;
 - the current Playwright baseline is documented but not green: observed archive E2E cases remain on Home with the Guided Tour open and time out waiting for `Export complete archive`.
 
-Current delivery decision: **M0 is complete; M1-M4 are in progress. The Capacitor shell, persisted WebView storage, runtime lifecycle/deep-link bridge, native auth bridge, M3 privacy/security foundation and synthetic-only M4 listener are implemented; authenticated archive/CSV coverage, full auth/session lifecycle, process/reboot listener QA, production signing and external privacy/DPIA gates remain open. Aura is not ready to read real financial notifications or begin a user pilot until those gates are closed**.
+Current delivery decision: **M0, M4 and the synthetic M5 slice are complete;
+M1-M3 remain open on their documented production, lifecycle, physical and
+governance gates. The next implementation slice is M6 candidate persistence,
+retention and deduplication. Production signing and external privacy/DPIA gates
+remain open, so Aura is not authorized to read real financial notifications or
+begin a user pilot**.
 
 ## Current Initiative: Aura Portable Archive V1
 

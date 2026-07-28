@@ -49,7 +49,10 @@ class PaymentNotificationGateTest {
                 it == "com.staituned.aura.syntheticnotifications"
             },
             executor = directExecutor,
-            sink = { accepted += 1 },
+            sink = { packageName, _ ->
+                assertEquals("com.staituned.aura.syntheticnotifications", packageName)
+                accepted += 1
+            },
         )
 
         gate.onNotificationPosted("com.staituned.aura.syntheticnotifications") {
@@ -65,5 +68,6 @@ class PaymentNotificationGateTest {
         title = "Synthetic",
         text = "Synthetic",
         bigText = null,
+        postedAtEpochMillis = 1_754_000_000_000L,
     )
 }

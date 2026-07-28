@@ -219,9 +219,11 @@ The generated debug application uses `com.staituned.aura.debug` and the
 `Aura Dev` label. Signing files, `google-services.json`, local SDK paths, and
 keystores must remain outside source control. The M4 notification listener is
 implemented but allowlists only the repository-controlled synthetic test APK;
-the payment parser and real payment-app catalog are not implemented. The native Credential Manager bridge is
-implemented, the local non-production OAuth configuration is validated, and a
-successful manual Google sign-in was reported on 2026-07-26.
+the M5 deterministic parser is implemented only for that synthetic source.
+Candidate persistence, Aura review proposals, and the real payment-app catalog
+are not implemented. The native Credential Manager bridge is implemented, the
+local non-production OAuth configuration is validated, and a successful manual
+Google sign-in was reported on 2026-07-26.
 
 M3 installs the security/privacy foundation: a Keystore-backed owner hash,
 recoverable purge for logout/account change/reset/deletion, authenticated
@@ -230,10 +232,14 @@ exact-origin WebView navigation, CSP and release log stripping. It does not read
 real notifications or create payment candidates. M4 adds the system-bound
 listener, owner-scoped settings, OS/opt-in status, a package-before-extras gate,
 and a separate synthetic notification source installed automatically by the
-instrumentation task. The repeatable safe checks are:
+instrumentation task. M5 adds bounded NFKC normalization, deterministic
+negative/exact/review rules, EUR minor-unit extraction, identifier exclusion,
+and a synthetic positive/negative/ambiguous fixture corpus. No raw notification
+string is persisted or bridged. The repeatable safe checks are:
 
 ```bash
 npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts
+npm run android:test
 npm run android:test:instrumentation
 ```
 
@@ -264,6 +270,16 @@ If a previous run was forcibly terminated, cleanup is idempotent:
 ANDROID_SERIAL=emulator-5556 \
   npm run android:simulate:wallet-notification:cleanup
 ```
+
+The M4 process/reboot verification deliberately reboots its target and therefore
+requires an explicit dedicated API 36 emulator:
+
+```bash
+ANDROID_SERIAL=emulator-5556 npm run android:verify:listener-recovery
+```
+
+It refuses physical devices and non-API-36 targets, uses only redacted counters,
+and cleans up listener access and the synthetic source.
 
 ## Firebase Setup
 
@@ -299,6 +315,7 @@ Main collections:
 | `npm run android:lint` | Run Android lint |
 | `npm run android:simulate:wallet-notification` | Display a temporary synthetic Wallet-like notification on an emulator |
 | `npm run android:simulate:wallet-notification:cleanup` | Revoke and remove any remaining simulation state |
+| `npm run android:verify:listener-recovery` | Verify listener process recreation, API 36 emulator reboot, and revocation |
 | `npm run android:doctor` | Inspect the Capacitor Android environment |
 | `npm run preview` | Serve the build locally |
 | `npm run firebase:login` | Sign in with the Firebase CLI |

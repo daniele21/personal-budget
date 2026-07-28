@@ -1,0 +1,20 @@
+# Synthetic-only M5 corpus. No row comes from a real payment application.
+# id|tier|title|text|minorUnits|merchant|ignoredReason
+exact-basic|EXACT|Pagamento effettuato|12,34 € presso Negozio di prova · Wallet simulato|1234|Negozio di prova|
+exact-grouped-comma|EXACT|Pagamento effettuato|1.234,56 € presso Esercente sintetico · Wallet simulato|123456|Esercente sintetico|
+exact-grouped-dot|EXACT|Pagamento effettuato|1,234.56 € presso Esercente sintetico · Wallet simulato|123456|Esercente sintetico|
+exact-no-merchant|EXACT|Pagamento effettuato|9,99 € · Wallet simulato|999||
+exact-nfkc|EXACT|Ｐａｇａｍｅｎｔｏ effettuato|１２,３４ € presso Negozio di prova · Wallet simulato|1234|Negozio di prova|
+review-approved-context|REVIEW|Pagamento con carta|Pagamento di 21,40 EUR in elaborazione|2140||
+review-eur-prefix|REVIEW|Acquisto carta|EUR 7,05 in verifica|705||
+negative-otp|IGNORED|Codice di verifica|OTP 123456 per pagamento di 12,34 €|||NEGATIVE_SIGNAL
+negative-login|IGNORED|Nuovo accesso|Login rilevato sul tuo account|||NEGATIVE_SIGNAL
+negative-balance|IGNORED|Saldo disponibile|Disponibilità 100,00 €|||NEGATIVE_SIGNAL
+negative-promotion|IGNORED|Offerta|Sconto sul prossimo acquisto|||NEGATIVE_SIGNAL
+negative-declined|IGNORED|Pagamento rifiutato|Pagamento di 12,34 € non autorizzato|||NEGATIVE_SIGNAL
+negative-cancelled|IGNORED|Pagamento annullato|12,34 € presso Negozio di prova · Wallet simulato|||NEGATIVE_SIGNAL
+negative-transfer|IGNORED|Bonifico eseguito|Trasferimento di 12,34 €|||NEGATIVE_SIGNAL
+unsupported-currency|IGNORED|Pagamento con carta|Pagamento di 12.34 USD|||UNSUPPORTED_CURRENCY
+ambiguous-amount-only|IGNORED|Aggiornamento|Importo 12,34 €|||NO_APPROVED_PATTERN
+language-unapproved|IGNORED|Payment completed|Card payment 12.34 EUR|||NO_APPROVED_PATTERN
+missing-amount|IGNORED|Pagamento con carta|Pagamento completato|||MISSING_AMOUNT

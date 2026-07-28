@@ -13,6 +13,7 @@
     "android:lint": "bash scripts/run-android-gradle.sh lint",
     "android:simulate:wallet-notification": "node scripts/simulate-wallet-notification.mjs",
     "android:simulate:wallet-notification:cleanup": "node scripts/simulate-wallet-notification.mjs --cleanup",
+    "android:verify:listener-recovery": "node scripts/verify-android-listener-recovery.mjs",
     "android:test:instrumentation": "bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest",
     "android:sync": "npm run build && cap sync android",
     "android:sync:debug": "npm run build:android:debug && cap sync android",

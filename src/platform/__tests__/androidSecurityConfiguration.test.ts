@@ -128,4 +128,28 @@ describe('Android security configuration', () => {
     expect(simulation).toContain('finally');
     expect(testSourceBuild).toContain('variantBuilder.buildType != "debug"');
   });
+
+  it('keeps listener recovery verification emulator-only and redacted', () => {
+    const packageManifest = JSON.parse(readProjectFile('package.json')) as {
+      scripts: Record<string, string>;
+    };
+    const verification = readProjectFile(
+      'scripts/verify-android-listener-recovery.mjs',
+    );
+    const harness = readProjectFile(
+      'android/app/src/debug/java/com/staituned/aura/SyntheticPaymentDetectionSetupActivity.kt',
+    );
+
+    expect(packageManifest.scripts['android:verify:listener-recovery']).toContain(
+      'verify-android-listener-recovery.mjs',
+    );
+    expect(verification).toContain('ANDROID_SERIAL');
+    expect(verification).toContain("getprop', 'ro.kernel.qemu");
+    expect(verification).toContain("getprop', 'ro.build.version.sdk");
+    expect(verification).toContain("runAdb(['reboot']");
+    expect(verification).toContain('disallow_listener');
+    expect(verification).toContain('finally');
+    expect(harness).toContain('MODE_PROBE');
+    expect(harness).not.toContain('rawNotification');
+  });
 });

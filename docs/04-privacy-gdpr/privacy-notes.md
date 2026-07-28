@@ -98,9 +98,10 @@ Aura plans an optional Android-only capability that processes notifications
 from supported and explicitly selected payment apps to prepare a transaction
 candidate. The M3 privacy/security foundation and an M4 listener are
 implemented. The listener is currently allowlisted only for a separate
-repository-controlled APK that emits one static synthetic fixture; there is no
-real payment-app package, parser, candidate database, or Aura payment
-notification.
+repository-controlled APK that emits one static synthetic fixture. M5 now
+parses only that fixture corpus with deterministic, bounded, on-device rules
+and retains no raw content. There is no real payment-app package, candidate
+database, bridge proposal, or Aura payment notification.
 
 The approved engineering boundary is:
 

@@ -10,6 +10,7 @@ import com.staituned.aura.paymentdetection.data.NativePurgeReason
 import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.data.SupportedPaymentAppCatalog
+import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -73,11 +74,15 @@ class PaymentDetectionListenerInstrumentedTest {
             .setStyle(Notification.BigTextStyle().bigText("Synthetic big text"))
             .build()
 
-        val envelope = PaymentNotificationEnvelopeReader.read(notification)
+        val envelope = PaymentNotificationEnvelopeReader.read(
+            notification = notification,
+            postedAtEpochMillis = 1_754_000_000_000L,
+        )
 
         assertEquals(512, envelope.title?.length)
         assertEquals("Synthetic text", envelope.text)
         assertEquals("Synthetic big text", envelope.bigText)
+        assertEquals(1_754_000_000_000L, envelope.postedAtEpochMillis)
     }
 
     @Test
@@ -117,6 +122,17 @@ class PaymentDetectionListenerInstrumentedTest {
             waitUntil("synthetic notification callback") {
                 PaymentDetectionListenerRuntime.acceptedEnvelopeCount() == 1
             }
+            waitUntil("synthetic exact match") {
+                PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.EXACT) == 1
+            }
+            assertEquals(
+                0,
+                PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.REVIEW),
+            )
+            assertEquals(
+                0,
+                PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.IGNORED),
+            )
         } finally {
             shell("cmd notification disallow_listener $component")
             privacyStore.purge(NativePurgeReason.TOTAL_DELETION)

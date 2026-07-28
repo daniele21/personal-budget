@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 internal class PaymentNotificationGate(
     private val isProcessingAllowed: (String) -> Boolean,
     private val executor: Executor = Executors.newSingleThreadExecutor(),
-    private val sink: (PaymentNotificationEnvelope) -> Unit = {},
+    private val sink: (String, PaymentNotificationEnvelope) -> Unit = { _, _ -> },
 ) {
     fun onNotificationPosted(
         packageName: String,
@@ -19,7 +19,7 @@ internal class PaymentNotificationGate(
     ) {
         if (!isProcessingAllowed(packageName)) return
         executor.execute {
-            sink(extract())
+            sink(packageName, extract())
         }
     }
 

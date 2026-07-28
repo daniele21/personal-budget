@@ -6,11 +6,12 @@ This document records the M3 engineering controls implemented before Aura is
 allowed to read payment notifications. It is not legal advice or a privacy
 approval.
 
-As of 2026-07-26:
+As of 2026-07-28:
 
 - an M4 `NotificationListenerService` exists and is exercised only by a
   separate controlled synthetic test APK;
-- no payment parser, candidate database, or Aura payment notification exists;
+- an M5 deterministic rule engine parses only the bundled synthetic corpus;
+- no candidate database or Aura payment notification exists;
 - no real notification content is read; tests read only one static synthetic
   title/text fixture from the controlled source APK;
 - the native bridge accepts only an authenticated Firebase UID for owner
@@ -23,7 +24,7 @@ As of 2026-07-26:
 ```mermaid
 flowchart LR
     OS["Android OS notification service"] -->|"system bind only"| L["Notification listener\nM4 synthetic gate"]
-    L -->|"allowlisted package; bounded fields"| R["Deterministic Kotlin rules\nM5, not implemented"]
+    L -->|"allowlisted package; bounded fields"| R["Deterministic Kotlin rules\nM5 synthetic-only"]
     R -->|"structured candidate only"| DB["Private candidate store\nM6, not implemented"]
     KS["Android Keystore\nHMAC + AES-GCM keys"] --> DB
     DB -->|"structured DTO only"| B["First-party Capacitor bridge"]
@@ -60,7 +61,7 @@ Trust boundaries:
 | Phase | Data | Persistence | Deletion |
 |---|---|---|---|
 | M3 owner registration | Firebase UID, transient bridge input | UID is HMAC-SHA256 transformed; only the owner hash is stored | Logout, owner change, local reset, total deletion |
-| Future parsing | Package and bounded title/text/bigText | Raw strings remain in memory only | References discarded after parsing |
+| M5 synthetic parsing | Internal source ID, bounded title/text/bigText and post time | Raw strings remain in memory only; only redacted process counters survive the call | References discarded after parsing; debug recovery probe removed during cleanup |
 | Future candidate | Amount, EUR currency, optional merchant, timestamps and workflow metadata | Entire structured payload encrypted with AES-GCM in the private database | Retention, ignore, acceptance, reset, logout, owner change or deletion |
 | Confirmed transaction | User-reviewed normal transaction fields | Canonical React `AppData` | Existing Aura controls |
 
@@ -127,15 +128,20 @@ The repeatable safe verification is:
 
 ```bash
 npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts
+npm run android:test
 npm run android:test:instrumentation
+ANDROID_SERIAL=<dedicated-api-36-emulator> npm run android:verify:listener-recovery
 ```
 
 The first command checks source backup/extraction, CSP, runtime, bridge, and
 release-hardening configuration. Instrumentation checks the effective installed
 manifest, cleartext policy, component exposure, owner isolation, purge, opaque
-IDs, and authenticated encryption. A transport-backed `bmgr backupnow` is not
-part of routine developer verification because it can export application data;
-OEM device-to-device behavior remains a physical release gate.
+IDs, authenticated encryption, and the synthetic exact parser path. The
+recovery command is emulator-only and validates process recreation, listener
+rebind, reboot and revocation using redacted counts. A transport-backed
+`bmgr backupnow` is not part of routine developer verification because it can
+export application data; OEM device-to-device behavior remains a physical
+release gate.
 
 ## Threat Model
 
@@ -148,18 +154,22 @@ OEM device-to-device behavior remains a physical release gate.
 | XSS invokes native APIs | Bundled allowlisted origin, CSP, narrow bridge | Ongoing dependency and UI review |
 | Spoofed deep link leaks financial data | Allowlisted routes and opaque IDs; no financial URL values | M7 invalid-ID and intent tests |
 | Backup or device transfer exports data | `allowBackup=false` plus exhaustive exclusion rules | OEM physical transfer test |
-| Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge | M4-M7 logcat tests |
+| Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge; M5 has no content logging | M6-M7 logcat tests |
 | Exported component accepts app actions | Listener and FileProvider non-exported; listener protected by the system bind permission | Recheck every manifest change |
 | Unsupported notification is inspected | Package/selection gate executes before the deferred extras extractor | Real-source review remains prohibited |
+| Regex denial of service blocks listener | Bounded NFKC input, precompiled static patterns, unsafe-pattern rejection and parsing benchmark | Repeat for every approved real-source rule |
+| Card/account identifier becomes merchant | Identifier-like merchant values are dropped and negative fixture coverage excludes security/account contexts | Revalidate against every approved real-source corpus |
 
 ## Controls Required In Later Milestones
 
 M4 declares only the non-exported system-bound listener with
 `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`, no custom application
 actions, and package/selection checks before extras. Its catalog currently
-contains only the separate signature-protected synthetic test APK. M7 must use immutable,
-unique `PendingIntent` objects and a `VISIBILITY_PRIVATE` Aura notification with
-a fully redacted public version.
+contains only the separate signature-protected synthetic test APK. M5 applies
+negative rules before exact/review rules, supports EUR only, releases raw
+strings after evaluation, and sends no result to storage or the bridge. M7 must
+use immutable, unique `PendingIntent` objects and a `VISIBILITY_PRIVATE` Aura
+notification with a fully redacted public version.
 
 The prominent disclosure must explain that Android grants broad notification
 access while Aura internally processes only explicitly supported and selected
