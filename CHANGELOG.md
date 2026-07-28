@@ -64,6 +64,13 @@
   Raw notification strings remain in memory only; no candidate database,
   bridge DTO, Aura proposal, real payment-app identifier, or network path was
   introduced.
+- Added the M6 private Room v1 candidate repository with AES-GCM encrypted
+  structured payloads, owner-scoped keyed fingerprints, technical upsert,
+  conservative cross-source deduplication, bounded retention/tombstones,
+  idempotent acceptance reservation and recovery, device-local purge, and
+  startup/resume plus WorkManager cleanup. Migration, concurrency, retention,
+  owner-isolation and purge coverage passes on the Pixel 9 Pro API 36 AVD; the
+  path remains synthetic-only and emits no Aura proposal yet.
 
 ### Changed
 

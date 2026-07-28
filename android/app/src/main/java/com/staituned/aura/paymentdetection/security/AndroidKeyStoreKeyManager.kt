@@ -11,7 +11,15 @@ internal class AndroidKeyStoreKeyManager {
         get() = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
 
     fun getOrCreateOwnerHashKey(): SecretKey =
-        getSecretKey(OWNER_HASH_ALIAS) ?: createHmacKey()
+        getSecretKey(OWNER_HASH_ALIAS) ?: createHmacKey(OWNER_HASH_ALIAS)
+
+    fun getOrCreateCandidateFingerprintKey(): SecretKey =
+        getSecretKey(CANDIDATE_FINGERPRINT_ALIAS)
+            ?: createHmacKey(CANDIDATE_FINGERPRINT_ALIAS)
+
+    fun getOrCreateAcceptanceTokenKey(): SecretKey =
+        getSecretKey(ACCEPTANCE_TOKEN_ALIAS)
+            ?: createHmacKey(ACCEPTANCE_TOKEN_ALIAS)
 
     fun getOrCreateCandidateEncryptionKey(): SecretKey =
         getSecretKey(CANDIDATE_ENCRYPTION_ALIAS) ?: createAesKey()
@@ -24,17 +32,25 @@ internal class AndroidKeyStoreKeyManager {
         deleteKey(CANDIDATE_ENCRYPTION_ALIAS)
     }
 
+    fun deleteCandidateFingerprintKey() {
+        deleteKey(CANDIDATE_FINGERPRINT_ALIAS)
+    }
+
+    fun deleteAcceptanceTokenKey() {
+        deleteKey(ACCEPTANCE_TOKEN_ALIAS)
+    }
+
     private fun getSecretKey(alias: String): SecretKey? =
         keyStore.getKey(alias, null) as? SecretKey
 
-    private fun createHmacKey(): SecretKey {
+    private fun createHmacKey(alias: String): SecretKey {
         val generator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_HMAC_SHA256,
             ANDROID_KEY_STORE,
         )
         generator.init(
             KeyGenParameterSpec.Builder(
-                OWNER_HASH_ALIAS,
+                alias,
                 KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY,
             )
                 .setDigests(KeyProperties.DIGEST_SHA256)
@@ -71,5 +87,9 @@ internal class AndroidKeyStoreKeyManager {
         private const val OWNER_HASH_ALIAS = "aura.payment.owner-hash.v1"
         private const val CANDIDATE_ENCRYPTION_ALIAS =
             "aura.payment.candidate-encryption.v1"
+        private const val CANDIDATE_FINGERPRINT_ALIAS =
+            "aura.payment.candidate-fingerprint.v1"
+        private const val ACCEPTANCE_TOKEN_ALIAS =
+            "aura.payment.acceptance-token.v1"
     }
 }

@@ -98,10 +98,12 @@ Aura plans an optional Android-only capability that processes notifications
 from supported and explicitly selected payment apps to prepare a transaction
 candidate. The M3 privacy/security foundation and an M4 listener are
 implemented. The listener is currently allowlisted only for a separate
-repository-controlled APK that emits one static synthetic fixture. M5 now
-parses only that fixture corpus with deterministic, bounded, on-device rules
-and retains no raw content. There is no real payment-app package, candidate
-database, bridge proposal, or Aura payment notification.
+repository-controlled APK that emits one static synthetic fixture. M5 parses
+only that fixture corpus with deterministic, bounded, on-device rules and
+retains no raw content. M6 persists the resulting structured candidate in a
+private Room database with AES-GCM encryption, owner-scoped HMAC fingerprints,
+bounded retention and purge. There is no real payment-app package, bridge
+proposal, or Aura payment notification.
 
 The approved engineering boundary is:
 
@@ -119,9 +121,9 @@ The approved engineering boundary is:
 The current native bridge temporarily receives the authenticated Firebase UID
 only to derive a Keystore-backed HMAC owner partition. It stores neither the
 UID, email, nor token. Purge is journaled and recoverable; total deletion also
-removes the payment-detection Keystore keys. AES-GCM candidate encryption and
-opaque IDs are implemented as primitives for the future repository, without
-creating or processing candidate records in M3.
+removes the payment-detection Keystore keys. M6 uses those primitives for the
+synthetic candidate repository; raw notification strings, authentication data
+and canonical transactions remain outside it.
 
 Local-only processing reduces recipient, transfer, breach, and vendor exposure but does not remove the need for transparency, minimization, security, retention, rights handling, or a documented lawful basis. Android grants notification access to the listener as a whole; Aura's per-app restriction is an application-enforced control and must be described honestly before the user opens system settings.
 

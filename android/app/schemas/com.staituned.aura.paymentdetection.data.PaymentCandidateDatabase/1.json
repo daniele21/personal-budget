@@ -1,0 +1,156 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "bb3c577aae7c8a322b3dcff92f7ff693",
+    "entities": [
+      {
+        "tableName": "payment_candidates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `schemaVersion` INTEGER NOT NULL, `ownerKeyHash` TEXT NOT NULL, `sourceAppId` TEXT NOT NULL, `payloadCiphertext` BLOB, `payloadNonce` BLOB, `detectedAt` INTEGER NOT NULL, `matchTier` TEXT NOT NULL, `matchedRuleId` TEXT, `ruleVersion` TEXT NOT NULL, `technicalFingerprint` TEXT NOT NULL, `semanticFingerprint` TEXT, `status` TEXT NOT NULL, `acceptanceTokenHash` TEXT, `reservedTransactionId` TEXT, `updatedAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schemaVersion",
+            "columnName": "schemaVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerKeyHash",
+            "columnName": "ownerKeyHash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceAppId",
+            "columnName": "sourceAppId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payloadCiphertext",
+            "columnName": "payloadCiphertext",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "payloadNonce",
+            "columnName": "payloadNonce",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "detectedAt",
+            "columnName": "detectedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchTier",
+            "columnName": "matchTier",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchedRuleId",
+            "columnName": "matchedRuleId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ruleVersion",
+            "columnName": "ruleVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "technicalFingerprint",
+            "columnName": "technicalFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "semanticFingerprint",
+            "columnName": "semanticFingerprint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "acceptanceTokenHash",
+            "columnName": "acceptanceTokenHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reservedTransactionId",
+            "columnName": "reservedTransactionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expiresAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_candidates_owner_technical",
+            "unique": true,
+            "columnNames": [
+              "ownerKeyHash",
+              "technicalFingerprint"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_candidates_owner_technical` ON `${TABLE_NAME}` (`ownerKeyHash`, `technicalFingerprint`)"
+          },
+          {
+            "name": "index_candidates_owner_semantic_status_detected",
+            "unique": false,
+            "columnNames": [
+              "ownerKeyHash",
+              "semanticFingerprint",
+              "status",
+              "detectedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_candidates_owner_semantic_status_detected` ON `${TABLE_NAME}` (`ownerKeyHash`, `semanticFingerprint`, `status`, `detectedAt`)"
+          },
+          {
+            "name": "index_candidates_owner_status_expiry",
+            "unique": false,
+            "columnNames": [
+              "ownerKeyHash",
+              "status",
+              "expiresAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_candidates_owner_status_expiry` ON `${TABLE_NAME}` (`ownerKeyHash`, `status`, `expiresAt`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bb3c577aae7c8a322b3dcff92f7ff693')"
+    ]
+  }
+}

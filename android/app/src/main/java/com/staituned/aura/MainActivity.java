@@ -3,6 +3,7 @@ package com.staituned.aura;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
+import com.staituned.aura.paymentdetection.service.CandidateCleanupScheduler;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -12,5 +13,13 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PaymentDetectionPrivacyPlugin.class);
         super.onCreate(savedInstanceState);
         bridge.setWebViewClient(new AuraBridgeWebViewClient(bridge));
+        CandidateCleanupScheduler.schedule(this);
+        CandidateCleanupScheduler.runSoon(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        CandidateCleanupScheduler.runSoon(this);
     }
 }

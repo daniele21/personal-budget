@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
 
 android {
     namespace = "com.staituned.aura"
@@ -39,6 +40,9 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_21.toString()
     }
+    sourceSets {
+        androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
+    }
 }
 
 repositories {
@@ -54,12 +58,23 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation "androidx.credentials:credentials:$androidxCredentialsVersion"
     implementation "androidx.credentials:credentials-play-services-auth:$androidxCredentialsVersion"
+    implementation "androidx.room:room-runtime:$roomVersion"
+    implementation "androidx.work:work-runtime:$workManagerVersion"
     implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
     implementation project(':capacitor-android')
+    kapt "androidx.room:room-compiler:$roomVersion"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    androidTestImplementation "androidx.room:room-testing:$roomVersion"
     implementation project(':capacitor-cordova-android-plugins')
+}
+
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.incremental", "true")
+    }
 }
 
 apply from: 'capacitor.build.gradle'

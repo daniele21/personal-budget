@@ -234,8 +234,12 @@ listener, owner-scoped settings, OS/opt-in status, a package-before-extras gate,
 and a separate synthetic notification source installed automatically by the
 instrumentation task. M5 adds bounded NFKC normalization, deterministic
 negative/exact/review rules, EUR minor-unit extraction, identifier exclusion,
-and a synthetic positive/negative/ambiguous fixture corpus. No raw notification
-string is persisted or bridged. The repeatable safe checks are:
+and a synthetic positive/negative/ambiguous fixture corpus. M6 adds a private
+Room v1 queue with an AES-GCM encrypted structured payload, owner-scoped HMAC
+fingerprints, technical upsert, conservative cross-source dedupe, bounded
+retention, idempotent acceptance recovery, purge and WorkManager cleanup. No
+raw notification string is persisted or bridged, and no Aura proposal is
+emitted yet. The repeatable safe checks are:
 
 ```bash
 npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts

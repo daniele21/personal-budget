@@ -21,9 +21,9 @@ Current engineering baseline:
 - repeatable API 36 verification proves bundled local origin, route reload, localStorage, IndexedDB, attachment-store persistence and deep-link delivery;
 - `npm run test:regression` passes with TypeScript, 70 Vitest files/343 tests,
   and the Vite production build;
-- Android unit test, lint and debug assemble pass; 10 instrumentation tests
-  pass on API 36, and the dedicated recovery verifier passes process
-  recreation, rebind, reboot and revocation;
+- Android unit test, lint and debug assemble pass; 25 instrumentation tests
+  pass on the Pixel 9 Pro AVD with API 36, and the dedicated recovery verifier
+  passes process recreation, rebind, reboot and revocation;
 - M3 now provides Keystore-backed owner hashing, recoverable native purge,
   authenticated-encryption primitives, exhaustive backup/D2D exclusions,
   exact-origin WebView navigation, CSP, cleartext blocking and release R8/log
@@ -35,13 +35,17 @@ Current engineering baseline:
 - M5 now provides a bundled, versioned deterministic Kotlin rule engine for the
   controlled synthetic source, including negative rules, exact/review/ignored
   tiers, EUR minor-unit parsing, regex/input bounds and a synthetic corpus.
-  No candidate persistence or Aura proposal exists yet;
+  M6 adds no source-specific production rule;
+- M6 provides the private Room v1 candidate repository, encrypted payload,
+  keyed technical/semantic fingerprints, owner partition, bounded retention,
+  idempotent acceptance recovery, purge and WorkManager cleanup. No React DTO
+  or Aura proposal exists yet;
 - the current Playwright baseline is documented but not green: observed archive E2E cases remain on Home with the Guided Tour open and time out waiting for `Export complete archive`.
 
-Current delivery decision: **M0, M4 and the synthetic M5 slice are complete;
+Current delivery decision: **M0 and the synthetic M4-M6 slices are complete;
 M1-M3 remain open on their documented production, lifecycle, physical and
-governance gates. The next implementation slice is M6 candidate persistence,
-retention and deduplication. Production signing and external privacy/DPIA gates
+governance gates. The next implementation slice is M7 bridge, recovery and
+private Aura notification. Production signing and external privacy/DPIA gates
 remain open, so Aura is not authorized to read real financial notifications or
 begin a user pilot**.
 

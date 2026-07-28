@@ -77,12 +77,14 @@ class PaymentDetectionListenerInstrumentedTest {
         val envelope = PaymentNotificationEnvelopeReader.read(
             notification = notification,
             postedAtEpochMillis = 1_754_000_000_000L,
+            notificationKey = "synthetic-key",
         )
 
         assertEquals(512, envelope.title?.length)
         assertEquals("Synthetic text", envelope.text)
         assertEquals("Synthetic big text", envelope.bigText)
         assertEquals(1_754_000_000_000L, envelope.postedAtEpochMillis)
+        assertEquals("synthetic-key", envelope.notificationKey)
     }
 
     @Test
@@ -125,6 +127,10 @@ class PaymentDetectionListenerInstrumentedTest {
             waitUntil("synthetic exact match") {
                 PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.EXACT) == 1
             }
+            waitUntil("synthetic candidate persistence") {
+                PaymentDetectionListenerRuntime.persistedCandidateCount() == 1
+            }
+            assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
             assertEquals(
                 0,
                 PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.REVIEW),

@@ -163,12 +163,24 @@ Implemented in M4-M5 for the synthetic-only path:
 - process/reboot/revocation verification restricted to an API 36 emulator and
   redacted debug counters.
 
+Implemented in M6 for the synthetic-only path:
+
+- private Room schema v1 with no raw notification title/text fields;
+- entire structured candidate payload encrypted with AES-GCM and authenticated
+  owner, opaque candidate ID, and schema version;
+- HMAC technical and semantic fingerprints scoped to the active owner;
+- 14-day pending retention, immediate payload deletion on ignore or verified
+  acceptance, and 7/30-day bounded tombstones;
+- owner-scoped queries, logout/account-change/reset/total-deletion purge, and
+  no Android backup, Aura archive, CSV, Firebase, analytics, or network path;
+- cleanup at startup/resume and through WorkManager, with no candidate content
+  logging or telemetry.
+
 Required in later milestones before real-notification processing:
 
 - no raw bridge DTO;
 - no production dynamic logging;
 - no custom candidate telemetry;
-- hashed fingerprints;
 - suspend without active owner;
 - internal/non-exported helpers and receivers;
 - immutable PendingIntent where possible;

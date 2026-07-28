@@ -64,10 +64,28 @@ class PaymentNotificationGateTest {
         assertEquals(1, accepted)
     }
 
+    @Test
+    fun sinkFailureIsContainedWithoutEscapingTheExecutor() {
+        var failures = 0
+        val gate = PaymentNotificationGate(
+            isProcessingAllowed = { true },
+            executor = directExecutor,
+            sink = { _, _ -> throw IllegalStateException("synthetic") },
+            onFailure = { failures += 1 },
+        )
+
+        gate.onNotificationPosted("com.staituned.aura.syntheticnotifications") {
+            envelope()
+        }
+
+        assertEquals(1, failures)
+    }
+
     private fun envelope() = PaymentNotificationEnvelope(
         title = "Synthetic",
         text = "Synthetic",
         bigText = null,
         postedAtEpochMillis = 1_754_000_000_000L,
+        notificationKey = "synthetic-key",
     )
 }

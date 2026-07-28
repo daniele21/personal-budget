@@ -55,14 +55,14 @@ Ultimo aggiornamento: 2026-07-28
 | M3. Fondazione privacy e sicurezza Android | In corso | Owner isolation, purge journal, Keystore/AES-GCM, backup exclusion, WebView/CSP, R8 e listener manifest verificati; restano gate privacy/DPIA, PendingIntent futuro e QA fisica |
 | M4. Notification listener e configurazione utente | Completato | Listener, opt-in/OS status, settings owner-scoped e package-before-extras verificati; process recreation, rebind, reboot API 36 e revoca passati con sorgente sintetica |
 | M5. Rule engine nativo e corpus di fixture | Completato | Parser Kotlin versionato, fixture esclusivamente sintetiche, negative rules, tier, regex safety e benchmark verificati; nessuna sorgente reale |
-| M6. Repository candidati, retention e deduplicazione | Non iniziato | Attende M3 e M5 |
+| M6. Repository candidati, retention e deduplicazione | Completato | Room v1, payload cifrato, dedupe, retention, acceptance journal, purge e cleanup verificati su Pixel 9 Pro API 36 con sole fixture sintetiche |
 | M7. Bridge Capacitor, deep link e notifiche Aura | Non iniziato | Attende M4 e M6 |
 | M8. UX React, review e creazione transazione | Non iniziato | Attende M2, M6 e M7 |
 | M9. Hardening, QA fisica e compliance | Non iniziato | Attende M1-M8 |
 | M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
-Focus corrente: **M6 — persistere candidati strutturati cifrati con retention e deduplicazione, mantenendo bloccate le sorgenti reali**.
+Focus corrente: **M7 — esporre a React soltanto DTO strutturati, recovery e notifiche Aura private, mantenendo bloccate le sorgenti reali**.
 
 ## Direzione approvata
 
@@ -827,39 +827,51 @@ Exit criteria:
 
 Goal: persistere il minimo necessario con idempotenza e cancellazione verificabile.
 
-Stato: **Non iniziato**
+Stato: **Completato**
 
 Dipendenze: M3 e M5.
 
 Task:
 
-- [ ] Definire entity Room e schema versionato.
-- [ ] Definire DAO senza query su testo sensibile.
-- [ ] Creare indice unique sul fingerprint tecnico.
-- [ ] Creare indice sul fingerprint semantico e stato.
-- [ ] Implementare owner partitioning.
-- [ ] Cifrare con AES-GCM l'intero payload strutturato del candidato e autenticare candidate ID, owner e versione schema come associated data.
-- [ ] Hashare i fingerprint.
-- [ ] Non salvare titolo o testo normalizzato.
-- [ ] Implementare upsert per notification key aggiornata.
-- [ ] Implementare dedupe semantica entro finestra approvata.
-- [ ] Gestire varianti merchant tra wallet e banca senza fondere merchant differenti.
-- [ ] Implementare tombstone per accepted/edited/ignored.
-- [ ] Implementare stati `pending`, `accepting`, `accepted`, `edited`, `ignored`, `expired`.
-- [ ] Implementare acceptance token monouso/idempotente.
-- [ ] Implementare recovery di `accepting`.
-- [ ] Implementare `deleteAllForOwner`.
-- [ ] Implementare purge completo device-local.
-- [ ] Implementare WorkManager per cleanup differibile.
-- [ ] Eseguire cleanup anche all'avvio/resume.
-- [ ] Definire comportamento dopo database migration fallita.
-- [ ] Non notificare se la persistenza fallisce.
-- [ ] Aggiungere Room migration test.
-- [ ] Aggiungere concurrency e repeated-callback test.
-- [ ] Aggiungere dedupe cross-source test.
-- [ ] Aggiungere test retention con clock controllato.
-- [ ] Aggiungere test owner isolation e purge.
-- [ ] Verificare esclusione da backup Android.
+- [x] Definire entity Room e schema versionato.
+- [x] Definire DAO senza query su testo sensibile.
+- [x] Creare indice unique sul fingerprint tecnico.
+- [x] Creare indice sul fingerprint semantico e stato.
+- [x] Implementare owner partitioning.
+- [x] Cifrare con AES-GCM l'intero payload strutturato del candidato e autenticare candidate ID, owner e versione schema come associated data.
+- [x] Hashare i fingerprint.
+- [x] Non salvare titolo o testo normalizzato.
+- [x] Implementare upsert per notification key aggiornata.
+- [x] Implementare dedupe semantica entro finestra approvata.
+- [x] Gestire varianti merchant tra wallet e banca senza fondere merchant differenti.
+- [x] Implementare tombstone per accepted/edited/ignored.
+- [x] Implementare stati `pending`, `accepting`, `accepted`, `edited`, `ignored`, `expired`.
+- [x] Implementare acceptance token monouso/idempotente.
+- [x] Implementare recovery di `accepting`.
+- [x] Implementare `deleteAllForOwner`.
+- [x] Implementare purge completo device-local.
+- [x] Implementare WorkManager per cleanup differibile.
+- [x] Eseguire cleanup anche all'avvio/resume.
+- [x] Definire comportamento dopo database migration fallita.
+- [x] Non notificare se la persistenza fallisce.
+- [x] Aggiungere Room migration test.
+- [x] Aggiungere concurrency e repeated-callback test.
+- [x] Aggiungere dedupe cross-source test.
+- [x] Aggiungere test retention con clock controllato.
+- [x] Aggiungere test owner isolation e purge.
+- [x] Verificare esclusione da backup Android.
+
+Decisioni operative M6:
+
+- Room 2.8.4 e schema esportato v1; ogni futura modifica richiede una migration
+  esplicita e testata. Non è configurato alcun fallback distruttivo: una
+  migration mancante fallisce in modo chiuso.
+- La dedupe semantica sintetica usa una finestra simmetrica di due minuti,
+  richiede sorgenti differenti e lo stesso merchant normalizzato; senza
+  merchant non fonde candidati. La finestra resta modificabile prima delle
+  sorgenti reali, sulla base del corpus approvato.
+- Cleanup a ogni scrittura/lista, all'avvio e al resume, più WorkManager
+  differibile ogni 24 ore.
 
 Exit criteria:
 
@@ -1400,6 +1412,7 @@ Next: prossima task verificabile
 | 2026-07-26 | M2/M3 | Login Google positivo riferito dall'utente; implementati owner boundary HMAC, purge journaled, AES-GCM/ID opachi, backup exclusion, WebView/CSP e release hardening senza introdurre il listener | 69 file/337 test Vitest, build Vite, 145 task Gradle, 6 instrumentation test API 36 e `android:verify:webview` verdi | Ottenere privacy-owner/DPIA; completare lifecycle auth e QA fisica prima di M4 reale |
 | 2026-07-26 | M4 | Implementati listener system-bound, stato opt-in/OS, settings owner-scoped, catalogo sintetico e gate package-before-extras con test source APK separata | 70 file/341 test Vitest, build Vite, 192 task Gradle, 10 instrumentation test API 36; test APK disinstallata automaticamente | Verificare process recreation e reboot; nessuna sorgente reale prima di privacy/DPIA e selezione prodotto |
 | 2026-07-28 | M4/M5 | Chiusa la recovery M4 e implementato il rule engine sintetico M5 con schema versionato, normalizzazione, negative rules, tier ed esclusione identificativi | `android:verify:listener-recovery` verde su process recreation/rebind/reboot/revoca API 36; 10 instrumentation test; unit corpus e benchmark 10.000 parsing verdi | Implementare M6 Room cifrato, retention e dedupe; nessuna sorgente reale prima di B-002/B-003/B-006 |
+| 2026-07-28 | M6 | Implementato repository Room cifrato con owner partition, fingerprint HMAC, upsert/dedupe, retention, tombstone, acceptance journal/recovery, purge e cleanup WorkManager | Unit/lint/assemble verdi; schema Room v1 esportato; 25 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M7 bridge DTO/recovery e notifiche Aura private; nessuna sorgente reale prima di B-002/B-003/B-006 |
 
 ## Release Evidence
 
@@ -1412,8 +1425,8 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Baseline non verde | `npm run test:e2e`: 1 passato, 6 falliti, 1 interrotto, 23 non eseguiti; tutti i fallimenti osservati attendono `Export complete archive` con Guided Tour aperta |
 | Gradle unit test | Passato | `testDebugUnitTest`, incluso corpus M5 e benchmark 10.000 parsing, JDK 21/API 36, 2026-07-28 |
-| Android instrumentation | Passato | 10 test `:app:connectedDebugAndroidTest` su emulatore Android 16/API 36, inclusa detection exact sintetica end-to-end, 2026-07-28 |
-| Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca, 2026-07-28 |
+| Android instrumentation | Passato | 25 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room, schema v1, cifratura, dedupe, concorrenza, retention, recovery, owner isolation e purge, 2026-07-28 |
+| Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca su AVD Pixel 9 Pro, 2026-07-28 |
 | Android lint | Passato | `lintDebug`, 2026-07-26 |
 | Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |
 | Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
@@ -1424,10 +1437,10 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Network leakage check | Non eseguito | Da registrare |
 | Logcat leakage check | Non eseguito | Da registrare |
 | Android backup exclusion | Positivo engineering | `allowBackup=false` verificato sul manifest installato e regole cloud/D2D deny-all coperte da test; prova OEM fisica resta M9 |
-| Logout/reset purge | Primitive verificate | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale; integrazione Room resta M6 |
+| Logout/reset purge | Passato engineering | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale, inclusa chiusura e cancellazione del database Room |
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
-| Security review | Engineering M3-M5 completata, owner aperto | Threat model, listener gate, parser bounded e corpus sintetico registrati; approvazione security owner e componenti M6-M7 restano aperti |
+| Security review | Engineering M3-M6 completata, owner aperto | Threat model, listener gate, parser bounded, cifratura Room, retention e purge registrati; approvazione security owner e componente M7 restano aperti |
 | Play/Data Safety review | Non eseguita | Da registrare |
 | Rollback rehearsal | Non eseguito | Da registrare |
 | Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |

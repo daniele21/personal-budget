@@ -1,7 +1,9 @@
 package com.staituned.aura.paymentdetection.data
 
 import android.content.Context
+import com.staituned.aura.paymentdetection.security.AcceptanceTokenFactory
 import com.staituned.aura.paymentdetection.security.CandidateFieldProtector
+import com.staituned.aura.paymentdetection.security.CandidateFingerprintHasher
 import com.staituned.aura.paymentdetection.security.OwnerKeyHasher
 
 internal enum class NativePurgeReason(val bridgeValue: String) {
@@ -21,10 +23,14 @@ internal class PaymentDetectionPrivacyStore(
     private val ownerKeyHasher: OwnerKeyHasher = OwnerKeyHasher(),
     private val candidateFieldProtector: CandidateFieldProtector =
         CandidateFieldProtector(),
+    private val candidateFingerprintHasher: CandidateFingerprintHasher =
+        CandidateFingerprintHasher(),
+    private val acceptanceTokenFactory: AcceptanceTokenFactory =
+        AcceptanceTokenFactory(),
     private val namespace: String = DEFAULT_NAMESPACE,
 ) {
     private val preferencesName = "aura_${namespace}_private"
-    private val candidateDatabaseName = "aura_${namespace}_candidates.db"
+    internal val candidateDatabaseName = "aura_${namespace}_candidates.db"
     private val preferences
         get() = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
 
@@ -74,11 +80,16 @@ internal class PaymentDetectionPrivacyStore(
         }
 
     private fun completePurge(reason: NativePurgeReason) {
-        context.deleteDatabase(candidateDatabaseName)
+        PaymentCandidateDatabaseProvider.closeAndDelete(
+            context,
+            candidateDatabaseName,
+        )
         context.deleteSharedPreferences("aura_${namespace}_settings")
         if (reason == NativePurgeReason.TOTAL_DELETION) {
             ownerKeyHasher.deleteKey()
             candidateFieldProtector.deleteKey()
+            candidateFingerprintHasher.deleteKey()
+            acceptanceTokenFactory.deleteKey()
         }
         check(context.deleteSharedPreferences(preferencesName)) {
             "Unable to clear native private preferences."

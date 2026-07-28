@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.nio.charset.StandardCharsets
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -66,6 +67,59 @@ class PaymentDetectionSecurityInstrumentedTest {
         } catch (_: CandidateAuthenticationException) {
             // Expected.
         }
+    }
+
+    @Test
+    fun candidateFingerprintsAreKeyedStableAndOwnerScoped() {
+        val hasher = CandidateFingerprintHasher()
+        val technical = hasher.hashTechnical(
+            ownerKeyHash = "owner-a",
+            sourceAppId = "synthetic-source",
+            notificationKey = "notification-key",
+        )
+        val repeated = hasher.hashTechnical(
+            ownerKeyHash = "owner-a",
+            sourceAppId = "synthetic-source",
+            notificationKey = "notification-key",
+        )
+        val otherOwner = hasher.hashTechnical(
+            ownerKeyHash = "owner-b",
+            sourceAppId = "synthetic-source",
+            notificationKey = "notification-key",
+        )
+        val merchantCaseVariant = hasher.hashSemantic(
+            "owner-a",
+            "card_payment",
+            1234,
+            "EUR",
+            "Negozio",
+        )
+        val normalizedMerchantCaseVariant = hasher.hashSemantic(
+            "owner-a",
+            "card_payment",
+            1234,
+            "EUR",
+            "NEGOZIO",
+        )
+
+        assertEquals(technical, repeated)
+        assertNotEquals(technical, otherOwner)
+        assertFalse(technical.contains("notification-key"))
+        assertEquals(merchantCaseVariant, normalizedMerchantCaseVariant)
+    }
+
+    @Test
+    fun acceptanceTokenIsDeterministicForOneReservationAndCannotBeReusedForAnother() {
+        val factory = AcceptanceTokenFactory()
+        val token = factory.create("owner-a", "candidate-a", "transaction-a")
+        val repeated = factory.create("owner-a", "candidate-a", "transaction-a")
+        val otherReservation =
+            factory.create("owner-a", "candidate-a", "transaction-b")
+
+        assertEquals(token, repeated)
+        assertNotEquals(token, otherReservation)
+        assertTrue(factory.matches(token, factory.hash(token)))
+        assertFalse(factory.matches(otherReservation, factory.hash(token)))
     }
 
     @Test

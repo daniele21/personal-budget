@@ -1,5 +1,6 @@
 package com.staituned.aura.paymentdetection.listener
 
+import com.staituned.aura.paymentdetection.data.CandidatePersistenceResult
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import java.util.concurrent.atomic.AtomicBoolean
@@ -11,6 +12,8 @@ internal object PaymentDetectionListenerRuntime {
     private val exactMatches = AtomicInteger(0)
     private val reviewMatches = AtomicInteger(0)
     private val ignoredMatches = AtomicInteger(0)
+    private val persistedCandidates = AtomicInteger(0)
+    private val persistenceFailures = AtomicInteger(0)
 
     fun isConnected(): Boolean = connected.get()
 
@@ -43,10 +46,26 @@ internal object PaymentDetectionListenerRuntime {
         }
     }
 
+    fun markPersistenceResult(result: CandidatePersistenceResult) {
+        if (result is CandidatePersistenceResult.Created) {
+            persistedCandidates.incrementAndGet()
+        }
+    }
+
+    fun persistedCandidateCount(): Int = persistedCandidates.get()
+
+    fun markPersistenceFailure() {
+        persistenceFailures.incrementAndGet()
+    }
+
+    fun persistenceFailureCount(): Int = persistenceFailures.get()
+
     fun resetAcceptedEnvelopeCount() {
         acceptedEnvelopes.set(0)
         exactMatches.set(0)
         reviewMatches.set(0)
         ignoredMatches.set(0)
+        persistedCandidates.set(0)
+        persistenceFailures.set(0)
     }
 }
