@@ -10,6 +10,11 @@ internal data class SupportedPaymentApp(
     val syntheticOnly: Boolean,
 )
 
+internal data class SupportedPaymentAppAvailability(
+    val app: SupportedPaymentApp,
+    val installed: Boolean,
+)
+
 /**
  * M4 starts with controlled instrumentation sources only. Real payment app
  * package names must not be guessed or added before the product/privacy gate.
@@ -26,6 +31,17 @@ internal object SupportedPaymentAppCatalog {
 
     fun findByPackageName(packageName: String): SupportedPaymentApp? =
         apps.firstOrNull { it.packageName == packageName }
+
+    fun findById(id: String): SupportedPaymentApp? =
+        apps.firstOrNull { it.id == id }
+
+    fun supportedApps(context: Context): List<SupportedPaymentAppAvailability> =
+        apps.map { app ->
+            SupportedPaymentAppAvailability(
+                app = app,
+                installed = isInstalled(context, app.packageName),
+            )
+        }
 
     fun installedApps(context: Context): List<SupportedPaymentApp> =
         apps.filter { isInstalled(context, it.packageName) }

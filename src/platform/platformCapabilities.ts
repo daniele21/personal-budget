@@ -24,9 +24,7 @@ export function resolvePlatformCapabilities(
     pwaInstallSupported: platform === 'web',
     serviceWorkerSupported: platform === 'web',
     browserNotificationsSupported: platform === 'web',
-    // This becomes true only when the native plugin contract is implemented
-    // and available. Android alone is not enough to advertise the feature.
-    paymentDetectionSupported: false,
+    paymentDetectionSupported: platform === 'android',
   };
 }
 

@@ -70,7 +70,16 @@
   idempotent acceptance reservation and recovery, device-local purge, and
   startup/resume plus WorkManager cleanup. Migration, concurrency, retention,
   owner-isolation and purge coverage passes on the Pixel 9 Pro API 36 AVD; the
-  path remains synthetic-only and emits no Aura proposal yet.
+  M6 slice remains synthetic-only and did not itself emit an Aura proposal.
+- Added the M7 minimized Capacitor bridge for candidate, settings, and
+  acceptance operations, with bounded argument validation and no raw
+  notification, package, rule, fingerprint, or secret fields in normal
+  candidate snapshots.
+- Added cold-start/resume reconciliation, optional local candidate-change
+  hints, opaque candidate deep-link handoff across authentication, and a
+  private Aura notification with redacted private/public content, immutable
+  Verify/Ignore actions, and a non-exported Ignore receiver. The M8 review UI
+  and canonical transaction commit remain pending.
 
 ### Changed
 

@@ -5,16 +5,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   acknowledge: vi.fn(),
-  onAppUrl: null as null | ((path: string) => void),
+  onAppTarget: null as null | ((target:
+    | { kind: 'route'; path: string }
+    | { kind: 'paymentCandidate'; candidateId: string }) => void),
+  publishCandidateTarget: vi.fn(),
   remove: vi.fn(),
 }));
 
 vi.mock('../appRuntimeService', () => ({
   acknowledgePendingAppUrl: mocks.acknowledge,
-  subscribeToAppRuntime: vi.fn(async (onAppUrl: (path: string) => void) => {
-    mocks.onAppUrl = onAppUrl;
+  subscribeToAppRuntime: vi.fn(async (onAppTarget: typeof mocks.onAppTarget) => {
+    mocks.onAppTarget = onAppTarget;
     return { remove: mocks.remove };
   }),
+}));
+
+vi.mock('../paymentCandidateTarget', () => ({
+  publishPaymentCandidateTarget: mocks.publishCandidateTarget,
 }));
 
 import { PlatformRuntimeBridge } from '../PlatformRuntimeBridge';
@@ -37,19 +44,40 @@ describe('PlatformRuntimeBridge', () => {
     mocks.acknowledge.mockReset();
     mocks.acknowledge.mockResolvedValue(undefined);
     mocks.remove.mockReset();
-    mocks.onAppUrl = null;
+    mocks.onAppTarget = null;
+    mocks.publishCandidateTarget.mockReset();
   });
 
   it('holds an allowlisted target through login and acknowledges after navigation', async () => {
     const view = render(<TestApp isLoggedIn={false} />);
     await act(async () => undefined);
 
-    act(() => mocks.onAppUrl?.('/data'));
+    act(() => mocks.onAppTarget?.({ kind: 'route', path: '/data' }));
     expect(screen.getByLabelText('current path')).toHaveTextContent('/');
     expect(mocks.acknowledge).not.toHaveBeenCalled();
 
     view.rerender(<TestApp isLoggedIn />);
     expect(screen.getByLabelText('current path')).toHaveTextContent('/data');
     expect(mocks.acknowledge).toHaveBeenCalledOnce();
+  });
+
+  it('holds an opaque candidate target through login without URL financial data', async () => {
+    const view = render(<TestApp isLoggedIn={false} />);
+    await act(async () => undefined);
+
+    act(() =>
+      mocks.onAppTarget?.({
+        kind: 'paymentCandidate',
+        candidateId: 'AbCdEfGhIjKlMnOpQrStUvWx',
+      }),
+    );
+    expect(mocks.publishCandidateTarget).not.toHaveBeenCalled();
+
+    view.rerender(<TestApp isLoggedIn />);
+    expect(mocks.publishCandidateTarget).toHaveBeenCalledWith(
+      'AbCdEfGhIjKlMnOpQrStUvWx',
+      mocks.acknowledge,
+    );
+    expect(mocks.acknowledge).not.toHaveBeenCalled();
   });
 });

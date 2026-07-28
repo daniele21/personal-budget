@@ -30,8 +30,13 @@ export interface AppRuntimeSubscription {
 type ResumeListener = (event: NativeAppResumeEvent) => void;
 
 const resumeListeners = new Set<ResumeListener>();
+const PAYMENT_CANDIDATE_PATH = /^\/payment-candidates\/([A-Za-z0-9_-]{24})$/;
 
-export function parseAuraAppUrl(value: string): string | null {
+export type AppRuntimeTarget =
+  | { kind: 'route'; path: string }
+  | { kind: 'paymentCandidate'; candidateId: string };
+
+export function parseAuraAppTarget(value: string): AppRuntimeTarget | null {
   try {
     const url = new URL(value);
     const allowedProtocol =
@@ -48,10 +53,21 @@ export function parseAuraAppUrl(value: string): string | null {
     }
 
     const path = url.pathname || '/';
-    return ALLOWED_DEEP_LINK_ROUTES.has(path) ? path : null;
+    if (ALLOWED_DEEP_LINK_ROUTES.has(path)) {
+      return { kind: 'route', path };
+    }
+    const paymentCandidate = PAYMENT_CANDIDATE_PATH.exec(path);
+    return paymentCandidate
+      ? { kind: 'paymentCandidate', candidateId: paymentCandidate[1] }
+      : null;
   } catch {
     return null;
   }
+}
+
+export function parseAuraAppUrl(value: string): string | null {
+  const target = parseAuraAppTarget(value);
+  return target?.kind === 'route' ? target.path : null;
 }
 
 export function subscribeAppResumed(listener: ResumeListener): () => void {
@@ -64,7 +80,7 @@ function emitAppResumed(event: NativeAppResumeEvent): void {
 }
 
 export async function subscribeToAppRuntime(
-  onAppUrl: (path: string) => void,
+  onAppTarget: (target: AppRuntimeTarget) => void,
 ): Promise<AppRuntimeSubscription> {
   const capabilities = getPlatformCapabilities();
 
@@ -87,8 +103,12 @@ export async function subscribeToAppRuntime(
   const handles: PluginListenerHandle[] = [];
   const [urlHandle, resumeHandle] = await Promise.all([
     NativeAppRuntime.addListener('appUrlOpen', ({ url }) => {
-      const path = parseAuraAppUrl(url);
-      if (path) onAppUrl(path);
+      const target = parseAuraAppTarget(url);
+      if (target) {
+        onAppTarget(target);
+      } else {
+        void NativeAppRuntime.clearPendingAppUrl().catch(() => undefined);
+      }
     }),
     NativeAppRuntime.addListener('appResumed', emitAppResumed),
   ]);
@@ -96,8 +116,12 @@ export async function subscribeToAppRuntime(
 
   const pending = await NativeAppRuntime.getPendingAppUrl();
   if (pending.url) {
-    const path = parseAuraAppUrl(pending.url);
-    if (path) onAppUrl(path);
+    const target = parseAuraAppTarget(pending.url);
+    if (target) {
+      onAppTarget(target);
+    } else {
+      await NativeAppRuntime.clearPendingAppUrl();
+    }
   }
 
   return {

@@ -56,13 +56,13 @@ Ultimo aggiornamento: 2026-07-28
 | M4. Notification listener e configurazione utente | Completato | Listener, opt-in/OS status, settings owner-scoped e package-before-extras verificati; process recreation, rebind, reboot API 36 e revoca passati con sorgente sintetica |
 | M5. Rule engine nativo e corpus di fixture | Completato | Parser Kotlin versionato, fixture esclusivamente sintetiche, negative rules, tier, regex safety e benchmark verificati; nessuna sorgente reale |
 | M6. Repository candidati, retention e deduplicazione | Completato | Room v1, payload cifrato, dedupe, retention, acceptance journal, purge e cleanup verificati su Pixel 9 Pro API 36 con sole fixture sintetiche |
-| M7. Bridge Capacitor, deep link e notifiche Aura | Non iniziato | Attende M4 e M6 |
+| M7. Bridge Capacitor, deep link e notifiche Aura | Completato | DTO minimizzati, acceptance/recovery, refresh, deep link opaco e notifica privata con azioni immutabili verificati su Pixel 9 Pro API 36 |
 | M8. UX React, review e creazione transazione | Non iniziato | Attende M2, M6 e M7 |
 | M9. Hardening, QA fisica e compliance | Non iniziato | Attende M1-M8 |
 | M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
-Focus corrente: **M7 — esporre a React soltanto DTO strutturati, recovery e notifiche Aura private, mantenendo bloccate le sorgenti reali**.
+Focus corrente: **M8 — costruire provider e UX React di review, collegando la creazione canonica della transazione al journal M6-M7**.
 
 ## Direzione approvata
 
@@ -885,39 +885,53 @@ Exit criteria:
 
 Goal: esporre a React soltanto API strutturate e sicure.
 
-Stato: **Non iniziato**
+Stato: **Completato**
 
 Dipendenze: M4 e M6.
 
 Task:
 
-- [ ] Definire contratto TypeScript del plugin.
-- [ ] Implementare `isSupported`.
-- [ ] Implementare `getNotificationAccessStatus`.
-- [ ] Implementare `openNotificationAccessSettings`.
-- [ ] Implementare `getSettings` e `updateSettings`.
-- [ ] Implementare `listSupportedApps`.
-- [ ] Implementare `listCandidates` e `getCandidate`.
-- [ ] Implementare `ignoreCandidate`.
-- [ ] Implementare `beginAcceptance` e `completeAcceptance`.
-- [ ] Implementare `recoverAcceptance`.
-- [ ] Implementare `deleteAllCandidates`.
-- [ ] Implementare `purgeForLogoutOrReset`.
-- [ ] Implementare evento live soltanto come ottimizzazione.
-- [ ] Fare refresh completo all'avvio e resume.
-- [ ] Validare tutti gli argomenti dal bridge.
-- [ ] Non restituire mai raw content, token o fingerprint non necessari.
-- [ ] Creare notification channel dedicato con importanza `DEFAULT`.
-- [ ] Creare public lock-screen version redatta.
-- [ ] Aggiungere azioni `Verifica` e `Ignora`.
-- [ ] Usare deep link con ID opaco.
-- [ ] Evitare dati finanziari nella URL.
-- [ ] Rendere receiver interno e PendingIntent correttamente immutable/unique.
-- [ ] Gestire candidato scaduto o inesistente.
-- [ ] Gestire deep link prima e dopo login.
-- [ ] Aggiungere plugin unit/instrumentation test.
-- [ ] Aggiungere contract test TypeScript/Kotlin.
-- [ ] Aggiungere test di intent spoofing e ID non valido.
+- [x] Definire contratto TypeScript del plugin.
+- [x] Implementare `isSupported`.
+- [x] Implementare `getNotificationAccessStatus`.
+- [x] Implementare `openNotificationAccessSettings`.
+- [x] Implementare `getSettings` e `updateSettings`.
+- [x] Implementare `listSupportedApps`.
+- [x] Implementare `listCandidates` e `getCandidate`.
+- [x] Implementare `ignoreCandidate`.
+- [x] Implementare `beginAcceptance` e `completeAcceptance`.
+- [x] Implementare `recoverAcceptance`.
+- [x] Implementare `deleteAllCandidates`.
+- [x] Implementare `purgeForLogoutOrReset`.
+- [x] Implementare evento live soltanto come ottimizzazione.
+- [x] Fare refresh completo all'avvio e resume.
+- [x] Validare tutti gli argomenti dal bridge.
+- [x] Non restituire mai raw content, token o fingerprint non necessari.
+- [x] Creare notification channel dedicato con importanza `DEFAULT`.
+- [x] Creare public lock-screen version redatta.
+- [x] Aggiungere azioni `Verifica` e `Ignora`.
+- [x] Usare deep link con ID opaco.
+- [x] Evitare dati finanziari nella URL.
+- [x] Rendere receiver interno e PendingIntent correttamente immutable/unique.
+- [x] Gestire candidato scaduto o inesistente.
+- [x] Gestire deep link prima e dopo login.
+- [x] Aggiungere plugin unit/instrumentation test.
+- [x] Aggiungere contract test TypeScript/Kotlin.
+- [x] Aggiungere test di intent spoofing e ID non valido.
+
+Decisioni operative M7:
+
+- Il deep link è limitato a
+  `com.staituned.aura[.debug]://open/payment-candidates/{opaqueId}`. Non
+  contiene importo, merchant, package o altri dati finanziari.
+- Il target resta pending nell'intent nativo attraverso il login e viene
+  cancellato soltanto quando il consumer M8 conferma di aver aperto la review;
+  un evento live non sostituisce mai il refresh completo.
+- La notifica privata e la sua public version sono entrambe redatte per
+  default. `Verifica` apre soltanto il deep link; `Ignora` usa un broadcast
+  receiver esplicito non esportato e non apre l'activity.
+- `acceptanceToken` e `reservedTransactionId` compaiono soltanto nella risposta
+  a `beginAcceptance`; lista, dettaglio ed evento non li espongono.
 
 Exit criteria:
 
@@ -1413,6 +1427,7 @@ Next: prossima task verificabile
 | 2026-07-26 | M4 | Implementati listener system-bound, stato opt-in/OS, settings owner-scoped, catalogo sintetico e gate package-before-extras con test source APK separata | 70 file/341 test Vitest, build Vite, 192 task Gradle, 10 instrumentation test API 36; test APK disinstallata automaticamente | Verificare process recreation e reboot; nessuna sorgente reale prima di privacy/DPIA e selezione prodotto |
 | 2026-07-28 | M4/M5 | Chiusa la recovery M4 e implementato il rule engine sintetico M5 con schema versionato, normalizzazione, negative rules, tier ed esclusione identificativi | `android:verify:listener-recovery` verde su process recreation/rebind/reboot/revoca API 36; 10 instrumentation test; unit corpus e benchmark 10.000 parsing verdi | Implementare M6 Room cifrato, retention e dedupe; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-07-28 | M6 | Implementato repository Room cifrato con owner partition, fingerprint HMAC, upsert/dedupe, retention, tombstone, acceptance journal/recovery, purge e cleanup WorkManager | Unit/lint/assemble verdi; schema Room v1 esportato; 25 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M7 bridge DTO/recovery e notifiche Aura private; nessuna sorgente reale prima di B-002/B-003/B-006 |
+| 2026-07-28 | M7 | Implementati contratto Capacitor minimizzato, API candidate/settings/acceptance, refresh cold-start/resume, target deep link persistente e notifica Aura privata con Verifica/Ignora | Contract test TypeScript/Kotlin, test spoofing/ID invalidi e 32 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M8 provider/review e transazione canonica; nessuna sorgente reale prima di B-002/B-003/B-006 |
 
 ## Release Evidence
 
@@ -1421,12 +1436,13 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Evidenza | Stato | Riferimento |
 |---|---|---|
 | TypeScript lint | Passato | `npm run test:regression`, 2026-07-26 |
-| Vitest | Passato | 70 file e 343 test, 2026-07-28 |
+| Vitest | Passato | 74 file e 354 test, 2026-07-28 |
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Baseline non verde | `npm run test:e2e`: 1 passato, 6 falliti, 1 interrotto, 23 non eseguiti; tutti i fallimenti osservati attendono `Export complete archive` con Guided Tour aperta |
 | Gradle unit test | Passato | `testDebugUnitTest`, incluso corpus M5 e benchmark 10.000 parsing, JDK 21/API 36, 2026-07-28 |
-| Android instrumentation | Passato | 25 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room, schema v1, cifratura, dedupe, concorrenza, retention, recovery, owner isolation e purge, 2026-07-28 |
+| Android instrumentation | Passato | 32 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room→notifica privata, schema, bridge DTO, azioni immutabili, spoofing, cifratura, dedupe, retention, recovery, owner isolation e purge, 2026-07-28 |
 | Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca su AVD Pixel 9 Pro, 2026-07-28 |
+| Simulazione M7 | Passato | `android:simulate:wallet-notification`: notifica Wallet sintetica → candidato Room → proposta Aura redatta, con cleanup automatico su AVD Pixel 9 Pro, 2026-07-28 |
 | Android lint | Passato | `lintDebug`, 2026-07-26 |
 | Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |
 | Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
@@ -1440,7 +1456,7 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Logout/reset purge | Passato engineering | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale, inclusa chiusura e cancellazione del database Room |
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
-| Security review | Engineering M3-M6 completata, owner aperto | Threat model, listener gate, parser bounded, cifratura Room, retention e purge registrati; approvazione security owner e componente M7 restano aperti |
+| Security review | Engineering M3-M7 completata, owner aperto | Threat model, listener gate, parser bounded, cifratura Room, bridge minimizzato, deep link, PendingIntent e receiver registrati; approvazione security owner resta aperta |
 | Play/Data Safety review | Non eseguita | Da registrare |
 | Rollback rehearsal | Non eseguito | Da registrare |
 | Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |

@@ -68,7 +68,7 @@ internal object CandidatePayloadCodec {
             payload.operationType == CARD_PAYMENT &&
                 payload.operationType.length <= MAX_OPERATION_TYPE_CHARACTERS,
         )
-        require(payload.amountMinorUnits > 0)
+        require(payload.amountMinorUnits in 1..MAX_SAFE_JAVASCRIPT_INTEGER)
         require(payload.currency == EUR && payload.currency.length == MAX_CURRENCY_CHARACTERS)
         require(
             payload.merchant == null ||
@@ -82,4 +82,5 @@ internal object CandidatePayloadCodec {
 
     private const val CARD_PAYMENT = "card_payment"
     private const val EUR = "EUR"
+    private const val MAX_SAFE_JAVASCRIPT_INTEGER = 9_007_199_254_740_991L
 }

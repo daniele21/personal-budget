@@ -66,6 +66,10 @@
                 android:name="android.service.notification.disabled_filter_types"
                 android:value="conversations|ongoing|silent" />
         </service>
+
+        <receiver
+            android:name=".paymentdetection.notification.PaymentCandidateActionReceiver"
+            android:exported="false" />
     </application>
 
     <!-- Permissions -->

@@ -2,8 +2,9 @@
 
 ## Status
 
-- Processing state: M3 foundation, M4 synthetic listener and M5 synthetic-only
-  parser implemented; real payment-notification processing prohibited
+- Processing state: synthetic M3-M7 path implemented through encrypted
+  candidate storage, minimized bridge, and redacted Aura notification; real
+  payment-notification processing prohibited
 - Engineering direction: approved
 - Real-user processing: prohibited until privacy-owner approval
 - Last reviewed: 2026-07-28
@@ -18,10 +19,11 @@ The implemented M3 boundary is documented in
 [`android-payment-detection-security.md`](../01-architecture/android-payment-detection-security.md).
 It processes a Firebase UID transiently only to install a Keystore-backed
 hashed owner boundary. M4 tests read only a static synthetic notification from
-the repository-controlled test APK. M5 converts that static fixture into an
-ephemeral structured result using deterministic rules, then retains only
-redacted process counters. No real notification content is read, no candidate
-is persisted or bridged, and no off-device transfer is added.
+the repository-controlled test APK. M5 converts that static fixture into a
+structured result using deterministic rules. M6 stores the resulting candidate
+locally with authenticated encryption. M7 exposes a minimized in-process DTO
+and emits a redacted private notification for exact synthetic matches. No real
+notification content is read and no off-device transfer is added.
 
 ## Processing Activity
 
@@ -176,17 +178,29 @@ Implemented in M6 for the synthetic-only path:
 - cleanup at startup/resume and through WorkManager, with no candidate content
   logging or telemetry.
 
+Implemented in M7 for the synthetic-only path:
+
+- minimized bridge snapshots omit raw strings, package names, rule IDs,
+  fingerprints, notification keys, and acceptance secrets;
+- acceptance token and reserved transaction UUID are returned only by the
+  explicit begin-acceptance operation;
+- candidate IDs and all workflow arguments are bounded and validated at the
+  WebView/native boundary;
+- exact matches may emit a private Aura notification whose private and public
+  lock-screen versions are both redacted by default;
+- Verify deep links carry only an opaque candidate ID; Ignore uses an explicit
+  non-exported receiver and does not open the app;
+- immutable, URI-unique `PendingIntent` objects prevent action reuse;
+- cold start, resume, and live-event hints reconcile against the owner-scoped
+  Room snapshot;
+- no new processor, network route, telemetry, analytics, or backup path.
+
 Required in later milestones before real-notification processing:
 
-- no raw bridge DTO;
-- no production dynamic logging;
-- no custom candidate telemetry;
-- suspend without active owner;
-- internal/non-exported helpers and receivers;
-- immutable PendingIntent where possible;
-- private lock-screen notification;
-- explicit Android backup/data-extraction exclusions;
-- idempotent cross-storage acceptance journal.
+- M8 review/edit disclosure and completion of the idempotent cross-storage
+  acceptance journal;
+- M9 physical logcat, backup/device-transfer, task-stack, and accessibility
+  verification.
 
 ## User Controls
 

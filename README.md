@@ -220,10 +220,11 @@ The generated debug application uses `com.staituned.aura.debug` and the
 keystores must remain outside source control. The M4 notification listener is
 implemented but allowlists only the repository-controlled synthetic test APK;
 the M5 deterministic parser is implemented only for that synthetic source.
-Candidate persistence, Aura review proposals, and the real payment-app catalog
-are not implemented. The native Credential Manager bridge is implemented, the
-local non-production OAuth configuration is validated, and a successful manual
-Google sign-in was reported on 2026-07-26.
+The M6 candidate repository and M7 minimized bridge/private notification are
+implemented. The M8 review UI and real payment-app catalog are not implemented.
+The native Credential Manager bridge is implemented, the local non-production
+OAuth configuration is validated, and a successful manual Google sign-in was
+reported on 2026-07-26.
 
 M3 installs the security/privacy foundation: a Keystore-backed owner hash,
 recoverable purge for logout/account change/reset/deletion, authenticated
@@ -238,8 +239,11 @@ and a synthetic positive/negative/ambiguous fixture corpus. M6 adds a private
 Room v1 queue with an AES-GCM encrypted structured payload, owner-scoped HMAC
 fingerprints, technical upsert, conservative cross-source dedupe, bounded
 retention, idempotent acceptance recovery, purge and WorkManager cleanup. No
-raw notification string is persisted or bridged, and no Aura proposal is
-emitted yet. The repeatable safe checks are:
+raw notification string is persisted or bridged. M7 adds a minimized
+candidate/settings/acceptance bridge, full refresh on cold start/resume, an
+opaque candidate deep link, and a private Aura notification with redacted
+private/public content and immutable Verify/Ignore actions. The repeatable safe
+checks are:
 
 ```bash
 npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts
@@ -258,10 +262,13 @@ Android emulator:
 npm run android:simulate:wallet-notification
 ```
 
-The notification remains visible for 30 seconds by default. The command refuses
-physical devices, enables the listener only for the simulation, and then
-disables it, clears the synthetic settings, and uninstalls the test source. To
-change the duration or select one emulator when multiple are connected:
+The Wallet-like source notification and the redacted Aura proposal remain
+visible for 30 seconds by default. Verify opens Aura and preserves the opaque
+candidate target for the M8 review screen; Ignore deletes the candidate without
+opening Aura. The command refuses physical devices, enables the listener only
+for the simulation, and then disables it, clears the synthetic settings, and
+uninstalls the test source. To change the duration or select one emulator when
+multiple are connected:
 
 ```bash
 ANDROID_SERIAL=emulator-5556 AURA_SIMULATION_SECONDS=60 \

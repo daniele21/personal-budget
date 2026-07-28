@@ -22,7 +22,7 @@ describe('resolvePlatformCapabilities', () => {
       pwaInstallSupported: false,
       serviceWorkerSupported: false,
       browserNotificationsSupported: false,
-      paymentDetectionSupported: false,
+      paymentDetectionSupported: true,
     });
   });
 

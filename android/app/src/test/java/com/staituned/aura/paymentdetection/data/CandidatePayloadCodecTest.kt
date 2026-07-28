@@ -51,6 +51,11 @@ class CandidatePayloadCodecTest {
             CandidatePayloadCodec.encode(validPayload(amountMinorUnits = 0))
         }
         assertThrows(IllegalArgumentException::class.java) {
+            CandidatePayloadCodec.encode(
+                validPayload(amountMinorUnits = 9_007_199_254_740_992L),
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
             CandidatePayloadCodec.encode(validPayload(currency = "eur"))
         }
         assertThrows(IllegalArgumentException::class.java) {

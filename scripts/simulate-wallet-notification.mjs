@@ -117,6 +117,13 @@ async function main() {
   ]);
   runAdb([
     'shell',
+    'pm',
+    'grant',
+    auraPackage,
+    'android.permission.POST_NOTIFICATIONS',
+  ]);
+  runAdb([
+    'shell',
     'cmd',
     'notification',
     'allow_listener',
@@ -137,7 +144,7 @@ async function main() {
       'simulate',
     ]);
     console.log(
-      `Synthetic Wallet notification visible for ${durationSeconds} seconds.`,
+      `Synthetic Wallet and redacted Aura proposal active for ${durationSeconds} seconds.`,
     );
     console.log('Press Ctrl+C to clean up early.');
     await Promise.race([

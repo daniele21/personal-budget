@@ -103,7 +103,10 @@ only that fixture corpus with deterministic, bounded, on-device rules and
 retains no raw content. M6 persists the resulting structured candidate in a
 private Room database with AES-GCM encryption, owner-scoped HMAC fingerprints,
 bounded retention and purge. There is no real payment-app package, bridge
-proposal, or Aura payment notification.
+source, or real-notification fixture. M7 exposes only a minimized local
+candidate DTO and may emit a private Aura notification whose private and
+public lock-screen forms are redacted. Verify carries only an opaque ID; Ignore
+deletes locally through a non-exported receiver.
 
 The approved engineering boundary is:
 
@@ -121,9 +124,9 @@ The approved engineering boundary is:
 The current native bridge temporarily receives the authenticated Firebase UID
 only to derive a Keystore-backed HMAC owner partition. It stores neither the
 UID, email, nor token. Purge is journaled and recoverable; total deletion also
-removes the payment-detection Keystore keys. M6 uses those primitives for the
-synthetic candidate repository; raw notification strings, authentication data
-and canonical transactions remain outside it.
+removes the payment-detection Keystore keys. M6-M7 use those primitives for the
+synthetic candidate repository and minimized bridge; raw notification strings,
+authentication data and canonical transactions remain outside it.
 
 Local-only processing reduces recipient, transfer, breach, and vendor exposure but does not remove the need for transparency, minimization, security, retention, rights handling, or a documented lawful basis. Android grants notification access to the listener as a whole; Aura's per-app restriction is an application-enforced control and must be described honestly before the user opens system settings.
 

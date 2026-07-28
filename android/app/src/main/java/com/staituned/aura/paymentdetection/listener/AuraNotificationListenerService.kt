@@ -3,17 +3,26 @@ package com.staituned.aura.paymentdetection.listener
 import android.content.ComponentName
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.staituned.aura.paymentdetection.data.CandidatePersistenceResult
 import com.staituned.aura.paymentdetection.data.PaymentCandidateRepository
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.data.SupportedPaymentAppCatalog
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionInput
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
+import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import com.staituned.aura.paymentdetection.domain.PaymentRuleEngine
+import com.staituned.aura.paymentdetection.events.PaymentCandidateChange
+import com.staituned.aura.paymentdetection.events.PaymentCandidateChangeReason
+import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
+import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 
 class AuraNotificationListenerService : NotificationListenerService() {
     private val ruleEngine = PaymentRuleEngine()
     private val candidateRepository: PaymentCandidateRepository by lazy {
         PaymentCandidateRepository(applicationContext)
+    }
+    private val candidateNotifier: PaymentCandidateNotifier by lazy {
+        PaymentCandidateNotifier(applicationContext)
     }
 
     private val gate: PaymentNotificationGate by lazy {
@@ -41,6 +50,30 @@ class AuraNotificationListenerService : NotificationListenerService() {
                         PaymentDetectionListenerRuntime.markPersistenceResult(
                             persistenceResult,
                         )
+                        when (persistenceResult) {
+                            is CandidatePersistenceResult.Created -> {
+                                PaymentCandidateEventBus.publish(
+                                    PaymentCandidateChange(
+                                        PaymentCandidateChangeReason.CREATED,
+                                        persistenceResult.candidateId,
+                                    ),
+                                )
+                                if (result.tier == PaymentMatchTier.EXACT) {
+                                    candidateNotifier.notifyCandidate(
+                                        persistenceResult.candidateId,
+                                    )
+                                }
+                            }
+                            is CandidatePersistenceResult.Updated -> {
+                                PaymentCandidateEventBus.publish(
+                                    PaymentCandidateChange(
+                                        PaymentCandidateChangeReason.UPDATED,
+                                        persistenceResult.candidateId,
+                                    ),
+                                )
+                            }
+                            is CandidatePersistenceResult.Duplicate -> Unit
+                        }
                     }
                 }
             },

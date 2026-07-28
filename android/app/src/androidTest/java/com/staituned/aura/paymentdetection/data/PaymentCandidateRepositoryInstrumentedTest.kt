@@ -11,6 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.nio.charset.StandardCharsets
@@ -166,6 +167,24 @@ class PaymentCandidateRepositoryInstrumentedTest {
         harness.clock.value += PaymentCandidateRepository.PENDING_RETENTION_MS + 1
         harness.repository.cleanup()
 
+        assertEquals(0, harness.repository.countForActiveOwner())
+    }
+
+    @Test
+    fun expiredCandidateCannotBeFetchedIgnoredOrAcceptedBeforeScheduledCleanup() {
+        val harness = harness("expired_bridge_operations")
+        val created = harness.repository.persist(candidate(), "expired-key")
+        harness.clock.value += PaymentCandidateRepository.PENDING_RETENTION_MS + 1
+
+        assertThrows(CandidateNotFoundException::class.java) {
+            harness.repository.get(created.candidateId)
+        }
+        assertThrows(CandidateNotFoundException::class.java) {
+            harness.repository.ignore(created.candidateId)
+        }
+        assertThrows(CandidateNotFoundException::class.java) {
+            harness.repository.beginAcceptance(created.candidateId)
+        }
         assertEquals(0, harness.repository.countForActiveOwner())
     }
 

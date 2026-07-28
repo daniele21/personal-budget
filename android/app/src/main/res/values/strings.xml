@@ -4,4 +4,9 @@
     <string name="title_activity_main">Aura</string>
     <string name="package_name">com.staituned.aura</string>
     <string name="custom_url_scheme">com.staituned.aura</string>
+    <string name="payment_candidate_channel_name">Pagamenti da verificare</string>
+    <string name="payment_candidate_channel_description">Proposte locali di pagamento che richiedono una verifica in Aura</string>
+    <string name="payment_candidate_notification_text">Nuovo pagamento da verificare</string>
+    <string name="payment_candidate_verify_action">Verifica</string>
+    <string name="payment_candidate_ignore_action">Ignora</string>
 </resources>

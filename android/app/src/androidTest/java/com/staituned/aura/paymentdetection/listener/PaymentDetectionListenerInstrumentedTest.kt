@@ -1,6 +1,7 @@
 package com.staituned.aura.paymentdetection.listener
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Intent
 import android.os.ParcelFileDescriptor
@@ -11,6 +12,7 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.data.SupportedPaymentAppCatalog
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
+import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -102,6 +104,10 @@ class PaymentDetectionListenerInstrumentedTest {
         PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
 
         try {
+            shell(
+                "pm grant ${context.packageName} " +
+                    "android.permission.POST_NOTIFICATIONS",
+            )
             shell("cmd notification allow_listener $component")
             waitUntil("listener connection") {
                 PaymentDetectionListenerRuntime.isConnected()
@@ -131,6 +137,14 @@ class PaymentDetectionListenerInstrumentedTest {
                 PaymentDetectionListenerRuntime.persistedCandidateCount() == 1
             }
             assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
+            waitUntil("private Aura candidate notification") {
+                context.getSystemService(NotificationManager::class.java)
+                    .activeNotifications
+                    .any {
+                        it.notification.channelId ==
+                            PaymentCandidateNotifier.CHANNEL_ID
+                    }
+            }
             assertEquals(
                 0,
                 PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.REVIEW),
@@ -141,6 +155,7 @@ class PaymentDetectionListenerInstrumentedTest {
             )
         } finally {
             shell("cmd notification disallow_listener $component")
+            PaymentCandidateNotifier(context).cancelAll()
             privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
         }
     }

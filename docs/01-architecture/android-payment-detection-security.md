@@ -2,7 +2,7 @@
 
 ## Status And Scope
 
-This document records the M3-M6 engineering controls implemented before Aura
+This document records the M3-M7 engineering controls implemented before Aura
 is allowed to read real payment notifications. It is not legal advice or a
 privacy approval.
 
@@ -13,7 +13,11 @@ As of 2026-07-28:
 - an M5 deterministic rule engine parses only the bundled synthetic corpus;
 - an M6 private Room database persists only encrypted structured candidates
   produced by that synthetic path;
-- no Aura payment notification or React candidate DTO exists;
+- an M7 minimized Capacitor contract exposes only structured candidate fields,
+  and exact synthetic matches may emit a private Aura notification whose
+  private and public lock-screen variants are redacted;
+- Verify carries only an opaque candidate ID into Aura; Ignore uses an
+  application-private receiver and deletes the candidate without opening Aura;
 - no real notification content is read; tests read only one static synthetic
   title/text fixture from the controlled source APK;
 - the native bridge accepts only an authenticated Firebase UID for owner
@@ -29,7 +33,7 @@ flowchart LR
     L -->|"allowlisted package; bounded fields"| R["Deterministic Kotlin rules\nM5 synthetic-only"]
     R -->|"structured candidate only"| DB["Private Room candidate store\nM6"]
     KS["Android Keystore\nHMAC + AES-GCM keys"] --> DB
-    DB -.->|"M7 planned structured DTO"| B["First-party Capacitor bridge"]
+    DB -->|"minimized structured DTO"| B["First-party Capacitor bridge\nM7"]
     B --> W["Bundled React WebView\nhttps://localhost"]
     W --> A["Canonical AppData transaction flow"]
     W -->|"existing auth/session only"| F["Firebase"]
@@ -51,9 +55,11 @@ Trust boundaries:
   listener checks the source package and user selection before reading extras.
 - Native storage is private to the application and is not an extension of
   React `AppData`.
-- The WebView is untrusted input to native plugins. Bridge arguments are
-  validated and notification text, fingerprints, keys, and tokens are never
-  bridge inputs or outputs.
+- The WebView is untrusted input to native plugins. Candidate IDs, acceptance
+  tokens, transaction UUIDs, recovery sets, and settings are validated.
+  Notification text, fingerprints, rules, package names, and keys are never
+  bridge inputs or outputs; acceptance secrets are returned only by the
+  explicit begin-acceptance operation.
 - Firebase remains the source of the authenticated UID. Detection candidates
   never enter Firebase, Gemini, analytics, crash reporting, Aura archives, or
   CSV.
@@ -64,7 +70,7 @@ Trust boundaries:
 |---|---|---|---|
 | M3 owner registration | Firebase UID, transient bridge input | UID is HMAC-SHA256 transformed; only the owner hash is stored | Logout, owner change, local reset, total deletion |
 | M5 synthetic parsing | Internal source ID, bounded title/text/bigText and post time | Raw strings remain in memory only; only redacted process counters survive the call | References discarded after parsing; debug recovery probe removed during cleanup |
-| M6 candidate | Amount, EUR currency, optional merchant, timestamps and workflow metadata | Entire structured payload encrypted with AES-GCM in the private Room database | 14-day pending retention, immediate payload deletion on ignore/accept, bounded tombstone retention, reset, logout, owner change or deletion |
+| M6-M7 candidate | Amount, EUR currency, optional merchant, timestamps and workflow metadata; minimized M7 bridge snapshot | Entire structured payload encrypted with AES-GCM in the private Room database; bridge values remain in process memory | 14-day pending retention, immediate payload deletion on ignore/accept, bounded tombstone retention, reset, logout, owner change or deletion |
 | Confirmed transaction | User-reviewed normal transaction fields | Canonical React `AppData` | Existing Aura controls |
 
 Excluded by design: OTPs, balances, card/account identifiers, raw notification
@@ -122,7 +128,10 @@ opening the application under an unverified owner boundary.
   rules exclude all file, database, preference, external, and device-protected
   domains from cloud backup and device transfer.
 - Aura-owned helpers and receivers are non-exported. The launcher/deep-link
-  activity is the only Aura-owned exported component in M3.
+  activity is the only Aura-owned exported component.
+- Candidate notifications use immutable, URI-unique `PendingIntent` objects,
+  `VISIBILITY_PRIVATE`, and a fully redacted public version. The URI contains
+  only the custom Aura scheme and a cryptographically opaque candidate ID.
 - Release builds enable R8/resource shrinking and remove `android.util.Log`
   calls. No crash-reporting or breadcrumb SDK is installed.
 
@@ -154,10 +163,10 @@ release gate.
 | Ciphertext or owner context is modified | AES-GCM with owner/ID/schema AAD and purge on unreadable payload | Physical Keystore invalidation QA |
 | Keystore key is invalidated | No plaintext fallback; purge-and-recreate policy | Physical lock/reset scenarios |
 | XSS invokes native APIs | Bundled allowlisted origin, CSP, narrow bridge | Ongoing dependency and UI review |
-| Spoofed deep link leaks financial data | Allowlisted routes and opaque IDs; no financial URL values | M7 invalid-ID and intent tests |
+| Spoofed deep link leaks financial data | Exact scheme/host/path validation, opaque IDs, no query/fragment or financial URL values, immutable intents | Physical task-stack QA |
 | Backup or device transfer exports data | `allowBackup=false` plus exhaustive exclusion rules | OEM physical transfer test |
-| Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge and Room schema; M5-M6 emit no content logs | M7/M9 logcat tests |
-| Exported component accepts app actions | Listener and FileProvider non-exported; listener protected by the system bind permission | Recheck every manifest change |
+| Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge and Room schema; M5-M7 emit no content logs | M9 physical logcat test |
+| Exported component accepts app actions | Listener, FileProvider, and candidate-action receiver are non-exported; listener is protected by the system bind permission | Recheck every manifest change |
 | Unsupported notification is inspected | Package/selection gate executes before the deferred extras extractor | Real-source review remains prohibited |
 | Regex denial of service blocks listener | Bounded NFKC input, precompiled static patterns, unsafe-pattern rejection and parsing benchmark | Repeat for every approved real-source rule |
 | Card/account identifier becomes merchant | Identifier-like merchant values are dropped and negative fixture coverage excludes security/account contexts | Revalidate against every approved real-source corpus |
@@ -165,16 +174,19 @@ release gate.
 ## Controls Required In Later Milestones
 
 M4 declares only the non-exported system-bound listener with
-`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`, no custom application
-actions, and package/selection checks before extras. Its catalog currently
+`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` and package/selection
+checks before extras. Its catalog currently
 contains only the separate signature-protected synthetic test APK. M5 applies
 negative rules before exact/review rules, supports EUR only, and releases raw
 strings after evaluation. M6 persists only encrypted structured payload, keyed
 fingerprints and bounded workflow metadata; migration failure has no
 destructive fallback, cleanup runs on startup/resume and WorkManager, and
-persistence failure produces no Aura notification. M7 must use immutable,
-unique `PendingIntent` objects and a `VISIBILITY_PRIVATE` Aura notification
-with a fully redacted public version.
+persistence failure produces no Aura notification. M7 exposes a minimized
+first-party bridge, validates every untrusted identifier, refreshes from Room
+on cold start and resume, and uses immutable unique `PendingIntent` objects
+with a `VISIBILITY_PRIVATE` notification and fully redacted public version.
+M8 must add the review/edit UI and complete the existing idempotent acceptance
+protocol before a canonical transaction can be created.
 
 The prominent disclosure must explain that Android grants broad notification
 access while Aura internally processes only explicitly supported and selected
@@ -193,5 +205,5 @@ reset, logout purge, and total deletion.
 - physical backup/device-transfer and logcat verification;
 - Google Play Data Safety and disclosure review.
 
-Until those gates are recorded, M3 is an engineering foundation and not
+Until those gates are recorded, M3-M7 are an engineering foundation and not
 authorization to process real financial notifications.

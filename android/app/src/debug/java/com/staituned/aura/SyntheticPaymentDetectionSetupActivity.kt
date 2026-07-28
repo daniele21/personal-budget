@@ -9,6 +9,7 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
+import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 
 /**
  * Debug-only, fixed-input harness for the host-side Wallet simulation script.
@@ -30,6 +31,7 @@ class SyntheticPaymentDetectionSetupActivity : Activity() {
         try {
             when (intent.getStringExtra(MODE_EXTRA)) {
                 MODE_CLEANUP -> {
+                    PaymentCandidateNotifier(applicationContext).cancelAll()
                     if (harnessPreferences.getBoolean(CREATED_SYNTHETIC_OWNER, false)) {
                         privacyStore.purge(NativePurgeReason.LOCAL_RESET)
                     } else if (privacyStore.hasActiveOwner()) {
@@ -73,6 +75,10 @@ class SyntheticPaymentDetectionSetupActivity : Activity() {
             }",
             "ignored=${
                 PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.IGNORED)
+            }",
+            "persisted=${PaymentDetectionListenerRuntime.persistedCandidateCount()}",
+            "persistenceFailures=${
+                PaymentDetectionListenerRuntime.persistenceFailureCount()
             }",
         )
         openFileOutput(PROBE_FILE, MODE_PRIVATE).bufferedWriter().use {

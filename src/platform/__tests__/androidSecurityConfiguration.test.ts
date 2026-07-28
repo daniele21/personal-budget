@@ -65,9 +65,12 @@ describe('Android security configuration', () => {
     expect(rules).toContain('-assumenosideeffects class android.util.Log');
   });
 
-  it('keeps the M3 bridge metadata-only and has no crash-reporting SDK', () => {
+  it('keeps the M7 candidate bridge minimized and has no crash-reporting SDK', () => {
     const plugin = readProjectFile(
       'android/app/src/main/java/com/staituned/aura/PaymentDetectionPrivacyPlugin.kt',
+    );
+    const mapper = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/bridge/PaymentDetectionBridgeContract.kt',
     );
     const packageManifest = JSON.parse(readProjectFile('package.json')) as {
       dependencies?: Record<string, string>;
@@ -76,10 +79,29 @@ describe('Android security configuration', () => {
 
     expect(plugin).toContain('fun registerOwner');
     expect(plugin).toContain('fun purgeForLogoutOrReset');
-    expect(plugin).not.toMatch(/\b(title|bigText|merchant|amount|fingerprint)\b/);
+    expect(plugin).toContain('fun listCandidates');
+    expect(plugin).toContain('fun beginAcceptance');
+    expect(mapper).not.toMatch(
+      /put\("(?:title|text|bigText|matchedRuleId|ruleVersion|technicalFingerprint|semanticFingerprint)"/,
+    );
     expect(dependencies).not.toContain('@sentry/react');
     expect(dependencies).not.toContain('@sentry/capacitor');
     expect(dependencies).not.toContain('@react-native-firebase/crashlytics');
+  });
+
+  it('keeps M7 notification actions internal, immutable, and redacted', () => {
+    const manifest = readProjectFile('android/app/src/main/AndroidManifest.xml');
+    const notifier = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/notification/PaymentCandidateNotifier.kt',
+    );
+
+    expect(manifest).toMatch(
+      /<receiver[\s\S]*PaymentCandidateActionReceiver[\s\S]*android:exported="false"\s*\/>/,
+    );
+    expect(notifier).toContain('PendingIntent.FLAG_IMMUTABLE');
+    expect(notifier).toContain('setPublicVersion(publicVersion)');
+    expect(notifier).toContain('VISIBILITY_PRIVATE');
+    expect(notifier).not.toMatch(/\b(amountMinorUnits|merchant|sourceAppId)\b/);
   });
 
   it('keeps the M4 listener system-bound and package visibility finite', () => {

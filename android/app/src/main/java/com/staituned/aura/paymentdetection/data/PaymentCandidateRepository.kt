@@ -205,6 +205,7 @@ internal class PaymentCandidateRepository(
 
     fun get(candidateId: String): PaymentCandidateRecord {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
+        cleanup(ownerKeyHash, now())
         val entity = dao.findByIdForOwner(ownerKeyHash, candidateId)
             ?: throw CandidateNotFoundException()
         return withPayloadFailurePurge(ownerKeyHash) {
@@ -215,6 +216,7 @@ internal class PaymentCandidateRepository(
     fun ignore(candidateId: String) {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
         val timestamp = now()
+        cleanup(ownerKeyHash, timestamp)
         database.runInTransaction {
             val entity = dao.findByIdForOwner(ownerKeyHash, candidateId)
                 ?: throw CandidateNotFoundException()
@@ -235,6 +237,7 @@ internal class PaymentCandidateRepository(
 
     fun beginAcceptance(candidateId: String): AcceptanceReservation {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
+        cleanup(ownerKeyHash, now())
         return try {
             database.runInTransaction(
                 Callable {
