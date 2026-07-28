@@ -106,7 +106,10 @@ bounded retention and purge. There is no real payment-app package, bridge
 source, or real-notification fixture. M7 exposes only a minimized local
 candidate DTO and may emit a private Aura notification whose private and
 public lock-screen forms are redacted. Verify carries only an opaque ID; Ignore
-deletes locally through a non-exported receiver.
+deletes locally through a non-exported receiver. M8 adds an on-device review
+queue and editable form. Pending candidates remain outside `AppData`; after
+explicit confirmation only the reviewed normal transaction is persisted, with
+no source, candidate, rule, fingerprint or raw-notification metadata.
 
 The approved engineering boundary is:
 

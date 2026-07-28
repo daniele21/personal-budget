@@ -29,6 +29,7 @@ vi.mock('@capacitor/core', () => ({
 }));
 
 import {
+  nativeRecoveryTransactionIds,
   parsePaymentCandidateDto,
   paymentDetection,
 } from '../paymentDetection';
@@ -117,6 +118,34 @@ describe('payment detection native contract', () => {
     expect(result.acceptanceToken).toHaveLength(43);
     expect(nativePlugin.beginAcceptance).toHaveBeenCalledWith({
       candidateId: candidate.id,
+    });
+  });
+
+  it('keeps legacy and imported transaction IDs outside acceptance recovery', async () => {
+    nativePlugin.recoverAcceptance.mockResolvedValue({
+      completedCandidateIds: [],
+      returnedToPendingCandidateIds: [],
+    });
+
+    expect(nativeRecoveryTransactionIds([
+      'legacy_1722012345',
+      '123E4567-E89B-42D3-A456-426614174000',
+      'import_1722012345_0',
+      '123e4567-e89b-42d3-a456-426614174000',
+    ])).toEqual([
+      '123e4567-e89b-42d3-a456-426614174000',
+    ]);
+
+    await paymentDetection.recoverAcceptance([
+      'legacy_1722012345',
+      '123E4567-E89B-42D3-A456-426614174000',
+      'import_1722012345_0',
+    ]);
+
+    expect(nativePlugin.recoverAcceptance).toHaveBeenCalledWith({
+      persistedTransactionIds: [
+        '123e4567-e89b-42d3-a456-426614174000',
+      ],
     });
   });
 });

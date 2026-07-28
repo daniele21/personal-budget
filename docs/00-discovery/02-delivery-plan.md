@@ -19,7 +19,7 @@ Current engineering baseline:
 - Android debug bundling fails closed without dedicated non-production Firebase/OAuth values and disables Gemini;
 - a first-party runtime bridge now carries allowlisted app URLs across login and emits resume events, while browser notifications remain isolated from the Android WebView;
 - repeatable API 36 verification proves bundled local origin, route reload, localStorage, IndexedDB, attachment-store persistence and deep-link delivery;
-- `npm run test:regression` passes with TypeScript, 70 Vitest files/343 tests,
+- `npm run test:regression` passes with TypeScript, 82 Vitest files/373 tests,
   and the Vite production build;
 - Android unit test, lint and debug assemble pass; 32 instrumentation tests
   pass on the Pixel 9 Pro AVD with API 36, and the dedicated recovery verifier
@@ -42,14 +42,17 @@ Current engineering baseline:
   not expose a React DTO or Aura proposal;
 - M7 provides the minimized Capacitor contract, candidate/settings/acceptance
   APIs, full refresh orchestration, opaque deep-link handoff, and a private
-  redacted Aura notification with immutable Verify/Ignore actions. M8 remains
-  the owner of review UX and canonical transaction creation;
+  redacted Aura notification with immutable Verify/Ignore actions;
+- M8 provides the separate React provider, disclosure/setup controls, local
+  review queue, editable review, notification-center integration and verified
+  idempotent commit into canonical `AppData`. Pending candidates remain outside
+  the ledger, cloud and archives;
 - the current Playwright baseline is documented but not green: observed archive E2E cases remain on Home with the Guided Tour open and time out waiting for `Export complete archive`.
 
-Current delivery decision: **M0 and the synthetic M4-M7 slices are complete;
+Current delivery decision: **M0 and the synthetic M4-M8 slices are complete;
 M1-M3 remain open on their documented production, lifecycle, physical and
-governance gates. The next implementation slice is M8 provider, review and
-canonical transaction acceptance. Production signing and external privacy/DPIA gates
+governance gates. The next implementation slice is M9 hardening, physical QA
+and compliance closure. Production signing and external privacy/DPIA gates
 remain open, so Aura is not authorized to read real financial notifications or
 begin a user pilot**.
 

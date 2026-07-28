@@ -10,7 +10,15 @@ vi.mock('../context/AppContext', () => ({
     authError: null,
     signInWithGoogle: vi.fn(),
     isAdmin: false,
+    isHydrated: true,
+    transactions: [],
+    categories: ['Groceries'],
+    createTransactionVerified: vi.fn(),
   }),
+}));
+
+vi.mock('../state/PaymentDetectionProvider', () => ({
+  PaymentDetectionProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('../components/Layout', () => ({
@@ -36,6 +44,9 @@ vi.mock('../pages/MorePage', () => ({ MorePage: () => <div>More page</div> }));
 vi.mock('../pages/ReportsPage', () => ({
   ReportsPage: ({ view }: { view: string }) => <div>Reports {view} page</div>,
 }));
+vi.mock('../pages/PaymentDetectionPage', () => ({
+  PaymentDetectionPage: () => <div>Payments to review page</div>,
+}));
 
 function renderRoute(path: string) {
   window.history.pushState({}, '', path);
@@ -56,6 +67,11 @@ describe('canonical application routes', () => {
   it('renders the canonical Planning route', async () => {
     renderRoute('/planning');
     expect(await screen.findByText('Planning page')).toBeInTheDocument();
+  });
+
+  it('renders the Android payment review queue route', async () => {
+    renderRoute('/payment-detection');
+    expect(await screen.findByText('Payments to review page')).toBeInTheDocument();
   });
 
   it('renders the canonical recurring Planning view and preserves its legacy alias', async () => {

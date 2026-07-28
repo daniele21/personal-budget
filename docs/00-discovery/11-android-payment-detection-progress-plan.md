@@ -57,12 +57,12 @@ Ultimo aggiornamento: 2026-07-28
 | M5. Rule engine nativo e corpus di fixture | Completato | Parser Kotlin versionato, fixture esclusivamente sintetiche, negative rules, tier, regex safety e benchmark verificati; nessuna sorgente reale |
 | M6. Repository candidati, retention e deduplicazione | Completato | Room v1, payload cifrato, dedupe, retention, acceptance journal, purge e cleanup verificati su Pixel 9 Pro API 36 con sole fixture sintetiche |
 | M7. Bridge Capacitor, deep link e notifiche Aura | Completato | DTO minimizzati, acceptance/recovery, refresh, deep link opaco e notifica privata con azioni immutabili verificati su Pixel 9 Pro API 36 |
-| M8. UX React, review e creazione transazione | Non iniziato | Attende M2, M6 e M7 |
+| M8. UX React, review e creazione transazione | Completato | Provider separato, setup, backlog, review, acceptance verificata e controlli di cancellazione validati sul Pixel 9 Pro API 36 |
 | M9. Hardening, QA fisica e compliance | Non iniziato | Attende M1-M8 |
 | M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
-Focus corrente: **M8 — costruire provider e UX React di review, collegando la creazione canonica della transazione al journal M6-M7**.
+Focus corrente: **M9 — hardening, QA fisica e chiusura dei gate privacy/release; le sorgenti reali restano vietate**.
 
 ## Direzione approvata
 
@@ -945,43 +945,63 @@ Exit criteria:
 
 Goal: rendere il rilevamento comprensibile, reversibile e coerente con Aura.
 
-Stato: **Non iniziato**
+Stato: **Completato**
 
 Dipendenze: M2, M6 e M7.
 
 Task:
 
-- [ ] Aggiungere provider payment detection separato da `AppData`.
-- [ ] Aggiungere stato loading, unsupported, permission missing, enabled, paused ed error.
-- [ ] Mostrare disclosure prima delle impostazioni Android.
-- [ ] Spiegare che Android concede accesso generale e Aura applica un filtro locale.
-- [ ] Richiedere azione affermativa distinta.
-- [ ] Mostrare app supportate e installate.
-- [ ] Permettere selezione e rimozione di ogni app.
-- [ ] Mostrare stato accesso revocato.
-- [ ] Mostrare link alla revoca nelle impostazioni Android.
-- [ ] Aggiungere lista "Pagamenti da verificare".
-- [ ] Coprire empty, loading, error, expired e permission-revoked states.
-- [ ] Aggiungere review con importo, merchant, data locale, metodo di pagamento e app sorgente.
-- [ ] Permettere modifica di importo, titolo, categoria, data, metodo di pagamento e trattamento.
-- [ ] Usare i default correnti di Add Transaction per categoria/metodo, senza apprendimento merchant; entrambi restano visibili.
-- [ ] Non mostrare confidence numerica.
-- [ ] Convertire timestamp nel giorno locale senza shift UTC.
-- [ ] Creare Transaction attraverso azione semantica e non localStorage diretto.
-- [ ] Creare la transazione con il `reservedTransactionId` fornito da `beginAcceptance`.
-- [ ] Implementare begin/commit/recovery acceptance.
-- [ ] Marcare candidato accepted/edited soltanto dopo persistenza verificata.
-- [ ] Implementare Ignore.
-- [ ] Implementare sospensione e cancellazione completa.
-- [ ] Collegare reset locale/totale e logout al purge nativo.
-- [ ] Mostrare nella PWA che la capacità è disponibile solo nell'app Android, secondo D-108.
-- [ ] Non mostrare install prompt PWA nell'app Android.
-- [ ] Integrare con il notification center senza duplicare record finanziari sensibili.
-- [ ] Verificare focus, tastiera, screen reader, contrasto e touch target.
-- [ ] Aggiungere test React per setup, disclosure, permission, list, review, edit, ignore e recovery.
-- [ ] Aggiungere test che la transazione rilevata resti compatibile con archive/cloud senza campi aggiuntivi.
-- [ ] Aggiungere test che i candidati pendenti non entrino in archive/cloud.
-- [ ] Aggiungere test che il percorso non invochi Gemini.
+- [x] Aggiungere provider payment detection separato da `AppData`.
+- [x] Aggiungere stato loading, unsupported, permission missing, enabled, paused ed error.
+- [x] Mostrare disclosure prima delle impostazioni Android.
+- [x] Spiegare che Android concede accesso generale e Aura applica un filtro locale.
+- [x] Richiedere azione affermativa distinta.
+- [x] Mostrare app supportate e installate.
+- [x] Permettere selezione e rimozione di ogni app.
+- [x] Mostrare stato accesso revocato.
+- [x] Mostrare link alla revoca nelle impostazioni Android.
+- [x] Aggiungere lista "Pagamenti da verificare".
+- [x] Coprire empty, loading, error, expired e permission-revoked states.
+- [x] Aggiungere review con importo, merchant, data locale, metodo di pagamento e app sorgente.
+- [x] Permettere modifica di importo, titolo, categoria, data, metodo di pagamento e trattamento.
+- [x] Usare i default correnti di Add Transaction per categoria/metodo, senza apprendimento merchant; entrambi restano visibili.
+- [x] Non mostrare confidence numerica.
+- [x] Convertire timestamp nel giorno locale senza shift UTC.
+- [x] Creare Transaction attraverso azione semantica e non localStorage diretto.
+- [x] Creare la transazione con il `reservedTransactionId` fornito da `beginAcceptance`.
+- [x] Implementare begin/commit/recovery acceptance.
+- [x] Marcare candidato accepted/edited soltanto dopo persistenza verificata.
+- [x] Implementare Ignore.
+- [x] Implementare sospensione e cancellazione completa.
+- [x] Collegare reset locale/totale e logout al purge nativo.
+- [x] Mostrare nella PWA che la capacità è disponibile solo nell'app Android, secondo D-108.
+- [x] Non mostrare install prompt PWA nell'app Android.
+- [x] Integrare con il notification center senza duplicare record finanziari sensibili.
+- [x] Verificare focus, tastiera, screen reader, contrasto e touch target.
+- [x] Aggiungere test React per setup, disclosure, permission, list, review, edit, ignore e recovery.
+- [x] Aggiungere test che la transazione rilevata resti compatibile con archive/cloud senza campi aggiuntivi.
+- [x] Aggiungere test che i candidati pendenti non entrino in archive/cloud.
+- [x] Aggiungere test che il percorso non invochi Gemini.
+
+Evidenze M8 al 2026-07-28:
+
+- il provider React mantiene candidati e impostazioni fuori da `AppData`; il
+  ledger riceve soltanto una normale `Transaction` dopo persistenza e read-back
+  verificati;
+- `beginAcceptance`, UUID prenotato, commit canonico, `completeAcceptance` e
+  recovery impediscono la duplicazione anche dopo interruzioni; gli ID storici
+  Aura non UUID sono filtrati prima del contratto recovery nativo;
+- setup, disclosure, selezione sorgente, stati operativi, backlog, review,
+  modifica, Ignore, pausa e cancellazione sono disponibili nella UI Android;
+- PWA e Web mostrano solo lo stato informativo Android-only e non inizializzano
+  il plugin; notification center e badge mostrano il conteggio live senza
+  copiare contenuto finanziario nella cronologia notifiche;
+- il tap reale su `Verifica` della notifica sintetica apre direttamente
+  `Payments to review` e il dialog `Review payment` sul Pixel 9 Pro API 36;
+- la gerarchia accessibile del Pixel espone dialog, label e touch target; la
+  verifica manuale TalkBack multi-device resta nel gate M9;
+- TypeScript, 82 file Vitest/373 test, build Vite, Android unit test, lint,
+  assemble e 32 test strumentati sul Pixel 9 Pro API 36 sono verdi.
 
 Exit criteria:
 
@@ -1456,7 +1476,7 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Logout/reset purge | Passato engineering | Boundary fail-closed e purge journaled verificati per logout, owner change, reset locale e cancellazione totale, inclusa chiusura e cancellazione del database Room |
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
-| Security review | Engineering M3-M7 completata, owner aperto | Threat model, listener gate, parser bounded, cifratura Room, bridge minimizzato, deep link, PendingIntent e receiver registrati; approvazione security owner resta aperta |
+| Security review | Engineering M3-M8 completata, owner aperto | Threat model, listener gate, parser bounded, cifratura Room, bridge minimizzato, review/acceptance, deep link, PendingIntent e receiver registrati; approvazione security owner resta aperta |
 | Play/Data Safety review | Non eseguita | Da registrare |
 | Rollback rehearsal | Non eseguito | Da registrare |
 | Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |

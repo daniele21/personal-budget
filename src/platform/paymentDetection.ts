@@ -112,6 +112,18 @@ function requireAndroidPlugin(): NativePaymentDetectionPlugin {
   return NativePaymentDetection;
 }
 
+export function nativeRecoveryTransactionIds(
+  transactionIds: string[],
+): string[] {
+  return Array.from(
+    new Set(
+      transactionIds
+        .filter((transactionId) => TRANSACTION_ID_PATTERN.test(transactionId))
+        .map((transactionId) => transactionId.toLowerCase()),
+    ),
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -296,7 +308,12 @@ export const paymentDetection = {
     persistedTransactionIds: string[],
   ): Promise<PaymentAcceptanceRecovery> {
     return await requireAndroidPlugin().recoverAcceptance({
-      persistedTransactionIds,
+      // Only native-reserved transaction IDs can complete an acceptance.
+      // Aura also supports historical/imported IDs with other formats, which
+      // must not cross the stricter Android bridge contract.
+      persistedTransactionIds: nativeRecoveryTransactionIds(
+        persistedTransactionIds,
+      ),
     });
   },
 
@@ -318,12 +335,14 @@ export interface PaymentCandidateSubscription {
 export async function subscribeToPaymentCandidates(
   listener: (candidates: PaymentCandidateReviewDto[]) => void,
   onError: (error: unknown) => void = () => undefined,
+  beforeRefresh: () => Promise<void> = async () => undefined,
 ): Promise<PaymentCandidateSubscription> {
   let active = true;
   let refreshSequence = 0;
   const refresh = async () => {
     const sequence = ++refreshSequence;
     try {
+      await beforeRefresh();
       const candidates = await paymentDetection.listCandidates();
       if (active && sequence === refreshSequence) listener(candidates);
     } catch (error) {

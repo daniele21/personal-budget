@@ -64,6 +64,7 @@ interface AppState {
 
   // Compatible Actions
   addTransaction: (tx: Transaction) => void;
+  createTransactionVerified: (tx: Transaction) => Promise<void>;
   addTransactions: (txs: Transaction[]) => void;
   updateTransaction: (id: string, tx: Transaction) => void;
   deleteTransaction: (id: string) => void;
@@ -110,6 +111,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
   const {
     state,
     dispatch,
+    createTransactionVerified,
     isHydrated,
     monthlyTransactions,
     monthlyTotals,
@@ -251,6 +253,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     signOut,
 
     addTransaction,
+    createTransactionVerified,
     addTransactions,
     updateTransaction,
     deleteTransaction,
@@ -312,6 +315,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     signInWithGoogle,
     signOut,
     addTransaction,
+    createTransactionVerified,
     addTransactions,
     updateTransaction,
     deleteTransaction,

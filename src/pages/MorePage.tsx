@@ -8,11 +8,13 @@ import {
   Database,
   Settings,
   ShieldCheck,
+  WalletCards,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/ui';
 import { PwaInstallButton } from '../components/PwaInstallButton';
 import { pageTransition } from '../utils/motion';
+import { getPlatformCapabilities } from '../platform/platformCapabilities';
 
 /**
  * Primary links shown in the More page.
@@ -44,9 +46,20 @@ const primaryLinks = [
 
 export function MorePage() {
   const { isAdmin } = useApp();
+  const androidLinks = getPlatformCapabilities().paymentDetectionSupported
+    ? [
+        {
+          to: '/payment-detection',
+          label: 'Payments to review',
+          description: 'Review, edit, or ignore payments detected locally on Android.',
+          icon: WalletCards,
+        },
+      ]
+    : [];
+  const userLinks = [...androidLinks, ...primaryLinks];
   const links = isAdmin
     ? [
-        ...primaryLinks,
+        ...userLinks,
         {
           to: '/admin',
           label: 'Admin',
@@ -54,7 +67,7 @@ export function MorePage() {
           icon: ShieldCheck,
         },
       ]
-    : primaryLinks;
+    : userLinks;
 
   const handleStartTour = () => {
     window.dispatchEvent(new CustomEvent('aura:start-guided-tour'));

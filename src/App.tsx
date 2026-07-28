@@ -11,6 +11,7 @@ import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BrandMark } from './components/BrandMark';
 import { PlatformRuntimeBridge } from './platform/PlatformRuntimeBridge';
+import { PaymentDetectionProvider } from './state/PaymentDetectionProvider';
 
 const HistoryPage = lazy(() =>
   import('./pages/HistoryPage').then(({ HistoryPage }) => ({ default: HistoryPage })),
@@ -45,6 +46,9 @@ const MorePage = lazy(() =>
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then(({ ReportsPage }) => ({ default: ReportsPage })),
 );
+const PaymentDetectionPage = lazy(() =>
+  import('./pages/PaymentDetectionPage').then(({ PaymentDetectionPage }) => ({ default: PaymentDetectionPage })),
+);
 
 function RouteLoading() {
   return (
@@ -75,7 +79,17 @@ function RoutePage({ title, children }: { title: string; children: React.ReactNo
 }
 
 export default function App() {
-  const { isLoggedIn, authLoading, authError, signInWithGoogle, isAdmin } = useApp();
+  const {
+    isLoggedIn,
+    authLoading,
+    authError,
+    signInWithGoogle,
+    isAdmin,
+    isHydrated,
+    transactions,
+    categories,
+    createTransactionVerified,
+  } = useApp();
 
   if (authLoading) {
     return (
@@ -91,37 +105,46 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <Router>
-        <PlatformRuntimeBridge isLoggedIn={isLoggedIn} />
-        {!isLoggedIn ? (
-          <Login onSignIn={signInWithGoogle} error={authError} />
-        ) : (
-          <Routes>
-            <Route path="/" element={<RoutePage title="Dashboard"><Dashboard /></RoutePage>} />
-            <Route path="/transactions" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
-            <Route path="/history" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
-            <Route path="/add" element={<RoutePage title="Add Transaction"><AddTransaction /></RoutePage>} />
-            <Route path="/edit/:id" element={<RoutePage title="Edit Transaction"><AddTransaction /></RoutePage>} />
-            <Route path="/budgets" element={<RoutePage title="Budgets"><BudgetsPage /></RoutePage>} />
-            <Route path="/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
-            <Route path="/profile" element={<RoutePage title="Profile"><ProfilePage /></RoutePage>} />
-            <Route path="/settings" element={<RoutePage title="Settings"><SettingsPage /></RoutePage>} />
-            <Route path="/data" element={<RoutePage title="Data & Privacy"><DataPrivacyPage /></RoutePage>} />
-            <Route path="/calendar" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
-            <Route path="/planning" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
-            <Route path="/planning/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
-            <Route path="/reports" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
-            <Route path="/reports/categories" element={<RoutePage title="Reports"><ReportsPage view="categories" /></RoutePage>} />
-            <Route path="/reports/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
-            <Route path="/reports/year" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
-            <Route path="/insights" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
-            <Route path="/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
-            <Route path="/year-review" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
-            <Route path="/more" element={<RoutePage title="More"><MorePage /></RoutePage>} />
-            {isAdmin && (
-              <Route path="/admin" element={<RoutePage title="Admin"><AdminPage /></RoutePage>} />
-            )}
-          </Routes>
-        )}
+        <PaymentDetectionProvider
+          active={isLoggedIn}
+          appDataHydrated={isHydrated}
+          transactions={transactions}
+          categories={categories}
+          createTransactionVerified={createTransactionVerified}
+        >
+          <PlatformRuntimeBridge isLoggedIn={isLoggedIn} />
+          {!isLoggedIn ? (
+            <Login onSignIn={signInWithGoogle} error={authError} />
+          ) : (
+            <Routes>
+              <Route path="/" element={<RoutePage title="Dashboard"><Dashboard /></RoutePage>} />
+              <Route path="/transactions" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
+              <Route path="/history" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
+              <Route path="/add" element={<RoutePage title="Add Transaction"><AddTransaction /></RoutePage>} />
+              <Route path="/edit/:id" element={<RoutePage title="Edit Transaction"><AddTransaction /></RoutePage>} />
+              <Route path="/budgets" element={<RoutePage title="Budgets"><BudgetsPage /></RoutePage>} />
+              <Route path="/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
+              <Route path="/profile" element={<RoutePage title="Profile"><ProfilePage /></RoutePage>} />
+              <Route path="/settings" element={<RoutePage title="Settings"><SettingsPage /></RoutePage>} />
+              <Route path="/data" element={<RoutePage title="Data & Privacy"><DataPrivacyPage /></RoutePage>} />
+              <Route path="/payment-detection" element={<RoutePage title="Payments to review"><PaymentDetectionPage /></RoutePage>} />
+              <Route path="/calendar" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
+              <Route path="/planning" element={<RoutePage title="Planning"><CalendarPage /></RoutePage>} />
+              <Route path="/planning/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
+              <Route path="/reports" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
+              <Route path="/reports/categories" element={<RoutePage title="Reports"><ReportsPage view="categories" /></RoutePage>} />
+              <Route path="/reports/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
+              <Route path="/reports/year" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
+              <Route path="/insights" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
+              <Route path="/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
+              <Route path="/year-review" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
+              <Route path="/more" element={<RoutePage title="More"><MorePage /></RoutePage>} />
+              {isAdmin && (
+                <Route path="/admin" element={<RoutePage title="Admin"><AdminPage /></RoutePage>} />
+              )}
+            </Routes>
+          )}
+        </PaymentDetectionProvider>
       </Router>
     </MotionConfig>
   );

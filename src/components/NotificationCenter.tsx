@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bell, CheckCheck, X, AlertTriangle, RefreshCw, CalendarClock, Info } from 'lucide-react';
+import { Bell, BellRing, CheckCheck, ChevronRight, X, AlertTriangle, RefreshCw, CalendarClock, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationRecord } from '../types';
 import { useNotifications } from '../hooks/useNotifications';
 import { formatDate } from '../utils/formatters';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { usePaymentDetection } from '../state/PaymentDetectionProvider';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ const ICONS: Record<NotificationRecord['type'], React.ReactNode> = {
 export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
   const navigate = useNavigate();
   const notifications = useNotifications();
+  const { candidates } = usePaymentDetection();
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, isOpen, onClose);
 
@@ -66,9 +68,33 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
               </div>
             </div>
             <div className="max-h-[70vh] overflow-y-auto p-3">
-              {notifications.records.length === 0 ? (
+              {candidates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/payment-detection');
+                    onClose();
+                  }}
+                  className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/8 p-3 text-left transition-colors hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  aria-label={`Open ${candidates.length} ${candidates.length === 1 ? 'payment' : 'payments'} to review`}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-on-primary">
+                    <BellRing className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold text-primary">
+                      {candidates.length} {candidates.length === 1 ? 'payment' : 'payments'} to review
+                    </span>
+                    <span className="block text-xs text-on-surface-variant">
+                      Native candidates are shown live and are not copied into notification history.
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                </button>
+              )}
+              {notifications.records.length === 0 && candidates.length === 0 ? (
                 <p className="py-10 text-center text-sm text-on-surface-variant">No notifications yet.</p>
-              ) : (
+              ) : notifications.records.length > 0 ? (
                 <div className="space-y-2">
                   {notifications.records.map((record) => (
                     <button key={record.id} type="button" onClick={() => handleSelect(record)} className="w-full flex items-start gap-3 rounded-2xl p-3 text-left hover:bg-surface-container-low transition-colors">
@@ -83,7 +109,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                     </button>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
           </motion.div>
         </motion.div>

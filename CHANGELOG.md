@@ -78,8 +78,16 @@
 - Added cold-start/resume reconciliation, optional local candidate-change
   hints, opaque candidate deep-link handoff across authentication, and a
   private Aura notification with redacted private/public content, immutable
-  Verify/Ignore actions, and a non-exported Ignore receiver. The M8 review UI
-  and canonical transaction commit remain pending.
+  Verify/Ignore actions, and a non-exported Ignore receiver.
+- Added the M8 Android-only payment-detection workspace with prominent access
+  disclosure, supported-source controls, pending backlog, editable review,
+  Ignore/delete actions, notification-center integration, and PWA unsupported
+  state.
+- Added verified idempotent candidate acceptance: native reserves the
+  transaction UUID, React persists and reads back a normal transaction through
+  canonical `AppData`, and native completes or recovers candidate cleanup only
+  afterward. Pending candidates and detection metadata remain outside
+  transaction, archive, cloud, Gemini, analytics, and network paths.
 
 ### Changed
 

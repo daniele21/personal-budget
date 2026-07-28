@@ -2,9 +2,10 @@
 
 ## Status
 
-- Processing state: synthetic M3-M7 path implemented through encrypted
-  candidate storage, minimized bridge, and redacted Aura notification; real
-  payment-notification processing prohibited
+- Processing state: synthetic M3-M8 path implemented through encrypted
+  candidate storage, minimized bridge, redacted Aura notification, local
+  review and verified canonical acceptance; real payment-notification
+  processing prohibited
 - Engineering direction: approved
 - Real-user processing: prohibited until privacy-owner approval
 - Last reviewed: 2026-07-28
@@ -22,7 +23,9 @@ hashed owner boundary. M4 tests read only a static synthetic notification from
 the repository-controlled test APK. M5 converts that static fixture into a
 structured result using deterministic rules. M6 stores the resulting candidate
 locally with authenticated encryption. M7 exposes a minimized in-process DTO
-and emits a redacted private notification for exact synthetic matches. No real
+and emits a redacted private notification for exact synthetic matches. M8
+keeps the pending queue outside canonical financial storage until the user
+confirms reviewed values and persistence is read back successfully. No real
 notification content is read and no off-device transfer is added.
 
 ## Processing Activity
@@ -197,8 +200,6 @@ Implemented in M7 for the synthetic-only path:
 
 Required in later milestones before real-notification processing:
 
-- M8 review/edit disclosure and completion of the idempotent cross-storage
-  acceptance journal;
 - M9 physical logcat, backup/device-transfer, task-stack, and accessibility
   verification.
 

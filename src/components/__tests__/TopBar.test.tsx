@@ -14,6 +14,9 @@ vi.mock('../../hooks/useNotifications', () => ({
 
 vi.mock('../GlobalSearch', () => ({ GlobalSearch: () => null }));
 vi.mock('../NotificationCenter', () => ({ NotificationCenter: () => null }));
+vi.mock('../../state/PaymentDetectionProvider', () => ({
+  usePaymentDetection: () => ({ candidates: [] }),
+}));
 vi.mock('../PwaInstallButton', () => ({
   PwaInstallButton: ({ variant }: { variant: string }) => (
     <button type="button" aria-label="Installa Aura" data-variant={variant} />

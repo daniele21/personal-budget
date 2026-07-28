@@ -7,6 +7,7 @@ import { NotificationCenter } from './NotificationCenter';
 import { useNotifications } from '../hooks/useNotifications';
 import { BrandMark } from './BrandMark';
 import { PwaInstallButton } from './PwaInstallButton';
+import { usePaymentDetection } from '../state/PaymentDetectionProvider';
 
 /**
  * Supported header variants for different pages.
@@ -52,6 +53,7 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const notifications = useNotifications();
+  const { candidates: paymentCandidates } = usePaymentDetection();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
@@ -113,9 +115,11 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
       aria-label="Notifications"
     >
       <Bell className="h-4 w-4" />
-      {notifications.unreadCount > 0 && (
+      {notifications.unreadCount + paymentCandidates.length > 0 && (
         <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-surface bg-tertiary px-0.5 text-[9px] font-bold leading-4 text-on-primary">
-          {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
+          {notifications.unreadCount + paymentCandidates.length > 9
+            ? '9+'
+            : notifications.unreadCount + paymentCandidates.length}
         </span>
       )}
     </button>

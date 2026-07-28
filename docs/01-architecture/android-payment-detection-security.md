@@ -2,7 +2,7 @@
 
 ## Status And Scope
 
-This document records the M3-M7 engineering controls implemented before Aura
+This document records the M3-M8 engineering controls implemented before Aura
 is allowed to read real payment notifications. It is not legal advice or a
 privacy approval.
 
@@ -18,6 +18,9 @@ As of 2026-07-28:
   private and public lock-screen variants are redacted;
 - Verify carries only an opaque candidate ID into Aura; Ignore uses an
   application-private receiver and deletes the candidate without opening Aura;
+- an M8 React provider keeps pending candidates outside canonical `AppData`,
+  exposes explicit setup/review/delete controls, and commits only a minimized
+  normal transaction after persisted read-back verification;
 - no real notification content is read; tests read only one static synthetic
   title/text fixture from the controlled source APK;
 - the native bridge accepts only an authenticated Firebase UID for owner
@@ -185,8 +188,10 @@ persistence failure produces no Aura notification. M7 exposes a minimized
 first-party bridge, validates every untrusted identifier, refreshes from Room
 on cold start and resume, and uses immutable unique `PendingIntent` objects
 with a `VISIBILITY_PRIVATE` notification and fully redacted public version.
-M8 must add the review/edit UI and complete the existing idempotent acceptance
-protocol before a canonical transaction can be created.
+M8 adds the review/edit UI and completes the idempotent acceptance protocol:
+native reserves the transaction UUID, React persists and reads back the normal
+transaction, and only then does native remove the candidate payload. Recovery
+considers only UUIDs that the native workflow could have reserved.
 
 The prominent disclosure must explain that Android grants broad notification
 access while Aura internally processes only explicitly supported and selected
@@ -205,5 +210,5 @@ reset, logout purge, and total deletion.
 - physical backup/device-transfer and logcat verification;
 - Google Play Data Safety and disclosure review.
 
-Until those gates are recorded, M3-M7 are an engineering foundation and not
+Until those gates are recorded, M3-M8 are an engineering foundation and not
 authorization to process real financial notifications.

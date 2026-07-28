@@ -1,13 +1,9 @@
 import React, { useId } from 'react';
 import { cn } from '../../lib/utils';
 
-interface InputProps {
+interface InputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'className'> {
   label?: string;
-  id?: string;
-  type?: string;
-  placeholder?: string;
-  value?: string | number;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
   className?: string;
 }
 
@@ -37,11 +33,9 @@ export function Input({ label, className, id, ...props }: InputProps) {
   );
 }
 
-interface SelectProps {
+interface SelectProps
+  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'className'> {
   label?: string;
-  id?: string;
-  value?: string;
-  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
   options: { value: string; label: string }[];
   className?: string;
 }

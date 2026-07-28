@@ -6,6 +6,7 @@ import { attachmentRepository } from '../repositories/attachmentRepository';
 import { usePreferences } from './PreferencesProvider';
 import * as Finance from '../domain/finance';
 import { STORAGE_KEYS } from '../data/storageKeys';
+import { persistTransactionAndVerify } from '../services/payment-detection/verifiedTransactionService';
 
 // ─── State and Actions ──────────────────────────────────────────────
 
@@ -232,6 +233,7 @@ export function appDataReducer(state: AppDataState, action: AppDataAction): AppD
 interface AppDataContextType {
   state: AppDataState;
   dispatch: (action: AppDataAction) => void;
+  createTransactionVerified: (transaction: Transaction) => Promise<void>;
   isHydrated: boolean;
 
   // Domain Derived Data
@@ -305,6 +307,11 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     reactDispatch(action);
   }, []);
 
+  const createTransactionVerified = useCallback(async (transaction: Transaction) => {
+    persistTransactionAndVerify(transaction);
+    reactDispatch({ type: 'transaction/created', transaction });
+  }, []);
+
   // Derived calculations
   const monthlyTransactions = useMemo(() => Finance.filterByMonth(state.transactions, selectedMonth), [state.transactions, selectedMonth]);
   const monthlyTotals = useMemo(() => Finance.calculateTotals(monthlyTransactions), [monthlyTransactions]);
@@ -353,6 +360,7 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   const contextValue = useMemo<AppDataContextType>(() => ({
     state,
     dispatch,
+    createTransactionVerified,
     isHydrated,
     monthlyTransactions,
     monthlyTotals,
@@ -367,6 +375,7 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   }), [
     state,
     dispatch,
+    createTransactionVerified,
     isHydrated,
     monthlyTransactions,
     monthlyTotals,

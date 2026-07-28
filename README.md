@@ -220,8 +220,9 @@ The generated debug application uses `com.staituned.aura.debug` and the
 keystores must remain outside source control. The M4 notification listener is
 implemented but allowlists only the repository-controlled synthetic test APK;
 the M5 deterministic parser is implemented only for that synthetic source.
-The M6 candidate repository and M7 minimized bridge/private notification are
-implemented. The M8 review UI and real payment-app catalog are not implemented.
+The M6 candidate repository, M7 minimized bridge/private notification, and M8
+review queue with verified canonical transaction acceptance are implemented.
+The real payment-app catalog and M9 release hardening are not implemented.
 The native Credential Manager bridge is implemented, the local non-production
 OAuth configuration is validated, and a successful manual Google sign-in was
 reported on 2026-07-26.
@@ -242,8 +243,11 @@ retention, idempotent acceptance recovery, purge and WorkManager cleanup. No
 raw notification string is persisted or bridged. M7 adds a minimized
 candidate/settings/acceptance bridge, full refresh on cold start/resume, an
 opaque candidate deep link, and a private Aura notification with redacted
-private/public content and immutable Verify/Ignore actions. The repeatable safe
-checks are:
+private/public content and immutable Verify/Ignore actions. M8 adds the
+Android-only setup surface, pending backlog, editable review,
+notification-center count, Ignore/delete controls, and idempotent creation of a
+normal Aura transaction only after verified canonical persistence. The
+repeatable safe checks are:
 
 ```bash
 npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts
@@ -263,8 +267,8 @@ npm run android:simulate:wallet-notification
 ```
 
 The Wallet-like source notification and the redacted Aura proposal remain
-visible for 30 seconds by default. Verify opens Aura and preserves the opaque
-candidate target for the M8 review screen; Ignore deletes the candidate without
+visible for 30 seconds by default. Verify opens Aura directly on the candidate
+review screen; Ignore deletes the candidate without
 opening Aura. The command refuses physical devices, enables the listener only
 for the simulation, and then disables it, clears the synthetic settings, and
 uninstalls the test source. To change the duration or select one emulator when

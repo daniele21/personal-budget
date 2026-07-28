@@ -10,6 +10,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 import { useToast } from './Toast';
 import { haptics } from '../utils/haptics';
+import { PaymentCandidateInboxBanner } from './payment-detection/PaymentCandidateInboxBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -69,6 +70,7 @@ export const Layout = ({ children, title }: LayoutProps) => {
       </a>
       <TopBar title={title} />
       <main id="main-content" className="mx-auto max-w-md px-4 pt-16 sm:max-w-xl sm:px-5 md:max-w-2xl">
+        <PaymentCandidateInboxBanner />
         <AnimatePresence mode="wait">
           {children}
         </AnimatePresence>

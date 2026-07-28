@@ -4,10 +4,10 @@
 
 - Product direction: approved
 - Architecture: accepted in ADR 0002 and ADR 0003
-- Implementation: synthetic M4-M7 slices complete; M1-M3 retain their
-  production, lifecycle, physical, and governance closure gates; M8
-  review/edit and canonical acceptance UI pending
-- Current gate: M8 product UX may proceed with synthetic candidates; real
+- Implementation: synthetic M4-M8 slices complete; M1-M3 retain their
+  production, lifecycle, physical, and governance closure gates; M9
+  hardening and physical/compliance closure remain pending
+- Current gate: M9 may proceed with synthetic candidates; real
   sources remain blocked by the privacy, fixture, security, and pilot gates
 - Delivery tracker: [`11-android-payment-detection-progress-plan.md`](../00-discovery/11-android-payment-detection-progress-plan.md)
 
