@@ -11,6 +11,8 @@
 - Last reviewed: 2026-07-28
 - Tracker: [`11-android-payment-detection-progress-plan.md`](../00-discovery/11-android-payment-detection-progress-plan.md)
 - Feature spec: [`android-payment-detection-mvp.md`](../specs/android-payment-detection-mvp.md)
+- Play/disclosure draft:
+  [`android-payment-detection-play-draft.md`](./android-payment-detection-play-draft.md)
 
 This is an engineering governance record, not legal advice or certification.
 
@@ -202,6 +204,18 @@ Required in later milestones before real-notification processing:
 
 - M9 physical logcat, backup/device-transfer, task-stack, and accessibility
   verification.
+
+Implemented in M9 engineering hardening:
+
+- release tasks fail closed unless all upload-key values are supplied outside
+  the repository;
+- a bounded verifier rejects a debug-only Google Services client for the
+  production package;
+- compatible dependency updates were applied without forcing breaking
+  downgrades; residual advisories remain release-blocking;
+- an operational rollback runbook, physical acceptance matrix and
+  Play/Data-Safety/disclosure engineering draft are recorded without claiming
+  privacy, security or release-owner approval.
 
 ## User Controls
 

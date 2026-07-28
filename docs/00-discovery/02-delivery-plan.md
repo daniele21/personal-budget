@@ -19,7 +19,7 @@ Current engineering baseline:
 - Android debug bundling fails closed without dedicated non-production Firebase/OAuth values and disables Gemini;
 - a first-party runtime bridge now carries allowlisted app URLs across login and emits resume events, while browser notifications remain isolated from the Android WebView;
 - repeatable API 36 verification proves bundled local origin, route reload, localStorage, IndexedDB, attachment-store persistence and deep-link delivery;
-- `npm run test:regression` passes with TypeScript, 82 Vitest files/373 tests,
+- `npm run test:regression` passes with TypeScript, 83 Vitest files/377 tests,
   and the Vite production build;
 - Android unit test, lint and debug assemble pass; 32 instrumentation tests
   pass on the Pixel 9 Pro AVD with API 36, and the dedicated recovery verifier
@@ -47,12 +47,17 @@ Current engineering baseline:
   review queue, editable review, notification-center integration and verified
   idempotent commit into canonical `AppData`. Pending candidates remain outside
   the ledger, cloud and archives;
-- the current Playwright baseline is documented but not green: observed archive E2E cases remain on Home with the Guided Tour open and time out waiting for `Export complete archive`.
+- M9 repaired stale Playwright fixture and theme-route assumptions; all 31
+  Chromium, WebKit, mobile and PWA cases pass;
+- M9 release hardening now requires external upload-key configuration, verifies
+  the exact production package/client boundary and fails closed while the local
+  Google Services file is debug-only. The production dependency audit remains
+  non-green with 13 residual advisories after compatible updates.
 
 Current delivery decision: **M0 and the synthetic M4-M8 slices are complete;
 M1-M3 remain open on their documented production, lifecycle, physical and
-governance gates. The next implementation slice is M9 hardening, physical QA
-and compliance closure. Production signing and external privacy/DPIA gates
+governance gates. M9 hardening is in progress; physical QA and compliance
+closure remain. Production signing and external privacy/DPIA gates
 remain open, so Aura is not authorized to read real financial notifications or
 begin a user pilot**.
 

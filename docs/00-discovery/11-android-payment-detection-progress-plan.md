@@ -58,7 +58,7 @@ Ultimo aggiornamento: 2026-07-28
 | M6. Repository candidati, retention e deduplicazione | Completato | Room v1, payload cifrato, dedupe, retention, acceptance journal, purge e cleanup verificati su Pixel 9 Pro API 36 con sole fixture sintetiche |
 | M7. Bridge Capacitor, deep link e notifiche Aura | Completato | DTO minimizzati, acceptance/recovery, refresh, deep link opaco e notifica privata con azioni immutabili verificati su Pixel 9 Pro API 36 |
 | M8. UX React, review e creazione transazione | Completato | Provider separato, setup, backlog, review, acceptance verificata e controlli di cancellazione validati sul Pixel 9 Pro API 36 |
-| M9. Hardening, QA fisica e compliance | Non iniziato | Attende M1-M8 |
+| M9. Hardening, QA fisica e compliance | In corso | Gate automatici/emulatore in esecuzione; release production, device fisici, dependency audit e approvazioni owner restano aperti |
 | M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
@@ -1015,22 +1015,22 @@ Exit criteria:
 
 Goal: dimostrare comportamento reale su dispositivi e chiudere i gate di release.
 
-Stato: **Non iniziato**
+Stato: **In corso**
 
 Dipendenze: M1-M8.
 
 Task:
 
-- [ ] Eseguire `npm run lint`.
-- [ ] Eseguire `npm run test`.
-- [ ] Eseguire `npm run build`.
-- [ ] Eseguire E2E web/PWA.
-- [ ] Eseguire Gradle unit test.
-- [ ] Eseguire Android instrumentation test.
+- [x] Eseguire `npm run lint`.
+- [x] Eseguire `npm run test`.
+- [x] Eseguire `npm run build`.
+- [x] Eseguire E2E web/PWA.
+- [x] Eseguire Gradle unit test.
+- [x] Eseguire Android instrumentation test.
 - [ ] Eseguire Android lint e release build.
-- [ ] Testare Android 16/API 36, unica versione minima e massima supportata.
-- [ ] Testare package visibility su Android 16/API 36.
-- [ ] Testare `POST_NOTIFICATIONS` su Android 16/API 36.
+- [x] Testare Android 16/API 36, unica versione minima e massima supportata, su AVD Pixel 9 Pro.
+- [x] Testare package visibility su Android 16/API 36 tramite instrumentation.
+- [x] Testare `POST_NOTIFICATIONS` su Android 16/API 36 tramite instrumentation.
 - [ ] Testare almeno un dispositivo stock Android.
 - [ ] Testare almeno un dispositivo OEM con gestione aggressiva dei processi.
 - [ ] Testare app chiusa, process kill, restart e reboot.
@@ -1050,8 +1050,8 @@ Task:
 - [ ] Verificare 320/360/390/430 px nella WebView.
 - [ ] Verificare light/dark e reduced motion.
 - [ ] Aggiornare privacy policy.
-- [ ] Preparare Data Safety.
-- [ ] Preparare prominent disclosure e screenshot/store copy.
+- [x] Preparare draft engineering Data Safety; approvazione release/privacy resta aperta.
+- [x] Preparare prominent disclosure e store copy; screenshot e approvazione restano aperti.
 - [ ] Eseguire review Google Play policy e spyware-policy-aware.
 - [ ] Confermare screening DPIA e governance privacy.
 - [ ] Eseguire security review del bridge e componenti esportati.
@@ -1359,7 +1359,7 @@ Vietato:
 | R-017 | Regole regex causano ReDoS | Bassa | Alta | pattern review, input cap, benchmark | Android/Security | Aperto |
 | R-018 | Dati pendenti entrano in archive/cloud | Bassa | Alta | repository separato e regression test | React/QA | Aperto |
 | R-019 | Android 16-only limita i dispositivi eleggibili | Alta | Media | trade-off esplicito D-113; misurare il reach nel pilot prima di ampliare il supporto | Product | Accettato per il pilot |
-| R-020 | Dependency audit di produzione non verde | Media | Alta | triage dedicato, aggiornamenti compatibili e regression test prima della release | Security/React | Aperto |
+| R-020 | Dependency audit di produzione non verde | Media | Alta | Applicati 42 aggiornamenti compatibili senza `--force`; 13 advisory residue richiedono fix upstream o decisione security, senza downgrade breaking automatici | Security/React | Aperto |
 
 ## Definition Of Ready
 
@@ -1448,6 +1448,8 @@ Next: prossima task verificabile
 | 2026-07-28 | M4/M5 | Chiusa la recovery M4 e implementato il rule engine sintetico M5 con schema versionato, normalizzazione, negative rules, tier ed esclusione identificativi | `android:verify:listener-recovery` verde su process recreation/rebind/reboot/revoca API 36; 10 instrumentation test; unit corpus e benchmark 10.000 parsing verdi | Implementare M6 Room cifrato, retention e dedupe; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-07-28 | M6 | Implementato repository Room cifrato con owner partition, fingerprint HMAC, upsert/dedupe, retention, tombstone, acceptance journal/recovery, purge e cleanup WorkManager | Unit/lint/assemble verdi; schema Room v1 esportato; 25 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M7 bridge DTO/recovery e notifiche Aura private; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-07-28 | M7 | Implementati contratto Capacitor minimizzato, API candidate/settings/acceptance, refresh cold-start/resume, target deep link persistente e notifica Aura privata con Verifica/Ignora | Contract test TypeScript/Kotlin, test spoofing/ID invalidi e 32 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M8 provider/review e transazione canonica; nessuna sorgente reale prima di B-002/B-003/B-006 |
+| 2026-07-28 | M8 | Implementati provider, backlog/review e accettazione idempotente nella transazione canonica | 82 file/373 test Vitest, unit/lint/assemble Android, 32 instrumentation e simulazione end-to-end sul Pixel 9 Pro API 36 | Avviare M9 hardening senza abilitare sorgenti reali |
+| 2026-07-28 | M9 | Aggiunti signing release fail-closed, verifier production, aggiornamenti dependency compatibili, fix fixture E2E e draft runbook/QA/Data Safety | 83 file/377 test Vitest, build, Gradle unit/lint, 32 instrumentation Pixel 9 Pro API 36; release correttamente bloccata senza credenziali production | Completare E2E finale, device fisici, audit, signed build e approvazioni owner |
 
 ## Release Evidence
 
@@ -1458,17 +1460,17 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | TypeScript lint | Passato | `npm run test:regression`, 2026-07-26 |
 | Vitest | Passato | 74 file e 354 test, 2026-07-28 |
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
-| Web/PWA E2E | Baseline non verde | `npm run test:e2e`: 1 passato, 6 falliti, 1 interrotto, 23 non eseguiti; tutti i fallimenti osservati attendono `Export complete archive` con Guided Tour aperta |
+| Web/PWA E2E | Passato | 31/31 Chromium, WebKit, mobile Chromium/WebKit e PWA dopo correzione fixture Guided Tour e route tema, 2026-07-28 |
 | Gradle unit test | Passato | `testDebugUnitTest`, incluso corpus M5 e benchmark 10.000 parsing, JDK 21/API 36, 2026-07-28 |
 | Android instrumentation | Passato | 32 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room→notifica privata, schema, bridge DTO, azioni immutabili, spoofing, cifratura, dedupe, retention, recovery, owner isolation e purge, 2026-07-28 |
 | Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca su AVD Pixel 9 Pro, 2026-07-28 |
 | Simulazione M7 | Passato | `android:simulate:wallet-notification`: notifica Wallet sintetica → candidato Room → proposta Aura redatta, con cleanup automatico su AVD Pixel 9 Pro, 2026-07-28 |
-| Android lint | Passato | `lintDebug`, 2026-07-26 |
+| Android lint | Passato | 141 task, 2026-07-28 |
 | Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |
 | Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
 | Android auth bridge | Parziale positivo | Configurazione debug verificata, `NoCredential` gestito senza crash e login positivo riferito dall'utente il 2026-07-26; lifecycle, ruolo e account switch restano aperti |
 | Debug Firebase isolation | Passato | Build rifiutata senza `VITE_ANDROID_FIREBASE_*`; bundle sintetico verificato senza API key, auth domain, sender ID o app ID production |
-| Signed internal build | Non eseguito | Da registrare |
+| Signed internal build | Bloccato fail-closed | Upload key esterna, Play App Signing e Google/OAuth production mancanti; nessun signing material è nel repository |
 | Physical device matrix | Non eseguito | Da registrare |
 | Network leakage check | Non eseguito | Da registrare |
 | Logcat leakage check | Non eseguito | Da registrare |
@@ -1477,9 +1479,9 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Accessibility review | Non eseguito | Da registrare |
 | Privacy owner approval | Non ottenuta | Da registrare |
 | Security review | Engineering M3-M8 completata, owner aperto | Threat model, listener gate, parser bounded, cifratura Room, bridge minimizzato, review/acceptance, deep link, PendingIntent e receiver registrati; approvazione security owner resta aperta |
-| Play/Data Safety review | Non eseguita | Da registrare |
-| Rollback rehearsal | Non eseguito | Da registrare |
-| Production dependency audit | Non verde | `npm audit --omit=dev`: 18 advisory; triage richiesto prima della release |
+| Play/Data Safety review | Draft engineering | Disclosure, store copy e delta Data Safety preparati; review corrente Play e owner approval aperte |
+| Rollback rehearsal | Documentato, non eseguito | Runbook M9 definisce pausa, deselection, revoca OS e arresto rollout; rehearsal su signed build aperto |
+| Production dependency audit | Non verde | 42 aggiornamenti compatibili applicati; `npm audit --omit=dev --audit-level=high` riporta 13 advisory residue e propone solo cambi breaking/forzati per le high production |
 
 ## Follow-up Post-MVP
 

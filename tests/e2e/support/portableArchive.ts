@@ -26,6 +26,7 @@ const STORAGE_KEYS = {
   cloudBackupEnabled: 'aura_cloud_backup_enabled',
   onboardingComplete: 'aura_onboarding_complete',
   initialDataChoice: 'aura_initial_data_choice',
+  guidedTourComplete: 'aura_guided_tour_complete',
 } as const;
 
 export interface CanonicalWorkspace {
@@ -45,6 +46,7 @@ export async function seedPortableWorkspace(page: Page): Promise<void> {
       window.localStorage.setItem(keys.cloudBackupEnabled, JSON.stringify(false));
       window.localStorage.setItem(keys.onboardingComplete, 'true');
       window.localStorage.setItem(keys.initialDataChoice, 'blank');
+      window.localStorage.setItem(keys.guidedTourComplete, 'true');
       window.sessionStorage.removeItem('aura_e2e_keep_empty_shell_after_reset');
       return;
     }
@@ -64,6 +66,7 @@ export async function seedPortableWorkspace(page: Page): Promise<void> {
     window.localStorage.setItem(keys.cloudBackupEnabled, JSON.stringify(false));
     window.localStorage.setItem(keys.onboardingComplete, 'true');
     window.localStorage.setItem(keys.initialDataChoice, 'restored');
+    window.localStorage.setItem(keys.guidedTourComplete, 'true');
     window.sessionStorage.setItem('aura_e2e_fixture_seeded', 'true');
   }, {
     data: E2E_APP_DATA,

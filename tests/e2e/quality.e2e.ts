@@ -69,7 +69,7 @@ test.describe('Aura M7 browser quality', () => {
       .analyze();
     expect(seriousViolations(lightResults)).toEqual([]);
 
-    await page.goto('/more');
+    await page.goto('/settings');
     await page.getByRole('switch', { name: 'Toggle dark mode' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
     await page.goto('/data');
