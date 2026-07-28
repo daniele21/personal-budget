@@ -194,6 +194,11 @@ async function main() {
 
     runAdb(['reboot'], { quiet: true });
     await waitForBoot();
+    await waitForProbe(
+      (probe) => probe.connected === 'true',
+      'Listener reconnect after emulator reboot',
+      120,
+    );
     postSyntheticNotification();
     await waitForProbe(
       (probe) => Number(probe.exact) >= 1,

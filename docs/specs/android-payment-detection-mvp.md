@@ -6,8 +6,9 @@
 - Architecture: accepted in ADR 0002 and ADR 0003
 - Implementation: synthetic M4-M8 slices complete; M1-M3 retain their
   production, lifecycle, physical, and governance closure gates; M9
-  automated hardening is in progress and physical/compliance closure remains
-- Current gate: M9 may proceed with synthetic candidates; real
+  engineering hardening and M10 operating preparation are complete, while
+  physical/compliance closure and the actual pilot remain blocked
+- Current gate: synthetic candidates may continue; real
   sources remain blocked by the privacy, fixture, security, and pilot gates
 - Delivery tracker: [`11-android-payment-detection-progress-plan.md`](../00-discovery/11-android-payment-detection-progress-plan.md)
 

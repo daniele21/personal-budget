@@ -116,7 +116,7 @@ Run unit, component, build, and browser gates together with:
 npm run test:full
 ```
 
-The Playwright suite contains 29 project cases across desktop Chromium, desktop WebKit, Pixel 5/iPhone 13 emulation, and a service-worker-enabled Chromium project. Its recovery journeys include:
+The Playwright suite contains 31 project cases across desktop Chromium, desktop WebKit, Pixel 5/iPhone 13 emulation, and a service-worker-enabled Chromium project. Its recovery journeys include:
 
 - synthetic non-admin authentication without a login prompt;
 - encrypted export through the real browser download flow;
@@ -128,6 +128,26 @@ The Playwright suite contains 29 project cases across desktop Chromium, desktop 
 The recovery comparison reads every canonical AppData section, portable notification/appearance preferences, custom reminders, and the referenced IndexedDB receipt. Additional browser tests reload from all 11 restore-journal statuses; exercise 320/360/390/430 px layouts; scan light/dark archive surfaces with axe; verify focus trapping/restoration and reduced motion; record bounded typical-workspace resource evidence; and verify the production manifest/service-worker registration lifecycle. Playwright retains trace, screenshot, and video evidence on failure.
 
 Physical-device Safari/Chrome, actual installed-PWA execution, manual screen-reader output, and the approximately 32 MiB least-capable-mobile measurement remain manual M7 release gates.
+
+## Android Payment Detection Coverage
+
+The opt-in Android payment-detection path requires:
+
+- TypeScript contract, disclosure, UI-state, and native security-configuration tests;
+- Android unit, lint, debug-assemble, and instrumentation gates;
+- instrumentation coverage for package gating, encrypted persistence, owner isolation,
+  dedupe, retention, logout/reset, Keystore invalidation, database failure, private
+  notification actions, and bridge DTO validation;
+- an explicit listener recovery check across process recreation, listener rebind,
+  emulator reboot, and permission revocation;
+- browser regression coverage for the review backlog and idempotent acceptance into
+  the canonical transaction model.
+
+Current automated evidence is 83 Vitest files/378 tests, 31 Playwright cases, and
+34 Android instrumentation tests on the Pixel 9 Pro Android 16/API 36 emulator.
+These checks do not replace physical stock/OEM-device testing, manual TalkBack and
+lock-screen review, signed-release validation, dependency audit, or privacy,
+security, and release-owner approval.
 
 ## Guided Tour Coverage
 

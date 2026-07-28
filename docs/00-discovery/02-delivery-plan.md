@@ -19,9 +19,9 @@ Current engineering baseline:
 - Android debug bundling fails closed without dedicated non-production Firebase/OAuth values and disables Gemini;
 - a first-party runtime bridge now carries allowlisted app URLs across login and emits resume events, while browser notifications remain isolated from the Android WebView;
 - repeatable API 36 verification proves bundled local origin, route reload, localStorage, IndexedDB, attachment-store persistence and deep-link delivery;
-- `npm run test:regression` passes with TypeScript, 83 Vitest files/377 tests,
+- `npm run test:regression` passes with TypeScript, 83 Vitest files/378 tests,
   and the Vite production build;
-- Android unit test, lint and debug assemble pass; 32 instrumentation tests
+- Android unit test, lint and debug assemble pass; 34 instrumentation tests
   pass on the Pixel 9 Pro AVD with API 36, and the dedicated recovery verifier
   passes process recreation, rebind, reboot and revocation;
 - M3 now provides Keystore-backed owner hashing, recoverable native purge,
@@ -53,11 +53,17 @@ Current engineering baseline:
   the exact production package/client boundary and fails closed while the local
   Google Services file is debug-only. The production dependency audit remains
   non-green with 13 residual advisories after compatible updates.
+- M9 engineering hardening now also verifies Keystore invalidation, closed
+  database failure, listener recovery after process/rebind/reboot/revocation,
+  and structural absence of network/analytics/content logs in the detection
+  path. M10 pilot operations are documented but remain blocked on the external
+  M9 gates.
 
 Current delivery decision: **M0 and the synthetic M4-M8 slices are complete;
 M1-M3 remain open on their documented production, lifecycle, physical and
-governance gates. M9 hardening is in progress; physical QA and compliance
-closure remain. Production signing and external privacy/DPIA gates
+governance gates. M9 engineering hardening is complete but blocked on physical
+QA and compliance closure. M10 operating preparation is complete but the pilot
+has not started. Production signing and external privacy/DPIA gates
 remain open, so Aura is not authorized to read real financial notifications or
 begin a user pilot**.
 

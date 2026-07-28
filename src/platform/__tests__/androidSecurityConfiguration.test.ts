@@ -1,9 +1,17 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 function readProjectFile(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
+}
+
+function readProjectTree(path: string): string {
+  const root = resolve(process.cwd(), path);
+  return readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.(?:java|kt)$/.test(entry.name))
+    .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), 'utf8'))
+    .join('\n');
 }
 
 describe('Android security configuration', () => {
@@ -87,6 +95,22 @@ describe('Android security configuration', () => {
     expect(dependencies).not.toContain('@sentry/react');
     expect(dependencies).not.toContain('@sentry/capacitor');
     expect(dependencies).not.toContain('@react-native-firebase/crashlytics');
+  });
+
+  it('keeps the native detection path free of network, analytics, and content logs', () => {
+    const detectionSources = [
+      readProjectTree(
+        'android/app/src/main/java/com/staituned/aura/paymentdetection',
+      ),
+      readProjectFile(
+        'android/app/src/main/java/com/staituned/aura/PaymentDetectionPrivacyPlugin.kt',
+      ),
+    ].join('\n');
+
+    expect(detectionSources).not.toMatch(
+      /\b(?:java\.net|HttpURLConnection|okhttp|retrofit|Firebase|Gemini|Analytics)\b/,
+    );
+    expect(detectionSources).not.toMatch(/\bLog\.(?:v|d|i|w|e|wtf)\s*\(/);
   });
 
   it('keeps M7 notification actions internal, immutable, and redacted', () => {

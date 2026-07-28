@@ -4,7 +4,7 @@
 
 Current decision: **not ready for general release or real-user pilot**.
 
-M9 automated and synthetic gates are in progress. This record separates
+M9 automated and synthetic engineering gates are complete. This record separates
 repeatable engineering evidence from physical, legal and owner approvals that
 cannot be inferred from an emulator.
 
@@ -13,16 +13,17 @@ cannot be inferred from an emulator.
 | Gate | Result | Evidence |
 |---|---|---|
 | TypeScript | Pass | `npm run lint` |
-| Vitest | Pass | 83 files, 377 tests |
+| Vitest | Pass | 83 files, 378 tests |
 | Production web build | Pass | Vite 6.4.3 |
 | Web/PWA E2E | Pass | 31/31 on Chromium, WebKit, mobile Chromium/WebKit and PWA after fixture/route repair |
 | Gradle unit | Pass | `:app:testDebugUnitTest` |
-| Android instrumentation | Pass | 32 tests on `Pixel_9_Pro` AVD, Android 16/API 36 |
+| Android instrumentation | Pass | 34 tests on `Pixel_9_Pro` AVD, Android 16/API 36, including Keystore invalidation and closed-database failure |
 | Android lint | Pass | 141 tasks |
 | Package visibility and notification permission | Pass, emulator | Covered by API 36 manifest/instrumentation assertions |
-| Listener and lifecycle recovery | Pass, emulator | Process recreation, rebind, reboot and revoke/regrant synthetic workflow |
+| Listener and lifecycle recovery | Pass, emulator | Process recreation, rebind, reboot and revoke/regrant synthetic workflow; host verifier now waits for listener reconnection before posting after boot |
 | Rule corpus | Pass, synthetic | Duplicates, semantic dedupe, absent merchant, unsupported currency, OTP, decline, cancellation, balance and promotion |
 | Owner lifecycle | Pass, engineering | Logout, owner change, reset, purge journal and encrypted Room boundary |
+| Detection network surface | Pass, structural | Native and React detection paths contain no network, Firebase, Gemini, analytics or content-log call |
 | Release configuration verifier | Blocked as designed | Local Google Services file is debug-only |
 | Release build | Blocked as designed | Upload-key environment and production Google/OAuth configuration absent |
 | Dependency audit | Blocked | 13 advisories remain; npm offers only breaking/unsafe forced changes for the production high findings |
@@ -69,6 +70,12 @@ Still open:
 - production signing and OAuth certificate evidence;
 - privacy policy, role, lawful basis, DPIA and data inventory approval;
 - whole-app Data Safety and current Play policy review.
+
+The current Google Play User Data, prominent-disclosure, Spyware and Data
+Safety guidance was reviewed on 2026-07-28. The implemented disclosure now
+states purpose, data types, local handling and user controls with distinct
+agree/decline actions. Actual Play approval and a submission-date policy
+recheck remain external release gates.
 
 ## Rollback Acceptance
 

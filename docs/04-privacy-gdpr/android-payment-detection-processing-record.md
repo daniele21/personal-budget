@@ -216,6 +216,10 @@ Implemented in M9 engineering hardening:
 - an operational rollback runbook, physical acceptance matrix and
   Play/Data-Safety/disclosure engineering draft are recorded without claiming
   privacy, security or release-owner approval.
+- the disclosure states the accessed notification fields, local purpose,
+  non-transfer behavior and user controls before a distinct agree/decline
+  action; current official Play User Data and Spyware guidance was reviewed on
+  2026-07-28, without implying Play approval.
 
 ## User Controls
 

@@ -212,8 +212,8 @@ export function PaymentDetectionSettings() {
       <ConfirmDialog
         isOpen={showDisclosure}
         title="Allow payment detection?"
-        message="Android grants Aura broad notification access at the system level. Aura applies a local filter before reading content, processes only supported apps you explicitly select, stores pending candidates only on this device, and never creates a transaction without your confirmation."
-        confirmLabel="Continue to Android"
+        message="To prepare expenses for your review, Aura will access the app source, title, text, and time of notifications from supported payment apps you select, including the amount and merchant when present. Android grants broad notification access at the system level, but Aura filters locally before reading content, does not save raw notification text, and does not send payment candidates off this device. Aura never creates a transaction without your confirmation. You can decline now, pause detection, remove apps, or delete pending suggestions later."
+        confirmLabel="Agree and continue"
         cancelLabel="Not now"
         onCancel={() => setShowDisclosure(false)}
         onConfirm={() => void handleDisclosureAccepted()}

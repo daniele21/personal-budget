@@ -58,10 +58,12 @@ describe('PaymentDetectionSettings', () => {
     await user.click(screen.getByRole('button', { name: 'Android access' }));
 
     expect(screen.getByRole('dialog', { name: 'Allow payment detection?' }))
-      .toHaveTextContent(/Android grants Aura broad notification access/);
+      .toHaveTextContent(/app source, title, text, and time/);
+    expect(screen.getByRole('dialog', { name: 'Allow payment detection?' }))
+      .toHaveTextContent(/does not send payment candidates off this device/);
     expect(mocks.openNotificationAccessSettings).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Continue to Android' }));
+    await user.click(screen.getByRole('button', { name: 'Agree and continue' }));
 
     await vi.waitFor(() => {
       expect(mocks.requestNotificationPermission).toHaveBeenCalledOnce();

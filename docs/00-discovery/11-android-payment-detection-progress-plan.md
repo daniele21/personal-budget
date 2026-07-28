@@ -58,8 +58,8 @@ Ultimo aggiornamento: 2026-07-28
 | M6. Repository candidati, retention e deduplicazione | Completato | Room v1, payload cifrato, dedupe, retention, acceptance journal, purge e cleanup verificati su Pixel 9 Pro API 36 con sole fixture sintetiche |
 | M7. Bridge Capacitor, deep link e notifiche Aura | Completato | DTO minimizzati, acceptance/recovery, refresh, deep link opaco e notifica privata con azioni immutabili verificati su Pixel 9 Pro API 36 |
 | M8. UX React, review e creazione transazione | Completato | Provider separato, setup, backlog, review, acceptance verificata e controlli di cancellazione validati sul Pixel 9 Pro API 36 |
-| M9. Hardening, QA fisica e compliance | In corso | Gate automatici/emulatore in esecuzione; release production, device fisici, dependency audit e approvazioni owner restano aperti |
-| M10. Pilot, beta e release progressiva | Non iniziato | Attende M9 |
+| M9. Hardening, QA fisica e compliance | Bloccato | Engineering automatico/emulatore completato; release production, device fisici, dependency audit e approvazioni owner restano aperti |
+| M10. Pilot, beta e release progressiva | Bloccato | Runbook e guardrail pronti; attende device fisici, sorgente approvata, signing/Play e privacy/security owner |
 | M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
 
 Focus corrente: **M9 — hardening, QA fisica e chiusura dei gate privacy/release; le sorgenti reali restano vietate**.
@@ -549,7 +549,7 @@ Evidenze M1 al 2026-07-26:
 
 Goal: introdurre adapter espliciti per le differenze web/native.
 
-Stato: **In corso**
+Stato: **Completato**
 
 Dipendenze: M1.
 
@@ -1015,7 +1015,7 @@ Exit criteria:
 
 Goal: dimostrare comportamento reale su dispositivi e chiudere i gate di release.
 
-Stato: **In corso**
+Stato: **Bloccato — engineering completato, evidenze esterne mancanti**
 
 Dipendenze: M1-M8.
 
@@ -1027,24 +1027,25 @@ Task:
 - [x] Eseguire E2E web/PWA.
 - [x] Eseguire Gradle unit test.
 - [x] Eseguire Android instrumentation test.
-- [ ] Eseguire Android lint e release build.
+- [x] Eseguire Android lint.
+- [ ] Eseguire release build firmata con configurazione production.
 - [x] Testare Android 16/API 36, unica versione minima e massima supportata, su AVD Pixel 9 Pro.
 - [x] Testare package visibility su Android 16/API 36 tramite instrumentation.
 - [x] Testare `POST_NOTIFICATIONS` su Android 16/API 36 tramite instrumentation.
 - [ ] Testare almeno un dispositivo stock Android.
 - [ ] Testare almeno un dispositivo OEM con gestione aggressiva dei processi.
-- [ ] Testare app chiusa, process kill, restart e reboot.
-- [ ] Testare listener revocato e riconcesso.
-- [ ] Testare notifica aggiornata e duplicata.
-- [ ] Testare wallet+banca per la stessa operazione.
-- [ ] Testare merchant assente e valuta non supportata.
-- [ ] Testare OTP, rifiuto, annullamento, saldo e promozione.
-- [ ] Testare lock screen redatta.
-- [ ] Testare logout, cambio account e reset.
+- [x] Testare app chiusa, process kill, restart e reboot su AVD Pixel 9 Pro API 36.
+- [x] Testare listener revocato e riconcesso su AVD Pixel 9 Pro API 36.
+- [x] Testare notifica aggiornata e duplicata tramite instrumentation.
+- [x] Testare wallet+banca per la stessa operazione tramite dedupe cross-source sintetico.
+- [x] Testare merchant assente e valuta non supportata nel corpus sintetico.
+- [x] Testare OTP, rifiuto, annullamento, saldo e promozione nel corpus sintetico.
+- [x] Testare lock screen redatta tramite instrumentation.
+- [x] Testare logout, cambio account e reset tramite unit/instrumentation.
 - [ ] Testare Android Auto Backup/D2D secondo policy approvata.
 - [ ] Catturare rete e dimostrare zero richieste dal detection path.
 - [ ] Ispezionare logcat release e dimostrare assenza di dati finanziari.
-- [ ] Testare Keystore invalidation e database error.
+- [x] Testare Keystore invalidation e database error tramite instrumentation fail-closed.
 - [ ] Testare restore `.aura` e cloud backup con transazioni create da candidati.
 - [ ] Eseguire screen-reader manuale.
 - [ ] Verificare 320/360/390/430 px nella WebView.
@@ -1052,10 +1053,10 @@ Task:
 - [ ] Aggiornare privacy policy.
 - [x] Preparare draft engineering Data Safety; approvazione release/privacy resta aperta.
 - [x] Preparare prominent disclosure e store copy; screenshot e approvazione restano aperti.
-- [ ] Eseguire review Google Play policy e spyware-policy-aware.
+- [x] Eseguire review engineering Google Play policy e spyware-policy-aware; approvazione Play Console resta aperta.
 - [ ] Confermare screening DPIA e governance privacy.
-- [ ] Eseguire security review del bridge e componenti esportati.
-- [ ] Eseguire release-readiness review con rollback.
+- [x] Eseguire security review engineering del bridge e componenti esportati; owner approval resta aperta.
+- [x] Eseguire release-readiness review con rollback; esito release bloccato e runbook registrato.
 
 Exit criteria:
 
@@ -1069,9 +1070,15 @@ Exit criteria:
 
 Goal: validare utilità e precisione senza ampliare prematuramente lo scope.
 
-Stato: **Non iniziato**
+Stato: **Bloccato — preparazione operativa completata, pilot non autorizzato**
 
 Dipendenze: M9.
+
+Il protocollo operativo, il record di feedback redatto, le stop condition e il
+rollback rehearsal sono definiti in
+[`android-payment-detection-pilot-runbook.md`](../03-operations/android-payment-detection-pilot-runbook.md).
+Nessuna fase seguente è marcata eseguita perché richiede distribuzione e utenti
+reali autorizzati.
 
 #### Fase A — Internal build
 
@@ -1450,6 +1457,7 @@ Next: prossima task verificabile
 | 2026-07-28 | M7 | Implementati contratto Capacitor minimizzato, API candidate/settings/acceptance, refresh cold-start/resume, target deep link persistente e notifica Aura privata con Verifica/Ignora | Contract test TypeScript/Kotlin, test spoofing/ID invalidi e 32 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M8 provider/review e transazione canonica; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-07-28 | M8 | Implementati provider, backlog/review e accettazione idempotente nella transazione canonica | 82 file/373 test Vitest, unit/lint/assemble Android, 32 instrumentation e simulazione end-to-end sul Pixel 9 Pro API 36 | Avviare M9 hardening senza abilitare sorgenti reali |
 | 2026-07-28 | M9 | Aggiunti signing release fail-closed, verifier production, aggiornamenti dependency compatibili, fix fixture E2E e draft runbook/QA/Data Safety | 83 file/377 test Vitest, build, Gradle unit/lint, 32 instrumentation Pixel 9 Pro API 36; release correttamente bloccata senza credenziali production | Completare E2E finale, device fisici, audit, signed build e approvazioni owner |
+| 2026-07-28 | M9/M10 | Rafforzati disclosure Play, isolamento rete/log, invalidazione Keystore, errore database e recovery post-reboot; preparato il pilot runbook redatto | 83 file/378 test Vitest, 31 E2E, 34 instrumentation test Pixel 9 Pro API 36 e recovery process/rebind/reboot/revoca verdi; review policy Google ufficiale | Chiudere solo con device fisici, audit/signing production, Play Console e owner privacy/security/release |
 
 ## Release Evidence
 
@@ -1462,7 +1470,7 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Passato | 31/31 Chromium, WebKit, mobile Chromium/WebKit e PWA dopo correzione fixture Guided Tour e route tema, 2026-07-28 |
 | Gradle unit test | Passato | `testDebugUnitTest`, incluso corpus M5 e benchmark 10.000 parsing, JDK 21/API 36, 2026-07-28 |
-| Android instrumentation | Passato | 32 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room→notifica privata, schema, bridge DTO, azioni immutabili, spoofing, cifratura, dedupe, retention, recovery, owner isolation e purge, 2026-07-28 |
+| Android instrumentation | Passato | 34 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room→notifica privata, schema, bridge DTO, azioni immutabili, spoofing, cifratura, invalidazione Keystore, database chiuso, dedupe, retention, recovery, owner isolation e purge, 2026-07-28 |
 | Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca su AVD Pixel 9 Pro, 2026-07-28 |
 | Simulazione M7 | Passato | `android:simulate:wallet-notification`: notifica Wallet sintetica → candidato Room → proposta Aura redatta, con cleanup automatico su AVD Pixel 9 Pro, 2026-07-28 |
 | Android lint | Passato | 141 task, 2026-07-28 |

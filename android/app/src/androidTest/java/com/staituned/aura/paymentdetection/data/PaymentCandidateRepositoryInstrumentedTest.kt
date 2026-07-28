@@ -1,10 +1,12 @@
 package com.staituned.aura.paymentdetection.data
 
+import android.database.SQLException
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
+import com.staituned.aura.paymentdetection.security.CandidateFieldProtector
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -312,6 +314,37 @@ class PaymentCandidateRepositoryInstrumentedTest {
         assertFalse(context.getDatabasePath(privacyStore.candidateDatabaseName).exists())
     }
 
+    @Test
+    fun encryptionKeyInvalidationPurgesUnreadableCandidatePayloads() {
+        val harness = harness("key_invalidation")
+        harness.repository.persist(candidate(), "key-invalidation-notification")
+
+        CandidateFieldProtector().deleteKey()
+
+        assertThrows(CandidatePayloadUnavailableException::class.java) {
+            harness.repository.listPending()
+        }
+        assertEquals(0, harness.repository.countForActiveOwner())
+
+        val recreated = harness.repository.persist(
+            candidate(amount = 4321),
+            "key-after-invalidation",
+        )
+        assertTrue(recreated is CandidatePersistenceResult.Created)
+        assertEquals(4321L, harness.repository.get(recreated.candidateId).payload.amountMinorUnits)
+    }
+
+    @Test
+    fun closedDatabaseFailsWithoutSilentlyRecreatingOrMutatingStorage() {
+        val harness = harness("closed_database")
+        harness.repository.persist(candidate(), "database-error-notification")
+        harness.database.close()
+
+        assertThrows(SQLException::class.java) {
+            harness.repository.listPending()
+        }
+    }
+
     private fun harness(testName: String): Harness {
         val namespace = "candidate_${testName}_${System.nanoTime()}"
         val privacyStore = PaymentDetectionPrivacyStore(context, namespace = namespace)
@@ -332,7 +365,7 @@ class PaymentCandidateRepositoryInstrumentedTest {
             database = database,
             now = clock::now,
         )
-        return Harness(repository, privacyStore, clock)
+        return Harness(repository, privacyStore, clock, database)
     }
 
     private fun candidate(
@@ -355,6 +388,7 @@ class PaymentCandidateRepositoryInstrumentedTest {
         val repository: PaymentCandidateRepository,
         val privacyStore: PaymentDetectionPrivacyStore,
         val clock: MutableClock,
+        val database: PaymentCandidateDatabase,
     )
 
     private class MutableClock(var value: Long) {
