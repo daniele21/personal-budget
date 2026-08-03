@@ -110,6 +110,104 @@ function startMainActivity() {
   return runAdb('shell', 'am', 'start', '-W', '-n', appComponent);
 }
 
+async function verifyTransactionImportBoundary(client) {
+  await client.evaluate(`(() => {
+    const values = {
+      aura_transactions: [],
+      aura_budgets: [],
+      aura_recurring: [],
+      aura_accounts: [],
+      aura_categories_list: ['Food', 'Travel', 'Groceries'],
+      aura_archived_categories_list: [],
+      aura_savings_goals: [],
+      aura_monthly_budget: 0,
+      aura_dark_mode: false
+    };
+    for (const [key, value] of Object.entries(values)) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+    localStorage.setItem('aura_cloud_backup_enabled', 'false');
+    localStorage.setItem('aura_onboarding_complete', 'true');
+    localStorage.setItem('aura_initial_data_choice', 'blank');
+    localStorage.setItem('aura_guided_tour_complete', 'true');
+    localStorage.setItem('aura_pwa_install_dialog_shown', 'true');
+    history.replaceState({}, '', '/history?import=1');
+    location.reload();
+    return true;
+  })()`);
+
+  await waitFor(
+    () => client.evaluate(`Boolean(
+      document.querySelector('[role="dialog"] input[type="file"]')
+      && document.body.textContent.includes('Import transactions')
+    )`),
+    'Transaction import dialog',
+    80,
+  );
+
+  const uploadSurface = await client.evaluate(`(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    const text = dialog?.textContent ?? '';
+    return {
+      hasCsvTemplate: text.includes('CSV template'),
+      hasXlsxTemplate: text.includes('XLSX template'),
+      fileAccept: dialog?.querySelector('input[type="file"]')?.getAttribute('accept') ?? ''
+    };
+  })()`);
+
+  const selected = await client.evaluate(`(() => {
+    const input = document.querySelector('[role="dialog"] input[type="file"]');
+    if (!input) return false;
+    const rows = Array.from(
+      { length: 20000 },
+      (_, index) => '2026-08-01,Synthetic WebView boundary ' + index + ',-1.00'
+    );
+    const file = new File(
+      [['date,description,amount', ...rows].join('\\n')],
+      'webview-boundary.csv',
+      { type: 'text/csv' }
+    );
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`);
+  if (!selected) throw new Error('Transaction import file input is unavailable.');
+
+  await waitFor(
+    () => client.evaluate(`document.body.textContent.includes('webview-boundary.csv')`),
+    'Synthetic import file selection',
+  );
+
+  const started = await client.evaluate(`(() => {
+    const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
+      .find((candidate) => candidate.textContent.trim() === 'Validate file');
+    if (!button || button.disabled) return null;
+    const timestamp = performance.now();
+    button.click();
+    return timestamp;
+  })()`);
+  if (started === null) throw new Error('Validate file action is unavailable.');
+
+  await waitFor(
+    () => client.evaluate(`document.body.textContent.includes('Categorize and review')`),
+    '20,000-row import review',
+    240,
+  );
+
+  return client.evaluate(`(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    const text = dialog?.textContent ?? '';
+    return {
+      durationMs: Math.round(performance.now() - ${started}),
+      renderedRows: dialog?.querySelectorAll('article').length ?? 0,
+      hasExpectedPagination: text.includes('Page 1 of 200'),
+      ...${JSON.stringify(uploadSurface)}
+    };
+  })()`);
+}
+
 async function main() {
   const devices = runAdb('devices');
   if (!devices.split('\n').slice(1).some((line) => line.endsWith('\tdevice'))) {
@@ -217,6 +315,12 @@ async function main() {
     };
   })()`);
 
+  const shouldVerifyTransactionImport =
+    process.env.AURA_VERIFY_TRANSACTION_IMPORT === 'true';
+  const importProbe = shouldVerifyTransactionImport
+    ? await verifyTransactionImportBoundary(client)
+    : { status: 'not-requested' };
+
   const deepLinkStart = runAdb(
     'shell',
     'am',
@@ -228,10 +332,16 @@ async function main() {
     'com.staituned.aura.debug://open/data',
     packageName,
   );
-  await delay(250);
-  const pendingAppUrl = await client.evaluate(
-    'window.Capacitor.Plugins.NativeAppRuntime.getPendingAppUrl()',
-  );
+  const deepLinkState = await waitFor(async () => {
+    const state = await client.evaluate(`(async () => ({
+      pending: await window.Capacitor.Plugins.NativeAppRuntime.getPendingAppUrl(),
+      path: location.pathname
+    }))()`);
+    return state?.pending?.url === 'com.staituned.aura.debug://open/data'
+      || state?.path === '/data'
+      ? state
+      : null;
+  }, 'Authenticated or pending deep-link delivery');
 
   await client.evaluate(`(async () => {
     await window.Capacitor.Plugins.NativeAppRuntime.clearPendingAppUrl();
@@ -253,6 +363,22 @@ async function main() {
       };
     });
     history.replaceState({}, '', '/');
+    for (const key of [
+      'aura_transactions',
+      'aura_budgets',
+      'aura_recurring',
+      'aura_accounts',
+      'aura_categories_list',
+      'aura_archived_categories_list',
+      'aura_savings_goals',
+      'aura_monthly_budget',
+      'aura_dark_mode',
+      'aura_cloud_backup_enabled',
+      'aura_onboarding_complete',
+      'aura_initial_data_choice',
+      'aura_guided_tour_complete',
+      'aura_pwa_install_dialog_shown'
+    ]) localStorage.removeItem(key);
     return true;
   })()`);
   client.close();
@@ -262,7 +388,8 @@ async function main() {
     seeded,
     reloadRoute,
     persisted,
-    pendingAppUrl,
+    importProbe,
+    deepLinkState,
     coldStart: /LaunchState: COLD/.test(coldStart),
     restartSucceeded: /Status: ok/.test(restart),
     deepLinkDelivered: /Status: ok/.test(deepLinkStart),
@@ -277,8 +404,22 @@ async function main() {
     persisted?.localStorage !== probeToken && 'localStorage restart persistence',
     persisted?.indexedDb !== probeToken && 'IndexedDB restart persistence',
     persisted?.attachment !== attachmentValue && 'attachment restart persistence',
-    pendingAppUrl?.url !== 'com.staituned.aura.debug://open/data' &&
-      'deep-link delivery',
+    shouldVerifyTransactionImport && importProbe?.renderedRows !== 100 &&
+      '20,000-row bounded import rendering',
+    shouldVerifyTransactionImport && !importProbe?.hasExpectedPagination &&
+      '20,000-row import pagination',
+    shouldVerifyTransactionImport && importProbe?.durationMs > 60_000 &&
+      '20,000-row import duration',
+    shouldVerifyTransactionImport && !importProbe?.hasCsvTemplate &&
+      'CSV import template',
+    shouldVerifyTransactionImport && !importProbe?.hasXlsxTemplate &&
+      'XLSX import template',
+    shouldVerifyTransactionImport && !importProbe?.fileAccept.includes('.csv') &&
+      'CSV file picker acceptance',
+    shouldVerifyTransactionImport && !importProbe?.fileAccept.includes('.xlsx') &&
+      'XLSX file picker acceptance',
+    deepLinkState?.pending?.url !== 'com.staituned.aura.debug://open/data' &&
+      deepLinkState?.path !== '/data' && 'deep-link delivery',
   ].filter(Boolean);
 
   console.log(JSON.stringify(evidence, null, 2));

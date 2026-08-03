@@ -24,15 +24,13 @@ describe('createAndroidDebugEnvOverrides', () => {
       .toThrow(/isolated non-production/i);
   });
 
-  it('maps only Android-specific Firebase values and disables Gemini', () => {
+  it('maps only Android-specific Firebase values', () => {
     const overrides = createAndroidDebugEnvOverrides(
       ANDROID_DEBUG_MODE,
       isolatedEnvironment,
     );
 
-    expect(overrides).toMatchObject({
-      VITE_FIREBASE_PROJECT_ID: 'aura-debug',
-      VITE_GEMINI_API_KEY: '',
-    });
+    expect(overrides).toMatchObject({ VITE_FIREBASE_PROJECT_ID: 'aura-debug' });
+    expect(Object.keys(overrides)).not.toContain('VITE_GEMINI_API_KEY');
   });
 });
