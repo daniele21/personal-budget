@@ -228,3 +228,23 @@ Add or update tests when a change affects:
 - user-visible financial totals
 
 Manual QA is acceptable only as a supplement. It should not replace automated regression coverage for financial calculations or data model behavior.
+
+## Category Reports And Calendar-Month Spending Pace
+
+The shared web/Android reporting implementation is protected at three levels:
+
+- domain tests cover local calendar boundaries, leap years, complete and
+  partial months, sparse/zero history, reimbursements, archived categories,
+  transaction ranking, all analytics lenses, and the monthly-to-weekly/daily
+  reconciliation formula;
+- React tests cover category ranking averages, category drill-down routing,
+  persisted period/lens scope, partial labels, top transactions, filtered
+  history, missing categories, and populated or insufficient Spending Pace;
+- release verification runs `npm run test:regression`, Android
+  `testDebugUnitTest`, Android asset synchronization, `assembleDebug`, all 34
+  API 36 instrumentation tests, plus real-browser responsive checks at 390 px
+  and 320 px.
+
+Browser fixtures are supplementary. Financial correctness remains asserted
+against deterministic domain and component fixtures so local browser data
+cannot mask a regression.

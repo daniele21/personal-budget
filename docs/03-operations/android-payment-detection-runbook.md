@@ -7,7 +7,7 @@ General release and real payment-notification processing remain blocked.
 
 Release blockers:
 
-- production Firebase/OAuth client and certificate pair;
+- physical Google Sign-In verification on a Play-signed production build;
 - Play App Signing, upload-key custody and Play Console ownership;
 - production dependency audit;
 - physical stock Android and OEM device matrix;
@@ -23,10 +23,25 @@ Debug uses `com.staituned.aura.debug`, the non-production Google Services
 configuration and normal debug signing. Release uses
 `com.staituned.aura`; debug credentials and signing are never valid for it.
 
+Google Services configuration is selected by Gradle build type and remains
+untracked:
+
+- `android/app/src/debug/google-services.json` must contain the
+  `com.staituned.aura.debug` client;
+- `android/app/src/release/google-services.json` must contain the
+  `com.staituned.aura` client.
+
+Each variant configuration must also contain its Web OAuth client. Gradle turns
+that client into the native `default_web_client_id` resource used by Android
+Credential Manager; the JavaScript bundle does not duplicate this identifier.
+
+Never copy or rename one environment over the other before a build.
+
 Before a release build:
 
-1. Place an untracked `android/app/google-services.json` containing an exact
-   Android client for `com.staituned.aura`.
+1. Place the untracked production configuration at
+   `android/app/src/release/google-services.json`; keep the independent debug
+   configuration at `android/app/src/debug/google-services.json`.
 2. Configure the production OAuth client for the production package and
    app-signing certificate.
 3. Supply all upload-key values through the release environment:
@@ -34,16 +49,41 @@ Before a release build:
    `AURA_ANDROID_UPLOAD_STORE_PASSWORD`,
    `AURA_ANDROID_UPLOAD_KEY_ALIAS`, and
    `AURA_ANDROID_UPLOAD_KEY_PASSWORD`.
-4. Run `npm run android:verify:release-readiness`.
-5. Run `npm run test:regression`, `npm run test:e2e`,
+4. Run `npm run android:sync` to rebuild and copy the production web bundle.
+   Never run `android:sync:debug` between this step and the release build.
+5. Run `npm run android:verify:release-readiness`. The verifier rejects missing
+   assets, production-project omissions and stale debug Firebase markers.
+6. Run `npm run test:regression`, `npm run test:e2e`,
    `npm run android:test`, `npm run android:test:instrumentation`, and
    `npm run android:lint`.
-6. Run `npm run android:sync`, then
-   `bash scripts/run-android-gradle.sh :app:bundleRelease`.
+7. Run `bash scripts/run-android-gradle.sh :app:bundleRelease`.
+
+On macOS, the repository helper can keep the upload-keystore password in the
+user's default Keychain instead of requiring repeated shell exports. The
+current PKCS12 upload keystore uses the same password for the store and its key.
+Configure it once with:
+
+```bash
+npm run android:signing:setup
+```
+
+Keychain prompts for the password directly, so it is not printed or added to
+shell history. Subsequent production builds can run the sync, readiness gate
+and signed bundle task with:
+
+```bash
+npm run android:bundle:release
+```
+
+The helper defaults to `~/.keystore/aura-upload.jks` and alias `aura-upload`.
+Only the non-secret path and alias may be overridden through
+`AURA_ANDROID_UPLOAD_STORE_FILE` and `AURA_ANDROID_UPLOAD_KEY_ALIAS`. Never put
+passwords in `.env`, Gradle properties, repository files or command arguments.
 
 The verifier reports only bounded configuration codes. It never prints
 credential values. Gradle rejects every release task when any upload-key
-variable is absent. Signing material must remain outside the repository and
+variable is absent or the bundled WebView assets reference the debug Firebase
+project. Signing material must remain outside the repository and
 must follow the Play App Signing custody decision in ADR 0002.
 
 ## Synthetic Verification

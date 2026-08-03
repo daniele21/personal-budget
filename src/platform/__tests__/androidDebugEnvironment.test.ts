@@ -11,7 +11,6 @@ const isolatedEnvironment = {
   VITE_ANDROID_FIREBASE_STORAGE_BUCKET: 'aura-debug.invalid',
   VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: '000000000000',
   VITE_ANDROID_FIREBASE_APP_ID: 'debug-app-id',
-  VITE_ANDROID_FIREBASE_WEB_CLIENT_ID: 'debug-web-client-id',
   VITE_ANDROID_FIRESTORE_DATABASE_ID: 'debug-db',
 };
 
@@ -33,7 +32,6 @@ describe('createAndroidDebugEnvOverrides', () => {
 
     expect(overrides).toMatchObject({
       VITE_FIREBASE_PROJECT_ID: 'aura-debug',
-      VITE_FIREBASE_WEB_CLIENT_ID: 'debug-web-client-id',
       VITE_GEMINI_API_KEY: '',
     });
   });

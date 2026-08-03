@@ -100,4 +100,9 @@ describe('canonical application routes', () => {
     renderRoute('/compare');
     expect(await screen.findByText('Reports compare page')).toBeInTheDocument();
   });
+
+  it('routes category report drill-downs through the shared Reports surface', async () => {
+    renderRoute('/reports/categories/Food?range=3M&lens=actual');
+    expect(await screen.findByText('Reports categories page')).toBeInTheDocument();
+  });
 });

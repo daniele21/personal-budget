@@ -17,7 +17,8 @@ import * as Finance from '../domain/finance';
 import { Transaction } from '../types';
 import { pageTransition } from '../utils/motion';
 import { getLocalDateInputValue } from '../utils/dates';
-import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, FocalSummaryCard, SegmentedControl } from '../components/ui';
+import { PeriodSelector, getRangeDates, RangeKey, BottomSheet, FocalSummaryCard } from '../components/ui';
+import { getSpendingPaceReport } from '../domain/monthlyReporting';
 
 // ─── Period helpers ──────────────────────────────────────────────────
 
@@ -134,7 +135,6 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
     return getLocalDateInputValue();
   });
   const [isAvgTrendOpen, setIsAvgTrendOpen] = useState(false);
-  const [spendingPaceScale, setSpendingPaceScale] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   const { start, end, prevStart, prevEnd, periodLabel, comparisonLabel } = useMemo(() => {
     if (range === 'CUSTOM') {
@@ -206,41 +206,10 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
     };
   }, [range, start, end]);
 
-  const sevenDaySpendingData = useMemo(
-    () => Finance.calculateRollingSpending(filteredTransactions, rollingStart, rollingEnd, 7),
-    [filteredTransactions, rollingStart, rollingEnd],
+  const spendingPace = useMemo(
+    () => getSpendingPaceReport(transactions, rollingStart, rollingEnd, lens),
+    [transactions, rollingStart, rollingEnd, lens],
   );
-  const fourWeekSpendingData = useMemo(
-    () => Finance.calculateRollingSpending(filteredTransactions, rollingStart, rollingEnd, 28),
-    [filteredTransactions, rollingStart, rollingEnd],
-  );
-  const dailySpendingData = useMemo(
-    () => sevenDaySpendingData.map((point) => ({ ...point, value: point.value / 7 })),
-    [sevenDaySpendingData],
-  );
-  const weeklySpendingData = useMemo(
-    () => fourWeekSpendingData.map((point) => ({ ...point, value: point.value / 4 })),
-    [fourWeekSpendingData],
-  );
-  const monthlySpendingData = useMemo(
-    () => Finance.calculateRollingSpending(filteredTransactions, rollingStart, rollingEnd, 90)
-      .map((point) => ({ ...point, value: point.value / 3 })),
-    [filteredTransactions, rollingStart, rollingEnd],
-  );
-
-  const spendingPaceData = spendingPaceScale === 'daily'
-    ? dailySpendingData
-    : spendingPaceScale === 'weekly'
-      ? weeklySpendingData
-      : monthlySpendingData;
-  const dailyPace = dailySpendingData.at(-1)?.value ?? 0;
-  const weeklyPace = weeklySpendingData.at(-1)?.value ?? 0;
-  const monthlyPace = monthlySpendingData.at(-1)?.value ?? 0;
-  const spendingPaceUnit = spendingPaceScale === 'daily'
-    ? 'per day, averaged over the preceding 7 days'
-    : spendingPaceScale === 'weekly'
-      ? 'per week, averaged over the preceding 4 weeks'
-      : 'per month, averaged over the preceding 3 months';
 
   const periodControl = (
     <PeriodSelector
@@ -318,21 +287,45 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
             <span className="text-xs font-bold text-on-surface">Spending pace</span>
             <span className="text-xs font-semibold text-on-surface-variant">View trend →</span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { value: dailyPace, label: 'per day', context: '7-day average' },
-              { value: weeklyPace, label: 'per week', context: '4-week average' },
-              { value: monthlyPace, label: 'per month', context: '3-month average' },
-            ].map((metric) => (
-              <div key={metric.label} className="min-w-0">
-                <p className="truncate font-headline text-base font-extrabold tabular-nums text-tertiary sm:text-lg">
-                  {formatCurrency(metric.value)}
-                </p>
-                <p className="text-[10px] font-bold text-on-surface">{metric.label}</p>
-                <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant">{metric.context}</p>
-              </div>
-            ))}
-          </div>
+          {spendingPace.monthlyPace !== null ? (
+            <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3">
+              {[
+                {
+                  value: spendingPace.monthlyPace,
+                  label: 'per month',
+                  context: `${spendingPace.baselineMonthCount} complete ${spendingPace.baselineMonthCount === 1 ? 'month' : 'months'}`,
+                  primary: true,
+                },
+                {
+                  value: spendingPace.weeklyEquivalent,
+                  label: 'per week',
+                  context: 'monthly equivalent',
+                  primary: false,
+                },
+                {
+                  value: spendingPace.dailyEquivalent,
+                  label: 'per day',
+                  context: 'monthly equivalent',
+                  primary: false,
+                },
+              ].map((metric) => (
+                <div key={metric.label} className="min-w-0">
+                  <p className={`truncate font-headline font-extrabold tabular-nums text-tertiary ${metric.primary ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+                    {formatCurrency(metric.value ?? 0)}
+                  </p>
+                  <p className="text-[10px] font-bold text-on-surface">{metric.label}</p>
+                  <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant">{metric.context}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl bg-surface-container-low px-3 py-3">
+              <p className="text-xs font-bold text-on-surface">Not enough complete history</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-on-surface-variant">
+                Spending pace starts after the first complete calendar month.
+              </p>
+            </div>
+          )}
         </button>
       )}
 
@@ -432,68 +425,91 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
       <BottomSheet
         isOpen={isAvgTrendOpen}
         title="Spending pace"
-        subtitle={`Rolling spending trend · ${rollingPeriodLabel}`}
+        subtitle={`Calendar-month spending · ${rollingPeriodLabel}`}
         onClose={() => setIsAvgTrendOpen(false)}
       >
         <div className="space-y-4 pt-2">
-          <SegmentedControl
-            value={spendingPaceScale}
-            options={[
-              { value: 'daily', label: 'Day' },
-              { value: 'weekly', label: 'Week' },
-              { value: 'monthly', label: 'Month' },
-            ]}
-            onChange={(value) => setSpendingPaceScale(value as 'daily' | 'weekly' | 'monthly')}
-            ariaLabel="Spending pace scale"
-            className="w-full"
-            size="compact"
-          />
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={spendingPaceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis
-                  dataKey="dateLabel"
-                  tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `€${Math.round(v)}`}
-                />
-                <Tooltip
-                  content={({ active, payload, label }: any) => {
-                    if (!active || !payload?.length) return null;
-                    return (
-                      <div className="glass-card rounded-2xl p-3 shadow-lg shadow-primary/5 text-xs min-w-[130px]">
-                        <p className="mb-1 font-bold text-on-surface">{label}</p>
-                        <div className="flex items-center justify-between gap-3 font-semibold text-tertiary">
-                          <span>{spendingPaceScale === 'daily' ? 'Daily pace' : spendingPaceScale === 'weekly' ? 'Weekly pace' : 'Monthly pace'}</span>
-                          <span className="font-extrabold">
-                            {formatCurrency(payload[0].value)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="var(--color-tertiary)"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          {spendingPace.points.length > 0 ? (
+            <>
+              <div
+                className="h-64 w-full"
+                role="img"
+                aria-label={`Actual monthly spending and monthly spending pace, ${rollingPeriodLabel}`}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={spendingPace.points} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)', fontWeight: 600 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 9, fill: 'var(--color-on-surface-variant)' }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `€${Math.round(v)}`}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }: any) => {
+                        if (!active || !payload?.length) return null;
+                        const point = payload[0].payload;
+                        return (
+                          <div className="glass-card min-w-[150px] rounded-2xl p-3 text-xs shadow-lg shadow-primary/5">
+                            <p className="mb-1.5 font-bold text-on-surface">{label}</p>
+                            <div className="space-y-1 font-semibold">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-on-surface-variant">Actual</span>
+                                <span className="font-extrabold text-primary">{formatCurrency(point.actual)}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-on-surface-variant">Pace ({point.baselineMonthCount} mo)</span>
+                                <span className="font-extrabold text-tertiary">{formatCurrency(point.pace)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      dataKey="actual"
+                      name="Actual monthly spending"
+                      fill="var(--color-primary)"
+                      fillOpacity={0.22}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={24}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="pace"
+                      name="Monthly pace"
+                      stroke="var(--color-tertiary)"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: 'var(--color-tertiary)' }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="sr-only">
+                {spendingPace.points.map((point) => (
+                  <li key={point.key}>
+                    {point.label}: actual {formatCurrency(point.actual)}, pace {formatCurrency(point.pace)} over {point.baselineMonthCount} complete months
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <div className="rounded-2xl bg-surface-container-low px-4 py-8 text-center">
+              <p className="text-sm font-bold text-on-surface">No complete month available</p>
+              <p className="mt-1 text-xs font-semibold text-on-surface-variant">
+                Choose a range containing at least one completed calendar month.
+              </p>
+            </div>
+          )}
           
           <div className="rounded-2xl bg-surface-container-low p-3.5 text-xs font-semibold leading-relaxed text-on-surface-variant">
-            Each point shows how much you were spending {spendingPaceUnit} on that date.
+            Bars show actual spending for each complete month. The line averages that month and up to two preceding complete months; weekly and daily figures are equivalents of the same baseline.
           </div>
         </div>
       </BottomSheet>

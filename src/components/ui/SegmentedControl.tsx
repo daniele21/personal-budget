@@ -23,6 +23,7 @@ interface SegmentedControlProps<T extends string> {
    * - `compact` — reduced height (min-h-7) for use inside cards
    */
   size?: 'default' | 'compact';
+  disabled?: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   tone = 'primary',
   size = 'default',
+  disabled = false,
 }: SegmentedControlProps<T>) {
   const activeLayoutId = React.useId();
   const activeToneClasses = tone === 'positive'
@@ -54,6 +56,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
+      aria-disabled={disabled}
       data-tone={tone}
       className={cn(
         'inline-flex items-center gap-0.5 rounded-full bg-surface-container-low p-1 border border-outline-variant/15',
@@ -69,10 +72,11 @@ export function SegmentedControl<T extends string>({
             type="button"
             aria-label={option.ariaLabel ?? option.label}
             aria-pressed={isActive}
+            disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
               // Base
-              'relative flex-1 rounded-full px-4 font-bold transition-all duration-200 active:scale-[0.96]',
+              'relative flex-1 rounded-full px-4 font-bold transition-all duration-200 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100',
               'focus-visible:outline-none focus-visible:ring-2',
               focusToneClasses,
               // Size

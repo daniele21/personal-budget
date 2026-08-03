@@ -118,7 +118,6 @@ export function useFirebaseAuth(): AuthRuntimeState {
         platform === 'android' ? 'android_configuration' : 'web_popup';
       await signInWithGoogleForPlatform(
         platform,
-        import.meta.env.VITE_FIREBASE_WEB_CLIENT_ID,
         {
           webPopupSignIn: async () => {
             diagnosticStage = 'web_popup';

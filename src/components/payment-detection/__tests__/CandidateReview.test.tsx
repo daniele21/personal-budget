@@ -24,6 +24,7 @@ const candidate = {
 
 const mocks = vi.hoisted(() => ({
   categories: ['Groceries', 'Dining'],
+  addCategory: vi.fn(),
   confirmCandidate: vi.fn(),
   ignoreCandidate: vi.fn(),
   selectCandidate: vi.fn(),
@@ -31,7 +32,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../context/AppContext', () => ({
-  useApp: () => ({ categories: mocks.categories }),
+  useApp: () => ({
+    categories: mocks.categories,
+    addCategory: mocks.addCategory,
+  }),
 }));
 
 vi.mock('../../../state/PaymentDetectionProvider', () => ({
@@ -56,7 +60,7 @@ describe('CandidateReview', () => {
     });
   });
 
-  it('shows minimized detection context and saves edited canonical fields', async () => {
+  it('reuses the canonical transaction editor and saves edited fields', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -65,17 +69,41 @@ describe('CandidateReview', () => {
     );
 
     expect(screen.getByText('Detected from a notification')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Add transaction' })).toBeInTheDocument();
     expect(screen.getByText(/Aura controlled test source/)).toBeInTheDocument();
     expect(screen.queryByText(/^Confidence/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/card number/i)).toBeInTheDocument();
+    expect(screen.getByText(/without notification text, card data/i)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Expense amount entry' })).toBeInTheDocument();
+    expect(screen.getByRole('group', {
+      name: 'Transaction type, detected payments are expenses',
+    })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {
+      name: 'Category: not selected. Choose category. Required',
+    })).toBeInTheDocument();
+    expect(screen.getByText(/Aura cannot infer the category/i)).toBeInTheDocument();
 
-    const amount = screen.getByLabelText('Amount');
-    await user.clear(amount);
-    await user.type(amount, '18.95');
+    await user.click(screen.getByRole('button', {
+      name: 'Edit amount, currently €12.34',
+    }));
+    for (let index = 0; index < 5; index += 1) {
+      await user.click(screen.getByRole('button', { name: 'Backspace' }));
+    }
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '8' }));
+    await user.click(screen.getByRole('button', { name: 'Decimal point' }));
+    await user.click(screen.getByRole('button', { name: '9' }));
+    await user.click(screen.getByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm Amount' }));
+
     const title = screen.getByLabelText('Transaction title');
     await user.clear(title);
     await user.type(title, 'Edited shop');
-    await user.selectOptions(screen.getByLabelText('Category'), 'Dining');
+    await user.click(screen.getByRole('button', {
+      name: 'Category: not selected. Choose category. Required',
+    }));
+    expect(screen.getByRole('dialog', { name: 'Category' }).parentElement)
+      .toHaveClass('z-[190]');
+    await user.click(screen.getByRole('option', { name: 'Dining' }));
     await user.selectOptions(screen.getByLabelText('Payment method'), 'Credit Card');
     await user.click(screen.getByRole('button', { name: 'Mark as extra' }));
     await user.click(screen.getByRole('button', { name: 'Save transaction' }));
@@ -88,6 +116,42 @@ describe('CandidateReview', () => {
       paymentMethod: 'Credit Card',
       reportingClass: 'extra',
     });
+  });
+
+  it('closes the full-screen editor without accepting the candidate', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <CandidateReview />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', {
+      name: 'Close detected transaction review',
+    }));
+
+    expect(mocks.selectCandidate).toHaveBeenCalledWith(null);
+    expect(mocks.confirmCandidate).not.toHaveBeenCalled();
+  });
+
+  it('closes a nested editor modal without dismissing the candidate review', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <CandidateReview />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', {
+      name: 'Edit amount, currently €12.34',
+    }));
+    expect(screen.getByRole('dialog', { name: 'Enter amount' })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Enter amount' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Add transaction' })).toBeInTheDocument();
+    expect(mocks.selectCandidate).not.toHaveBeenCalled();
   });
 
   it('keeps the review open and reports validation errors for invalid values', async () => {
@@ -103,6 +167,7 @@ describe('CandidateReview', () => {
     await user.click(screen.getByRole('button', { name: 'Save transaction' }));
 
     expect(await screen.findByText('Enter a title for this transaction.')).toBeInTheDocument();
+    expect(screen.getByText('Select a category.')).toBeInTheDocument();
     expect(mocks.confirmCandidate).not.toHaveBeenCalled();
   });
 });

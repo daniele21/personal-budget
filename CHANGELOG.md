@@ -4,6 +4,23 @@
 
 ### Added
 
+- Added a Google Wallet engineering connector using finite package visibility,
+  an anchored merchant-title/EUR-payment template, negative-rule priority, and
+  a synthetic/redacted corpus. Card labels and masked suffixes are matched only
+  as delimiters and are never captured or persisted.
+- Added the first real-source engineering connector for Intesa Sanpaolo Mobile
+  using finite package visibility, anchored physical/virtual card-payment
+  templates, negative-rule priority, and an entirely synthetic/redacted test
+  corpus. Masked card/account identifiers are neither captured nor persisted;
+  production rollout remains behind the documented privacy and pilot gates.
+- Added a macOS Keychain-backed Android release helper that retrieves the
+  upload-keystore password without exposing it in repository files, command
+  arguments, shell history, or build output.
+- Added a category report shared by the hosted PWA and Android bundle, with a
+  calendar-month spending plot, explicit partial-month state, top transaction
+  impacts, and scope-preserving navigation to filtered history.
+- Added complete-calendar-month averages to category ranking rows while keeping
+  selected-period totals inclusive of partial months.
 - Added the Capacitor 8 Android foundation for Aura with a versioned native
   project, bundled web assets, Android 16/API 36 baseline, isolated debug
   application ID, backup exclusions, and reproducible JDK 21 Gradle commands.
@@ -96,7 +113,18 @@
   iconography, restrained motion, and canonical square logo assets. Shared
   surfaces now reuse the light/dark elevation scale and automated policy tests
   guard against raw palette literals in React UI.
-
+- Consolidated detected-payment review and manual transaction entry onto one
+  shared transaction editor. The Android proposal now opens as a full-screen,
+  prefilled Add Transaction flow with the same amount keypad, category picker,
+  date, treatment, payment options, validation, and save hierarchy while
+  preserving atomic candidate acceptance.
+- Changed the default Categories reporting period to 12 months, including
+  category details opened without an explicit range, while preserving any
+  period the user already selected.
+- Reworked Spending Pace around one up-to-three-complete-month baseline, with
+  monthly pace as the primary value and mathematically reconciled weekly and
+  daily equivalents. The trend now compares actual calendar-month spending
+  with that moving monthly baseline.
 - Added `staituned.owner@gmail.com` as a second designated administrator
   alongside the existing administrator, centralizing application checks and
   routing all privileged Firestore rules through one shared rule helper.
@@ -133,7 +161,17 @@
   added safe-area-aware PWA/Android icon variants, stopped the compact UI mark
   from cropping its non-square source with `object-cover`, and geometrically
   centered the approved mark inside every square and splash canvas.
-
+- Kept the category picker above the full-screen detected-payment review and
+  replaced the misleading automatic first-category default with an explicit,
+  required category selection before saving.
+- Removed the duplicate Vite Web OAuth client requirement from Android Google
+  Sign-In. Android now uses the `default_web_client_id` generated from the
+  variant-specific Google Services configuration, with release-readiness
+  coverage for a missing Web OAuth client.
+- Prevented Android release bundles from reusing stale WebView assets produced
+  by the isolated debug Firebase build. Release readiness and Gradle now fail
+  closed unless bundled assets contain the production project and exclude the
+  debug project.
 - Scoped the Android development unit-test command to the configured debug
   variant so an isolated debug-only `google-services.json` does not require an
   unavailable production OAuth client.

@@ -24,8 +24,8 @@ cannot be inferred from an emulator.
 | Rule corpus | Pass, synthetic | Duplicates, semantic dedupe, absent merchant, unsupported currency, OTP, decline, cancellation, balance and promotion |
 | Owner lifecycle | Pass, engineering | Logout, owner change, reset, purge journal and encrypted Room boundary |
 | Detection network surface | Pass, structural | Native and React detection paths contain no network, Firebase, Gemini, analytics or content-log call |
-| Release configuration verifier | Blocked as designed | Local Google Services file is debug-only |
-| Release build | Blocked as designed | Upload-key environment and production Google/OAuth configuration absent |
+| Google Services variant boundary | Pass, configuration | Debug and release JSON files are selected from separate Gradle source sets; the verifier and Gradle release gate reject stale WebView assets containing the debug Firebase project without logging configuration values |
+| Release build | Blocked as designed | Upload-key environment remains external and required |
 | Dependency audit | Blocked | 13 advisories remain; npm offers only breaking/unsafe forced changes for the production high findings |
 
 ## Physical Matrix — Required
@@ -67,7 +67,7 @@ Still open:
 - physical network/log/backup proof;
 - dependency advisories;
 - security-owner approval;
-- production signing and OAuth certificate evidence;
+- production signing and physical Google Sign-In evidence from a Play-installed build;
 - privacy policy, role, lawful basis, DPIA and data inventory approval;
 - whole-app Data Safety and current Play policy review.
 

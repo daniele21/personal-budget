@@ -202,9 +202,9 @@ export const HistoryPage = () => {
     }
     return 'current-month';
   });
-  const [lens, setLens] = useState<'actual' | 'normalized'>(() => {
+  const [lens, setLens] = useState<Finance.AnalyticsLens>(() => {
     const l = searchParams.get('lens');
-    return (l === 'normalized' || l === 'actual') ? l : 'actual';
+    return (l === 'normalized' || l === 'actual' || l === 'extras') ? l : 'actual';
   });
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -229,7 +229,7 @@ export const HistoryPage = () => {
     }
     
     const lensStr = params.get('lens');
-    if (lensStr === 'normalized' || lensStr === 'actual') {
+    if (lensStr === 'normalized' || lensStr === 'actual' || lensStr === 'extras') {
       setLens(lensStr);
     }
 
@@ -332,7 +332,8 @@ export const HistoryPage = () => {
     selectedCategories.length > 0 ||
     sortKey !== 'date' ||
     sortDirection !== 'desc' ||
-    periodPreset !== 'current-month'
+    periodPreset !== 'current-month' ||
+    lens !== 'actual'
   );
 
   const toggleCategory = (category: string) => {
@@ -462,7 +463,7 @@ export const HistoryPage = () => {
     if (lens !== 'actual') {
       chips.push({
         key: 'lens',
-        label: 'Net of extras',
+        label: lens === 'extras' ? 'Extras only' : 'Net of extras',
         onRemove: () => setLens('actual'),
       });
     }

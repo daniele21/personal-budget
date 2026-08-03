@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { CalendarDays, ChevronDown, ChevronRight, Link as LinkIcon } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   PieChart,
@@ -12,7 +12,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Legend,
 } from 'recharts';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
@@ -25,6 +24,7 @@ import { pageTransition } from '../utils/motion';
 import { getLocalDateInputValue } from '../utils/dates';
 import { FocalSummaryCard, SegmentedControl, PeriodSelector, getRangeDates, RangeKey } from '../components/ui';
 import { CompareInsights } from '../components/compare/CompareInsights';
+import { getCategorySpendingSummaries } from '../domain/monthlyReporting';
 
 // ─── Period helpers ────────────────────────────────────────────────────
 
@@ -109,6 +109,7 @@ function SpendingByCategoryTab({
   start,
   end,
   lens,
+  range,
 }: {
   transactions: Transaction[];
   periodLabel: string;
@@ -116,14 +117,15 @@ function SpendingByCategoryTab({
   start: Date;
   end: Date;
   lens: Finance.AnalyticsLens;
+  range: RangeKey;
 }) {
   const totalExpenses = useMemo(
     () => Finance.calculateTotals(transactions).expenses,
     [transactions],
   );
   const categorySpending = useMemo(
-    () => Finance.spendingByCategory(transactions),
-    [transactions],
+    () => getCategorySpendingSummaries(transactions, start, end, 'actual'),
+    [transactions, start, end],
   );
 
   // Assign a colour to each category using getCategoryTheme
@@ -131,6 +133,7 @@ function SpendingByCategoryTab({
     () =>
       categorySpending.map((cat) => ({
         ...cat,
+        amount: cat.selectedTotal,
         color: getCategoryTheme(cat.category).color,
       })),
     [categorySpending],
@@ -202,7 +205,8 @@ function SpendingByCategoryTab({
         {slices.map((cat, i) => (
           <Link
             key={cat.category}
-            to={`/transactions?category=${encodeURIComponent(cat.category)}&startDate=${formatDate(start)}&endDate=${formatDate(end)}&preset=custom&lens=${lens}`}
+            to={`/reports/categories/${encodeURIComponent(cat.category)}?range=${range}&startDate=${formatDate(start)}&endDate=${formatDate(end)}&lens=${lens}`}
+            aria-label={`Open ${cat.category} category report`}
             className="flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors duration-150"
           >
             {/* Rank */}
@@ -233,6 +237,11 @@ function SpendingByCategoryTab({
                 <p className="text-[10px] font-bold text-on-surface-variant">
                   {(cat.percentage * 100).toFixed(0)}%
                 </p>
+                {cat.monthlyAverage !== null && (
+                  <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant">
+                    {formatCurrency(cat.monthlyAverage)}/mo · {cat.completeMonthCount} complete
+                  </p>
+                )}
               </div>
               <ChevronRight className="h-4 w-4 text-on-surface-variant/40 shrink-0" />
             </div>
@@ -619,7 +628,9 @@ export function ComparePage({
   const today = new Date();
   const [anchorYear, setAnchorYear] = useState(today.getFullYear());
   const [anchorMonth, setAnchorMonth] = useState(today.getMonth());
-  const [range, setRange] = useState<RangeKey>('1M');
+  const [range, setRange] = useState<RangeKey>(() => (
+    initialTab === 'spending' ? '12M' : '1M'
+  ));
   const [tab, setTab] = useState<Tab>(initialTab);
   const [localLens, setLocalLens] = useState<Finance.AnalyticsLens>('actual');
   const lens = analyticsLens ?? localLens;
@@ -699,6 +710,7 @@ export function ComparePage({
           start={start}
           end={end}
           lens={lens}
+          range={range}
         />
       ) : (
         <CompareTab

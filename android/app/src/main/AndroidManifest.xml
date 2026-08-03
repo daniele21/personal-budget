@@ -3,6 +3,8 @@
 
     <queries>
         <package android:name="com.staituned.aura.syntheticnotifications" />
+        <package android:name="com.latuabancaperandroid" />
+        <package android:name="com.google.android.apps.walletnfcrel" />
     </queries>
 
     <application

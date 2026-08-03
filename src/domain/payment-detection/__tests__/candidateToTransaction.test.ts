@@ -29,13 +29,13 @@ function candidate(
 }
 
 describe('payment candidate transaction mapping', () => {
-  it('uses the device-local calendar day and existing transaction defaults', () => {
+  it('uses the local day and requires an explicit category selection', () => {
     const form = candidateToReviewForm(candidate(), ['Groceries', 'Dining']);
 
     expect(form).toEqual({
       amount: '12.34',
       title: 'Local shop',
-      category: 'Groceries',
+      category: '',
       date: '2026-07-28',
       paymentMethod: 'Debit Card',
       reportingClass: undefined,

@@ -1,0 +1,10 @@
+# Synthetic, redacted Google Wallet templates derived from a user-provided UI example.
+# No row contains a real amount, merchant, card name, suffix, time, or raw notification.
+wallet-standard-comma|EXACT|PANIFICIO DI PROVA|€12,40 with TEST Card Plus ••0000|1240|PANIFICIO DI PROVA|
+wallet-standard-dot|EXACT|NEGOZIO TEST 24|€7.25 with Demo Debit ••0000|725|NEGOZIO TEST 24|
+wallet-asterisk-mask|EXACT|SERVIZIO DI PROVA|€3,10 with Carta Test **0000|310|SERVIZIO DI PROVA|
+wallet-missing-title|REVIEW||€9,90 with Demo Card ••0000|990||
+wallet-declined|IGNORED|PAGAMENTO RIFIUTATO|€12,40 with TEST Card Plus ••0000|||NEGATIVE_SIGNAL
+wallet-cancelled|IGNORED|PAGAMENTO ANNULLATO|€12,40 with TEST Card Plus ••0000|||NEGATIVE_SIGNAL
+wallet-unsupported-currency|IGNORED|NEGOZIO DI PROVA|$12.40 with TEST Card Plus ••0000|||UNSUPPORTED_CURRENCY
+wallet-not-a-payment|IGNORED|GOOGLE WALLET|Your pass is ready|||NO_APPROVED_PATTERN

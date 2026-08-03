@@ -27,6 +27,18 @@ internal object SupportedPaymentAppCatalog {
             displayName = "Aura controlled test source",
             syntheticOnly = true,
         ),
+        SupportedPaymentApp(
+            id = "intesa-sanpaolo-mobile",
+            packageName = "com.latuabancaperandroid",
+            displayName = "Intesa Sanpaolo Mobile",
+            syntheticOnly = false,
+        ),
+        SupportedPaymentApp(
+            id = "google-wallet",
+            packageName = "com.google.android.apps.walletnfcrel",
+            displayName = "Google Wallet",
+            syntheticOnly = false,
+        ),
     )
 
     fun findByPackageName(packageName: String): SupportedPaymentApp? =

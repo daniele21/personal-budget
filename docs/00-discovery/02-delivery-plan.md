@@ -1,5 +1,193 @@
 # Delivery Plan
 
+## Implemented Initiative: Category Reporting And Calendar-Month Spending Pace
+
+The product and metric decisions were approved and implemented on 2026-07-29.
+The implementation remains in the shared React application and financial domain used by both
+the hosted PWA and the bundled Android Capacitor application. The detailed
+behavioral contract is
+[`category-reporting-and-monthly-pace.md`](../specs/category-reporting-and-monthly-pace.md).
+
+### Definition Of Ready
+
+- [x] Category detail, transaction drill-down, and per-category average are in
+  approved scope.
+- [x] Spending Pace uses one calendar-month baseline.
+- [x] Partial months remain in selected-period totals but are excluded from
+  monthly averages.
+- [x] The shared React/Capacitor architecture and local-only privacy boundary
+  are confirmed.
+- [x] The user-facing contract, edge cases, and denominator labels are
+  specified.
+- [x] Baseline test fixtures for month boundaries, sparse history,
+  reimbursements, analytics lenses, and partial custom ranges are prepared
+  before changing production calculations.
+
+### Completion Record
+
+- R0-R3 are implemented in the shared reporting domain and React route layer.
+- `npm run test:regression` passes with 85 Vitest files and 394 tests, followed
+  by the production Vite build.
+- Android `testDebugUnitTest`, debug asset synchronization, `assembleDebug`, and
+  all 34 API 36 instrumentation tests pass with the same shared reporting
+  bundle.
+- Real-browser responsive QA passed at 390 px and 320 px without horizontal
+  overflow. The drill-down, period/lens scope, partial-month label, transaction
+  preview, filtered-history URL, and insufficient pace-history state were
+  inspected.
+- No migration, backend deployment, external provider, or stored-data rollback
+  step is required.
+
+### Delivery Slices
+
+#### R0. Domain Contract And Regression Fixtures
+
+Dependencies: none.
+
+- Add pure calendar-month boundary and bucket helpers in a focused reporting
+  domain module rather than expanding page-level calculations.
+- Add a category-report result containing selected-period total, complete-month
+  average metadata, monthly points, and ranked transaction impacts.
+- Add a Spending Pace result containing actual complete-month totals, the
+  up-to-three-month moving average, daily and weekly equivalents, and the
+  available-history denominator.
+- Apply `Actual | Net of extras | Extras only` before both aggregations.
+- Use the canonical reimbursement treatment and prevent a reportable expense
+  bucket from becoming negative.
+- Cover local-time month boundaries, year boundaries, leap years, zero months,
+  sparse ledgers, archived category references, and custom partial ranges.
+
+Exit gate: pure domain tests demonstrate the approved formulas without any UI
+dependency.
+
+#### R1. Category Ranking Monthly Average
+
+Dependencies: R0.
+
+- Keep category total and share as the primary ranked-list values.
+- Add average monthly category spending when at least two complete calendar
+  months exist.
+- Label the exact denominator, including when the selected total also contains
+  a partial month.
+- Preserve the existing mobile-first list, supplementary desktop donut, report
+  lens, empty state, and ordering by selected-period total.
+- Verify the two-line value treatment at 320, 360, 390, and 430 px.
+
+Exit gate: every visible average can be reconciled with the complete calendar
+months in the selected range.
+
+#### R2. Category Detail Vertical Slice
+
+Dependencies: R0.
+
+- Add a canonical category-detail route under Reports.
+- Preserve category, selected range or custom dates, and analytics lens across
+  navigation, refresh, browser history, and Android WebView navigation.
+- Render category identity, selected-period total, average and denominator,
+  calendar-month plot, partial-month indicator, and the five highest-impact
+  transactions.
+- Include zero-spend months so the line does not visually skip inactivity.
+- Link to full transaction history with the same category, period, and
+  compatible lens filters.
+- Handle renamed or missing category routes with a non-destructive empty/not
+  found state; no category-ID migration is part of this initiative.
+
+Exit gate: the same internal route and calculations work in hosted web and the
+bundled Android build without native financial logic.
+
+#### R3. Calendar-Month Spending Pace
+
+Dependencies: R0.
+
+- Replace seven-day, twenty-eight-day, and ninety-day calculations with the
+  approved complete-calendar-month baseline.
+- Present monthly pace as the primary value and daily/weekly equivalents as
+  secondary views of the same baseline.
+- Replace the Day/Week/Month trend selector with actual monthly totals plus an
+  up-to-three-month average line.
+- End standard pace histories on the last completed month.
+- For custom ranges, include only fully enclosed completed months.
+- Show an explicit insufficient-history state instead of silently treating
+  pre-ledger months as zero.
+- Ensure reimbursements and all three analytics lenses match the rest of
+  Reports.
+
+Exit gate: inserting a monthly recurring expense on different days within the
+same calendar month does not change that month's pace result.
+
+#### R4. Shared Release Verification And Documentation
+
+Dependencies: R1, R2, R3.
+
+- Run `npm run test:regression`.
+- Add route, category-average, detail, lens, reimbursement, empty-state, and
+  Spending Pace React regressions.
+- Add Playwright coverage for category row → detail → filtered transactions,
+  browser back/forward, responsive layout, keyboard access, and light/dark
+  rendering.
+- Run the Android debug asset build and a bundled-WebView route smoke test.
+- Verify chart information is available without hover, tooltips have accessible
+  equivalents, focus order remains logical, and reduced motion is respected.
+- Update the project brief, discovery documents, feature specification,
+  testing strategy, and `CHANGELOG.md` to implemented truth.
+
+Exit gate: shared web and Android behavior is verified, documentation describes
+the shipped formulas, and no data migration or rollback action is required.
+
+### Cross-Cutting Requirements
+
+#### Privacy, GDPR, Security, And AI Governance
+
+- Personal data touched: existing local transaction amount, date, category,
+  title, reporting class, and reporting note when already displayed by
+  transaction surfaces.
+- Processing purpose and storage do not change; reports remain deterministic
+  local derivations of the canonical ledger.
+- No new collection, retention, deletion, export, transfer, subprocessor,
+  remote telemetry, AI model, or automated financial advice is introduced.
+- Existing authentication and authorization boundaries remain unchanged.
+- No GDPR inventory, lawful-basis, transfer, subprocessor, or AI Act artifact
+  change is required unless implementation expands beyond this contract.
+
+#### Observability, Performance, And Cost
+
+- Aggregate transactions in bounded passes using maps keyed by calendar month
+  and category; do not rescan the complete ledger for every chart point.
+- Reuse the existing chart dependency; do not add a visualization package.
+- Errors remain within the existing client error boundary and privacy-safe
+  diagnostics. Do not log transaction amounts, names, categories, or notes.
+- No provider usage, backend workload, storage growth, tenant attribution, or
+  usage-based cost is added; an admin cost panel is not applicable.
+
+### Risks And Mitigations
+
+- Partial totals and complete-month averages can look inconsistent: label the
+  denominator and partial month explicitly.
+- String category routes are not durable across rename: fail safely and retain
+  the existing filtered-history path; category IDs remain separate scope.
+- Local/UTC boundary drift can move late-night transactions between buckets:
+  centralize one local-calendar boundary contract and test timezone edges.
+- Sparse history can present a misleading zero baseline: begin eligible history
+  with the earliest ledger month and expose the available month count.
+- Large ledgers can make charts expensive: aggregate once, memoize by
+  transaction set/range/lens, and cap the transaction preview at five.
+
+### Definition Of Done
+
+- Category ranking shows accurate selected-period totals and explicitly scoped
+  complete-month averages.
+- Category detail preserves scope and shows reconciliable monthly points,
+  partial states, and top transactions on web and Android.
+- Spending Pace uses only the approved calendar-month baseline and all displayed
+  equivalents reconcile mathematically.
+- Actual, Net of extras, Extras only, reimbursements, zero months, archived
+  categories, partial ranges, and insufficient history are covered.
+- Typecheck, unit/component tests, production build, targeted E2E, responsive
+  accessibility QA, and Android bundled-route smoke verification pass.
+- Documentation and changelog reflect implemented behavior.
+- Rollback is a client-bundle rollback only; no schema or stored-data recovery
+  is necessary.
+
 ## Planned Initiative: Android Companion And Payment Detection
 
 Aura will add a Capacitor-based Android distribution without replacing the PWA. The first native feature is optional, local-only detection of EUR card-payment candidates from supported and user-selected notification sources.

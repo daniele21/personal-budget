@@ -1,0 +1,11 @@
+# Synthetic, redacted Intesa Sanpaolo Mobile templates derived from user-provided UI examples.
+# No row contains a real amount, merchant, date, time, card/account suffix, or notification title.
+card-standard|EXACT||💸 Hai pagato 24,50 € con la carta *0000 il 12.03 alle ore 14:25 da NEGOZIO DI PROVA, ROMA.|2450|NEGOZIO DI PROVA, ROMA|
+card-standard-dot-decimal|EXACT||Hai pagato 7.25 € con la carta *0000 il 03.12 alle ore 09:05 da SERVIZIO TEST*ONLINE.|725|SERVIZIO TEST*ONLINE|
+card-virtual|EXACT||💸 Hai pagato 3,10 € con la carta virtuale *0000 rif. carta *0000 il 05.04 alle ore 06:15 da PROVIDER TEST *PARKING.|310|PROVIDER TEST *PARKING|
+salary-credit|IGNORED||È stato accreditato lo stipendio/pensione di 2.500,00 euro sul conto xxx000 - 28.07.2026|||NEGATIVE_SIGNAL
+verification-code|IGNORED||Codice di verifica 000000 per autorizzare l’operazione|||NEGATIVE_SIGNAL
+available-balance|IGNORED||Saldo disponibile 1.000,00 euro|||NEGATIVE_SIGNAL
+bank-transfer|IGNORED||Bonifico di 20,00 euro eseguito correttamente|||NEGATIVE_SIGNAL
+declined-card|IGNORED||Hai pagato 24,50 € con la carta *0000: operazione non autorizzata|||NEGATIVE_SIGNAL
+unsupported-currency|IGNORED||Hai pagato 12.34 USD con la carta *0000|||UNSUPPORTED_CURRENCY

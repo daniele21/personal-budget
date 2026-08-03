@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BellRing, Check, ShieldCheck, Trash2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { BellRing, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   candidateToReviewForm,
@@ -8,21 +9,14 @@ import {
   type PaymentCandidateReviewForm,
 } from '../../domain/payment-detection';
 import { useApp } from '../../context/AppContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { usePaymentDetection } from '../../state/PaymentDetectionProvider';
-import { ReportingTreatmentToggle } from '../ExtraFlagToggle';
+import { TransactionEditor } from '../transactions/TransactionEditor';
 import { useToast } from '../Toast';
-import { BottomSheet, Button, Input, Select } from '../ui';
-
-const PAYMENT_METHODS = [
-  'Debit Card',
-  'Credit Card',
-  'Cash',
-  'Bank Transfer',
-];
 
 export function CandidateReview() {
   const navigate = useNavigate();
-  const { categories } = useApp();
+  const { categories, addCategory } = useApp();
   const {
     selectedCandidate,
     busyCandidateId,
@@ -33,7 +27,17 @@ export function CandidateReview() {
   const { toast } = useToast();
   const [form, setForm] = useState<PaymentCandidateReviewForm | null>(null);
   const [errors, setErrors] = useState<PaymentCandidateReviewErrors>({});
-  const firstInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const closeReview = () => selectCandidate(null);
+  const closeReviewFromEscape = () => {
+    const modalDialogs = Array.from(document.querySelectorAll<HTMLElement>(
+      '[role="dialog"][aria-modal="true"]',
+    ));
+    if (modalDialogs.at(-1) !== dialogRef.current) return;
+    closeReview();
+  };
+  useFocusTrap(dialogRef, Boolean(selectedCandidate), closeReviewFromEscape);
 
   useEffect(() => {
     if (!selectedCandidate) {
@@ -43,17 +47,7 @@ export function CandidateReview() {
     }
     setForm(candidateToReviewForm(selectedCandidate, categories));
     setErrors({});
-    window.setTimeout(() => firstInputRef.current?.focus(), 80);
   }, [categories, selectedCandidate]);
-
-  const categoryOptions = useMemo(
-    () => categories.map((category) => ({ value: category, label: category })),
-    [categories],
-  );
-  const paymentOptions = useMemo(
-    () => PAYMENT_METHODS.map((method) => ({ value: method, label: method })),
-    [],
-  );
 
   const update = <K extends keyof PaymentCandidateReviewForm>(
     field: K,
@@ -67,10 +61,8 @@ export function CandidateReview() {
     if (!selectedCandidate || !form) return;
     const nextErrors = validatePaymentCandidateReview(form);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) {
-      firstInputRef.current?.focus();
-      return;
-    }
+    if (Object.keys(nextErrors).length > 0) return;
+
     try {
       await confirmCandidate(selectedCandidate.id, form);
       toast('Transaction saved and payment candidate cleared.', 'success');
@@ -83,138 +75,118 @@ export function CandidateReview() {
   if (!selectedCandidate || !form) return null;
   const busy = busyCandidateId === selectedCandidate.id;
 
-  return (
-    <BottomSheet
-      isOpen
-      title="Review payment"
-      eyebrow="Detected from a notification"
-      subtitle={`Source: ${selectedCandidate.sourceApp.displayName}. Check every value before saving.`}
-      onClose={() => selectCandidate(null)}
-      contentClassName="space-y-4"
-      footer={(
-        <Button
-          fullWidth
-          onClick={() => void handleConfirm()}
-          disabled={busy}
-        >
-          <Check className="h-4 w-4" aria-hidden="true" />
-          {busy ? 'Saving securely…' : 'Save transaction'}
-        </Button>
-      )}
+  const review = (
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="detected-transaction-review-title"
+      className="fixed inset-0 z-[175] overflow-y-auto overscroll-contain bg-surface"
     >
-      <div className="flex items-start gap-3 rounded-2xl bg-primary/8 p-3">
-        <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-        <p className="text-xs leading-relaxed text-on-surface-variant">
-          Aura detected these values locally. No card number, account identifier,
-          raw notification text, or confidence score is stored in the transaction.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label htmlFor="detected-payment-amount" className="mb-1 block text-micro font-bold text-on-surface-variant">
-            Amount
-          </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-primary">
-              €
-            </span>
-            <input
-              ref={firstInputRef}
-              id="detected-payment-amount"
-              inputMode="decimal"
-              value={form.amount}
-              onChange={(event) => update('amount', event.target.value)}
-              aria-invalid={Boolean(errors.amount)}
-              aria-describedby={errors.amount ? 'detected-payment-amount-error' : undefined}
-              className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest py-2.5 pl-8 pr-3 text-sm font-bold text-on-surface outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-            />
+      <header className="sticky top-0 z-30 border-b border-outline-variant/15 bg-surface/95 px-4 py-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-md items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-micro font-bold uppercase tracking-wide text-primary">
+              Detected from a notification
+            </p>
+            <h2
+              id="detected-transaction-review-title"
+              className="font-headline text-xl font-extrabold text-on-surface"
+            >
+              Add transaction
+            </h2>
+            <p className="mt-0.5 truncate text-xs text-on-surface-variant">
+              Source: {selectedCandidate.sourceApp.displayName}
+            </p>
           </div>
-          {errors.amount && <p id="detected-payment-amount-error" role="alert" className="mt-1 text-xs text-tertiary">{errors.amount}</p>}
+          <button
+            type="button"
+            onClick={closeReview}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            aria-label="Close detected transaction review"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
-        <div>
-          <Input
-            id="detected-payment-date"
-            type="date"
-            label="Date"
-            value={form.date}
-            onChange={(event) => update('date', event.target.value)}
-            aria-invalid={Boolean(errors.date)}
-            aria-describedby={errors.date ? 'detected-payment-date-error' : undefined}
-          />
-          {errors.date && <p id="detected-payment-date-error" role="alert" className="mt-1 text-xs text-tertiary">{errors.date}</p>}
-        </div>
-      </div>
+      </header>
 
-      <div>
-        <Input
-          id="detected-payment-title"
-          label="Transaction title"
-          value={form.title}
-          onChange={(event) => update('title', event.target.value)}
-          aria-invalid={Boolean(errors.title)}
-          aria-describedby={errors.title ? 'detected-payment-title-error' : undefined}
-        />
-        {errors.title && <p id="detected-payment-title-error" role="alert" className="mt-1 text-xs text-tertiary">{errors.title}</p>}
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <Select
-            id="detected-payment-category"
-            label="Category"
-            value={form.category}
-            options={categoryOptions}
-            onChange={(event) => update('category', event.target.value)}
-            aria-invalid={Boolean(errors.category)}
-            aria-describedby={errors.category ? 'detected-payment-category-error' : undefined}
-          />
-          {errors.category && <p id="detected-payment-category-error" role="alert" className="mt-1 text-xs text-tertiary">{errors.category}</p>}
-        </div>
-        <Select
-          id="detected-payment-method"
-          label="Payment method"
-          value={form.paymentMethod}
-          options={paymentOptions}
-          onChange={(event) => update('paymentMethod', event.target.value)}
-        />
-      </div>
-
-      <div className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-surface-container-low p-3">
-        <div>
-          <p className="text-xs font-bold text-on-surface">Reporting treatment</p>
-          <p className="text-micro text-on-surface-variant">
-            Leave unselected for a regular expense.
-          </p>
-        </div>
-        <ReportingTreatmentToggle
+      <main className="px-4 pt-4">
+        <TransactionEditor
+          amount={form.amount}
+          setAmount={(value) => update('amount', value)}
           type="expense"
-          value={form.reportingClass}
-          onChange={(value) => update('reportingClass', value)}
+          setType={() => undefined}
+          typeLocked
+          category={form.category}
+          setCategory={(value) => update('category', value)}
+          title={form.title}
+          setTitle={(value) => update('title', value)}
+          description=""
+          setDescription={() => undefined}
+          reportingClass={form.reportingClass}
+          setReportingClass={(value) => update('reportingClass', value)}
+          date={form.date}
+          setDate={(value) => update('date', value)}
+          paymentMethod={form.paymentMethod}
+          setPaymentMethod={(value) => update('paymentMethod', value)}
+          setAttachmentUrl={() => undefined}
+          categories={categories}
+          onAddCategory={addCategory}
+          categorySelectionRequired
+          categoryHint="Aura cannot infer the category from this notification. Choose one before saving."
+          onSubmit={handleConfirm}
+          submitLabel="Save transaction"
+          errors={errors}
+          clearError={(field) => {
+            setErrors((current) => ({ ...current, [field]: undefined }));
+          }}
+          initialMoreOptionsOpen
+          allowNotesAndReceipt={false}
+          busy={busy}
+          stickyBottomClassName="bottom-0"
+          context={(
+            <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/8 p-3.5">
+              <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-on-surface">
+                  Check the prefilled details
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
+                  Aura detected these values locally. Saving creates a normal
+                  transaction without notification text, card data, or a
+                  confidence score.
+                </p>
+              </div>
+            </div>
+          )}
+          secondaryAction={(
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 rounded-2xl border border-secondary/20 bg-secondary/5 p-3">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden="true" />
+                <p className="text-xs leading-relaxed text-on-surface-variant">
+                  The pending candidate is removed only after Aura verifies the
+                  saved transaction.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  void ignoreCandidate(selectedCandidate.id)
+                    .then(() => toast('Payment ignored.', 'success'))
+                    .catch(() => toast('The payment could not be ignored.', 'error'));
+                }}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-tertiary transition-colors hover:bg-tertiary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary/30 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Ignore without creating a transaction
+              </button>
+            </div>
+          )}
         />
-      </div>
-
-      <div className="flex items-start gap-3 rounded-2xl border border-secondary/20 bg-secondary/5 p-3">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden="true" />
-        <p className="text-xs leading-relaxed text-on-surface-variant">
-          Saving creates a normal Aura transaction. The pending native candidate
-          is removed only after Aura reads the transaction back successfully.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          void ignoreCandidate(selectedCandidate.id)
-            .then(() => toast('Payment ignored.', 'success'))
-            .catch(() => toast('The payment could not be ignored.', 'error'));
-        }}
-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-tertiary transition-colors hover:bg-tertiary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary/30 disabled:opacity-50"
-      >
-        <Trash2 className="h-4 w-4" aria-hidden="true" />
-        Ignore without creating a transaction
-      </button>
-    </BottomSheet>
+      </main>
+    </div>
   );
+
+  return typeof document === 'undefined' ? review : createPortal(review, document.body);
 }

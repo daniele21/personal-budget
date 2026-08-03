@@ -145,8 +145,8 @@ Questi elementi non bloccano M1-M2 né lo spike con sorgente sintetica. Bloccano
 | ID | Elemento | Owner richiesto | Gate | Stato |
 |---|---|---|---|---|
 | B-001 | Verificare controllo namespace e disponibilità Play di `com.staituned.aura` | Product/Release owner | Prima del primo artifact firmato o della registrazione Firebase Android definitiva | Aperto |
-| B-002 | Selezionare e verificare la prima o le prime due app di pagamento | Product owner | Prima di M4 su sorgenti reali | Aperto |
-| B-003 | Approvare fonte, consenso, redazione e retention delle fixture reali | Privacy owner + QA | Prima di acquisire o committare una fixture reale | Aperto |
+| B-002 | Selezionare e verificare la prima o le prime due app di pagamento | Product owner | Prima di M4 su sorgenti reali | Chiuso: Google Wallet e Intesa Sanpaolo Mobile selezionate; package verificati sui listing ufficiali il 2026-08-03 |
+| B-003 | Approvare fonte, consenso, redazione e retention delle fixture reali | Privacy owner + QA | Prima di acquisire o committare una fixture reale | Chiuso per Intesa e Google Wallet engineering: esempi UI forniti volontariamente dal tester-owner; repository contiene solo template sintetici/redatti senza retention del raw |
 | B-004 | min/compile/target SDK 36 e matrice Android 16/API 36 | Android owner | Decisione M0 aggiornata in D-113 | Chiuso |
 | B-005 | Attivare Play App Signing, custodire separatamente la upload key e verificare il Play Console account | Release owner | Prima della prima distribuzione interna firmata | Aperto |
 | B-006 | Assegnare privacy owner, validare base giuridica/data inventory ed eseguire screening DPIA | Privacy owner | Prima di M4 su sorgenti reali e prima del pilot | Aperto |
@@ -963,8 +963,9 @@ Task:
 - [x] Aggiungere lista "Pagamenti da verificare".
 - [x] Coprire empty, loading, error, expired e permission-revoked states.
 - [x] Aggiungere review con importo, merchant, data locale, metodo di pagamento e app sorgente.
+- [x] Riutilizzare l'editor canonico di Add Transaction in una review full-screen precompilata, senza mantenere un secondo layout divergente.
 - [x] Permettere modifica di importo, titolo, categoria, data, metodo di pagamento e trattamento.
-- [x] Usare i default correnti di Add Transaction per categoria/metodo, senza apprendimento merchant; entrambi restano visibili.
+- [x] Usare il default corrente di Add Transaction per il metodo di pagamento; lasciare la categoria non selezionata e obbligatoria perché la detection non la inferisce né la apprende.
 - [x] Non mostrare confidence numerica.
 - [x] Convertire timestamp nel giorno locale senza shift UTC.
 - [x] Creare Transaction attraverso azione semantica e non localStorage diretto.
@@ -1002,6 +1003,21 @@ Evidenze M8 al 2026-07-28:
   verifica manuale TalkBack multi-device resta nel gate M9;
 - TypeScript, 82 file Vitest/373 test, build Vite, Android unit test, lint,
   assemble e 32 test strumentati sul Pixel 9 Pro API 36 sono verdi.
+
+Aggiornamento M8 al 2026-08-03:
+
+- la review non usa più un form duplicato nel bottom sheet: Add Transaction e
+  Candidate Review condividono `TransactionEditor`, inclusi keypad importo,
+  category picker, data, trattamento, opzioni progressive e validazione;
+- il percorso rilevato resta una spesa precompilata e conserva l'accettazione
+  nativa atomica; note e ricevuta restano escluse finché non faranno parte del
+  contratto begin/complete acceptance, così nessun valore mostrato può essere
+  perso silenziosamente;
+- i test React coprono layout condiviso, modifica dei campi canonici,
+  validazione e chiusura senza accettazione.
+- il category picker usa il livello modale superiore anche dentro la review
+  full-screen; la categoria iniziale è ora uno stato richiesto esplicito e il
+  salvataggio resta bloccato fino alla selezione dell'utente.
 
 Exit criteria:
 
@@ -1455,6 +1471,8 @@ Next: prossima task verificabile
 | 2026-07-28 | M4/M5 | Chiusa la recovery M4 e implementato il rule engine sintetico M5 con schema versionato, normalizzazione, negative rules, tier ed esclusione identificativi | `android:verify:listener-recovery` verde su process recreation/rebind/reboot/revoca API 36; 10 instrumentation test; unit corpus e benchmark 10.000 parsing verdi | Implementare M6 Room cifrato, retention e dedupe; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-07-28 | M6 | Implementato repository Room cifrato con owner partition, fingerprint HMAC, upsert/dedupe, retention, tombstone, acceptance journal/recovery, purge e cleanup WorkManager | Unit/lint/assemble verdi; schema Room v1 esportato; 25 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M7 bridge DTO/recovery e notifiche Aura private; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-07-28 | M7 | Implementati contratto Capacitor minimizzato, API candidate/settings/acceptance, refresh cold-start/resume, target deep link persistente e notifica Aura privata con Verifica/Ignora | Contract test TypeScript/Kotlin, test spoofing/ID invalidi e 32 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M8 provider/review e transazione canonica; nessuna sorgente reale prima di B-002/B-003/B-006 |
+| 2026-08-03 | Real source pilot | Selezionate Google Wallet e Intesa Sanpaolo Mobile; implementato il connettore Intesa con package visibility finita, template carta fisica/virtuale, negative-rule priority e corpus integralmente sintetico/redatto | `SupportedPaymentAppCatalog`, `intesa-sanpaolo-card-v1.fixture`, unit test Kotlin e security contract React | Eseguire QA fisica Intesa; B-006 e approvazioni release restano aperti |
+| 2026-08-03 | Real source pilot | Implementato il connettore Google Wallet dal formato UI fornito dal tester-owner: esercente nel titolo, importo EUR e carta mascherata nel corpo; corpus integralmente sintetico/redatto e nessuna cattura del nome carta o suffisso | `google-wallet-card-v1.fixture`, unit test Kotlin, selection UI e finite package visibility | Eseguire QA fisica Google Wallet; B-006 e approvazioni release restano aperti |
 | 2026-07-28 | M8 | Implementati provider, backlog/review e accettazione idempotente nella transazione canonica | 82 file/373 test Vitest, unit/lint/assemble Android, 32 instrumentation e simulazione end-to-end sul Pixel 9 Pro API 36 | Avviare M9 hardening senza abilitare sorgenti reali |
 | 2026-07-28 | M9 | Aggiunti signing release fail-closed, verifier production, aggiornamenti dependency compatibili, fix fixture E2E e draft runbook/QA/Data Safety | 83 file/377 test Vitest, build, Gradle unit/lint, 32 instrumentation Pixel 9 Pro API 36; release correttamente bloccata senza credenziali production | Completare E2E finale, device fisici, audit, signed build e approvazioni owner |
 | 2026-07-28 | M9/M10 | Rafforzati disclosure Play, isolamento rete/log, invalidazione Keystore, errore database e recovery post-reboot; preparato il pilot runbook redatto | 83 file/378 test Vitest, 31 E2E, 34 instrumentation test Pixel 9 Pro API 36 e recovery process/rebind/reboot/revoca verdi; review policy Google ufficiale | Chiudere solo con device fisici, audit/signing production, Play Console e owner privacy/security/release |
@@ -1478,7 +1496,7 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Android WebView runtime | Passato | `android:verify:webview`: local origin, reload, localStorage, IndexedDB, attachment store e deep link |
 | Android auth bridge | Parziale positivo | Configurazione debug verificata, `NoCredential` gestito senza crash e login positivo riferito dall'utente il 2026-07-26; lifecycle, ruolo e account switch restano aperti |
 | Debug Firebase isolation | Passato | Build rifiutata senza `VITE_ANDROID_FIREBASE_*`; bundle sintetico verificato senza API key, auth domain, sender ID o app ID production |
-| Signed internal build | Bloccato fail-closed | Upload key esterna, Play App Signing e Google/OAuth production mancanti; nessun signing material è nel repository |
+| Signed internal build | Bloccato fail-closed | Play App Signing e configurazioni Google Services variant-specific presenti; upload key esterna, AAB firmato e verifica Google Sign-In da Play restano mancanti; nessun signing material è nel repository |
 | Physical device matrix | Non eseguito | Da registrare |
 | Network leakage check | Non eseguito | Da registrare |
 | Logcat leakage check | Non eseguito | Da registrare |

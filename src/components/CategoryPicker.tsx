@@ -13,6 +13,7 @@ interface CategoryPickerProps {
   label?: string;
   disabled?: boolean;
   density?: 'default' | 'compact';
+  requiredSelection?: boolean;
 }
 
 export const CategoryPicker = ({
@@ -23,6 +24,7 @@ export const CategoryPicker = ({
   label = 'Category',
   disabled = false,
   density = 'default',
+  requiredSelection = false,
 }: CategoryPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -42,6 +44,7 @@ export const CategoryPicker = ({
     () => categories.find((category) => category === value) ?? value ?? categories[0] ?? '',
     [categories, value],
   );
+  const needsSelection = requiredSelection && !selectedCategory;
 
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -76,28 +79,49 @@ export const CategoryPicker = ({
             density === 'compact'
               ? 'h-full min-h-16 gap-2.5 rounded-none bg-transparent px-3.5 py-3 hover:bg-primary/5 disabled:hover:bg-transparent'
               : 'gap-3 rounded-2xl bg-surface-container-high px-4 py-3 hover:bg-surface-container-low disabled:hover:bg-surface-container-high',
+            needsSelection && 'bg-accent-amber/10 ring-2 ring-inset ring-accent-amber/35 hover:bg-accent-amber/15',
           )}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
-          aria-label={`${label}: ${selectedCategory || 'not selected'}. Choose category`}
+          aria-label={`${label}: ${selectedCategory || 'not selected'}. Choose category${needsSelection ? '. Required' : ''}`}
         >
           <div className={cn(
             'flex flex-shrink-0 items-center justify-center',
             density === 'compact'
-              ? 'h-8 w-8 rounded-lg bg-primary text-on-primary shadow-sm shadow-primary/20'
+              ? cn(
+                'h-8 w-8 rounded-lg shadow-sm',
+                needsSelection
+                  ? 'bg-accent-amber text-on-surface shadow-accent-amber/20'
+                  : 'bg-primary text-on-primary shadow-primary/20',
+              )
               : 'h-10 w-10 rounded-xl bg-surface-container-lowest',
           )}>
             <CategoryIcon
               category={selectedCategory}
-              className={cn('h-4 w-4', density === 'compact' ? 'text-on-primary' : 'text-primary')}
+              className={cn(
+                'h-4 w-4',
+                density === 'compact'
+                  ? needsSelection ? 'text-on-surface' : 'text-on-primary'
+                  : 'text-primary',
+              )}
             />
           </div>
           <div className="min-w-0 flex-1">
             {density === 'compact' && (
-              <p className="mb-0.5 text-micro font-bold text-on-surface-variant">{label}</p>
+              <p className="mb-0.5 flex items-center gap-1.5 text-micro font-bold text-on-surface-variant">
+                <span>{label}</span>
+                {needsSelection && (
+                  <span className="rounded-full bg-accent-amber/20 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-on-surface">
+                    Required
+                  </span>
+                )}
+              </p>
             )}
-            <p className={cn('truncate font-bold text-on-surface', density === 'compact' ? 'text-xs' : 'text-sm')}>
-              {selectedCategory || 'Select category'}
+            <p className={cn(
+              'truncate font-bold text-on-surface',
+              density === 'compact' ? 'text-xs' : 'text-sm',
+            )}>
+              {selectedCategory || 'Choose category'}
             </p>
             {density === 'default' && (
               <p className="text-micro font-bold text-on-surface-variant">{disabled ? 'Locked for this budget' : 'Tap to choose'}</p>
@@ -108,7 +132,7 @@ export const CategoryPicker = ({
       </div>
 
       {isOpen && createPortal(
-        <div className="fixed inset-0 z-[170] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+        <div className="fixed inset-0 z-[190] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-6">
           <button
             type="button"
             aria-label="Close category picker"

@@ -205,6 +205,50 @@ Required in later milestones before real-notification processing:
 - M9 physical logcat, backup/device-transfer, task-stack, and accessibility
   verification.
 
+### Intesa Sanpaolo engineering connector — 2026-08-03
+
+The product owner selected Intesa Sanpaolo Mobile for the first real-source
+engineering connector. The Android package is included through one explicit
+manifest query; no broad installed-app permission was introduced. User-provided
+UI examples were used only to derive generalized templates. The repository
+stores an entirely synthetic/redacted corpus containing placeholder amounts,
+merchants, dates, times, and masked identifiers; it does not store the supplied
+screenshots or their raw values.
+
+The connector accepts only a fully anchored successful-card-payment template,
+including the observed physical-card and virtual-card forms. Card suffixes are
+matched only to delimit the template and are not captured into the candidate,
+merchant, bridge, log, transaction, archive, or backup. Salary/pension credit,
+OTP, login/security, balance, declined/cancelled operation, transfer, incoming
+payment, and unsupported-currency rules take priority and produce no candidate.
+
+The connector adds no processor, network path, analytics, telemetry, remote
+configuration, or new retention. Formal lawful-basis, DPIA, role-allocation,
+security-owner, disclosure, and production rollout approval remain open under
+B-006 and the existing release gates; this engineering record is not a legal
+certification.
+
+### Google Wallet engineering connector — 2026-08-03
+
+The tester-owner voluntarily supplied one Google Wallet UI example. It was
+used only to derive a generalized, fully anchored card-payment template. The
+repository contains synthetic merchant, amount, card-label, and suffix values;
+the screenshot and its raw values are not copied into source or test fixtures.
+Package visibility is limited to the explicit official Google Wallet package.
+
+The connector extracts the EUR amount from the body and the merchant from the
+title. The displayed card label and masked suffix are required only as template
+delimiters and are not captured, persisted, bridged, logged, exported, or
+backed up. Missing-title variants are review-only and do not infer a merchant;
+declined/cancelled operations, unsupported currencies, and unrelated Wallet
+notifications are rejected by deterministic tests.
+
+This adds no processor, network path, analytics, telemetry, remote
+configuration, or new retention. Physical-device QA must validate additional
+locale and notification-layout variants before expanding the rule. B-006 and
+the existing security, privacy, disclosure, and production gates remain open;
+this engineering record is not legal certification.
+
 Implemented in M9 engineering hardening:
 
 - release tasks fail closed unless all upload-key values are supplied outside

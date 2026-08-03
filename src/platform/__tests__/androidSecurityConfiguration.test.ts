@@ -68,6 +68,8 @@ describe('Android security configuration', () => {
     const build = readProjectFile('android/app/build.gradle');
     const rules = readProjectFile('android/app/proguard-rules.pro');
 
+    expect(build).toContain("apply plugin: 'com.google.gms.google-services'");
+    expect(build).not.toContain("file('google-services.json')");
     expect(build).toContain('minifyEnabled true');
     expect(build).toContain('shrinkResources true');
     expect(rules).toContain('-assumenosideeffects class android.util.Log');
@@ -147,7 +149,9 @@ describe('Android security configuration', () => {
     expect(manifest).not.toContain('android.permission.READ_SMS');
     expect(manifest).not.toContain('android.permission.BIND_ACCESSIBILITY_SERVICE');
     expect(catalog).toContain('com.staituned.aura.syntheticnotifications');
-    expect(catalog).not.toMatch(/\b(bank|wallet|paypal|revolut)\b/i);
+    expect(catalog).toContain('com.latuabancaperandroid');
+    expect(catalog).toContain('com.google.android.apps.walletnfcrel');
+    expect(catalog.match(/packageName = "/g)).toHaveLength(3);
     expect(listener.indexOf('notification.packageName')).toBeLessThan(
       listener.indexOf('notification.notification'),
     );

@@ -30,6 +30,27 @@ Individuals who want a private, lightweight way to manage personal finances from
 - One local-only Aura Portable Archive for complete supported-workspace disaster recovery.
 - Separate transaction CSV interoperability and consented AI-assisted generic spreadsheet import.
 
+## Implemented Shared Reporting Initiative
+
+Aura extends the shared React reporting experience used by both the hosted
+PWA and the bundled Android Capacitor application.
+
+- Category rows expose total selected-period spending and, when at least
+  two complete calendar months are available, average monthly spending.
+- Selecting a category opens a category report with a calendar-month trend,
+  explicit partial-month treatment, and the highest-impact transactions for the
+  selected category, period, and analytics lens.
+- Spending Pace uses one calendar-month baseline instead of independent
+  seven-day, twenty-eight-day, and ninety-day windows. Its monthly value
+  averages up to the latest three complete calendar months; weekly and daily
+  figures are equivalents derived from that same baseline.
+- Selected-period totals may include partial months. Monthly averages never do,
+  and the UI will state how many complete months form each average.
+
+The initiative is local-only, requires no persisted-data migration, backend,
+provider, AI workflow, subprocessor, or native Android financial-domain
+implementation.
+
 ## Implemented, Release-Gated Initiative
 
 - Aura Portable Archive V1 implements user-initiated, local-only disaster recovery.

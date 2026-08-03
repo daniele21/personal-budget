@@ -1,6 +1,9 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
+apply plugin: 'com.google.gms.google-services'
 
 def auraReleaseSigningEnvironment = [
     storeFile: System.getenv("AURA_ANDROID_UPLOAD_STORE_FILE"),
@@ -30,8 +33,8 @@ android {
         applicationId "com.staituned.aura"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 7
+        versionName "1.0.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -118,11 +121,73 @@ tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
     finalizedBy(":notification-test-source:uninstallDebug")
 }
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
+def auraReleaseWebAssetsTask = tasks.register("verifyReleaseWebAssets") {
+    group = "verification"
+    description = "Rejects release builds containing stale Android debug Firebase assets."
+
+    def webAssetsDirectory = file("src/main/assets/public")
+    def debugGoogleServices = file("src/debug/google-services.json")
+    def releaseGoogleServices = file("src/release/google-services.json")
+
+    inputs.dir(webAssetsDirectory)
+    inputs.files(debugGoogleServices, releaseGoogleServices)
+
+    doLast {
+        def readProjectMarkers = { File servicesFile, String variant ->
+            if (!servicesFile.exists()) {
+                throw new GradleException(
+                    "Missing ${variant} Google Services configuration; run the release readiness verifier."
+                )
+            }
+
+            def projectInfo = new JsonSlurper().parse(servicesFile).project_info
+            def markers = [projectInfo?.project_id, projectInfo?.project_number]
+                .collect { it?.toString()?.trim() }
+                .findAll { it }
+            if (markers.size() != 2) {
+                throw new GradleException(
+                    "The ${variant} Google Services configuration is missing project identity fields."
+                )
+            }
+            return markers
+        }
+
+        if (!webAssetsDirectory.isDirectory()) {
+            throw new GradleException(
+                "Bundled WebView assets are missing; run npm run android:sync before a release build."
+            )
+        }
+
+        def bundledSources = fileTree(webAssetsDirectory) {
+            include "**/*.html"
+            include "**/*.js"
+        }.files
+        if (bundledSources.isEmpty()) {
+            throw new GradleException(
+                "Bundled WebView assets are empty; run npm run android:sync before a release build."
+            )
+        }
+
+        def releaseMarkers = readProjectMarkers(releaseGoogleServices, "release")
+        def debugOnlyMarkers = readProjectMarkers(debugGoogleServices, "debug")
+            .findAll { !releaseMarkers.contains(it) }
+        def containsMarker = { String marker ->
+            bundledSources.any { it.getText("UTF-8").contains(marker) }
+        }
+
+        if (debugOnlyMarkers.any { containsMarker(it) }) {
+            throw new GradleException(
+                "Release WebView assets contain the debug Firebase project; run npm run android:sync."
+            )
+        }
+        if (!releaseMarkers.every { containsMarker(it) }) {
+            throw new GradleException(
+                "Release WebView assets do not contain the production Firebase project; run npm run android:sync."
+            )
+        }
     }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(auraReleaseWebAssetsTask)
 }

@@ -64,12 +64,16 @@ internal class PaymentRuleEngine(
         notification: NormalizedNotification,
         input: PaymentDetectionInput,
     ): PaymentDetectionResult.Candidate? {
-        val title = notification.title ?: return null
         for (rule in rules.exactRules) {
-            if (!rule.title.matches(title)) continue
+            val titleMatch = if (rule.title != null) {
+                val title = notification.title ?: continue
+                rule.title.matchEntire(title) ?: continue
+            } else null
             for (body in notification.bodyCandidates()) {
                 val match = rule.body.matchEntire(body) ?: continue
                 val amount = parseMinorUnits(match.groups["amount"]?.value) ?: continue
+                val merchant = optionalGroup(titleMatch, "merchant")
+                    ?: optionalGroup(match, "merchant")
                 return PaymentDetectionResult.Candidate(
                     tier = PaymentMatchTier.EXACT,
                     sourceAppId = input.sourceAppId,
@@ -77,7 +81,7 @@ internal class PaymentRuleEngine(
                     amountMinorUnits = amount,
                     currency = EUR,
                     merchant = NotificationNormalizer.merchant(
-                        match.groups["merchant"]?.value,
+                        merchant,
                     ),
                     occurredAtEpochMillis = input.postedAtEpochMillis,
                     matchedRuleId = rule.id,
@@ -87,6 +91,9 @@ internal class PaymentRuleEngine(
         }
         return null
     }
+
+    private fun optionalGroup(match: MatchResult?, name: String): String? =
+        match?.let { runCatching { it.groups[name]?.value }.getOrNull() }
 
     private fun compileRuleSet(
         definition: PaymentRuleSetDefinition,
@@ -101,14 +108,17 @@ internal class PaymentRuleEngine(
         }
         val exactRules = definition.exactRules.mapNotNull { rule ->
             if (
-                !PaymentRegexSafety.isAllowed(rule.titlePattern) ||
+                (rule.titlePattern != null &&
+                    !PaymentRegexSafety.isAllowed(rule.titlePattern)) ||
                 !PaymentRegexSafety.isAllowed(rule.bodyPattern)
             ) {
                 return@mapNotNull null
             }
-            val title = runCatching {
-                Regex(rule.titlePattern, REGEX_OPTIONS)
-            }.getOrNull() ?: return@mapNotNull null
+            val title = rule.titlePattern?.let { pattern ->
+                runCatching {
+                    Regex(pattern, REGEX_OPTIONS)
+                }.getOrNull() ?: return@mapNotNull null
+            }
             val body = runCatching {
                 Regex(rule.bodyPattern, REGEX_OPTIONS)
             }.getOrNull() ?: return@mapNotNull null
@@ -172,7 +182,7 @@ internal class PaymentRuleEngine(
 
     private data class CompiledExactPaymentRule(
         val id: String,
-        val title: Regex,
+        val title: Regex?,
         val body: Regex,
     )
 

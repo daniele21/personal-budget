@@ -50,6 +50,16 @@ describe('InsightsPage analytics lenses', () => {
         transaction({ id: 'food', amount: 100, type: 'expense', category: 'Food', title: 'Groceries' }),
         transaction({ id: 'trip', amount: 600, type: 'expense', category: 'Travel', title: 'Holiday', reportingClass: 'extra' }),
         transaction({ id: 'bonus', amount: 500, type: 'income', category: 'Bonus', title: 'Bonus', reportingClass: 'extra' }),
+        transaction({
+          id: 'previous-food',
+          amount: 200,
+          date: new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 10, 12).toISOString(),
+        }),
+        transaction({
+          id: 'older-food',
+          amount: 100,
+          date: new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 2, 10, 12).toISOString(),
+        }),
       ],
       setTransactions: vi.fn(),
       budgets: [{ category: 'Food', limit: 500, spent: 0, currency: '€' }],
@@ -139,15 +149,14 @@ describe('InsightsPage analytics lenses', () => {
     expect(screen.getAllByText('1 Feb – 31 Jul').length).toBeGreaterThan(0);
   });
 
-  it('shows rolling spending pace and switches the trend scale', async () => {
+  it('shows one calendar-month spending baseline and its derived equivalents', async () => {
     const user = userEvent.setup();
     renderPage();
 
     const calloutButton = screen.getByRole('button', { name: /open spending pace trend/i });
     expect(calloutButton).toBeInTheDocument();
-    expect(screen.getByText('7-day average')).toBeInTheDocument();
-    expect(screen.getByText('4-week average')).toBeInTheDocument();
-    expect(screen.getByText('3-month average')).toBeInTheDocument();
+    expect(screen.getAllByText('monthly equivalent')).toHaveLength(2);
+    expect(screen.getByText('2 complete months')).toBeInTheDocument();
 
     await user.click(calloutButton);
 
@@ -156,14 +165,10 @@ describe('InsightsPage analytics lenses', () => {
     const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
     const previousMonthStart = new Date(previousMonthEnd.getFullYear(), previousMonthEnd.getMonth(), 1);
     const expectedPeriod = `${previousMonthStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${previousMonthEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
-    expect(screen.getByText(`Rolling spending trend · ${expectedPeriod}`)).toBeInTheDocument();
-    expect(screen.getByText(/per day, averaged over the preceding 7 days/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /^Week$/i }));
-    expect(screen.getByText(/per week, averaged over the preceding 4 weeks/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /^Month$/i }));
-    expect(screen.getByText(/per month, averaged over the preceding 3 months/i)).toBeInTheDocument();
+    expect(screen.getByText(`Calendar-month spending · ${expectedPeriod}`)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Actual monthly spending and monthly spending pace/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Day$/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/weekly and daily figures are equivalents of the same baseline/i)).toBeInTheDocument();
   });
 
   it('uses only complete calendar months for multi-month spending pace', async () => {
@@ -178,7 +183,7 @@ describe('InsightsPage analytics lenses', () => {
     const periodStart = new Date(periodEnd.getFullYear(), periodEnd.getMonth() - 2, 1);
     const expectedPeriod = `${periodStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${periodEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 
-    expect(screen.getByText(`Rolling spending trend · ${expectedPeriod}`)).toBeInTheDocument();
+    expect(screen.getByText(`Calendar-month spending · ${expectedPeriod}`)).toBeInTheDocument();
   });
 
   it('shows an explicit empty state for a period without transactions', () => {

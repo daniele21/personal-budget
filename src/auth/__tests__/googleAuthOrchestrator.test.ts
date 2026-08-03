@@ -13,7 +13,7 @@ describe('signInWithGoogleForPlatform', () => {
   it('keeps popup authentication on the web', async () => {
     const dependencies = createDependencies();
 
-    await signInWithGoogleForPlatform('web', undefined, dependencies);
+    await signInWithGoogleForPlatform('web', dependencies);
 
     expect(dependencies.webPopupSignIn).toHaveBeenCalledOnce();
     expect(dependencies.nativeCredentialSignIn).not.toHaveBeenCalled();
@@ -23,28 +23,22 @@ describe('signInWithGoogleForPlatform', () => {
   it('exchanges the in-memory Android ID token with Firebase', async () => {
     const dependencies = createDependencies();
 
-    await signInWithGoogleForPlatform(
-      'android',
-      '  web-client-id  ',
-      dependencies,
-    );
+    await signInWithGoogleForPlatform('android', dependencies);
 
     expect(dependencies.webPopupSignIn).not.toHaveBeenCalled();
-    expect(dependencies.nativeCredentialSignIn)
-      .toHaveBeenCalledWith('web-client-id');
+    expect(dependencies.nativeCredentialSignIn).toHaveBeenCalledOnce();
     expect(dependencies.firebaseIdTokenSignIn)
       .toHaveBeenCalledWith('native-id-token');
   });
 
-  it('fails before opening native auth when the client ID is absent', async () => {
+  it('delegates Android client configuration to the native plugin', async () => {
     const dependencies = createDependencies();
 
-    await expect(
-      signInWithGoogleForPlatform('android', ' ', dependencies),
-    ).rejects.toThrow(/not configured/i);
+    await signInWithGoogleForPlatform('android', dependencies);
 
-    expect(dependencies.nativeCredentialSignIn).not.toHaveBeenCalled();
-    expect(dependencies.firebaseIdTokenSignIn).not.toHaveBeenCalled();
+    expect(dependencies.nativeCredentialSignIn).toHaveBeenCalledOnce();
+    expect(dependencies.firebaseIdTokenSignIn)
+      .toHaveBeenCalledWith('native-id-token');
   });
 
   it('rejects an empty native credential before Firebase exchange', async () => {
@@ -52,11 +46,7 @@ describe('signInWithGoogleForPlatform', () => {
     dependencies.nativeCredentialSignIn.mockResolvedValueOnce(' ');
 
     await expect(
-      signInWithGoogleForPlatform(
-        'android',
-        'web-client-id',
-        dependencies,
-      ),
+      signInWithGoogleForPlatform('android', dependencies),
     ).rejects.toThrow(/empty credential/i);
 
     expect(dependencies.firebaseIdTokenSignIn).not.toHaveBeenCalled();

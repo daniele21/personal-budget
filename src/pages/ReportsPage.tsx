@@ -4,12 +4,15 @@ import { ReportTabs, ReportView } from '../components/reports/ReportTabs';
 import { AnalyticsLensControl, BottomSheet } from '../components/ui';
 import { usePreferences } from '../state/PreferencesProvider';
 import { ComparePage } from './ComparePage';
+import { CategoryReportPage } from './CategoryReportPage';
 import { InsightsPage } from './InsightsPage';
 import { YearReviewPage } from './YearReviewPage';
+import { useParams } from 'react-router-dom';
 
 export function ReportsPage({ view }: { view: ReportView }) {
   const { reportsAnalyticsLens: analyticsLens, setReportsAnalyticsLens: setAnalyticsLens } = usePreferences();
   const [isViewOptionsOpen, setIsViewOptionsOpen] = useState(false);
+  const { category } = useParams();
   const lensLabel = analyticsLens === 'actual'
     ? 'All spending'
     : analyticsLens === 'normalized'
@@ -36,7 +39,10 @@ export function ReportsPage({ view }: { view: ReportView }) {
       </button>
       <div data-tour-id="reports-content">
         {view === 'overview' && <InsightsPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
-        {view === 'categories' && <ComparePage initialTab="spending" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
+        {view === 'categories' && category && (
+          <CategoryReportPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} />
+        )}
+        {view === 'categories' && !category && <ComparePage initialTab="spending" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
         {view === 'compare' && <ComparePage initialTab="compare" showViewSwitcher={false} analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
         {view === 'year' && <YearReviewPage analyticsLens={analyticsLens} onAnalyticsLensChange={setAnalyticsLens} showLensControl={false} />}
       </div>

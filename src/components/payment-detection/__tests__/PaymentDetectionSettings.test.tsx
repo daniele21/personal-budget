@@ -23,13 +23,29 @@ vi.mock('../../../state/PaymentDetectionProvider', () => ({
       listenerConnected: false,
       auraNotificationPermissionGranted: false,
     },
-    supportedApps: [{
-      id: 'aura-synthetic-source',
-      packageName: 'com.staituned.aura.syntheticnotifications',
-      displayName: 'Aura controlled test source',
-      syntheticOnly: true,
-      installed: true,
-    }],
+    supportedApps: [
+      {
+        id: 'aura-synthetic-source',
+        packageName: 'com.staituned.aura.syntheticnotifications',
+        displayName: 'Aura controlled test source',
+        syntheticOnly: true,
+        installed: true,
+      },
+      {
+        id: 'intesa-sanpaolo-mobile',
+        packageName: 'com.latuabancaperandroid',
+        displayName: 'Intesa Sanpaolo Mobile',
+        syntheticOnly: false,
+        installed: true,
+      },
+      {
+        id: 'google-wallet',
+        packageName: 'com.google.android.apps.walletnfcrel',
+        displayName: 'Google Wallet',
+        syntheticOnly: false,
+        installed: true,
+      },
+    ],
     candidates: [{ id: 'candidate' }],
     updateSelectedApps: mocks.updateSelectedApps,
     setRequestedEnabled: mocks.setRequestedEnabled,
@@ -81,6 +97,34 @@ describe('PaymentDetectionSettings', () => {
 
     expect(mocks.updateSelectedApps).toHaveBeenCalledWith([
       'com.staituned.aura.syntheticnotifications',
+    ]);
+  });
+
+  it('shows and explicitly selects the installed Intesa source', async () => {
+    const user = userEvent.setup();
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('Intesa Sanpaolo Mobile')).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', {
+      name: 'Monitor Intesa Sanpaolo Mobile',
+    }));
+
+    expect(mocks.updateSelectedApps).toHaveBeenCalledWith([
+      'com.latuabancaperandroid',
+    ]);
+  });
+
+  it('shows and explicitly selects the installed Google Wallet source', async () => {
+    const user = userEvent.setup();
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('Google Wallet')).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', {
+      name: 'Monitor Google Wallet',
+    }));
+
+    expect(mocks.updateSelectedApps).toHaveBeenCalledWith([
+      'com.google.android.apps.walletnfcrel',
     ]);
   });
 });

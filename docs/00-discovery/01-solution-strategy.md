@@ -108,11 +108,45 @@ Chosen: add local-only global search, period comparison, and year-in-review repo
 
 Rationale: these features increase navigation and analysis value without changing the storage model, adding external processors, or exposing financial records to an admin or backend.
 
-Insights presents spending pace as three fixed rolling averages instead of a configurable statistical average: daily pace is trailing seven-day spend divided by seven, weekly pace is trailing twenty-eight-day spend divided by four, and monthly pace is trailing ninety-day spend divided by three. The summary shows the latest value for all three scales; its detail view uses a single chart with a Day, Week, or Month selector. Preset periods contain only complete calendar months and always end on the final day of the previous month; for example, `3M` shows the three complete months before the current month. The selected scale controls the averaging horizon within that complete-month history.
+Category reporting uses a shared, pure calendar-month aggregation model. The
+Categories view keeps the selected-period total as its primary ranking and adds
+an average monthly amount when at least two complete calendar months exist.
+Selecting a category opens a category report that preserves the selected period
+and analytics lens, plots one point for every calendar month including zero
+months, distinguishes partial months, and shows the five highest-impact
+transactions before linking to the complete filtered history.
 
-Custom report periods must have a start date on or before the end date. The control blocks invalid input and range construction normalizes it defensively. Category comparison trends use weekly buckets for ranges up to 45 days and real calendar-month buckets for longer ranges. Spending Pace uses the requested custom period only through the earlier of its end date and today. Cash-flow comparisons compare current net cash flow with previous-period net cash flow; previous income is not treated as a savings goal.
+Selected-period totals include every transaction inside the requested range,
+including transactions in partial months. Monthly averages exclude any partial
+boundary month and the current incomplete month. The UI always exposes the
+number of complete months used, so a total covering a partial current month is
+not presented as if it shared the average's denominator.
 
-Rationale: fixed, named windows answer the practical question of how quickly spending is changing without exposing smoothing configuration or conflating the selected reporting period with the rolling calculation.
+Spending Pace uses one reimbursement-aware monthly baseline rather than
+independent short rolling windows. Monthly pace is the average net reportable
+expense over up to the latest three eligible complete calendar months. Daily
+and weekly values are equivalents derived from that same monthly baseline using
+`monthly * 12 / 365.2425` and `daily * 7`. Months after the earliest ledger
+activity with no reportable expense count as zero; months before the ledger has
+any activity are not invented as history. The UI names the number of available
+complete months when fewer than three exist.
+
+The Spending Pace detail shows actual complete-month expense together with its
+up-to-three-month moving average. Standard preset histories end on the final
+day of the previous month; a custom range contributes only fully enclosed,
+already completed calendar months. The old Day, Week, and Month trend selector
+is removed because three rescalings of one monthly baseline do not represent
+three independent signals.
+
+Custom report periods must have a start date on or before the end date. The
+control blocks invalid input and range construction normalizes it defensively.
+Cash-flow comparisons compare current net cash flow with previous-period net
+cash flow; previous income is not treated as a savings goal.
+
+Rationale: calendar-month aggregation absorbs the posting pattern of rent,
+subscriptions, utilities, and other monthly expenses. Keeping partial months in
+actual totals but outside averages preserves factual cash reporting without
+allowing incomplete periods to depress the baseline.
 
 ### Information Architecture And UX Simplification
 

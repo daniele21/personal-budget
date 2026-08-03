@@ -133,6 +133,7 @@ export default function App() {
               <Route path="/planning/recurring" element={<RoutePage title="Planning"><RecurringPage /></RoutePage>} />
               <Route path="/reports" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />
               <Route path="/reports/categories" element={<RoutePage title="Reports"><ReportsPage view="categories" /></RoutePage>} />
+              <Route path="/reports/categories/:category" element={<RoutePage title="Category report"><ReportsPage view="categories" /></RoutePage>} />
               <Route path="/reports/compare" element={<RoutePage title="Reports"><ReportsPage view="compare" /></RoutePage>} />
               <Route path="/reports/year" element={<RoutePage title="Reports"><ReportsPage view="year" /></RoutePage>} />
               <Route path="/insights" element={<RoutePage title="Reports"><ReportsPage view="overview" /></RoutePage>} />

@@ -11,7 +11,10 @@ class PaymentRuleEngineTest {
 
     @Test
     fun syntheticCorpusMatchesExpectedTierAndStructuredFields() {
-        corpus().forEach { fixture ->
+        corpus(
+            resourceName = "/paymentdetection/synthetic-wallet-v1.fixture",
+            sourceAppId = BundledPaymentRuleCatalog.SYNTHETIC_SOURCE_APP_ID,
+        ).forEach { fixture ->
             val result = engine.evaluate(fixture.input())
 
             assertEquals(fixture.id, fixture.tier, result.tier)
@@ -21,6 +24,72 @@ class PaymentRuleEngineTest {
                     assertEquals(fixture.id, fixture.merchant, result.merchant)
                     assertEquals(fixture.id, "EUR", result.currency)
                     assertEquals(fixture.id, POSTED_AT, result.occurredAtEpochMillis)
+                }
+                is PaymentDetectionResult.Ignored -> {
+                    assertEquals(fixture.id, fixture.ignoredReason, result.reason)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun redactedIntesaCorpusMatchesOnlyApprovedCardPayments() {
+        corpus(
+            resourceName = "/paymentdetection/intesa-sanpaolo-card-v1.fixture",
+            sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+        ).forEach { fixture ->
+            val result = engine.evaluate(fixture.input())
+
+            assertEquals(fixture.id, fixture.tier, result.tier)
+            when (result) {
+                is PaymentDetectionResult.Candidate -> {
+                    assertEquals(fixture.id, fixture.minorUnits, result.amountMinorUnits)
+                    assertEquals(fixture.id, fixture.merchant, result.merchant)
+                    assertEquals(fixture.id, "EUR", result.currency)
+                    assertEquals(fixture.id, POSTED_AT, result.occurredAtEpochMillis)
+                }
+                is PaymentDetectionResult.Ignored -> {
+                    assertEquals(fixture.id, fixture.ignoredReason, result.reason)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun intesaExpandedTextMatchesWithoutDependingOnNotificationTitle() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = null,
+                text = null,
+                bigText = "Hai pagato 15,40 € con la carta *0000 il 14.05 " +
+                    "alle ore 16:20 da ESERCENTE DI PROVA.",
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+
+        assertEquals(PaymentMatchTier.EXACT, result.tier)
+        assertEquals(1540L, result.amountMinorUnits)
+        assertEquals("ESERCENTE DI PROVA", result.merchant)
+        assertTrue(result.merchant?.contains("0000") == false)
+    }
+
+    @Test
+    fun redactedGoogleWalletCorpusMatchesOnlyApprovedCardPayments() {
+        corpus(
+            resourceName = "/paymentdetection/google-wallet-card-v1.fixture",
+            sourceAppId = BundledPaymentRuleCatalog.GOOGLE_WALLET_SOURCE_APP_ID,
+        ).forEach { fixture ->
+            val result = engine.evaluate(fixture.input())
+
+            assertEquals(fixture.id, fixture.tier, result.tier)
+            when (result) {
+                is PaymentDetectionResult.Candidate -> {
+                    assertEquals(fixture.id, fixture.minorUnits, result.amountMinorUnits)
+                    assertEquals(fixture.id, fixture.merchant, result.merchant)
+                    assertEquals(fixture.id, "EUR", result.currency)
+                    assertEquals(fixture.id, POSTED_AT, result.occurredAtEpochMillis)
+                    assertTrue(fixture.id, result.merchant?.contains("0000") != true)
                 }
                 is PaymentDetectionResult.Ignored -> {
                     assertEquals(fixture.id, fixture.ignoredReason, result.reason)
@@ -95,7 +164,9 @@ class PaymentRuleEngineTest {
                 assertTrue(it.id, PaymentRegexSafety.isAllowed(it.pattern))
             }
             rules.exactRules.forEach {
-                assertTrue(it.id, PaymentRegexSafety.isAllowed(it.titlePattern))
+                if (it.titlePattern != null) {
+                    assertTrue(it.id, PaymentRegexSafety.isAllowed(it.titlePattern))
+                }
                 assertTrue(it.id, PaymentRegexSafety.isAllowed(it.bodyPattern))
             }
             assertTrue(
@@ -169,11 +240,12 @@ class PaymentRuleEngineTest {
         )
     }
 
-    private fun corpus(): List<Fixture> {
+    private fun corpus(
+        resourceName: String,
+        sourceAppId: String,
+    ): List<Fixture> {
         val resource = requireNotNull(
-            javaClass.getResourceAsStream(
-                "/paymentdetection/synthetic-wallet-v1.fixture",
-            ),
+            javaClass.getResourceAsStream(resourceName),
         )
         return resource.bufferedReader().useLines { lines ->
             lines
@@ -191,6 +263,7 @@ class PaymentRuleEngineTest {
                         ignoredReason = columns[6]
                             .takeIf(String::isNotEmpty)
                             ?.let(PaymentIgnoredReason::valueOf),
+                        sourceAppId = sourceAppId,
                     )
                 }
                 .toList()
@@ -217,9 +290,10 @@ class PaymentRuleEngineTest {
         val minorUnits: Long?,
         val merchant: String?,
         val ignoredReason: PaymentIgnoredReason?,
+        val sourceAppId: String,
     ) {
         fun input() = PaymentDetectionInput(
-            sourceAppId = BundledPaymentRuleCatalog.SYNTHETIC_SOURCE_APP_ID,
+            sourceAppId = sourceAppId,
             title = title,
             text = text,
             bigText = null,

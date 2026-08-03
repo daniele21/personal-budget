@@ -4,12 +4,15 @@
 
 - Product direction: approved
 - Architecture: accepted in ADR 0002 and ADR 0003
-- Implementation: synthetic M4-M8 slices complete; M1-M3 retain their
-  production, lifecycle, physical, and governance closure gates; M9
-  engineering hardening and M10 operating preparation are complete, while
-  physical/compliance closure and the actual pilot remain blocked
-- Current gate: synthetic candidates may continue; real
-  sources remain blocked by the privacy, fixture, security, and pilot gates
+- Implementation: synthetic M4-M8 slices complete; Intesa Sanpaolo Mobile and
+  Google Wallet connectors with fully redacted deterministic corpora are
+  implemented for engineering verification. M1-M3 retain their production,
+  lifecycle, physical,
+  and governance closure gates; M9 engineering hardening and M10 operating
+  preparation are complete.
+- Current gate: synthetic, Intesa, and Google Wallet engineering tests may
+  continue, but general real-source rollout remains blocked by the privacy,
+  security, physical-QA, disclosure, and pilot gates.
 - Delivery tracker: [`11-android-payment-detection-progress-plan.md`](../00-discovery/11-android-payment-detection-progress-plan.md)
 
 ## Product Promise
@@ -118,7 +121,24 @@ The user can inspect and change:
 - payment method;
 - expense treatment.
 
-Category and payment method start from the existing Add Transaction defaults, not from persistent merchant learning. Both remain visible and editable before confirmation.
+Payment method starts from the existing Add Transaction default. Category is
+intentionally empty and visibly required because the MVP does not infer or
+learn it from notification content. Both fields remain visible and editable
+before confirmation, and acceptance is blocked until the user explicitly
+chooses a category.
+
+The Android review is a full-screen, prefilled instance of the shared
+transaction editor used by Add Transaction. It therefore keeps the same amount
+keypad, category picker, date control, expense-treatment control, progressive
+payment options, validation, and primary action. Detection provenance remains
+a compact context banner rather than a separate form design. Expense type is
+locked because the MVP parser admits card payments only.
+
+Notes and receipt attachments are not shown in candidate review until the
+native acceptance contract can persist and verify them atomically. This avoids
+presenting fields that would be silently discarded during candidate
+acceptance; they remain available when the resulting transaction is edited
+normally.
 
 `occurredAt` defaults to the Android notification post time. A rule may replace it only for a verified app-specific timestamp format. React converts the instant to the device's local calendar date using the same canonical mapping as manual Add Transaction, without a UTC day shift.
 

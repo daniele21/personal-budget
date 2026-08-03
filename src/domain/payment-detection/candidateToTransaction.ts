@@ -10,12 +10,12 @@ const DEFAULT_PAYMENT_METHOD = 'Debit Card';
 
 export function candidateToReviewForm(
   candidate: PaymentCandidateReviewDto,
-  categories: string[],
+  _categories: string[],
 ): PaymentCandidateReviewForm {
   return {
     amount: (candidate.amountMinorUnits / 100).toFixed(2),
     title: candidate.merchant?.trim() || 'Card payment',
-    category: categories[0] ?? '',
+    category: '',
     date: getLocalDateInputValue(new Date(candidate.occurredAtEpochMillis)),
     paymentMethod: DEFAULT_PAYMENT_METHOD,
     reportingClass: undefined,

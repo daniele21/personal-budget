@@ -1,5 +1,115 @@
 # Aura Finance Project Brainstorm
 
+## Approved Initiative: Category Reporting And Calendar-Month Spending Pace
+
+Discovery status: **converged for delivery planning** on 2026-07-29.
+
+### Problem
+
+The Categories report currently ranks category totals but sends a selected
+category directly to filtered transaction history. It does not show how that
+category changed month by month or identify the transactions that explain the
+largest movements.
+
+The report also omits a monthly average per category. Spending Pace uses
+independent trailing seven-day, twenty-eight-day, and ninety-day windows, so a
+monthly recurring charge can enter or leave a short window and materially
+distort the daily or weekly reading. The pace path also does not currently
+apply reimbursement semantics consistently with other report totals.
+
+### Approved Direction
+
+- Keep reporting in the shared React financial domain and UI used by the PWA
+  and Android Capacitor distributions.
+- Add a category-detail report reachable from each ranked category row.
+- Preserve the selected period and `Actual | Net of extras | Extras only` lens
+  when entering category detail.
+- Plot one value per calendar month, retain zero-spend months, and mark a
+  current or otherwise incomplete boundary month as partial.
+- Show the five highest-impact category transactions and retain a link to the
+  full filtered transaction history.
+- Keep selected-period totals inclusive of partial months.
+- Calculate category monthly averages only from complete calendar months and
+  expose the denominator in the UI. Do not show the metric as reliable when
+  fewer than two complete months are available.
+- Replace independent short-window Spending Pace averages with one monthly
+  baseline calculated from up to the latest three complete calendar months.
+- Derive weekly and daily equivalents from the monthly baseline instead of
+  calculating separate rolling histories.
+- Make Spending Pace reimbursement-aware and apply the selected analytics lens
+  before aggregation.
+- Keep all calculations deterministic and local-only.
+
+### Confirmed Decisions
+
+#### Spending Pace Baseline
+
+Confirmed: use a calendar-month baseline.
+
+For `N` eligible complete months, where `1 <= N <= 3`:
+
+```text
+monthly pace = sum(net reportable expense for each eligible month) / N
+daily equivalent = monthly pace * 12 / 365.2425
+weekly equivalent = daily equivalent * 7
+```
+
+The UI must name `N`; it must not imply a three-month history when only one or
+two complete history months exist.
+
+#### Partial Months In Category Averages
+
+Confirmed: exclude partial months from monthly averages.
+
+The selected-period total may include a partial first month, partial last month,
+or the current month. The average uses only fully enclosed, already completed
+calendar months. A row may therefore show a total for the whole selected range
+and an average explicitly labelled, for example, `Average over 2 complete
+months`.
+
+### Alternatives Rejected
+
+#### Keep Independent Daily, Weekly, And Monthly Pace Windows
+
+Rejected because the metrics describe different baselines and remain sensitive
+to the posting day of monthly recurring expenses.
+
+#### Treat Every Touched Month As A Full Month
+
+Rejected because dividing a partial month by one full-month unit
+systematically understates average spending.
+
+#### Project Partial Months
+
+Rejected because a projection is unstable when rent, subscriptions, utilities,
+or reimbursements post early or late in the month.
+
+#### Add A Separate Android Reporting Implementation
+
+Rejected because the accepted Capacitor architecture already packages the
+shared React UI and financial domain. A second implementation would create
+calculation drift without adding product value.
+
+### Safe Defaults
+
+- Category detail inherits the selected report period and analytics lens.
+- A one-month detail remains valid but contains one monthly point; the UI can
+  encourage a longer period without silently changing scope.
+- `Top transactions` means the five transactions with the largest absolute
+  financial impact, with date descending as the tie-breaker.
+- Archived categories remain reportable when referenced by historical
+  transactions.
+- The route may use the encoded category name in the current string-based
+  category model. Durable category IDs remain a separate future migration.
+- No new ADR is required because the accepted local-first, shared
+  React/Capacitor architecture and canonical ledger remain unchanged.
+
+### Convergence Gate
+
+The foundational metric decisions are approved. Implementation may begin after
+the feature specification and delivery slices are aligned with the solution
+strategy and the required regression fixtures are identified.
+
 ## Current Initiative
 
 The current approved initiative is **Aura Portable Archive V1**, a local-first disaster-recovery format that is separate from transaction CSV import and export.

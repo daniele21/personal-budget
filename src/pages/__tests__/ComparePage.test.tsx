@@ -42,20 +42,37 @@ describe('ComparePage category report', () => {
     mockUseApp.mockReturnValue({ transactions });
   });
 
-  it('prioritizes the ranked category list and keeps the donut supplementary', () => {
+  it('defaults category reporting to 12 months and keeps the donut supplementary', () => {
     render(
       <MemoryRouter>
         <ComparePage initialTab="spending" showViewSwitcher={false} showLensControl={false} />
       </MemoryRouter>,
     );
 
+    expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('12M');
     expect(screen.getByRole('heading', { name: 'Spending by category' })).toBeInTheDocument();
-    expect(screen.getAllByText('€125.00').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('€225.00').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Total spent').closest('.aura-card-inverse')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Food/ })).toHaveAttribute('href', expect.stringContaining('category=Food'));
+    expect(screen.getByRole('link', { name: /Open Food category report/ })).toHaveAttribute(
+      'href',
+      expect.stringContaining('range=12M'),
+    );
 
     const supplementaryChart = screen.getByLabelText(/Category distribution for/);
     expect(supplementaryChart).toHaveClass('hidden', 'md:flex');
+  });
+
+  it('shows a complete-calendar-month average for multi-month ranges', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <ComparePage initialTab="spending" showViewSwitcher={false} showLensControl={false} />
+      </MemoryRouter>,
+    );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '3M');
+
+    expect(screen.getByText('€50.00/mo · 2 complete')).toBeInTheDocument();
   });
 
   it('keeps merchant comparison behind a secondary drill-down', async () => {
@@ -66,6 +83,7 @@ describe('ComparePage category report', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('1M');
     expect(screen.getByRole('group', { name: 'Expense comparison view' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Key changes' })).toBeInTheDocument();
     expect(screen.getByText(/Source: .* compared with /)).toBeInTheDocument();

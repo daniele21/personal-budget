@@ -7,7 +7,6 @@ const REQUIRED_ANDROID_DEBUG_ENV_KEYS = [
   'VITE_ANDROID_FIREBASE_STORAGE_BUCKET',
   'VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID',
   'VITE_ANDROID_FIREBASE_APP_ID',
-  'VITE_ANDROID_FIREBASE_WEB_CLIENT_ID',
 ] as const;
 
 export type AndroidDebugEnvironment = Record<
@@ -48,8 +47,6 @@ export function createAndroidDebugEnvOverrides(
       value('VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID'),
     VITE_FIREBASE_APP_ID:
       value('VITE_ANDROID_FIREBASE_APP_ID'),
-    VITE_FIREBASE_WEB_CLIENT_ID:
-      value('VITE_ANDROID_FIREBASE_WEB_CLIENT_ID'),
     VITE_FIRESTORE_DATABASE_ID:
       value('VITE_ANDROID_FIRESTORE_DATABASE_ID'),
     // AI-assisted import is deliberately unavailable in Android debug builds.
