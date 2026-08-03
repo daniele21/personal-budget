@@ -80,11 +80,14 @@ test.describe('Aura portable archive recovery', () => {
 
     await page.evaluate(() => {
       const transactions = JSON.parse(window.localStorage.getItem('aura_transactions') ?? '[]');
-      transactions[0].title = 'Workspace changed after export';
+      const transaction = transactions.find(({ id }: { id: string }) => id === 'e2e-tx-receipt');
+      if (!transaction) throw new Error('The portable archive fixture transaction is missing.');
+      transaction.title = 'Workspace changed after export';
       window.localStorage.setItem('aura_transactions', JSON.stringify(transactions));
     });
     await page.reload();
-    expect((await readCanonicalWorkspace(page)).data.transactions[0].title)
+    expect((await readCanonicalWorkspace(page)).data.transactions
+      .find(({ id }) => id === 'e2e-tx-receipt')?.title)
       .toBe('Workspace changed after export');
 
     await openArchiveImport(page, archive);

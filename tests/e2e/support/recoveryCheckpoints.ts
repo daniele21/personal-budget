@@ -58,8 +58,14 @@ async function installCheckpoint(
     }
 
     const targetData = structuredClone(previous.data);
-    targetData.transactions[0] = {
-      ...targetData.transactions[0],
+    const targetTransactionIndex = targetData.transactions.findIndex(
+      ({ id }: { id: string }) => id === 'e2e-tx-receipt',
+    );
+    if (targetTransactionIndex < 0) {
+      throw new Error('The checkpoint fixture transaction is missing.');
+    }
+    targetData.transactions[targetTransactionIndex] = {
+      ...targetData.transactions[targetTransactionIndex],
       title: `Recovered at ${checkpointStatus}`,
       description: 'Checkpoint recovery target',
     };
@@ -152,8 +158,8 @@ async function installCheckpoint(
     window.localStorage.setItem('aura_restore_in_progress', 'true');
 
     const toCanonical = (snapshot: typeof previous) => ({
-      data: snapshot.data,
-      preferences: snapshot.preferences,
+      data: JSON.parse(JSON.stringify(snapshot.data)),
+      preferences: JSON.parse(JSON.stringify(snapshot.preferences)),
       attachmentDataUrl: snapshot.attachments[0]?.dataUrl ?? null,
     });
 

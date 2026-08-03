@@ -133,7 +133,10 @@ export async function exportEncryptedArchive(page: Page): Promise<DownloadedArch
   await page.getByRole('button', { name: 'Export complete archive' }).click();
   const dialog = page.getByRole('dialog', { name: 'Export complete Aura archive' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('5', { exact: true }).first()).toBeVisible();
+  const canonicalWorkspace = await readCanonicalWorkspace(page);
+  await expect(
+    dialog.getByText(String(canonicalWorkspace.data.transactions.length), { exact: true }).first(),
+  ).toBeVisible();
   await dialog.getByLabel('Passphrase', { exact: true }).fill(E2E_ARCHIVE_PASSPHRASE);
   await dialog.getByLabel('Confirm passphrase').fill(E2E_ARCHIVE_PASSPHRASE);
 
