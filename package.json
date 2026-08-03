@@ -17,12 +17,13 @@
     "android:signing:setup": "bash scripts/build-android-release.sh setup",
     "android:verify:listener-recovery": "node scripts/verify-android-listener-recovery.mjs",
     "android:verify:release-readiness": "node --import tsx scripts/verify-android-release-readiness.ts",
-    "android:test:instrumentation": "bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest",
+    "android:test:instrumentation": "npm run android:sync:debug && bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest",
     "android:sync": "npm run build && cap sync android",
     "android:sync:debug": "npm run build:android:debug && cap sync android",
     "android:sync:diagnostic": "npm run build:android:debug && CAPACITOR_WEB_CONTENTS_DEBUG=true cap sync android",
     "android:test": "bash scripts/run-android-gradle.sh testDebugUnitTest",
-    "android:verify:webview": "node scripts/verify-android-webview.mjs",
+    "android:verify:transaction-import-webview": "npm run android:assemble:debug && AURA_VERIFY_TRANSACTION_IMPORT=true node scripts/verify-android-webview.mjs",
+    "android:verify:webview": "npm run android:assemble:debug && node scripts/verify-android-webview.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "deploy:hosting": "bash scripts/deploy-hosting.sh",
@@ -32,16 +33,14 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:full": "npm run test:regression && npm run test:e2e",
+    "verify:gemini-retirement": "npx cap sync android && node scripts/verify-gemini-retirement.mjs",
     "test:watch": "vitest",
     "test:react": "vitest run src/components src/pages",
-    "test:regression": "npm run lint && npm run test && npm run build"
+    "test:regression": "npm run lint && npm run test && npm run build && npm run verify:gemini-retirement"
   },
   "dependencies": {
     "@capacitor/android": "8.4.2",
     "@capacitor/core": "8.4.2",
-    "@google/genai": "^1.51.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
@@ -55,10 +54,9 @@
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-error-boundary": "^6.1.1",
-    "react-router-dom": "^7.14.1",
+    "react-router-dom": "7.18.2",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.5.0",
-    "vite": "^6.2.0"
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -67,10 +65,12 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@tailwindcss/vite": "^4.1.14",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/papaparse": "^5.5.2",
     "autoprefixer": "^10.4.21",
+    "@vitejs/plugin-react": "^5.0.4",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
@@ -78,5 +78,10 @@
     "vite": "^6.2.0",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   }
 }

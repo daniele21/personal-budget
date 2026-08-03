@@ -49,7 +49,5 @@ export function createAndroidDebugEnvOverrides(
       value('VITE_ANDROID_FIREBASE_APP_ID'),
     VITE_FIRESTORE_DATABASE_ID:
       value('VITE_ANDROID_FIRESTORE_DATABASE_ID'),
-    // AI-assisted import is deliberately unavailable in Android debug builds.
-    VITE_GEMINI_API_KEY: '',
   };
 }

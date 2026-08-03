@@ -55,8 +55,6 @@ export default defineConfig(({ mode, command }) => {
             ) {
               return 'motion';
             }
-            if (id.includes('/@google/genai/')) return 'google-genai';
-
             return undefined;
           },
         },

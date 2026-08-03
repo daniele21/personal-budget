@@ -22,6 +22,7 @@ import { ExportArchiveDialog } from '../components/archive/ExportArchiveDialog';
 import { ImportArchiveDialog } from '../components/archive/ImportArchiveDialog';
 import { RestoreArchiveConfirmDialog } from '../components/archive/RestoreArchiveConfirmDialog';
 import { downloadBlob } from '../services/archive/archiveDownload';
+import { transactionCsvRecord } from '../domain/transactionCsvExport';
 import { CloudBackupRestoreDialog } from '../components/CloudBackupRestoreDialog';
 import { purgeNativePaymentData } from '../platform/nativeDataLifecycle';
 import { Switch } from '../components/ui';
@@ -127,23 +128,7 @@ export function DataPrivacyPage() {
   const handleExportTransactionsCsv = async () => {
     const { default: Papa } = await import('papaparse');
     const transactionsCsv = Papa.unparse(
-      transactions.map((transaction) => ({
-        id: transaction.id,
-        amount: transaction.amount,
-        type: transaction.type,
-        category: transaction.category,
-        date: transaction.date,
-        title: transaction.title,
-        description: transaction.description,
-        paymentMethod: transaction.paymentMethod,
-        attachmentUrl: transaction.attachmentUrl,
-        verified: transaction.verified,
-        sourceRecurringId: transaction.sourceRecurringId,
-        sourceMonthKey: transaction.sourceMonthKey,
-        recurringEdited: transaction.recurringEdited,
-        reportingClass: transaction.reportingClass ?? 'regular',
-        reportingNote: transaction.reportingNote ?? '',
-      })),
+      transactions.map(transactionCsvRecord),
     );
     const transactionsBlob = new Blob([transactionsCsv], { type: 'text/csv;charset=utf-8;' });
     downloadBlob(
@@ -256,14 +241,14 @@ export function DataPrivacyPage() {
             <div>
               <p className="text-sm font-bold text-on-surface">Import transactions</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Upload Excel or CSV statements. Generic files are sent to Google Gemini only after consent; Aura CSV exports stay local.
+                Import a structured CSV or XLSX with date, description, and amount. Validation and review stay on this device.
               </p>
             </div>
             <Link
               to="/transactions?import=1"
               className="w-full py-3 bg-primary text-on-primary rounded-xl text-xs font-bold shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
             >
-              Import bank statement or CSV
+              Import structured file
             </Link>
           </div>
         </div>

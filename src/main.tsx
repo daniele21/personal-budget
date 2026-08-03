@@ -7,9 +7,12 @@ import { AppProvider } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { getPlatformCapabilities } from './platform/platformCapabilities';
 import { initializePwaInstall } from './services/pwaInstallService';
+import { retireLegacyGeminiLocalCache } from './services/migrations/retireLegacyGeminiLocalCache';
 import './index.css';
 
 const platformCapabilities = getPlatformCapabilities();
+
+retireLegacyGeminiLocalCache();
 
 if (platformCapabilities.pwaInstallSupported) {
   // Capture Chromium's one-shot install event before lazy routes can miss it.
