@@ -1,367 +1,385 @@
-/**
- * ReviewStep — Third step of the import wizard.
- *
- * Displays all categorized transactions in a scrollable list.
- * Each row shows the original description, AI-assigned category
- * (with confidence indicator), amount, and type.
- *
- * The user can:
- * - Change the category for any transaction via a CategoryPicker
- * - Toggle expense/income type
- * - Edit the title
- * - Deselect transactions they don't want to import
- */
-import React, { useCallback, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { Check, X, Pencil, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { CategoryBadge } from '../ui/CategoryBadge';
-import { CategoryIcon } from '../CategoryIcon';
-import { CategoryPicker } from '../CategoryPicker';
-import { NumericKeypadModal } from '../NumericKeypadModal';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CopyCheck,
+  RotateCcw,
+  Tags,
+} from 'lucide-react';
+import {
+  applyImportCategory,
+  excludeAllPossibleDuplicates,
+  groupPreparedRowsByDescription,
+  revalidateImportCategories,
+  setImportRowsIncluded,
+  setImportRowsSelected,
+  undoLastImportReviewChange,
+  type CategoryApplicationScope,
+  type PreparedImportRow,
+  type PreparedTransactionImport,
+} from '../../domain/import';
 import { APP_CONFIG } from '../../constants';
-import type { CategorizedTransaction } from '../../domain/transactionCategorizer';
+import { cn } from '../../lib/utils';
+import { CategoryPicker } from '../CategoryPicker';
+import { CategoryBadge } from '../ui/CategoryBadge';
+import { Button } from '../ui';
+
+const PAGE_SIZE = 100;
+type ReviewFilter = 'all' | 'uncategorized' | 'warnings' | 'duplicates' | 'excluded';
 
 interface ReviewStepProps {
-  transactions: CategorizedTransaction[];
+  prepared: PreparedTransactionImport;
   categories: string[];
-  onTransactionsUpdated: (transactions: CategorizedTransaction[]) => void;
+  onPreparedUpdated: (prepared: PreparedTransactionImport) => void;
   onAddCategory: (name: string) => void;
 }
 
-/** Confidence badge colors */
-const CONFIDENCE_STYLES = {
-  high: 'bg-secondary/10 text-secondary',
-  medium: 'bg-accent-amber/10 text-accent-amber',
-  low: 'bg-tertiary/10 text-tertiary',
-} as const;
+const FILTERS: Array<{ key: ReviewFilter; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'uncategorized', label: 'Uncategorized' },
+  { key: 'warnings', label: 'Warnings' },
+  { key: 'duplicates', label: 'Possible duplicates' },
+  { key: 'excluded', label: 'Excluded' },
+];
+
+function filteredRows(rows: readonly PreparedImportRow[], filter: ReviewFilter): PreparedImportRow[] {
+  if (filter === 'uncategorized') return rows.filter((row) => row.category === 'Uncategorized');
+  if (filter === 'warnings') return rows.filter((row) => row.issues.some((issue) => issue.severity === 'warning'));
+  if (filter === 'duplicates') return rows.filter((row) => row.duplicateMatches.length > 0);
+  if (filter === 'excluded') return rows.filter((row) => !row.included);
+  return [...rows];
+}
+
+function amountLabel(row: PreparedImportRow): string {
+  const sign = row.signedAmountMinor > 0 ? '+' : '-';
+  return `${sign}${APP_CONFIG.currency}${(Math.abs(row.signedAmountMinor) / 100).toFixed(2)}`;
+}
 
 export function ReviewStep({
-  transactions,
+  prepared,
   categories,
-  onTransactionsUpdated,
+  onPreparedUpdated,
   onAddCategory,
 }: ReviewStepProps) {
-  /** Index of the row currently being edited in the dialog */
-  const [editingTxIndex, setEditingTxIndex] = useState<number | null>(null);
-  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
+  const [filter, setFilter] = useState<ReviewFilter>('all');
+  const [page, setPage] = useState(1);
+  const [categoryRowId, setCategoryRowId] = useState<string | null>(null);
+  const [pendingCategory, setPendingCategory] = useState('');
 
-  const selectedCount = transactions.filter(t => !t.isDeselected).length;
+  const visibleRows = useMemo(() => filteredRows(prepared.rows, filter), [filter, prepared.rows]);
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
+  const pageRows = visibleRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const selectedRows = prepared.rows.filter((row) => row.selectedForBatch);
+  const categoryRow = prepared.rows.find((row) => row.rowId === categoryRowId) ?? null;
+  const sameDescriptionCount = categoryRow
+    ? groupPreparedRowsByDescription(prepared.rows)
+      .find((group) => group.matchKey === categoryRow.descriptionMatchKey)?.rowIds.length ?? 0
+    : 0;
 
-  /** Toggle selection for a row */
-  const toggleSelection = useCallback((index: number) => {
-    const updated = transactions.map((t) =>
-      t.index === index ? { ...t, isDeselected: !t.isDeselected } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
-  const allDeselected = transactions.every(t => t.isDeselected);
-  const toggleAll = useCallback(() => {
-    const nextState = !allDeselected;
-    const updated = transactions.map(t => ({ ...t, isDeselected: nextState }));
-    onTransactionsUpdated(updated);
-  }, [transactions, allDeselected, onTransactionsUpdated]);
+  useEffect(() => {
+    const revalidated = revalidateImportCategories(prepared, categories);
+    if (revalidated !== prepared) onPreparedUpdated(revalidated);
+  }, [categories, onPreparedUpdated, prepared]);
 
-  /** Update category for a specific row */
-  const updateCategory = useCallback((rowIndex: number, category: string) => {
-    const updated = transactions.map((t) =>
-      t.index === rowIndex ? { ...t, category, confidence: 'high' as const } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
+  const applyCategory = (scope: CategoryApplicationScope) => {
+    if (!categoryRow || !pendingCategory) return;
+    const activeCategories = categories.includes(pendingCategory)
+      ? categories
+      : [...categories, pendingCategory];
+    onPreparedUpdated(applyImportCategory(prepared, {
+      rowId: categoryRow.rowId,
+      category: pendingCategory,
+      scope,
+      activeCategories,
+    }));
+    setCategoryRowId(null);
+    setPendingCategory('');
+  };
 
-  /** Update type for a specific row */
-  const updateType = useCallback((rowIndex: number, type: 'expense' | 'income') => {
-    const updated = transactions.map((t) =>
-      t.index === rowIndex ? { ...t, type } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
-
-  /** Update title for a specific row */
-  const updateTitle = useCallback((rowIndex: number, title: string) => {
-    const updated = transactions.map((t) =>
-      t.index === rowIndex ? { ...t, title } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
-
-  const updateAmount = useCallback((rowIndex: number, amount: number) => {
-    const updated = transactions.map((t) =>
-      t.index === rowIndex ? { ...t, amount } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
-
-  const updateDate = useCallback((rowIndex: number, date: string) => {
-    const updated = transactions.map((t) =>
-      t.index === rowIndex ? { ...t, date } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
-
-  const updateDescription = useCallback((rowIndex: number, description: string) => {
-    const updated = transactions.map((t) =>
-      t.index === rowIndex ? { ...t, description } : t,
-    );
-    onTransactionsUpdated(updated);
-  }, [transactions, onTransactionsUpdated]);
-
-  /** Statistics */
-  const stats = useMemo(() => {
-    const selected = transactions.filter((t) => !t.isDeselected);
-    return {
-      total: transactions.length,
-      selected: selected.length,
-      highConfidence: selected.filter((t) => t.confidence === 'high').length,
-      mediumConfidence: selected.filter((t) => t.confidence === 'medium').length,
-      lowConfidence: selected.filter((t) => t.confidence === 'low').length,
-    };
-  }, [transactions]);
-
-  const editingTx = useMemo(() => {
-    if (editingTxIndex === null) return null;
-    return transactions.find(t => t.index === editingTxIndex) || null;
-  }, [transactions, editingTxIndex]);
+  const updateSelectedInclusion = (included: boolean) => {
+    onPreparedUpdated(setImportRowsIncluded(
+      prepared,
+      new Set(selectedRows.map((row) => row.rowId)),
+      included,
+    ));
+  };
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-outline-variant/10 pb-2">
-        <div className="space-y-0.5">
-          <h3 className="font-headline font-bold text-on-surface text-base">Review Categories</h3>
-          <p className="text-xs text-on-surface-variant">
-            AI has categorized your transactions. Review and adjust as needed.
-          </p>
+      <header className="space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-headline text-base font-bold text-on-surface">Categorize and review</h3>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Inclusion controls what will be imported. Selection is only for batch actions.
+            </p>
+          </div>
+          {prepared.undoStack.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-11"
+              onClick={() => onPreparedUpdated(undoLastImportReviewChange(prepared))}
+              aria-label="Undo last review change"
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              Undo
+            </Button>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={toggleAll}
-          className="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-primary/10 transition-colors shrink-0"
-        >
-          {allDeselected ? 'Select All' : 'Deselect All'}
-        </button>
-      </div>
 
-      {/* Summary chips */}
-      <div className="flex items-center justify-center gap-2 flex-wrap">
-        <span className="px-3 py-1.5 rounded-full bg-surface-container-high text-micro font-bold text-on-surface">
-          {stats.selected}/{stats.total} selected
-        </span>
-        <span className={cn('px-3 py-1.5 rounded-full text-micro font-bold', CONFIDENCE_STYLES.high)}>
-          {stats.highConfidence} high
-        </span>
-        <span className={cn('px-3 py-1.5 rounded-full text-micro font-bold', CONFIDENCE_STYLES.medium)}>
-          {stats.mediumConfidence} med
-        </span>
-        {stats.lowConfidence > 0 && (
-          <span className={cn('px-3 py-1.5 rounded-full text-micro font-bold', CONFIDENCE_STYLES.low)}>
-            {stats.lowConfidence} low
-          </span>
-        )}
-      </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-surface-container-low px-2 py-2">
+            <p className="text-base font-extrabold text-on-surface">{prepared.summary.includedRows}</p>
+            <p className="text-micro text-on-surface-variant">Included</p>
+          </div>
+          <div className="rounded-xl bg-surface-container-low px-2 py-2">
+            <p className="text-base font-extrabold text-accent-amber">{prepared.summary.uncategorizedRows}</p>
+            <p className="text-micro text-on-surface-variant">Uncategorized</p>
+          </div>
+          <div className="rounded-xl bg-surface-container-low px-2 py-2">
+            <p className="text-base font-extrabold text-on-surface">{prepared.summary.possibleDuplicateRows}</p>
+            <p className="text-micro text-on-surface-variant">Duplicates</p>
+          </div>
+        </div>
+      </header>
 
-      {/* Transaction list */}
-      <div className="space-y-1.5 pb-2">
-        {transactions.map((tx) => {
-          const isDeselected = !!tx.isDeselected;
-
-          return (
-            <div
-              key={tx.index}
-              className={cn(
-                'rounded-2xl border transition-all duration-200',
-                isDeselected
-                  ? 'bg-surface-container-high/50 border-outline-variant/5 opacity-50'
-                  : 'bg-surface-container-lowest border-outline-variant/10',
-              )}
-            >
-              {/* Main row */}
-              <div className="flex items-center gap-3 px-4 py-3">
-                {/* Selection checkbox */}
-                <button
-                  type="button"
-                  onClick={() => toggleSelection(tx.index)}
-                  className={cn(
-                    'w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-all border',
-                    isDeselected
-                      ? 'border-outline-variant/30 bg-transparent'
-                      : 'border-primary bg-primary',
-                  )}
-                  aria-label={isDeselected ? 'Select transaction' : 'Deselect transaction'}
-                >
-                  {!isDeselected && <Check className="w-3.5 h-3.5 text-on-primary" />}
-                </button>
-
-                {/* Category badge */}
-                <CategoryBadge category={tx.category} size="sm" />
-
-                {/* Content */}
-                <div 
-                  className="min-w-0 flex-1 cursor-pointer group"
-                  onClick={() => !isDeselected && setEditingTxIndex(tx.index)}
-                >
-                  <p className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors flex items-center gap-2">
-                    {tx.title || tx.description}
-                    {!isDeselected && <Pencil className="w-3 h-3 text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />}
-                  </p>
-                  <p className="text-micro text-on-surface-variant truncate">
-                    {tx.description}
-                  </p>
-                </div>
-
-                {/* Amount & type */}
-                <div className="text-right flex-shrink-0">
-                  <p className={cn(
-                    'text-sm font-bold',
-                    tx.type === 'income' ? 'text-secondary' : 'text-on-surface',
-                  )}>
-                    {tx.type === 'income' ? '+' : '-'}{APP_CONFIG.currency}{Math.abs(tx.amount || 0).toFixed(2)}
-                  </p>
-                  <span className={cn('text-micro font-bold px-1.5 py-0.5 rounded-full', CONFIDENCE_STYLES[tx.confidence])}>
-                    {tx.confidence}
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Edit Transaction Dialog ──────────────────────────────────── */}
-      <AnimatePresence>
-        {editingTx && (
-          <motion.div
-            className="fixed inset-0 z-[200] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Edit transaction"
+      <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Review filters">
+        {FILTERS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => {
+              setFilter(item.key);
+              setPage(1);
+            }}
+            className={cn(
+              'min-h-11 shrink-0 rounded-full px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+              filter === item.key
+                ? 'bg-primary text-on-primary'
+                : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface',
+            )}
+            aria-pressed={filter === item.key}
           >
-            <button type="button" className="absolute inset-0" onClick={() => setEditingTxIndex(null)} aria-label="Close dialog" />
-            <motion.div
-              initial={{ y: 24, scale: 0.98 }}
-              animate={{ y: 0, scale: 1 }}
-              exit={{ y: 16, scale: 0.98 }}
-              className="relative z-10 w-full max-w-md rounded-t-3xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-2xl sm:rounded-3xl"
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-micro font-bold text-primary">Quick edit</p>
-                  <h3 className="font-headline text-lg font-extrabold text-on-surface">Import Transaction</h3>
-                </div>
-                <button type="button" onClick={() => setEditingTxIndex(null)} className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-              <div className="space-y-4">
-                <div className="flex p-1 bg-surface-container-high rounded-full mb-2 w-full max-w-[200px] mx-auto scale-90">
-                  <button 
-                    onClick={() => updateType(editingTx.index, 'expense')}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-surface-container-low p-3">
+        <span className="mr-auto text-xs font-bold text-on-surface">
+          {selectedRows.length} selected for batch edit
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="min-h-11"
+          onClick={() => onPreparedUpdated(setImportRowsSelected(
+            prepared,
+            new Set(pageRows.map((row) => row.rowId)),
+            true,
+          ))}
+        >
+          Select page
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="min-h-11"
+          disabled={selectedRows.length === 0}
+          onClick={() => onPreparedUpdated(setImportRowsSelected(
+            prepared,
+            new Set(selectedRows.map((row) => row.rowId)),
+            false,
+          ))}
+        >
+          Clear
+        </Button>
+        <Button variant="secondary" size="sm" className="min-h-11" disabled={selectedRows.length === 0} onClick={() => updateSelectedInclusion(false)}>
+          Exclude selected
+        </Button>
+        <Button variant="secondary" size="sm" className="min-h-11" disabled={selectedRows.length === 0} onClick={() => updateSelectedInclusion(true)}>
+          Include selected
+        </Button>
+      </div>
+
+      {prepared.summary.possibleDuplicateRows > 0 && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="min-h-11"
+          onClick={() => onPreparedUpdated(excludeAllPossibleDuplicates(prepared))}
+        >
+          <CopyCheck className="h-4 w-4" aria-hidden="true" />
+          Exclude all possible duplicates
+        </Button>
+      )}
+
+      {visibleRows.length === 0 ? (
+        <div role="status" className="rounded-2xl bg-surface-container-low px-4 py-8 text-center">
+          <p className="text-sm font-bold text-on-surface">No rows in this filter</p>
+          <p className="mt-1 text-xs text-on-surface-variant">Choose another filter to continue reviewing.</p>
+        </div>
+      ) : (
+        <div className="space-y-2" aria-label="Transactions to review">
+          {pageRows.map((row) => {
+            const hasFutureDate = row.issues.some((issue) => issue.code === 'future_date');
+            return (
+              <article
+                key={row.rowId}
+                className={cn(
+                  'rounded-2xl border border-outline-variant/10 bg-surface-container-lowest p-3 transition-opacity',
+                  !row.included && 'opacity-60',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={row.included}
+                    aria-label={`${row.included ? 'Exclude' : 'Include'} row ${row.sourceRowNumber} from import`}
+                    onClick={() => onPreparedUpdated(setImportRowsIncluded(prepared, new Set([row.rowId]), !row.included))}
                     className={cn(
-                      "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-micro transition-all",
-                      editingTx.type === 'expense' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
+                      'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                      row.included ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/40 text-transparent',
                     )}
                   >
-                    Expense
+                    <Check className="h-4 w-4" aria-hidden="true" />
                   </button>
-                  <button 
-                    onClick={() => updateType(editingTx.index, 'income')}
-                    className={cn(
-                      "flex-1 py-1.5 px-3 rounded-full font-headline font-bold text-micro transition-all",
-                      editingTx.type === 'income' ? "bg-secondary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50"
-                    )}
-                  >
-                    Income
-                  </button>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-on-surface">{row.description}</p>
+                        <p className="mt-0.5 text-micro text-on-surface-variant">
+                          {row.date} · source row {row.sourceRowNumber}
+                        </p>
+                      </div>
+                      <p className={cn(
+                        'shrink-0 text-sm font-extrabold',
+                        row.type === 'income' ? 'text-secondary' : 'text-on-surface',
+                      )}>
+                        {amountLabel(row)}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <CategoryBadge category={row.category} size="sm" />
+                      <span className="text-xs font-bold text-on-surface">{row.category}</span>
+                      {row.category === 'Uncategorized' && (
+                        <span className="rounded-full bg-accent-amber/15 px-2 py-1 text-micro font-bold text-on-surface">
+                          Needs category
+                        </span>
+                      )}
+                      {hasFutureDate && (
+                        <span className="rounded-full bg-accent-amber/15 px-2 py-1 text-micro font-bold text-on-surface">
+                          Future date
+                        </span>
+                      )}
+                      {row.duplicateMatches.length > 0 && (
+                        <span className="rounded-full bg-tertiary/10 px-2 py-1 text-micro font-bold text-tertiary">
+                          Possible duplicate
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="min-h-11"
+                        onClick={() => {
+                          setCategoryRowId(row.rowId);
+                          setPendingCategory(row.category === 'Uncategorized' ? '' : row.category);
+                        }}
+                      >
+                        <Tags className="h-4 w-4" aria-hidden="true" />
+                        Set category
+                      </Button>
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={row.selectedForBatch}
+                        onClick={() => onPreparedUpdated(setImportRowsSelected(
+                          prepared,
+                          new Set([row.rowId]),
+                          !row.selectedForBatch,
+                        ))}
+                        className={cn(
+                          'min-h-11 rounded-xl px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                          row.selectedForBatch
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-surface-container-high text-on-surface-variant',
+                        )}
+                      >
+                        {row.selectedForBatch ? 'Selected for batch' : 'Select for batch'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
-                <section className="text-center py-2">
-                  <label className="block text-on-surface-variant text-micro mb-1 font-bold">Entry Amount</label>
-                  <div 
-                    onClick={() => setIsKeypadOpen(true)}
-                    className="relative inline-flex items-baseline justify-center cursor-pointer group"
-                  >
-                    <span className="text-xl font-headline font-extrabold text-on-surface-variant mr-1.5 group-hover:scale-110 transition-transform">{APP_CONFIG.currency}</span>
-                    <span className="text-4xl font-headline font-extrabold text-primary p-0 group-hover:scale-105 transition-transform">
-                      {String(editingTx.amount)}
-                    </span>
-                    <Pencil className="w-3.5 h-3.5 text-primary/30 ml-1.5 group-hover:text-primary transition-colors" />
-                  </div>
-                  
-                  <NumericKeypadModal 
-                    isOpen={isKeypadOpen} 
-                    onClose={() => setIsKeypadOpen(false)} 
-                    onConfirm={(val) => updateAmount(editingTx.index, parseFloat(val) || 0)}
-                    initialValue={String(editingTx.amount)}
-                  />
-                </section>
+      {pageCount > 1 && (
+        <nav className="flex items-center justify-between gap-3" aria-label="Review pages">
+          <Button variant="ghost" size="sm" className="min-h-11" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            Previous
+          </Button>
+          <span className="text-xs font-bold text-on-surface-variant">Page {page} of {pageCount}</span>
+          <Button variant="ghost" size="sm" className="min-h-11" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)}>
+            Next
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </nav>
+      )}
 
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto px-1 pb-2">
-                  <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
-                    <label className="text-micro font-bold text-on-surface-variant">Transaction Title</label>
-                    <input
-                      className="w-full bg-transparent border-none p-0 text-sm font-bold text-on-surface focus:ring-0"
-                      value={editingTx.title || ''}
-                      placeholder="Title"
-                      onChange={(e) => updateTitle(editingTx.index, e.target.value)}
-                    />
-                  </div>
+      {categoryRow && (
+        <section className="sticky bottom-0 z-10 space-y-3 rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-xl" aria-label="Apply category">
+          <div className="flex items-start gap-3">
+            <Tags className="mt-1 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <div>
+              <h4 className="text-sm font-bold text-on-surface">Apply a category</h4>
+              <p className="mt-1 text-xs text-on-surface-variant">Choose the category, then confirm exactly which rows change.</p>
+            </div>
+          </div>
+          <CategoryPicker
+            categories={categories}
+            value={pendingCategory}
+            onChange={setPendingCategory}
+            onAddCategory={onAddCategory}
+            requiredSelection
+          />
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button variant="secondary" size="sm" className="min-h-11" disabled={!pendingCategory} onClick={() => applyCategory('row')}>
+              Only this row
+            </Button>
+            <Button variant="secondary" size="sm" className="min-h-11" disabled={!pendingCategory || selectedRows.length === 0} onClick={() => applyCategory('selected')}>
+              Selected ({selectedRows.length})
+            </Button>
+            <Button variant="secondary" size="sm" className="min-h-11" disabled={!pendingCategory || sameDescriptionCount === 0} onClick={() => applyCategory('same-description')}>
+              Same description ({sameDescriptionCount})
+            </Button>
+          </div>
+          <Button variant="ghost" size="sm" className="min-h-11" fullWidth onClick={() => setCategoryRowId(null)}>Cancel category change</Button>
+        </section>
+      )}
 
-                  <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
-                    <label className="text-micro font-bold text-on-surface-variant">Date</label>
-                    <input 
-                      type="date" 
-                      className="bg-transparent border-none p-0 text-xs font-headline font-bold text-primary focus:ring-0 w-full"
-                      value={editingTx.date || ''}
-                      onChange={(e) => updateDate(editingTx.index, e.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-surface-container-low rounded-2xl p-4">
-                    <CategoryPicker 
-                      categories={categories} 
-                      value={editingTx.category} 
-                      onChange={(c) => updateCategory(editingTx.index, c)} 
-                      onAddCategory={onAddCategory} 
-                    />
-                  </div>
-
-                  <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-1.5">
-                    <label className="text-micro font-bold text-on-surface-variant">Description / Notes</label>
-                    <textarea 
-                      className="w-full bg-transparent border-none p-0 text-xs font-bold text-on-surface focus:ring-0 min-h-[60px] resize-none placeholder:text-on-surface-variant/50" 
-                      placeholder="Add notes..."
-                      value={editingTx.description || ''}
-                      onChange={(e) => updateDescription(editingTx.index, e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => { toggleSelection(editingTx.index); setEditingTxIndex(null); }} 
-                    className="flex-1 py-3.5 bg-surface-container-high text-on-surface font-headline font-bold text-sm rounded-2xl active:scale-[0.98] transition-all"
-                  >
-                    {editingTx.isDeselected ? 'Include' : 'Exclude'}
-                  </button>
-                  <button 
-                    onClick={() => setEditingTxIndex(null)} 
-                    className="flex-[2] py-3.5 bg-primary text-on-primary font-headline font-extrabold text-sm rounded-2xl shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
-                  >
-                    Save changes
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {prepared.summary.includedRows === 0 && (
+        <div role="alert" className="flex items-start gap-2 rounded-2xl bg-tertiary/10 p-3 text-tertiary">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="text-xs font-bold">Include at least one valid row before continuing.</p>
+        </div>
+      )}
     </div>
   );
 }

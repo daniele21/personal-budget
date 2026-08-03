@@ -42,7 +42,7 @@ export const ConfirmDialog = ({
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[240] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"

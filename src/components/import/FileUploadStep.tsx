@@ -1,228 +1,166 @@
-/**
- * FileUploadStep — First step of the import wizard.
- *
- * Allows the user to upload an Excel (.xlsx) or CSV file
- * via drag-and-drop or file picker.
- *
- * Includes a prominent privacy notice informing the user that the
- * file content will be sent to Google Gemini for analysis.
- */
 import React, { useCallback, useRef, useState } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle, ShieldAlert, Check } from 'lucide-react';
+import { AlertCircle, Download, FileSpreadsheet, ShieldCheck, Upload } from 'lucide-react';
+import { buildStructuredImportCsvTemplate, buildStructuredImportXlsxTemplate } from '../../data/import';
+import type { ImportIssue } from '../../domain/import';
+import { isSupportedStructuredImportFile } from '../../data/import';
+import { downloadBlob } from '../../services/archive/archiveDownload';
 import { cn } from '../../lib/utils';
-import { isSupportedFile, SUPPORTED_EXTENSIONS } from '../../domain/excelParser';
+import { Button } from '../ui';
+import { ValidationSummary } from './ValidationSummary';
 
 interface FileUploadStepProps {
-  onFileSelected: (file: File, forceFresh: boolean) => void;
+  onFileSelected: (file: File) => void;
   isProcessing: boolean;
+  validationIssues?: ImportIssue[];
+  errorMessage?: string | null;
 }
 
-export function FileUploadStep({ onFileSelected, isProcessing }: FileUploadStepProps) {
+export function FileUploadStep({
+  onFileSelected,
+  isProcessing,
+  validationIssues = [],
+  errorMessage,
+}: FileUploadStepProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  /** User must acknowledge the privacy notice before uploading */
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [forceFresh, setForceFresh] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /** Validate and set the selected file */
   const handleFile = useCallback((file: File) => {
     setError(null);
-
-    if (!isSupportedFile(file.name)) {
-      setError(`Unsupported file type. Please upload: ${SUPPORTED_EXTENSIONS.join(', ')}`);
+    if (!isSupportedStructuredImportFile(file.name)) {
+      setSelectedFile(null);
+      setError('Use a CSV or XLSX file.');
       return;
     }
-
-    // Limit to 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File is too large. Maximum size is 10MB.');
-      return;
-    }
-
     setSelectedFile(file);
   }, []);
 
-  /** Start processing only after user explicitly confirms */
-  const handleContinue = useCallback(() => {
-    if (selectedFile && privacyAccepted) {
-      onFileSelected(selectedFile, forceFresh);
-    }
-  }, [selectedFile, privacyAccepted, onFileSelected, forceFresh]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files[0];
+    const file = event.dataTransfer.files[0];
     if (file) handleFile(file);
   }, [handleFile]);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+  const downloadCsvTemplate = useCallback(() => {
+    downloadBlob(buildStructuredImportCsvTemplate(), 'aura_transaction_import_template.csv');
+  }, []);
+
+  const downloadXlsxTemplate = useCallback(async () => {
+    downloadBlob(await buildStructuredImportXlsxTemplate(), 'aura_transaction_import_template.xlsx');
+  }, []);
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-          <FileSpreadsheet className="w-7 h-7 text-primary" />
+      <div className="space-y-2 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+          <FileSpreadsheet className="h-7 w-7 text-primary" aria-hidden="true" />
         </div>
-        <h3 className="font-headline font-bold text-on-surface text-lg">Import from File</h3>
-        <p className="text-sm text-on-surface-variant">
-          Upload a bank statement or spreadsheet — AI will extract and categorize your transactions automatically.
+        <h3 className="font-headline text-lg font-bold text-on-surface">Import transactions</h3>
+        <p className="mx-auto max-w-sm text-sm text-on-surface-variant">
+          Use the fixed columns <strong>date</strong>, <strong>description</strong>, and <strong>amount</strong>.
         </p>
       </div>
 
-      {/* ── Privacy notice ─────────────────────────────────────── */}
-      <div className="rounded-2xl border border-accent-amber/30 bg-accent-amber/5 p-4 space-y-3">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent-amber/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <ShieldAlert className="w-5 h-5 text-accent-amber" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-on-surface">Privacy Notice</p>
-            <p className="text-xs text-on-surface-variant leading-relaxed mt-1">
-              This feature uses <strong>Google Gemini AI</strong> to analyze your file.
-              The content of your spreadsheet will be <strong>sent to Google's servers</strong> for processing.
-              Privacy is <strong>not guaranteed</strong> for the data you upload.
-              Do not use this feature with files containing sensitive personal information you are not comfortable sharing with Google.
-            </p>
-          </div>
+      <div className="flex items-start gap-3 rounded-2xl bg-secondary/10 p-4">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-secondary" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-bold text-on-surface">Processed only on this device</p>
+          <p className="mt-1 text-xs leading-relaxed text-on-surface">
+            Aura does not upload the file. CSV supports up to 10 MiB; XLSX supports up to 5 MiB and the first worksheet only.
+          </p>
         </div>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={privacyAccepted}
-            onClick={() => setPrivacyAccepted(!privacyAccepted)}
-            className={cn(
-              'w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all border',
-              privacyAccepted
-                ? 'border-primary bg-primary'
-                : 'border-outline-variant/40 bg-transparent group-hover:border-primary/50',
-            )}
-          >
-            {privacyAccepted && (
-              <svg className="w-3 h-3 text-on-primary" viewBox="0 0 12 12" fill="none">
-                <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </button>
-          <span className="text-xs font-bold text-on-surface">
-            I understand and accept that my data will be sent to Google Gemini
-          </span>
-        </label>
       </div>
 
-      {/* ── Drop zone ──────────────────────────────────────────── */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        className={cn(
-          'relative flex flex-col items-center justify-center gap-4 p-8 rounded-3xl border-2 border-dashed cursor-pointer transition-all duration-200',
-          isDragOver
-            ? 'border-primary bg-primary/5 scale-[1.02]'
-            : 'border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-surface-container-high',
-          isProcessing && 'pointer-events-none opacity-60',
-        )}
-      >
-        <div className={cn(
-          'w-12 h-12 rounded-2xl flex items-center justify-center transition-colors',
-          isDragOver ? 'bg-primary/15' : 'bg-surface-container-high',
-        )}>
-          <Upload className={cn(
-            'w-6 h-6 transition-colors',
-            isDragOver ? 'text-primary' : 'text-on-surface-variant',
-          )} />
-        </div>
-
-        {selectedFile ? (
-          <div className="text-center">
-            <p className="text-sm font-bold text-on-surface">{selectedFile.name}</p>
-            <p className="text-micro text-on-surface-variant mt-1">
-              {(selectedFile.size / 1024).toFixed(1)} KB · Click to change file
-            </p>
-          </div>
-        ) : (
-          <div className="text-center">
-            <p className="text-sm font-bold text-on-surface">
-              {isDragOver ? 'Drop your file here' : 'Drag & drop your file'}
-            </p>
-            <p className="text-micro text-on-surface-variant mt-1">
-              or click to browse · .xlsx, .csv
-            </p>
-          </div>
-        )}
-
-        <input
-          ref={inputRef}
-          type="file"
-          className="hidden"
-          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-          onChange={handleInputChange}
-          disabled={isProcessing}
-        />
+      <div className="flex flex-wrap justify-center gap-2" aria-label="Import templates">
+        <Button variant="secondary" size="sm" className="min-h-11" onClick={downloadCsvTemplate}>
+          <Download className="h-4 w-4" aria-hidden="true" />
+          CSV template
+        </Button>
+        <Button variant="secondary" size="sm" className="min-h-11" onClick={() => void downloadXlsxTemplate()}>
+          <Download className="h-4 w-4" aria-hidden="true" />
+          XLSX template
+        </Button>
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-tertiary/5 border border-tertiary/20">
-          <AlertCircle className="w-4 h-4 text-tertiary flex-shrink-0" />
-          <p className="text-sm text-tertiary">{error}</p>
+      {validationIssues.length > 0 && <ValidationSummary issues={validationIssues} />}
+      {errorMessage && (
+        <div role="alert" className="flex items-start gap-2 rounded-2xl bg-tertiary/10 px-4 py-3 text-tertiary">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="text-sm">{errorMessage}</p>
         </div>
       )}
 
-      {/* ── Continue button ────────────────────────────────────── */}
-      <div className="pt-2 flex items-center justify-center">
-        <label className="flex items-center gap-2 cursor-pointer group">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={forceFresh}
-            onClick={() => setForceFresh(!forceFresh)}
-            className={cn(
-              'w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all border',
-              forceFresh
-                ? 'border-primary bg-primary'
-                : 'border-outline-variant/40 bg-transparent group-hover:border-primary/50',
-            )}
-          >
-            {forceFresh && <Check className="w-3 h-3 text-on-primary" />}
-          </button>
-          <span className="text-sm font-bold text-on-surface-variant group-hover:text-on-surface transition-colors">
-            Forza ricalcolo AI (Ignora Cache)
-          </span>
-        </label>
-      </div>
-
-      <button
-        type="button"
-        onClick={handleContinue}
-        disabled={!selectedFile || !privacyAccepted || isProcessing}
+      <div
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          setIsDragOver(false);
+        }}
+        onDrop={handleDrop}
         className={cn(
-          'w-full py-3.5 rounded-2xl font-headline font-extrabold text-sm transition-all',
-          selectedFile && privacyAccepted
-            ? 'bg-primary text-on-primary shadow-md shadow-primary/15 active:scale-[0.98]'
-            : 'bg-surface-container-high text-on-surface-variant/50 cursor-not-allowed',
+          'relative flex min-h-44 flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed p-6 text-center transition-all',
+          isDragOver
+            ? 'border-primary bg-primary/5'
+            : 'border-outline-variant/30 bg-surface-container-low hover:border-primary/50',
+          isProcessing && 'pointer-events-none opacity-60',
         )}
       >
-        {isProcessing ? 'Processing...' : 'Analyze with Gemini AI'}
-      </button>
+        <Upload className="h-7 w-7 text-primary" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-bold text-on-surface">
+            {selectedFile ? selectedFile.name : 'Drop a file here'}
+          </p>
+          <p className="mt-1 text-micro text-on-surface-variant">
+            {selectedFile
+              ? `${(selectedFile.size / 1024).toFixed(1)} KiB · choose another file if needed`
+              : 'or choose a CSV or XLSX file'}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="min-h-11"
+          onClick={() => inputRef.current?.click()}
+          disabled={isProcessing}
+        >
+          Choose file
+        </Button>
+        <input
+          ref={inputRef}
+          type="file"
+          className="sr-only"
+          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+          disabled={isProcessing}
+          aria-label="Choose transaction file"
+        />
+      </div>
+
+      {error && (
+        <div role="alert" className="flex items-start gap-2 rounded-2xl bg-tertiary/10 px-4 py-3 text-tertiary">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      <Button
+        fullWidth
+        onClick={() => selectedFile && onFileSelected(selectedFile)}
+        disabled={!selectedFile || isProcessing}
+      >
+        {isProcessing ? 'Validating file…' : 'Validate file'}
+      </Button>
+      <p className="text-center text-micro text-on-surface-variant">
+        CSV and XLSX import transactions only. Use an Aura archive to restore a complete backup.
+      </p>
     </div>
   );
 }

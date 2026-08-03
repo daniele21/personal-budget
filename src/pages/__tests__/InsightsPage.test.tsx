@@ -138,6 +138,8 @@ describe('InsightsPage analytics lenses', () => {
     });
 
     renderPage();
+    expect(screen.getAllByText('1 Jul – 31 Jul').length).toBeGreaterThan(0);
+
     await user.selectOptions(screen.getByRole('combobox', { name: /select period/i }), '3M');
 
     expect(screen.getByRole('combobox', { name: /select period/i })).toHaveValue('3M');

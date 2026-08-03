@@ -19,6 +19,7 @@ import * as Finance from '../domain/finance';
 import { haptics } from '../utils/haptics';
 import { TransactionHistoryList } from '../components/history/TransactionHistoryList';
 import { ImportWizardDialog } from '../components/import/ImportWizardDialog';
+import { BatchToolbar } from '../components/history/BatchToolbar';
 import { slidePageTransition } from '../utils/motion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TransactionDetailSheet } from '../components/transactions/TransactionDetailSheet';
@@ -168,6 +169,9 @@ export const HistoryPage = () => {
     transactions,
     setTransactions,
     deleteTransaction: ctxDeleteTransaction,
+    categories: activeCategories,
+    changeCategoriesVerified,
+    undoCategoriesVerified,
   } = useApp();
   const currentMonthRange = useMemo(() => getCurrentMonthRange(), []);
   const lastMonthRange = useMemo(() => getLastMonthRange(), []);
@@ -210,6 +214,9 @@ export const HistoryPage = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchCategory, setBatchCategory] = useState(() => activeCategories[0] ?? '');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -287,6 +294,46 @@ export const HistoryPage = () => {
     },
     [transactions, lens],
   );
+
+  const selectableCategories = useMemo(
+    () => activeCategories.filter((category) => category !== 'Uncategorized'),
+    [activeCategories],
+  );
+
+  useEffect(() => {
+    if (!selectableCategories.includes(batchCategory)) setBatchCategory(selectableCategories[0] ?? '');
+  }, [batchCategory, selectableCategories]);
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const changeSelectedCategory = async () => {
+    try {
+      const token = await changeCategoriesVerified([...selectedIds], batchCategory);
+      const changedCount = token.previousCategories.length;
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+      toast(`${changedCount} transaction${changedCount === 1 ? '' : 's'} updated.`, 'success', 10000, {
+        label: 'Undo',
+        onClick: async () => {
+          try {
+            await undoCategoriesVerified(token);
+            toast('Category changes undone.', 'info');
+          } catch {
+            toast('Category changes could not be undone safely.', 'error');
+          }
+        },
+      });
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Categories could not be changed.', 'error');
+    }
+  };
 
   const allTimeRange = useMemo(() => getAllTimeRange(transactions), [transactions]);
 
@@ -492,6 +539,16 @@ export const HistoryPage = () => {
             ]}
           />
           <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSelectionMode((current) => !current);
+                setSelectedIds(new Set());
+              }}
+            >
+              {selectionMode ? 'Cancel selection' : 'Select'}
+            </Button>
             {hasNonDefaultFilters && (
               <button
                 type="button"
@@ -558,6 +615,22 @@ export const HistoryPage = () => {
         </div>
       </section>
 
+      <BatchToolbar
+        selectionMode={selectionMode}
+        selectedCount={selectedIds.size}
+        visibleCount={filteredTransactions.length}
+        categories={selectableCategories}
+        batchCategory={batchCategory}
+        onBatchCategoryChange={setBatchCategory}
+        onChangeCategory={changeSelectedCategory}
+        onSelectVisible={() => setSelectedIds(new Set(filteredTransactions.map((transaction) => transaction.id)))}
+        onClear={() => setSelectedIds(new Set())}
+        onExit={() => {
+          setSelectionMode(false);
+          setSelectedIds(new Set());
+        }}
+      />
+
       <div data-tour-id="history-list">
         <TransactionHistoryList
           transactions={filteredTransactions}
@@ -566,6 +639,9 @@ export const HistoryPage = () => {
           onEdit={(transaction) => navigate(`/edit/${transaction.id}`)}
           onDelete={setDeleteId}
           sortKey={sortKey}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelection={toggleSelection}
         />
       </div>
 
@@ -595,6 +671,18 @@ export const HistoryPage = () => {
       <ImportWizardDialog
         isOpen={isImportWizardOpen}
         onClose={() => setIsImportWizardOpen(false)}
+        onViewUncategorized={() => {
+          setIsImportWizardOpen(false);
+          setSelectedCategories(['Uncategorized']);
+          applyPeriodPreset('all');
+          const params = new URLSearchParams({
+            category: 'Uncategorized',
+            preset: 'all',
+            startDate: formatDateInputValue(allTimeRange.start),
+            endDate: formatDateInputValue(allTimeRange.end),
+          });
+          navigate(`/history?${params.toString()}`);
+        }}
       />
 
       <FilterSheet

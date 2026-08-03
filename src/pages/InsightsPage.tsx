@@ -120,19 +120,23 @@ interface InsightsPageProps {
 }
 
 export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensControl = true }: InsightsPageProps = {}) => {
-  const { transactions } = useApp();
+  const { transactions, selectedMonth } = useApp();
   const [localLens, setLocalLens] = useState<Finance.AnalyticsLens>('actual');
   const lens = analyticsLens ?? localLens;
   const setLens = onAnalyticsLensChange ?? setLocalLens;
   const [range, setRange] = useState<RangeKey>('1M');
 
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(1); // Default to start of this month
+    const d = new Date(selectedMonth);
+    d.setDate(1);
     return getLocalDateInputValue(d);
   });
   const [customEndDate, setCustomEndDate] = useState<string>(() => {
-    return getLocalDateInputValue();
+    return getLocalDateInputValue(new Date(
+      selectedMonth.getFullYear(),
+      selectedMonth.getMonth() + 1,
+      0,
+    ));
   });
   const [isAvgTrendOpen, setIsAvgTrendOpen] = useState(false);
   
@@ -140,15 +144,14 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
     if (range === 'CUSTOM') {
       return getRangeDates(
         range,
-        new Date().getFullYear(),
-        new Date().getMonth(),
+        selectedMonth.getFullYear(),
+        selectedMonth.getMonth(),
         customStartDate,
         customEndDate,
       );
     }
-    const today = new Date();
-    return getRangeDates(range, today.getFullYear(), today.getMonth());
-  }, [range, customStartDate, customEndDate]);
+    return getRangeDates(range, selectedMonth.getFullYear(), selectedMonth.getMonth());
+  }, [range, selectedMonth, customStartDate, customEndDate]);
 
   const filteredTransactions = useMemo(
     () => Finance.filterByAnalyticsLens(transactions, lens),

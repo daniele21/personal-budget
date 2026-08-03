@@ -1,399 +1,413 @@
-/**
- * ImportWizardDialog — Dialog for importing transactions from Excel/CSV.
- *
- * Simplified 3-step flow:
- * 1. Upload   — user uploads file + accepts privacy notice
- * 2. Processing — Gemini AI extracts and categorizes transactions
- * 3. Review   — user confirms or changes categories, then imports
- *
- * After confirming, a summary is shown before closing.
- *
- * ⚠️ PRIVACY: This feature sends raw spreadsheet data to Google Gemini.
- */
 import React, { useCallback, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowLeft, Loader2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { useApp } from '../../context/AppContext';
-import { useToast } from '../Toast';
-
-// Steps
-import { FileUploadStep } from './FileUploadStep';
-import { ReviewStep } from './ReviewStep';
-import { ImportSummary } from './ImportSummary';
-
-// Domain
-import { parseSpreadsheetFile } from '../../domain/excelParser';
-import {
-  extractAndCategorizeTransactions,
-  type CategorizedTransaction,
-} from '../../domain/transactionCategorizer';
+import { motion } from 'motion/react';
+import { AlertTriangle, ArrowLeft, Loader2, ShieldCheck, X } from 'lucide-react';
+import type { ImportIssue, ImportSummary as ImportReviewSummary, PreparedTransactionImport } from '../../domain/import';
+import { readTransactionImportFile, prepareTransactionImport } from '../../services/import';
 import type { Transaction } from '../../types';
-import { isAuraPortableArchive } from '../../services/archive/archiveReader';
+import { useApp } from '../../context/AppContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { cn } from '../../lib/utils';
+import { Button } from '../ui';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useToast } from '../Toast';
+import { FileUploadStep } from './FileUploadStep';
+import { ImportSummary } from './ImportSummary';
+import { ReviewStep } from './ReviewStep';
 
-type WizardStep = 'upload' | 'processing' | 'review' | 'summary';
+type WizardStep = 'upload' | 'validating' | 'review' | 'confirm' | 'summary';
 
-/** Step metadata for the progress indicator */
-const STEPS: { key: WizardStep; label: string }[] = [
+const STEPS: Array<{ key: WizardStep; label: string }> = [
   { key: 'upload', label: 'Upload' },
-  { key: 'processing', label: 'AI Analysis' },
-  { key: 'review', label: 'Review' },
+  { key: 'validating', label: 'Validate' },
+  { key: 'review', label: 'Categorize' },
+  { key: 'confirm', label: 'Review and import' },
   { key: 'summary', label: 'Done' },
 ];
-
-function parseAuraExportRows(rawRows: string[][]): Transaction[] | null {
-  const headerIndex = rawRows.findIndex((row) => row.some((cell) => cell.trim() === 'reportingClass'));
-  if (headerIndex === -1) return null;
-
-  const headers = rawRows[headerIndex].map((cell) => cell.trim());
-  const required = ['amount', 'type', 'category', 'date', 'title', 'description', 'paymentMethod'];
-  if (!required.every((key) => headers.includes(key))) return null;
-
-  const indexOf = (key: string) => headers.indexOf(key);
-  return rawRows.slice(headerIndex + 1)
-    .filter((row) => row.some((cell) => cell.trim()))
-    .map((row, index) => {
-      const amount = parseFloat(row[indexOf('amount')] ?? '');
-      const type = row[indexOf('type')] === 'income' ? 'income' : 'expense';
-      const rawReportingClass = row[indexOf('reportingClass')];
-      const reportingClass = rawReportingClass === 'extra'
-        ? 'extra'
-        : type === 'income' && rawReportingClass === 'reimbursement'
-          ? 'reimbursement'
-          : undefined;
-      return {
-        id: row[indexOf('id')] || `import_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
-        amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
-        type,
-        category: row[indexOf('category')] || 'Uncategorized',
-        date: row[indexOf('date')] || new Date().toISOString(),
-        title: row[indexOf('title')] || row[indexOf('description')] || 'Imported transaction',
-        description: row[indexOf('description')] || '',
-        paymentMethod: row[indexOf('paymentMethod')] || 'Bank Transfer',
-        reportingClass,
-        reportingNote: reportingClass ? row[indexOf('reportingNote')] || undefined : undefined,
-      } satisfies Transaction;
-    })
-    .filter((transaction) => transaction.amount > 0);
-}
 
 interface ImportWizardDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onViewUncategorized?: () => void;
 }
 
-export function ImportWizardDialog({ isOpen, onClose }: ImportWizardDialogProps) {
-  const { categories, addCategory, addTransactions, user } = useApp();
+function emptySummary(count: number): ImportReviewSummary {
+  return {
+    totalRows: count,
+    includedRows: count,
+    excludedRows: 0,
+    incomeMinor: 0,
+    expenseMinor: 0,
+    netMinor: 0,
+    uncategorizedRows: 0,
+    warningRows: 0,
+    possibleDuplicateRows: 0,
+  };
+}
+
+function secureLegacyId(): string {
+  if (typeof globalThis.crypto?.randomUUID !== 'function') throw new Error('Secure transaction IDs are unavailable.');
+  return globalThis.crypto.randomUUID();
+}
+
+function parseAuraExportRows(rawRows: string[][]): Transaction[] {
+  const headerIndex = rawRows.findIndex((row) => row.some((cell) => cell.trim() === 'reportingClass'));
+  if (headerIndex < 0) return [];
+  const headers = rawRows[headerIndex].map((cell) => cell.trim());
+  const indexOf = (key: string) => headers.indexOf(key);
+  return rawRows.slice(headerIndex + 1).flatMap((row) => {
+    const amount = Number(row[indexOf('amount')] ?? '');
+    if (!Number.isFinite(amount) || amount <= 0) return [];
+    const type = row[indexOf('type')] === 'income' ? 'income' : 'expense';
+    const rawReportingClass = row[indexOf('reportingClass')];
+    const reportingClass = rawReportingClass === 'extra'
+      ? 'extra'
+      : type === 'income' && rawReportingClass === 'reimbursement'
+        ? 'reimbursement'
+        : undefined;
+    return [{
+      id: row[indexOf('id')] || secureLegacyId(),
+      amount,
+      type,
+      category: row[indexOf('category')] || 'Uncategorized',
+      date: row[indexOf('date')],
+      title: row[indexOf('title')] || row[indexOf('description')] || 'Imported transaction',
+      description: row[indexOf('description')] || '',
+      paymentMethod: row[indexOf('paymentMethod')] || 'Bank Transfer',
+      reportingClass,
+      reportingNote: reportingClass ? row[indexOf('reportingNote')] || undefined : undefined,
+    } satisfies Transaction];
+  });
+}
+
+export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: ImportWizardDialogProps) {
+  const {
+    categories,
+    addCategory,
+    transactions,
+    commitPreparedTransactionImport,
+    commitExistingTransactionImport,
+    undoTransactionImport,
+  } = useApp();
   const { toast } = useToast();
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Wizard state
-  const [file, setFile] = useState<File | null>(null);
-  const [forceFresh, setForceFresh] = useState(false);
   const [step, setStep] = useState<WizardStep>('upload');
-  const [categorizedTxs, setCategorizedTxs] = useState<CategorizedTransaction[]>([]);
-  const [importedTxs, setImportedTxs] = useState<Transaction[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('Lettura file in corso...');
-  const [error, setError] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<PreparedTransactionImport | null>(null);
+  const [validationIssues, setValidationIssues] = useState<ImportIssue[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([]);
+  const [completedSummary, setCompletedSummary] = useState<ImportReviewSummary>(emptySummary(0));
+  const [duplicatesKept, setDuplicatesKept] = useState(0);
+  const [discardAction, setDiscardAction] = useState<'close' | 'upload' | null>(null);
+  const [isCommitting, setIsCommitting] = useState(false);
 
-  // Focus trap for accessibility
-  useFocusTrap(dialogRef, isOpen, onClose);
-
-  /** Reset all state and close */
-  const handleClose = useCallback(() => {
+  const reset = useCallback(() => {
     setStep('upload');
-    setFile(null);
-    setCategorizedTxs([]);
-    setImportedTxs([]);
-    setProgress(0);
-    setStatusText('Lettura file in corso...');
-    setError(null);
+    setPrepared(null);
+    setValidationIssues([]);
+    setErrorMessage(null);
+    setImportedTransactions([]);
+    setCompletedSummary(emptySummary(0));
+    setDuplicatesKept(0);
+    setIsCommitting(false);
+  }, []);
+
+  const closeImmediately = useCallback(() => {
+    reset();
     onClose();
-  }, [onClose]);
+  }, [onClose, reset]);
 
-  /** Back navigation — only from review → upload (re-pick file) */
-  const canGoBack = step === 'review';
-  const handleBack = useCallback(() => {
-    if (step === 'review') setStep('upload');
-  }, [step]);
+  const requestClose = useCallback(() => {
+    if (prepared && step !== 'summary') setDiscardAction('close');
+    else closeImmediately();
+  }, [closeImmediately, prepared, step]);
 
-  // ── Step 1: File uploaded → parse + send to AI ───────────────────
+  useFocusTrap(dialogRef, isOpen, requestClose);
 
-  const handleFileSelected = useCallback(async (selectedFile: File, force: boolean) => {
-    setError(null);
-    setFile(selectedFile);
-    setForceFresh(force);
-    setStep('processing');
-    setProgress(0);
-
+  const handleFileSelected = useCallback(async (file: File) => {
+    setStep('validating');
+    setValidationIssues([]);
+    setErrorMessage(null);
     try {
-      // Portable archives are private restore artifacts and must never reach
-      // spreadsheet parsing or Gemini, even when renamed with a CSV extension.
-      if (await isAuraPortableArchive(selectedFile)) {
-        throw new Error('Complete Aura archive detected. Use Import Aura archive from Privacy & Backup.');
-      }
-      // 1. Parse the spreadsheet client-side
-      const parsed = await parseSpreadsheetFile(selectedFile);
-      const auraExportTransactions = parseAuraExportRows(parsed.rawRows);
-      if (auraExportTransactions) {
-        addTransactions(auraExportTransactions);
-        setImportedTxs(auraExportTransactions);
-        setStep('summary');
-        toast(`${auraExportTransactions.length} Aura transactions imported!`, 'success');
+      const result = await readTransactionImportFile(file);
+      if (result.kind === 'aura-archive') {
+        setErrorMessage('Complete Aura archive detected. Use Import Aura archive in Data & Privacy.');
+        setStep('upload');
         return;
       }
-
-      // 2. Send raw data to Gemini for extraction + categorization
-      const results = await extractAndCategorizeTransactions(
-        parsed.rawRows,
-        categories,
-        {
-          userEmail: user?.email || 'anonymous',
-          userId: user?.id || 'anonymous',
-          feature: 'transaction-import',
-        },
-        (p, msg) => {
-          setProgress(p);
-          setStatusText(msg);
-        },
-        force
-      );
-
-      if (results.length === 0) {
-        throw new Error('No transactions found in the file. Please check the file content.');
+      if (result.kind === 'rejected') {
+        setValidationIssues(result.issues);
+        setStep('upload');
+        return;
       }
-
-      setCategorizedTxs(results);
+      if (result.kind === 'aura-legacy-csv') {
+        const legacyTransactions = parseAuraExportRows(result.rawRows);
+        if (legacyTransactions.length === 0) throw new Error('The Aura transaction CSV does not contain valid rows.');
+        const commitResult = await commitExistingTransactionImport(legacyTransactions);
+        setImportedTransactions(commitResult.importedTransactions);
+        setCompletedSummary(emptySummary(legacyTransactions.length));
+        setStep('summary');
+        toast(`${legacyTransactions.length} Aura transactions imported.`, 'success', 10000, {
+          label: 'Undo import',
+          onClick: async () => {
+            const undo = await undoTransactionImport(commitResult.undoToken);
+            toast(
+              undo.skippedIds.length > 0
+                ? `${undo.removedIds.length} removed; ${undo.skippedIds.length} changed or missing transactions kept.`
+                : `${undo.removedIds.length} imported transactions removed.`,
+              'info',
+            );
+          },
+        });
+        return;
+      }
+      if (result.validation.hasBlockingIssues) {
+        setValidationIssues(result.validation.issues);
+        setStep('upload');
+        return;
+      }
+      const nextPrepared = await prepareTransactionImport(result.validation, transactions);
+      if (nextPrepared.rows.length === 0) throw new Error('The file does not contain valid transaction rows.');
+      setPrepared(nextPrepared);
       setStep('review');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to analyze the file.';
-      setError(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The file could not be validated.';
+      setErrorMessage(message);
       setStep('upload');
       toast(message, 'error');
     }
-  }, [addTransactions, categories, toast, user]);
+  }, [commitExistingTransactionImport, prepareTransactionImport, toast, transactions, undoTransactionImport]);
 
-  // ── Step 3: Review confirmed → Import ─────────────────────────────
+  const handleBack = () => {
+    if (step === 'confirm') setStep('review');
+    else if (step === 'review') setDiscardAction('upload');
+  };
 
-  const handleConfirmImport = useCallback(() => {
-    const now = new Date();
-
-    const newTransactions: Transaction[] = categorizedTxs
-      .filter((ct) => !ct.isDeselected && (ct.amount > 0 || ct.amount < 0))
-      .map((ct) => {
-        // Parse date or use today
-        let dateStr: string;
-        if (ct.date) {
-          const parsed = new Date(ct.date);
-          dateStr = isNaN(parsed.getTime()) ? now.toISOString() : parsed.toISOString();
-        } else {
-          dateStr = now.toISOString();
-        }
-
-        return {
-          id: `import_${Date.now()}_${ct.index}_${Math.random().toString(36).slice(2, 7)}`,
-          amount: Math.abs(ct.amount),
-          type: ct.type,
-          category: ct.category,
-          date: dateStr,
-          title: ct.title || ct.description.slice(0, 50),
-          description: ct.description,
-          paymentMethod: 'Bank Transfer',
-        } satisfies Transaction;
+  const handleImport = async () => {
+    if (!prepared) return;
+    setIsCommitting(true);
+    setErrorMessage(null);
+    try {
+      const result = await commitPreparedTransactionImport(prepared);
+      setImportedTransactions(result.importedTransactions);
+      setCompletedSummary(prepared.summary);
+      setDuplicatesKept(prepared.rows.filter((row) => row.included && row.duplicateMatches.length > 0).length);
+      setStep('summary');
+      toast(`${result.importedTransactions.length} transactions imported.`, 'success', 10000, {
+        label: 'Undo import',
+        onClick: async () => {
+          try {
+            const undo = await undoTransactionImport(result.undoToken);
+            toast(
+              undo.skippedIds.length > 0
+                ? `${undo.removedIds.length} removed; ${undo.skippedIds.length} changed or missing transactions kept.`
+                : `${undo.removedIds.length} imported transactions removed.`,
+              'info',
+            );
+          } catch {
+            toast('The import could not be undone safely.', 'error');
+          }
+        },
       });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The import could not be completed.';
+      setErrorMessage(message);
+      toast(message, 'error');
+    } finally {
+      setIsCommitting(false);
+    }
+  };
 
-    // Add all transactions to the app in bulk
-    addTransactions(newTransactions);
-
-    setImportedTxs(newTransactions);
-    setStep('summary');
-    toast(`${newTransactions.length} transactions imported!`, 'success');
-  }, [categorizedTxs, addTransactions, toast]);
-
-  // ── Step index for progress indicator ─────────────────────────────
-
-  const currentStepIndex = STEPS.findIndex((s) => s.key === step);
-
+  const currentStepIndex = STEPS.findIndex((item) => item.key === step);
+  const canGoBack = step === 'review' || step === 'confirm';
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[160] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-6">
-      {/* Backdrop click to close */}
-      <button
-        type="button"
-        className="absolute inset-0"
-        onClick={handleClose}
-        aria-label="Close import wizard"
-      />
-
+      <button type="button" className="absolute inset-0" onClick={requestClose} aria-label="Close import wizard" />
       <motion.div
         ref={dialogRef}
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 32 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
+        exit={{ opacity: 0, y: 24 }}
         role="dialog"
         aria-modal="true"
-        aria-label="Import Transactions"
-        className="relative z-10 w-full max-w-lg bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl shadow-2xl border border-outline-variant/10 flex flex-col h-[95vh] sm:h-[90vh]"
+        aria-labelledby="transaction-import-title"
+        className="relative z-10 flex h-[96svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-outline-variant/10 bg-surface-container-lowest shadow-2xl sm:h-[92vh] sm:rounded-3xl"
       >
-        {/* ── Header ──────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10 flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="flex shrink-0 items-center justify-between border-b border-outline-variant/10 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2">
             {canGoBack && (
               <button
                 type="button"
                 onClick={handleBack}
-                className="p-1.5 rounded-full hover:bg-surface-container-high transition-colors"
-                aria-label="Go back"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label="Go to previous import step"
               >
-                <ArrowLeft className="w-5 h-5 text-on-surface-variant" />
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
               </button>
             )}
-            <div>
-              <h2 className="font-headline font-bold text-primary text-lg">Import Transactions</h2>
+            <div className="min-w-0">
+              <h2 id="transaction-import-title" className="truncate font-headline text-lg font-bold text-primary">
+                Import transactions
+              </h2>
               <p className="text-micro font-bold text-on-surface-variant">
-                {STEPS[currentStepIndex]?.label || ''}
-                {step !== 'summary' && ` — Step ${currentStepIndex + 1} of ${STEPS.length}`}
+                {STEPS[currentStepIndex]?.label} · Step {currentStepIndex + 1} of {STEPS.length}
               </p>
             </div>
           </div>
           <button
             type="button"
-            onClick={handleClose}
-            className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
-            aria-label="Close"
+            onClick={requestClose}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            aria-label="Close import wizard"
           >
-            <X className="w-5 h-5 text-on-surface-variant" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
-        {/* ── Progress bar ────────────────────────────────────── */}
-        <div className="flex gap-1.5 px-5 pt-4 flex-shrink-0">
-          {STEPS.map((s, i) => (
+        <div
+          className="flex shrink-0 gap-1.5 px-5 pt-3"
+          role="progressbar"
+          aria-label="Import progress"
+          aria-valuemin={1}
+          aria-valuemax={STEPS.length}
+          aria-valuenow={currentStepIndex + 1}
+          aria-valuetext={`${STEPS[currentStepIndex]?.label}, step ${currentStepIndex + 1} of ${STEPS.length}`}
+        >
+          {STEPS.map((item, index) => (
             <div
-              key={s.key}
-              className={cn(
-                'h-1 rounded-full flex-1 transition-all duration-300',
-                i <= currentStepIndex ? 'bg-primary' : 'bg-surface-container-high',
-              )}
+              key={item.key}
+              className={cn('h-1 flex-1 rounded-full', index <= currentStepIndex ? 'bg-primary' : 'bg-surface-container-high')}
+              aria-hidden="true"
             />
           ))}
         </div>
 
-        {/* ── Content ─────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
-          <AnimatePresence mode="wait">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+          <>
             {step === 'upload' && (
-              <motion.div
-                key="upload"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
+              <motion.div key="upload" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
                 <FileUploadStep
                   onFileSelected={handleFileSelected}
                   isProcessing={false}
+                  validationIssues={validationIssues}
+                  errorMessage={errorMessage}
                 />
               </motion.div>
             )}
 
-            {step === 'processing' && (
+            {step === 'validating' && (
               <motion.div
-                key="processing"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="flex flex-col items-center justify-center py-12 space-y-6"
+                key="validating"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex min-h-80 flex-col items-center justify-center space-y-5 text-center"
+                role="status"
+                aria-live="polite"
               >
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-full border-4 border-surface-container-high flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                  </div>
-                  {/* Progress ring overlay */}
-                  <svg className="absolute inset-0 w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="36"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      strokeDasharray={`${2 * Math.PI * 36}`}
-                      strokeDashoffset={`${2 * Math.PI * 36 * (1 - progress / 100)}`}
-                      className="text-primary transition-all duration-300"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <p className="font-headline font-bold text-on-surface text-lg">
-                    Analyzing with Gemini AI
-                  </p>
-                  <p className="text-sm text-on-surface-variant mt-1 max-w-[250px] mx-auto min-h-[40px]">
-                    {statusText}
-                  </p>
-                  <p className="text-2xl font-headline font-extrabold text-primary mt-3">
-                    {progress}%
+                <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+                <div>
+                  <h3 className="font-headline text-lg font-bold text-on-surface">Validating locally</h3>
+                  <p className="mt-1 max-w-xs text-sm text-on-surface-variant">
+                    Checking structure, dates, amounts, formulas, and file limits on this device.
                   </p>
                 </div>
               </motion.div>
             )}
 
-            {step === 'review' && (
-              <motion.div
-                key="review"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
+            {step === 'review' && prepared && (
+              <motion.div key="review" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
                 <ReviewStep
-                  transactions={categorizedTxs}
+                  prepared={prepared}
                   categories={categories}
-                  onTransactionsUpdated={setCategorizedTxs}
+                  onPreparedUpdated={setPrepared}
                   onAddCategory={addCategory}
                 />
               </motion.div>
             )}
 
-            {step === 'summary' && (
-              <motion.div
-                key="summary"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-              >
-                <ImportSummary importedTransactions={importedTxs} />
+            {step === 'confirm' && prepared && (
+              <motion.div key="confirm" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
+                <div className="flex items-start gap-3 rounded-2xl bg-surface-container-low p-4">
+                  {prepared.summary.uncategorizedRows > 0
+                    ? <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-accent-amber" aria-hidden="true" />
+                    : <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-secondary" aria-hidden="true" />}
+                  <div>
+                    <h3 className="font-headline text-base font-bold text-on-surface">Review before import</h3>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      {prepared.summary.uncategorizedRows > 0
+                        ? `${prepared.summary.uncategorizedRows} included transaction${prepared.summary.uncategorizedRows === 1 ? ' is' : 's are'} still Uncategorized.`
+                        : 'Every included transaction has a category.'}
+                    </p>
+                  </div>
+                </div>
+                <dl className="divide-y divide-outline-variant/10 rounded-2xl bg-surface-container-low px-4">
+                  <div className="flex justify-between gap-4 py-3 text-sm"><dt>Included</dt><dd className="font-bold">{prepared.summary.includedRows}</dd></div>
+                  <div className="flex justify-between gap-4 py-3 text-sm"><dt>Excluded</dt><dd className="font-bold">{prepared.summary.excludedRows}</dd></div>
+                  <div className="flex justify-between gap-4 py-3 text-sm"><dt>Possible duplicates kept</dt><dd className="font-bold">{prepared.rows.filter((row) => row.included && row.duplicateMatches.length > 0).length}</dd></div>
+                </dl>
+                {prepared.summary.uncategorizedRows > 0 && (
+                  <Button variant="secondary" fullWidth onClick={() => setStep('review')}>
+                    Go back and categorize
+                  </Button>
+                )}
+                {errorMessage && (
+                  <p role="alert" className="rounded-2xl bg-error/10 p-4 text-sm font-semibold text-error">
+                    {errorMessage} You can retry without losing this review.
+                  </p>
+                )}
               </motion.div>
             )}
-          </AnimatePresence>
+
+            {step === 'summary' && (
+              <motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <ImportSummary
+                  importedTransactions={importedTransactions}
+                  reviewSummary={completedSummary}
+                  duplicateRowsKept={duplicatesKept}
+                  onViewUncategorized={completedSummary.uncategorizedRows > 0 ? onViewUncategorized : undefined}
+                />
+              </motion.div>
+            )}
+          </>
         </div>
 
-        {/* ── Footer actions ──────────────────────────────────── */}
-        {(step === 'review' || step === 'summary') && (
-          <div className="px-5 pb-5 pt-2 border-t border-outline-variant/10 flex-shrink-0">
-            {step === 'review' && (
-              <button
-                type="button"
-                onClick={handleConfirmImport}
-                className="w-full py-3.5 rounded-2xl bg-primary text-on-primary font-headline font-extrabold text-sm shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
-              >
-                Confirm Import ({categorizedTxs.length} transactions)
-              </button>
+        {(step === 'review' || step === 'confirm' || step === 'summary') && (
+          <footer className="shrink-0 border-t border-outline-variant/10 bg-surface-container-lowest px-4 py-3 sm:px-5">
+            {step === 'review' && prepared && (
+              <Button fullWidth disabled={prepared.summary.includedRows === 0} onClick={() => setStep('confirm')}>
+                Review {prepared.summary.includedRows} transactions
+              </Button>
             )}
-            {step === 'summary' && (
-              <button
-                type="button"
-                onClick={handleClose}
-                className="w-full py-3.5 rounded-2xl bg-primary text-on-primary font-headline font-extrabold text-sm shadow-md shadow-primary/15 active:scale-[0.98] transition-all"
-              >
-                Done
-              </button>
+            {step === 'confirm' && prepared && (
+              <Button fullWidth onClick={handleImport} disabled={isCommitting}>
+                {isCommitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {prepared.summary.uncategorizedRows > 0
+                  ? `${isCommitting ? 'Importing' : 'Import with'} ${prepared.summary.uncategorizedRows} Uncategorized`
+                  : `Import ${prepared.summary.includedRows} transactions`}
+              </Button>
             )}
-          </div>
+            {step === 'summary' && <Button fullWidth onClick={closeImmediately}>Done</Button>}
+          </footer>
         )}
       </motion.div>
+
+      <ConfirmDialog
+        isOpen={discardAction !== null}
+        title="Discard import review?"
+        message="Your review and category changes will be lost. The source file is not stored by Aura."
+        confirmLabel="Discard review"
+        cancelLabel="Keep reviewing"
+        variant="danger"
+        onConfirm={() => {
+          const action = discardAction;
+          setDiscardAction(null);
+          if (action === 'close') closeImmediately();
+          else reset();
+        }}
+        onCancel={() => setDiscardAction(null)}
+      />
     </div>
   );
 }

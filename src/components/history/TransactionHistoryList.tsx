@@ -18,6 +18,9 @@ interface TransactionHistoryListProps {
   onEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
   sortKey?: string;
+  selectionMode?: boolean;
+  selectedIds?: ReadonlySet<string>;
+  onToggleSelection?: (id: string) => void;
 }
 
 /**
@@ -38,6 +41,9 @@ export function TransactionHistoryList({
   onEdit,
   onDelete,
   sortKey,
+  selectionMode = false,
+  selectedIds = new Set(),
+  onToggleSelection,
 }: TransactionHistoryListProps) {
   const isSortedByAmount = sortKey === 'amount';
 
@@ -76,9 +82,19 @@ export function TransactionHistoryList({
               {/* Tap target — full-width button with the compact row layout */}
               <button
                 type="button"
-                onClick={() => onOpenDetails(transaction)}
+                onClick={() => selectionMode ? onToggleSelection?.(transaction.id) : onOpenDetails(transaction)}
+                aria-pressed={selectionMode ? selectedIds.has(transaction.id) : undefined}
+                aria-label={selectionMode ? `${selectedIds.has(transaction.id) ? 'Deselect' : 'Select'} ${transaction.title}` : undefined}
                 className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left"
               >
+                {selectionMode && (
+                  <span className={cn(
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold',
+                    selectedIds.has(transaction.id) ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/40',
+                  )} aria-hidden="true">
+                    {selectedIds.has(transaction.id) ? '✓' : ''}
+                  </span>
+                )}
                 <CategoryBadge category={transaction.category} size="md" className="shrink-0" />
 
                 {/* Title + category + date */}
@@ -154,9 +170,19 @@ export function TransactionHistoryList({
                   {/* Tap target — full-width button with the compact row layout */}
                   <button
                     type="button"
-                    onClick={() => onOpenDetails(transaction)}
+                    onClick={() => selectionMode ? onToggleSelection?.(transaction.id) : onOpenDetails(transaction)}
+                    aria-pressed={selectionMode ? selectedIds.has(transaction.id) : undefined}
+                    aria-label={selectionMode ? `${selectedIds.has(transaction.id) ? 'Deselect' : 'Select'} ${transaction.title}` : undefined}
                     className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left"
                   >
+                    {selectionMode && (
+                      <span className={cn(
+                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold',
+                        selectedIds.has(transaction.id) ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/40',
+                      )} aria-hidden="true">
+                        {selectedIds.has(transaction.id) ? '✓' : ''}
+                      </span>
+                    )}
                     <CategoryBadge category={transaction.category} size="md" className="shrink-0" />
 
                     {/* Title + category */}

@@ -1,36 +1,39 @@
 import React from 'react';
-import { Download } from 'lucide-react';
 import { Button } from '../ui';
 
 interface BatchToolbarProps {
+  selectionMode: boolean;
   selectedCount: number;
+  visibleCount: number;
   categories: string[];
   batchCategory: string;
   onBatchCategoryChange: (category: string) => void;
   onChangeCategory: () => void;
-  onExport: () => void;
-  onDelete: () => void;
+  onSelectVisible: () => void;
   onClear: () => void;
+  onExit: () => void;
 }
 
 export function BatchToolbar({
+  selectionMode,
   selectedCount,
+  visibleCount,
   categories,
   batchCategory,
   onBatchCategoryChange,
   onChangeCategory,
-  onExport,
-  onDelete,
+  onSelectVisible,
   onClear,
+  onExit,
 }: BatchToolbarProps) {
-  if (selectedCount === 0) return null;
+  if (!selectionMode) return null;
 
   return (
     <section className="rounded-3xl border border-primary/10 bg-primary/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold text-primary">{selectedCount} selected</p>
-          <p className="text-xs text-on-surface-variant">Batch edit, export, or delete selected transactions.</p>
+          <p className="text-xs text-on-surface-variant">Change only the category of selected transactions.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -43,12 +46,14 @@ export function BatchToolbar({
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
-          <Button size="sm" variant="secondary" onClick={onChangeCategory}>Change category</Button>
-          <Button size="sm" variant="secondary" onClick={onExport}>
-            <Download className="w-3.5 h-3.5" /> Export
+          <Button size="sm" variant="secondary" onClick={onSelectVisible} disabled={visibleCount === 0}>
+            Select visible
           </Button>
-          <Button size="sm" variant="danger" onClick={onDelete}>Delete</Button>
-          <Button size="sm" variant="ghost" onClick={onClear}>Clear</Button>
+          <Button size="sm" variant="secondary" onClick={onChangeCategory} disabled={selectedCount === 0 || !batchCategory}>
+            Change category
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onClear} disabled={selectedCount === 0}>Clear</Button>
+          <Button size="sm" variant="ghost" onClick={onExit}>Done selecting</Button>
         </div>
       </div>
     </section>
