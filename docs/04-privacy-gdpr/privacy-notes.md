@@ -16,8 +16,8 @@ These features do not introduce:
 Financial data remains local unless the user explicitly enables the existing encrypted Firestore backup.
 
 Aura has two designated administrator identities. They can manage the access
-allowlist and operational Gemini configuration but cannot read users' local
-financial records or decrypt cloud backups. Adding the second administrator
+allowlist but cannot read users' local financial records or decrypt cloud
+backups. Adding the second administrator
 changes authorization only: it introduces no new data category, processor,
 transfer, retention period, or admin visibility into financial content.
 
@@ -54,8 +54,9 @@ Capacitor bridge argument. This introduces no new authentication provider
 beyond the existing Google/Firebase flow.
 
 Debug Android bundles require a distinct non-production Firebase/OAuth
-configuration and fail before bundling when it is absent. Gemini is disabled in
-that debug profile. Debuggable builds may emit local auth diagnostics limited
+configuration and fail before bundling when it is absent. No AI-provider
+configuration exists in web or Android build profiles. Debuggable builds may
+emit local auth diagnostics limited
 to the failing stage, bounded error code, exception class and sanitized stack
 frames. Exception messages, ID tokens, OAuth client IDs, emails, credential
 payloads and Firebase profiles are excluded; release builds emit no native auth
@@ -91,6 +92,85 @@ The repository does not currently contain the legal source register, processor R
 No new DPIA trigger is apparent from the engineering design because processing is user initiated, local, introduces no monitoring or automated decision-making, and adds no recipient. The privacy owner must confirm this assessment in the project’s formal governance records.
 
 The engineering processing record and privacy-owner approval checklist are maintained in [`portable-archive-processing-record.md`](./portable-archive-processing-record.md).
+
+## Deterministic Transaction Import
+
+Aura has implemented the M1 local reader, structural validation and template
+builders, the M2 review domain, and the M3 user-facing replacement of the
+Gemini-assisted generic CSV/XLSX workflow. The wizard accepts only files with
+fixed `date`, `description`, and `amount` columns and keeps matching, duplicate
+warnings and review state in memory.
+
+The planned processing touches transaction date, description, signed amount,
+derived income/expense type, selected category, and comparisons with the local
+ledger. It introduces no new recipient, backend, administrator access,
+subprocessor, cross-border transfer, remote telemetry or AI system. After
+verified commit, imported rows become ordinary Aura transactions and follow the
+existing local deletion, user export, portable archive and explicitly enabled
+encrypted cloud-backup behavior.
+
+Required engineering controls are:
+
+- source file and prepared review retained in memory only;
+- no filename, row content, amount, date, description, category, email or user
+  ID in logs or network requests;
+- bounded CSV parsing and XLSX ZIP preflight before workbook expansion;
+- formulas rejected in required XLSX cells and spreadsheet-formula escaping on
+  every string field of later CSV exports;
+- no persistent merchant-category rule, import draft, import batch ID or source
+  metadata;
+- explicit warning before importing remaining `Uncategorized` rows;
+- verified transaction-only persistence, read-back and rollback on failure;
+- historical `geminiConfig` and `geminiUsage` data not deleted without a
+  separate owner decision.
+
+M1 implements the local-only file boundary, bounded issue model, incremental
+CSV row limit, UTF-8 gate, XLSX ZIP resource preflight, formula/merge rejection
+and in-memory results. It adds no network call, persistence mutation, analytics,
+vendor or subprocessor. Later milestones implemented the wizard, verified
+commit and formula-safe CSV export.
+
+M2 implements the session-only review model, normalized description groups,
+duplicate warnings, ledger fingerprint, summaries, delta undo and canonical
+transaction mapping. Financial values and descriptions remain in memory; issue
+objects contain only safe codes and row/column locations. The fingerprint and
+duplicate keys are neither logged nor persisted. M2 adds no recipient, vendor,
+backend, telemetry or storage mutation. Verified commit and CSV export formula
+escaping remain release-blocking work in later milestones.
+
+M3 moves the user-facing import wizard and Data & Privacy copy to the local
+M1-M2 boundary. The visible flow no longer requests Gemini consent, sends file
+content to a provider, exposes AI confidence, or offers a cache/model control.
+M4 replaces the temporary context write with verified transaction-only
+persistence, exact read-back and rollback. Source files and review state remain
+session-only; import undo retains only UUIDs and immutable imported projections
+in memory and expires with the page session. No import batch/source metadata is
+added to `Transaction`, and no new recipient, vendor or transfer is introduced.
+
+Removing Gemini reduces vendor, transfer and cost exposure but does not by
+itself establish a lawful basis or GDPR certification. The repository's general
+legal-governance gaps remain applicable and require privacy-owner resolution
+before a commercial compliance claim. Reintroducing remote or AI-assisted
+categorization requires a new privacy, subprocessor, transfer and AI-governance
+review.
+
+M5 removes the provider SDK/runtime, client API-key variable, provider usage
+logger and admin model/usage UI. Startup removes only keys under the retired
+`gemini_import_cache_v6_` namespace and preserves every unrelated localStorage
+key. Web and synchronized Android assets are scanned for retired SDK, endpoint,
+model, key and CTA markers. Historical Firestore collections are not accessed
+by the UI and were not deleted or inspected; their rule retirement and
+retention decision are recorded in
+[`gemini-retirement-record.md`](./gemini-retirement-record.md).
+
+M6 browser acceptance intercepts all import requests, allowlists only the font
+assets and global Firestore listener already used by the app, and fails on any
+other origin or fixture data in request payloads. Synthetic CSV/XLSX fixtures
+cover the 20,000-row boundary,
+failure paths and later CSV export without placing filenames or financial row
+content in telemetry. No new recipient, retention surface, vendor or transfer
+is introduced. Physical Android WebView and manual screen-reader acceptance
+remain release-blocking and are tracked in the M6 QA record.
 
 ## Planned Android Payment Detection
 

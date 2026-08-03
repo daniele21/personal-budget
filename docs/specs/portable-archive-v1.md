@@ -13,7 +13,8 @@ Available actions:
 - `Export complete archive` creates and downloads one self-verified file;
 - `Import Aura archive` recognizes, unlocks, validates, previews, and replaces the local workspace;
 - `Export transactions CSV` exports transaction rows only and is not presented as disaster recovery;
-- `Import bank statement or CSV` remains the separate spreadsheet workflow and may use Gemini only after its existing disclosure and consent.
+- `Import transactions` remains the separate deterministic local CSV/XLSX
+  workflow with fixed columns.
 
 ## Export Flow
 
@@ -28,7 +29,7 @@ An incomplete referenced attachment blocks export because the resulting file wou
 
 ## Import And Restore Flow
 
-1. Aura recognizes the binary `AURAARC1` signature before spreadsheet parsing or AI categorization.
+1. Aura recognizes the binary `AURAARC1` signature before spreadsheet parsing.
 2. The complete archive is bounded, decrypted when needed, validated, migrated, normalized, and integrity-checked locally without persistence writes.
 3. Preview shows creation date, source version, encryption status, counts, and warnings.
 4. V1 offers replace only; merge and selective restore are not available.
@@ -86,5 +87,5 @@ Warnings may be accepted only when core financial data remains valid. Blocking s
 - existing meaningful data cannot be overwritten without confirmation and a verified safety-copy download;
 - persisted data, preferences, references, and attachments match after restore and reload;
 - interruption at a journal checkpoint has a deterministic resume or rollback path;
-- `.aura` never reaches spreadsheet parsing or Gemini;
+- `.aura` never reaches spreadsheet parsing or the transaction import review;
 - legacy Aura CSV and generic spreadsheet workflows remain operational and separately described.

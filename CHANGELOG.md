@@ -4,6 +4,43 @@
 
 ### Added
 
+- Added the M1 deterministic transaction-import foundation: local incremental
+  CSV parsing, bounded XLSX ZIP preflight, typed structural validation, strict
+  archive/legacy/V1 classification, and matching CSV/XLSX template builders.
+  File content remains in memory and this slice performs no network or ledger
+  mutation.
+- Added the M2 in-memory import-review domain: versioned exact-description
+  groups, independently keyed batch/ledger duplicate warnings, deterministic
+  ledger fingerprints, review summaries, active-category validation, delta
+  undo, and collision-safe canonical transaction mapping.
+- Replaced the visible Gemini-assisted import wizard with the M3 local five-step
+  CSV/XLSX flow, including templates, typed validation feedback, 100-row
+  pagination, separate inclusion/batch selection, disclosed category scopes,
+  duplicate and future-date warnings, session undo and Uncategorized
+  confirmation.
+- Added M4 verified transaction-only import persistence with strict read-back,
+  rollback on write/read mismatch, collision-safe IDs, session-only selective
+  undo, an `Uncategorized` history handoff, and atomic per-ID batch category
+  correction with undo. Added Chromium E2E coverage for the complete
+  import/reload/correction journey and invalid-header ledger isolation.
+- Retired the Gemini transaction-import runtime: removed the Google GenAI SDK,
+  provider prompts/configuration, client API-key variable, Firestore usage
+  client, admin model/usage panels and obsolete categorizer tests. Added a
+  scoped best-effort cleanup for the exact V6 legacy import-cache namespace,
+  structural isolation tests, and web/Android artifact scanning. Historical
+  Firestore documents were not deleted or mutated.
+- Hardened deterministic transaction import with formula-safe CSV export,
+  browser tests for remaining validation/rollback/archive/legacy paths,
+  external-request interception, 20,000-row bounded rendering, responsive
+  light/dark accessibility checks across Chromium/WebKit/mobile emulation, PWA
+  template coverage, and verified Android debug build/JVM/lint gates. Physical
+  Android WebView and manual screen-reader acceptance remain release-blocking.
+- Fixed Android debug build isolation so instrumentation and WebView commands
+  always synchronize non-production Firebase assets before compiling or
+  installing an APK, preventing mixed debug OAuth/production Firebase bundles.
+  Added a Pixel 9 Pro API 36 authenticated 20,000-row WebView probe and removed
+  a sequential wizard transition that could leave completed validation hidden
+  behind an indefinite loading state.
 - Added a Google Wallet engineering connector using finite package visibility,
   an anchored merchant-title/EUR-payment template, negative-rule priority, and
   a synthetic/redacted corpus. Card labels and masked suffixes are matched only
@@ -154,6 +191,11 @@
 
 ### Fixed
 
+- Anchored Reports period presets and initial custom-range dates to the user's
+  selected application month instead of the device's current month.
+- Replaced random IDs for newly materialized recurring transactions with
+  bounded deterministic occurrence IDs and collision handling, while
+  preserving IDs already stored in historical linked transactions.
 - Replaced empty profile-photo sources with an accessible initial fallback and
   corrected invalid Dashboard skeleton markup, preventing broken imagery and
   React console errors in the branded application shell.

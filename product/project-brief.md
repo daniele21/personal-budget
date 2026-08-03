@@ -16,7 +16,8 @@ Individuals who want a private, lightweight way to manage personal finances from
 - Preserved historical data for accurate reports.
 - Access control through two designated administrator accounts and an allowlist,
   without administrator access to users' financial data.
-- Portable archive and core financial workflows do not use AI; the separate generic bank-statement import may use Gemini only after explicit disclosure and consent.
+- Portable archive, transaction import and core financial workflows do not use
+  AI. Reintroducing remote categorization requires new discovery and approval.
 
 ## Current Scope
 
@@ -28,7 +29,8 @@ Individuals who want a private, lightweight way to manage personal finances from
 - Category management with archive/restore.
 - Firebase Authentication, admin allowlist, and optional encrypted Firestore backup.
 - One local-only Aura Portable Archive for complete supported-workspace disaster recovery.
-- Separate transaction CSV interoperability and consented AI-assisted generic spreadsheet import.
+- Separate transaction CSV interoperability and deterministic local CSV/XLSX
+  transaction import.
 
 ## Implemented Shared Reporting Initiative
 
@@ -56,7 +58,8 @@ implementation.
 - Aura Portable Archive V1 implements user-initiated, local-only disaster recovery.
 - One `.aura` file preserves the complete supported workspace, including attachments and user-created reminders.
 - Import is replace-only, safety-protected, journaled, verified after persistence, and recovered before normal app hydration after interruption.
-- Portable archive import remains separate from transaction CSV and bank-statement import and never enters the AI-assisted path.
+- Portable archive import remains separate from transaction CSV and structured
+  transaction import.
 - Passphrase protection is selected by default, with an explicitly warned unencrypted option.
 - General release remains gated on physical-device/installed-PWA, manual screen-reader, approximately 32 MiB mobile-memory acceptance, and privacy-owner governance confirmation.
 
@@ -79,6 +82,38 @@ The first planned native capability is optional payment detection from notificat
 The technical spike uses a synthetic notification source. The first real payment app is selected only after a privacy-approved fixture process and verified package/template evidence exist. EUR card payments are the initial product scope; generic incoming transfers, salary, P2P, card identifiers, Open Banking, remote rules, and automatic posting remain outside the MVP.
 
 Strategy, dependencies, quality gates, governance work, and progress are tracked in [`docs/00-discovery/11-android-payment-detection-progress-plan.md`](../docs/00-discovery/11-android-payment-detection-progress-plan.md).
+
+Whole-app production publication is governed separately by
+[`docs/00-discovery/13-android-production-release-plan.md`](../docs/00-discovery/13-android-production-release-plan.md),
+which aggregates Play Console, signing, account deletion, whole-app privacy and
+Data Safety, landing/store presence, physical QA, beta, rollout and rollback
+gates without duplicating the payment-detection implementation tracker.
+
+## Implemented, Release-Gated Initiative: Deterministic Transaction Import
+
+Aura has replaced the former Gemini-assisted generic spreadsheet workflow with
+a local-only deterministic import for CSV and XLSX files using the fixed
+columns `date`, `description`, and `amount`.
+
+The planned V1:
+
+- derives income or expense from the signed amount;
+- stages valid rows for review without changing the canonical ledger;
+- starts uncategorized rows as `Uncategorized`;
+- supports manual batch categorization and conservative propagation to rows
+  with the same normalized description and transaction type;
+- warns about possible duplicates without removing them automatically;
+- permits an explicitly confirmed import with remaining uncategorized rows;
+- adds no persistent import-source metadata or merchant-category rules to
+  `Transaction`;
+- keeps `.aura` restore and Aura transaction CSV compatibility isolated;
+- removes the runtime Gemini import path, client API-key configuration and
+  related admin surfaces.
+
+M1-M5 are implemented. Broader browser, PWA, accessibility and Android release
+acceptance remains governed by the later milestones in
+[`docs/00-discovery/12-deterministic-transaction-import-progress-plan.md`](../docs/00-discovery/12-deterministic-transaction-import-progress-plan.md)
+and does not make the feature generally released by itself.
 
 ## Non-Scope
 

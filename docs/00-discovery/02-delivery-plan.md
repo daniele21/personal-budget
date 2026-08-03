@@ -194,7 +194,15 @@ Aura will add a Capacitor-based Android distribution without replacing the PWA. 
 
 M0 decision closure is complete for a synthetic technical spike. No real notification implementation should start until the privacy, ownership, backup, deletion, fixture, and release gates in the tracker satisfy the applicable Definition of Ready. A synthetic notification source is sufficient for the technical spike; selection of the first real payment app is a pre-pilot gate rather than a reason to guess package IDs or collect personal notifications.
 
-The execution source of truth is [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). The accepted runtime and idempotent acceptance decisions are [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
+The payment-detection execution source of truth is
+[`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md).
+Whole-app publication readiness, including product scope, Play Console,
+production configuration, privacy/Data Safety, account deletion, landing/store
+assets, physical QA, beta, rollout and rollback, is governed by
+[`13-android-production-release-plan.md`](./13-android-production-release-plan.md).
+The accepted runtime and idempotent acceptance decisions are
+[`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and
+[`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
 
 Current engineering baseline:
 
@@ -240,7 +248,8 @@ Current engineering baseline:
 - M9 release hardening now requires external upload-key configuration, verifies
   the exact production package/client boundary and fails closed while the local
   Google Services file is debug-only. The production dependency audit remains
-  non-green with 13 residual advisories after compatible updates.
+  non-green: the 2026-08-03 baseline reports 6 vulnerabilities (3 high,
+  2 moderate, 1 low), pending remediation or explicit risk acceptance.
 - M9 engineering hardening now also verifies Keystore invalidation, closed
   database failure, listener recovery after process/rebind/reboot/revocation,
   and structural absence of network/analytics/content logs in the detection
@@ -254,6 +263,13 @@ QA and compliance closure. M10 operating preparation is complete but the pilot
 has not started. Production signing and external privacy/DPIA gates
 remain open, so Aura is not authorized to read real financial notifications or
 begin a user pilot**.
+
+Production promotion must additionally satisfy the program gates in
+[`13-android-production-release-plan.md`](./13-android-production-release-plan.md).
+That program treats completion of the deterministic import tracker, removal of
+the client Gemini runtime, complete in-app/web account deletion, whole-app
+privacy and Data Safety approval, public legal/support surfaces, Play-installed
+physical QA and staged rollback acceptance as release blockers.
 
 ## Current Initiative: Aura Portable Archive V1
 
@@ -337,6 +353,38 @@ The current UX simplification milestones M0-M9 are defined and tracked in [`08-u
 8. Visual design pass: accent color tokens, typography tokens, stronger dark-mode containers, category icon theme configuration, animated counters, sparklines, radial safe-to-spend gauge, and replacement of hardcoded chart accents in new/updated surfaces.
 9. Mobile PWA install action: browser install event handling, iOS manual add-to-home-screen guidance, standalone suppression, and later relocation from the header to More.
 10. Verification and documentation sync: typecheck, unit tests, production build, strategy and delivery docs.
+
+## Planned Initiative: Deterministic Transaction Import V1
+
+The approved target replaces the current generic Gemini-assisted CSV/XLSX
+wizard with a local-only import using fixed `date`, `description`, and `amount`
+columns. It adds deterministic validation, review, manual batch category
+assignment, conservative same-description propagation, duplicate warnings,
+verified persistence, and post-import correction of `Uncategorized` rows.
+
+The initiative preserves the canonical `Transaction` and `AppData` schemas,
+keeps `.aura` and Aura CSV legacy classification separate, and removes the
+runtime Gemini dependency and related client/admin configuration only after the
+local path is complete. No automatic duplicate deletion, persistent
+merchant-category rule, arbitrary column mapping, AI categorization, backend,
+provider or admin visibility is included in V1.
+
+M0 product decisions, file/resource contract, typed issues, fixture corpus,
+verified commit protocol and architecture/privacy/UX/test reviews are complete.
+TypeScript, 18/18 targeted import tests and the production build pass. The full
+baseline initially exposed two pre-existing regressions in Insights range
+anchoring and random recurring IDs during archive normalization. Both root
+causes are corrected with targeted coverage, historical recurring IDs remain
+unchanged, and the repeated full regression passes 87 files and 411/411 tests.
+M1-M5 are complete. M5 removes the Google GenAI dependency/runtime, client-key
+configuration and admin surfaces, synchronizes clean Android web assets, and
+adds structural/cache/artifact-retirement gates. The current baseline is
+472/472 Vitest tests plus 2/2 Chromium import E2E. The broader cross-browser,
+mobile, error-injection and accessibility matrix remains in M6.
+Milestones M0-M7, dependencies, quality gates,
+privacy/security work, AI retirement, FinOps assessment, rollback and done
+criteria are maintained in
+[`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md).
 
 ## Follow-Up Candidates
 

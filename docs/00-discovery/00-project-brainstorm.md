@@ -183,6 +183,12 @@ Rejected. Native acceptance instead reserves the final normal transaction ID and
 
 The living tracker is [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). Architecture decisions are recorded in [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
 
+The cross-feature path from signed artifact to Play production is tracked in
+[`13-android-production-release-plan.md`](./13-android-production-release-plan.md).
+It consumes the release gates from portable archive, payment detection and
+deterministic import and owns the unresolved public-distribution, compliance,
+landing, physical-QA, beta, rollout and rollback decisions.
+
 ## Problem
 
 The existing CSV export is suitable for analysis and interoperability, but it cannot reconstruct Aura after local data loss. It exports transactions and budgets as separate downloads, while import restores only transactions and otherwise routes generic spreadsheet data through the AI-assisted bank-statement workflow.
@@ -239,3 +245,73 @@ These choices must be resolved in milestone M0, but they do not change the appro
 ## Convergence Gate
 
 Discovery is considered converged because scope, recovery semantics, privacy boundary, encryption posture, AI isolation, and V1 non-scope are approved. Implementation may begin only after the M0 technical contract and test fixtures in the progress plan are complete.
+
+## Approved Planned Initiative: Deterministic Transaction Import V1
+
+Delivery status: **M1-M5 implemented; M6 hardening is next from a green
+472/472 regression baseline and 2/2 import E2E** on 2026-08-03.
+
+### Problem
+
+The generic CSV/XLSX wizard currently depends on Gemini for column detection
+and categorization. This exposes a provider path for financial descriptions and
+amounts, fails late when the API key is absent, and conflicts with the approved
+no-AI strategy. Manual categorization also lacks a complete workflow for
+applying one category to equivalent rows.
+
+### Approved Direction
+
+- Replace the generic Gemini workflow with deterministic local parsing.
+- Require the fixed columns `date`, `description`, and `amount` in CSV or XLSX.
+- Use the amount sign to derive income or expense.
+- Default uncategorized rows to `Uncategorized` and allow import after a clear
+  warning when some remain unresolved.
+- Support manual batch categorization and conservative propagation to rows with
+  the same normalized description and transaction type.
+- Keep category matching separate from duplicate detection.
+- Detect possible duplicates using date, signed amount, and normalized
+  description; warn but never auto-delete.
+- Do not persist merchant-category rules until categories have stable IDs and a
+  separate lifecycle decision.
+- Do not add import batch or source metadata to the canonical `Transaction`.
+- Preserve `.aura` classification and Aura CSV legacy compatibility before the
+  new structured import path.
+- Gemini runtime/config/admin surfaces were removed after the local replacement
+  was verified. Historical Firestore data was not deleted; its rule retirement
+  remains a separately owned migration.
+
+### Alternatives Considered
+
+#### Keep Gemini Disabled Only By Missing API Key
+
+Rejected. The UI remains reachable, fails after the user has prepared a file,
+and can be re-enabled accidentally by configuration.
+
+#### Accept Only Description And Amount
+
+Rejected. Missing dates make transaction history and monthly reporting
+unreliable.
+
+#### Add Arbitrary Column Mapping In V1
+
+Deferred. It improves bank-export compatibility but adds a second complex
+workflow before the strict local path is proven.
+
+#### Persist Merchant-Category Rules Immediately
+
+Deferred. Categories are still string names, so rename, archive, deletion and
+restore semantics are not durable enough for a permanent rule store.
+
+#### Automatically Remove Duplicate Matches
+
+Rejected. Identical same-day charges can both be legitimate; the user retains
+the final decision.
+
+### Convergence Gate
+
+The product direction, file contract, resource limits, commit/read-back
+protocol, typed error model, fixture corpus and cross-cutting reviews are
+complete. The recorded baseline has two pre-existing failures outside the
+import path; both root causes were corrected before M0 closed, and the repeated
+full regression passes 411/411. The living source of truth is
+[`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md).

@@ -43,6 +43,13 @@ Native candidates, preferences, fingerprints, and tombstones are excluded from A
 
 Detailed progress and unresolved external gates are tracked in [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). Runtime and acceptance decisions are fixed in [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
 
+Promotion of the complete Android product through Play internal testing,
+closed beta and production is governed by
+[`13-android-production-release-plan.md`](./13-android-production-release-plan.md).
+That tracker owns the cross-feature release gates for public access, account
+deletion, production configuration, privacy/Data Safety, landing/store
+presence, physical-device evidence, rollout and rollback.
+
 ### Cloud Backup
 
 Chosen: opt-in encrypted backup with visible status.
@@ -96,11 +103,66 @@ Rationale: a recurring payment must stay stable as the source pattern while stil
 
 Recurring entries are materialized into individual linked transactions for every due occurrence from the recurring start date through the current day. The application context owns this sync: it first reconciles existing linked history against the recurring source of truth, then generates missing due transactions. Reports, budgets, history, comparisons, and year review all read from the same transaction ledger. Future recurring occurrences remain planned items, not report transactions, until they are due.
 
+New materialized occurrences use a deterministic ID derived from recurring ID
+and occurrence key. If that ID is already occupied by an unrelated transaction,
+Aura adds a deterministic collision suffix. Reconciliation preserves every
+historical linked transaction ID, so this correction requires no migration and
+does not break existing edit links or attachments.
+
+### Deterministic Transaction Import
+
+Chosen: replace the current generic Gemini-assisted spreadsheet workflow with a
+local-only structured CSV/XLSX import using the fixed columns `date`,
+`description`, and `amount`.
+
+Rationale: a strict file contract is less flexible than automatic bank-column
+detection, but it is predictable, testable, private, inexpensive, and available
+in both the PWA and bundled Android UI without a provider key. The date is
+required because description and amount alone cannot preserve reliable history
+or calendar-month reporting. Positive amounts become income and negative
+amounts become expenses.
+
+The user reviews valid rows before commit. Rows begin as `Uncategorized` unless
+the user assigns an active category. A category may be applied to one row, a
+manual selection, or all included rows sharing the same conservatively
+normalized description and transaction type. Matching does not persist a rule
+or modify historical transactions. Permanent merchant-category rules remain
+out of scope until category identities and lifecycle semantics are stable.
+
+Possible duplicates use a different key: calendar date, signed amount in cents,
+and normalized description. They are warnings only and are never removed
+automatically. The commit validates, persists, reads back, and verifies the next
+canonical `AppData` before success. Imported rows become ordinary transactions;
+no source, import-batch, matching, or duplicate metadata is added to
+`Transaction`.
+
+The `.aura` signature is classified first, Aura transaction CSV compatibility
+remains separate, and the structured path makes no network, Firebase, analytics
+or AI call. Detailed delivery is tracked in
+[`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md).
+
+Implementation status: M1 provides the separated `data/import`, `domain/import`
+and `services/import` boundaries, bounded CSV/XLSX readers, typed validation and
+local template builders. M2 adds the in-memory review model, independent
+matching and duplicate keys, ledger fingerprint, summaries, category commands,
+delta undo and secure canonical mapping. M3 moves the visible wizard to those
+boundaries with local validation, paginated categorization and explicit review.
+M4 adds transaction-only verified persistence with exact read-back, rollback,
+session undo and per-ID history batch correction. M5 removes the provider SDK,
+runtime, client key configuration and admin surfaces; retires the exact legacy
+cache namespace; and verifies both web and Android artifacts. The canonical
+schemas remain unchanged. Historical Firestore documents are untouched and
+their deny-all rule migration remains a separate release decision.
+
 ### AI
 
 Chosen: no AI in current scope.
 
-Rationale: the product value is reliable budgeting and reporting. AI would add privacy, governance, cost, and explanation burden without a confirmed user need.
+Rationale: the product value is reliable budgeting and reporting. AI would add
+privacy, governance, cost, and explanation burden without a confirmed user
+need. The previous provider-assisted import has been retired. Reintroducing AI
+requires new discovery, privacy/subprocessor review, governance and explicit
+approval.
 
 ### Advanced Reporting
 

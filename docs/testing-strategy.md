@@ -214,6 +214,102 @@ Current automated coverage includes:
 
 M7 has automated Chromium/WebKit wipe-and-restore acceptance, mobile viewport emulation, every restore-journal status through real Chromium reloads, responsive/keyboard/axe checks, and PWA shell lifecycle coverage. It must still complete physical-device browser/PWA acceptance, manual screen-reader verification, and mobile-memory measurements before the archive feature can ship.
 
+## Planned Deterministic Transaction Import V1 Coverage
+
+The approved local CSV/XLSX replacement has completed M0 and M1. M1 introduces
+the typed local reader, validation and template builders without yet replacing
+the visible wizard. Its behavioral contract is
+[`deterministic-transaction-import-v1.md`](./specs/deterministic-transaction-import-v1.md),
+and its synthetic M0 corpus is under `tests/fixtures/import/`.
+
+M0 closed from a green baseline of 411 tests across 87 files. M1 adds 29 tests
+for pure validation, fixture-backed CSV classification, XLSX central-directory
+preflight, formulas, merged cells, worksheet states, exact row and size limits,
+UTF-8/syntax rejection, archive/legacy isolation and local template generation.
+The M1 baseline is 440/440 tests across 90 files with TypeScript and production
+build passing.
+
+M2 adds 19 domain/service tests for versioned Unicode description matching,
+branded and independent duplicate keys, batch/ledger collisions, bounded
+20,000-row duplicate metadata, deterministic ledger fingerprints, review
+summaries, separate include/select state, category scopes, inactive-category
+revalidation, delta undo, UUID collision retry and canonical transaction
+mapping. The M2 baseline is 459/459 tests across 94 files with TypeScript and
+production build passing.
+
+M3 adds 11 React tests for local upload copy, template downloads, safe
+validation messages, five-step loading/review/confirmation/success behavior,
+archive isolation, session-close warning, category scopes, distinct
+include/select controls, undo, warnings, empty filters and 100-row pagination.
+The M3 baseline is 470/470 tests across 97 files with TypeScript and production
+build passing. Browser-level narrow-width, theme, axe and screen-reader
+acceptance remains part of M6 hardening.
+
+M4 adds 12 Vitest cases across the verified bulk service, reducer and history
+components. They inject stale-ledger, UUID exhaustion, write/quota,
+read-back-mismatch and rollback-failure paths; cover selective import undo and
+per-ID category undo; and assert that non-category fields and unrelated rows
+survive batch correction. The baseline is 482/482 tests across 99 files with
+TypeScript and the production build passing.
+
+M4 also establishes the first mandatory import Playwright gate. Its Chromium
+happy path covers template CSV, upload, same-description categorization,
+verified commit, reload, the `Uncategorized` history handoff, batch correction,
+absence of AI-provider calls and absence of imported values in request payloads.
+A negative
+case proves invalid headers never reach review or mutate the ledger. M6 must
+extend this suite to XLSX, remaining failure states, network interception,
+cross-browser/mobile/accessibility and Android bundled-WebView coverage; M4's
+two E2E cases remain part of every later full acceptance run.
+
+M5 removes obsolete provider-categorizer tests together with their production
+runtime and adds four retirement tests for import dependency isolation, deleted
+provider/config/admin modules, exact cache-namespace cleanup, storage failure
+and Android environment shape. The post-retirement baseline is 472/472 Vitest
+tests across 100 files. `test:regression` now also scans production web and
+synchronized Android assets for the removed SDK, client key, endpoints, model
+IDs and admin CTA. The two Chromium import E2E remain green after retirement.
+
+M6 adds formula-safe transaction CSV export tests and browser acceptance for
+CSV/XLSX, invalid rows and headers, file limits, duplicate decisions,
+close/reopen, injected persistence failure, archive/legacy isolation, reload,
+batch correction and absence of import-specific external requests. The quality matrix runs on
+Chromium, WebKit, Pixel 5 and iPhone 13 emulation, checks 320/360/390/430 px,
+light/dark, reduced motion, focus containment and Axe serious/critical results,
+and validates 20,000 rows with a 100-row bounded DOM. The PWA project verifies
+the template download path. Repeatable evidence and remaining physical
+Android/screen-reader gates are recorded in
+[`deterministic-transaction-import-m6-acceptance.md`](./07-qa/deterministic-transaction-import-m6-acceptance.md).
+
+The authenticated Android bundled-WebView gate runs on a Pixel 9 Pro API 36
+Play Store image. It rebuilds isolated debug assets before installation and
+validates the 20,000-row CSV boundary, 100-row DOM cap, 200-page result and
+CSV/XLSX upload surface. This closes the automated WebView performance gate;
+the native Android document-picker interaction and manual screen-reader pass
+remain physical/manual acceptance items. The final M6 regression baseline is
+482/482 Vitest tests across 102 files plus 17/17 import Playwright tests.
+
+Implementation must travel with coverage at four layers:
+
+- data/domain tests for file classification, CSV dialects, XLSX ZIP preflight,
+  limits, typed issues, signed cents, calendar dates, description matching,
+  duplicate warnings and canonical mapping;
+- service/state tests for ledger-fingerprint drift, transaction-only strict
+  persistence, exact read-back, rollback failure injection, session undo and
+  per-ID category undo;
+- React tests for paginated review, distinct include/select states, filters,
+  same-description scope, Uncategorized confirmation, duplicate decisions,
+  close warning and every loading/empty/error/success state;
+- Playwright and Android bundled-WebView coverage for CSV/XLSX happy paths,
+  reload equivalence, history correction, template download, `.aura`/legacy CSV
+  isolation, accessibility and absence of network requests.
+
+Security regressions must prove that formula cells are rejected, imported text
+is rendered as text, later CSV export formula-escapes every string field, and
+no financial value or filename enters logs or test artifacts. Large fixtures
+are generated at runtime at the exact declared boundaries; real bank exports
+and personal data are prohibited.
+
 ## When To Add More Tests
 
 Add or update tests when a change affects:
