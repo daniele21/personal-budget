@@ -51,7 +51,7 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Categories')).toBeInTheDocument();
     expect(screen.getByText('Dark mode')).toBeInTheDocument();
     expect(screen.getByText('NotificationPreferences Component')).toBeInTheDocument();
-    expect(screen.getByText('Obiettivi di risparmio')).toBeInTheDocument();
+    expect(screen.getByText('Savings goals')).toBeInTheDocument();
     expect(screen.getByText('Emergency Fund')).toBeInTheDocument();
   });
 

@@ -66,8 +66,8 @@ export function GeminiModelSelector({ adminEmail }: GeminiModelSelectorProps) {
           <Cpu className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-on-surface">Modello AI</h2>
-          <p className="text-xs text-on-surface-variant">Seleziona il modello Gemini attivo</p>
+          <h2 className="text-lg font-bold text-on-surface">AI model</h2>
+          <p className="text-xs text-on-surface-variant">Select the active Gemini model</p>
         </div>
       </div>
 
@@ -96,7 +96,7 @@ export function GeminiModelSelector({ adminEmail }: GeminiModelSelectorProps) {
                     {isActive && (
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-on-primary text-micro font-bold">
                         <Check className="w-3 h-3" />
-                        Attivo
+                        Active
                       </span>
                     )}
                   </div>

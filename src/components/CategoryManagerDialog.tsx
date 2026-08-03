@@ -19,20 +19,20 @@ interface CategoryManagerDialogProps {
 }
 
 function usageLabel(usage?: CategoryUsage): string {
-  if (!usage || usage.total === 0) return 'Non usata';
-  return `Usata ${usage.total} ${usage.total === 1 ? 'volta' : 'volte'}`;
+  if (!usage || usage.total === 0) return 'Not used';
+  return `Used ${usage.total} ${usage.total === 1 ? 'time' : 'times'}`;
 }
 
 function usageDetail(usage?: CategoryUsage): string {
-  if (!usage || usage.total === 0) return 'Questa categoria non risulta collegata a dati esistenti.';
+  if (!usage || usage.total === 0) return 'This category is not linked to existing data.';
 
   const parts = [
-    usage.transactions > 0 ? `${usage.transactions} transazioni` : null,
+    usage.transactions > 0 ? `${usage.transactions} transactions` : null,
     usage.budgets > 0 ? `${usage.budgets} budget` : null,
-    usage.recurring > 0 ? `${usage.recurring} ricorrenti` : null,
+    usage.recurring > 0 ? `${usage.recurring} recurring items` : null,
   ].filter(Boolean);
 
-  return `Questa categoria è usata ${usage.total} ${usage.total === 1 ? 'volta' : 'volte'} (${parts.join(', ')}). I dati esistenti non verranno cancellati, ma la categoria non sarà più selezionabile per nuovi inserimenti.`;
+  return `This category is used ${usage.total} ${usage.total === 1 ? 'time' : 'times'} (${parts.join(', ')}). Existing data will not be deleted, but the category will no longer be available for new entries.`;
 }
 
 export function CategoryManagerDialog({
@@ -133,10 +133,10 @@ export function CategoryManagerDialog({
               </div>
               <div>
                 <h3 id="category-manager-title" className="font-headline text-lg font-extrabold text-on-surface">
-                  Gestione categorie
+                  Manage categories
                 </h3>
                 <p className="text-xs leading-relaxed text-on-surface-variant">
-                  Aggiungi, rinomina o archivia le categorie disponibili.
+                  Add, rename, or archive the available categories.
                 </p>
               </div>
             </div>
@@ -145,7 +145,7 @@ export function CategoryManagerDialog({
               type="button"
               onClick={onClose}
               className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high"
-              aria-label="Chiudi gestione categorie"
+              aria-label="Close category manager"
             >
               <X className="h-4 w-4" />
             </button>
@@ -153,7 +153,7 @@ export function CategoryManagerDialog({
 
           <div className="border-b border-outline-variant/10 p-5">
             <label htmlFor="new-category-name" className="mb-2 block text-micro font-bold text-on-surface-variant">
-              Nuova categoria
+              New category
             </label>
             <div className="flex gap-2">
               <input
@@ -164,7 +164,7 @@ export function CategoryManagerDialog({
                   if (event.key === 'Enter') handleAdd();
                 }}
                 className="min-h-11 flex-1 rounded-xl border-none bg-surface-container-high px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
-                placeholder="Es. Viaggi"
+                placeholder="e.g. Travel"
               />
               <button
                 type="button"
@@ -173,20 +173,20 @@ export function CategoryManagerDialog({
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-headline text-sm font-extrabold text-on-primary transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
-                Aggiungi
+                Add
               </button>
             </div>
             {addDuplicate && (
-              <p className="mt-2 text-xs font-medium text-tertiary">Categoria già presente.</p>
+              <p className="mt-2 text-xs font-medium text-tertiary">Category already exists.</p>
             )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <p className="px-2 pb-2 text-micro font-bold text-on-surface-variant">
-              Attive
+              Active
             </p>
             {sortedCategories.length === 0 ? (
-              <div className="p-6 text-center text-sm text-on-surface-variant">Nessuna categoria configurata.</div>
+              <div className="p-6 text-center text-sm text-on-surface-variant">No categories configured.</div>
             ) : (
               <div className="space-y-1">
                 {sortedCategories.map((category) => {
@@ -218,7 +218,7 @@ export function CategoryManagerDialog({
                             onClick={handleRename}
                             disabled={!canRename}
                             className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-on-primary disabled:pointer-events-none disabled:opacity-50"
-                            aria-label={`Salva categoria ${category}`}
+                            aria-label={`Save category ${category}`}
                           >
                             <Check className="h-4 w-4" />
                           </button>
@@ -229,7 +229,7 @@ export function CategoryManagerDialog({
                               setEditingName('');
                             }}
                             className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high text-on-surface-variant"
-                            aria-label="Annulla modifica categoria"
+                            aria-label="Cancel category edit"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -243,7 +243,7 @@ export function CategoryManagerDialog({
                             <p className="truncate text-sm font-bold text-on-surface">{category}</p>
                             <p
                               className={cn(
-                                'text-[11px] font-medium',
+                                'text-caption font-medium',
                                 usage?.total ? 'text-tertiary' : 'text-on-surface-variant',
                               )}
                             >
@@ -254,7 +254,7 @@ export function CategoryManagerDialog({
                             type="button"
                             onClick={() => beginEdit(category)}
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-on-surface-variant transition-colors hover:bg-surface-container-high"
-                            aria-label={`Modifica categoria ${category}`}
+                            aria-label={`Edit category ${category}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -262,14 +262,14 @@ export function CategoryManagerDialog({
                             type="button"
                             onClick={() => setDeleteTarget(category)}
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-tertiary transition-colors hover:bg-tertiary/10"
-                            aria-label={`Archivia categoria ${category}`}
+                            aria-label={`Archive category ${category}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       )}
                       {isEditing && editDuplicate && (
-                        <p className="mt-2 px-1 text-xs font-medium text-tertiary">Categoria già presente.</p>
+                        <p className="mt-2 px-1 text-xs font-medium text-tertiary">Category already exists.</p>
                       )}
                     </div>
                   );
@@ -280,7 +280,7 @@ export function CategoryManagerDialog({
             {sortedArchivedCategories.length > 0 && (
               <div className="mt-5 border-t border-outline-variant/10 pt-3">
                 <p className="px-2 pb-2 text-micro font-bold text-on-surface-variant">
-                  Archiviate
+                  Archived
                 </p>
                 <div className="space-y-1">
                   {sortedArchivedCategories.map((category) => {
@@ -292,14 +292,14 @@ export function CategoryManagerDialog({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-on-surface">{category}</p>
-                          <p className="text-[11px] font-medium text-on-surface-variant">{usageLabel(usage)}</p>
+                          <p className="text-caption font-medium text-on-surface-variant">{usageLabel(usage)}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => onRestore(category)}
                           className="min-h-10 shrink-0 rounded-xl bg-surface-container-high px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/10"
                         >
-                          Ripristina
+                          Restore
                         </button>
                       </div>
                     );
@@ -313,10 +313,10 @@ export function CategoryManagerDialog({
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}
-        title="Archivia categoria"
-        message={deleteTarget ? `${usageDetail(deleteUsage)} La categoria verrà archiviata e potrà essere ripristinata.` : ''}
-        confirmLabel="Archivia"
-        cancelLabel="Annulla"
+        title="Archive category"
+        message={deleteTarget ? `${usageDetail(deleteUsage)} The category will be archived and can be restored later.` : ''}
+        confirmLabel="Archive"
+        cancelLabel="Cancel"
         variant={deleteUsage?.total ? 'danger' : 'default'}
         onConfirm={() => {
           if (deleteTarget) onDelete(deleteTarget);

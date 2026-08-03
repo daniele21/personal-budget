@@ -8,7 +8,7 @@ import {
   PRIMARY_ADMIN_EMAIL,
   type CachedAllowedUser,
 } from '../lib/allowedUsers';
-import { Shield, UserPlus, Trash2, Loader2, AlertCircle, WifiOff } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Loader2, AlertCircle, WifiOff, LockKeyhole } from 'lucide-react';
 import { GeminiModelSelector } from '../components/admin/GeminiModelSelector';
 import { GeminiUsageDashboard } from '../components/admin/GeminiUsageDashboard';
 
@@ -117,10 +117,11 @@ export const AdminPage = () => {
       </div>
 
       {/* Info: privacy */}
-      <div className="bg-secondary-container/20 border border-secondary/10 rounded-xl px-4 py-3">
-        <p className="text-[11px] text-on-surface-variant leading-relaxed">
-          🔒 Le email vengono salvate su Firestore come <strong>hash SHA-256</strong>. 
-          Nessuna email in chiaro raggiunge il server.
+      <div className="flex items-start gap-2 bg-secondary-container/20 border border-secondary/10 rounded-xl px-4 py-3">
+        <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden="true" />
+        <p className="text-caption text-on-surface-variant leading-relaxed">
+          Email addresses are stored in Firestore as <strong>SHA-256 hashes</strong>.
+          Plain-text email addresses never reach the server.
         </p>
       </div>
 

@@ -59,7 +59,7 @@ export function useFirebaseAuth(): AuthRuntimeState {
             setUser(null);
             setAdminFlag(false);
             setError(
-              `Il tuo account non ha il permesso di accedere. Scrivi a ${PRIMARY_ADMIN_EMAIL} per richiedere l'accesso.`,
+              `Your account does not have access. Contact ${PRIMARY_ADMIN_EMAIL} to request it.`,
             );
             setLoading(false);
             return;

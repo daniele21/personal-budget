@@ -24,6 +24,7 @@ import { RestoreArchiveConfirmDialog } from '../components/archive/RestoreArchiv
 import { downloadBlob } from '../services/archive/archiveDownload';
 import { CloudBackupRestoreDialog } from '../components/CloudBackupRestoreDialog';
 import { purgeNativePaymentData } from '../platform/nativeDataLifecycle';
+import { Switch } from '../components/ui';
 
 export function DataPrivacyPage() {
   const { toast } = useToast();
@@ -116,9 +117,9 @@ export function DataPrivacyPage() {
   const handleCloudRestore = async (versionId: string): Promise<boolean> => {
     const restored = await restoreFromCloud(versionId);
     if (restored) {
-      toast('Backup ripristinato sul dispositivo', 'success');
+      toast('Backup restored on this device', 'success');
     } else {
-      toast('Impossibile ripristinare il backup selezionato', 'error');
+      toast('Unable to restore the selected backup', 'error');
     }
     return restored;
   };
@@ -253,9 +254,9 @@ export function DataPrivacyPage() {
               <Upload className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-bold text-on-surface">Importa transazioni</p>
+              <p className="text-sm font-bold text-on-surface">Import transactions</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Carica estratti conto Excel o CSV. I file generici vengono inviati a Google Gemini dopo il consenso; gli export CSV Aura restano locali.
+                Upload Excel or CSV statements. Generic files are sent to Google Gemini only after consent; Aura CSV exports stay local.
               </p>
             </div>
             <Link
@@ -307,29 +308,16 @@ export function DataPrivacyPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-on-surface">Cloud backup</p>
                   <p className="text-micro text-on-surface-variant font-medium">
-                    {cloudBackupEnabled ? 'Attivo' : 'Off'}
+                    {cloudBackupEnabled ? 'Active' : 'Off'}
                     {lastBackupDate ? ` · ${lastBackupDate}` : ''}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCloudBackupEnabled(!cloudBackupEnabled)}
-                className={cn(
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
-                  cloudBackupEnabled ? 'bg-primary' : 'bg-surface-container-highest',
-                )}
-                role="switch"
-                aria-checked={cloudBackupEnabled}
-                aria-label={cloudBackupEnabled ? 'Disattiva backup cloud' : 'Attiva backup cloud'}
-              >
-                <span
-                  className={cn(
-                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                    cloudBackupEnabled ? 'translate-x-6' : 'translate-x-1',
-                  )}
-                />
-              </button>
+              <Switch
+                checked={cloudBackupEnabled}
+                onChange={() => setCloudBackupEnabled(!cloudBackupEnabled)}
+                label={cloudBackupEnabled ? 'Disable cloud backup' : 'Enable cloud backup'}
+              />
             </div>
           </div>
 
@@ -343,9 +331,9 @@ export function DataPrivacyPage() {
                 <History className="h-4 w-4" />
               </span>
               <span>
-                <span className="block text-sm font-bold">Ripristina backup cloud</span>
+                <span className="block text-sm font-bold">Restore cloud backup</span>
                 <span className="block text-micro text-on-surface-variant">
-                  Scegli tra le ultime 3 versioni salvate
+                  Choose from the latest three saved versions
                 </span>
               </span>
             </span>
@@ -375,22 +363,22 @@ export function DataPrivacyPage() {
             onClick={() => setShowResetLocalDialog(true)}
             className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary font-headline font-extrabold text-xs border border-dashed border-tertiary/30 rounded-2xl hover:bg-tertiary/5 transition-colors"
           >
-            Cancella dati locali
+            Delete local data
           </button>
           <button
             onClick={() => setShowResetAllDialog(true)}
             className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary font-headline font-extrabold text-xs border border-dashed border-tertiary/30 rounded-2xl hover:bg-tertiary/5 transition-colors"
           >
-            Cancella tutto (locale + backup cloud)
+            Delete everything (local data and cloud backup)
           </button>
         </div>
       </section>
 
       <ConfirmDialog
         isOpen={showResetLocalDialog}
-        title="Cancella dati locali"
-        message="Verranno cancellati tutti i dati dal dispositivo (transazioni, budget, ricorrenti, impostazioni). Il backup nel cloud resterà disponibile e ti verrà proposto al prossimo accesso."
-        confirmLabel="Cancella dati locali"
+        title="Delete local data"
+        message="This deletes all data on this device, including transactions, budgets, recurring items, and settings. Your cloud backup remains available and will be offered the next time you sign in."
+        confirmLabel="Delete local data"
         variant="danger"
         onConfirm={handleResetLocal}
         onCancel={() => setShowResetLocalDialog(false)}
@@ -398,9 +386,9 @@ export function DataPrivacyPage() {
 
       <ConfirmDialog
         isOpen={showResetAllDialog}
-        title="⚠️ Cancellazione totale"
-        message="Verranno cancellati TUTTI i dati: dal dispositivo e dal backup nel cloud. Questa azione è irreversibile. Sei assolutamente sicuro?"
-        confirmLabel="Sì, cancella tutto"
+        title="Delete all Aura data"
+        message="This permanently deletes all Aura data from this device and the cloud backup. This action cannot be undone."
+        confirmLabel="Delete everything"
         variant="danger"
         onConfirm={handleResetAll}
         onCancel={() => setShowResetAllDialog(false)}

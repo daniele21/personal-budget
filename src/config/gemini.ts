@@ -36,7 +36,7 @@ export const GEMINI_MODELS: ModelInfo[] = [
     contextWindow: '1M tokens',
     inputPrice: 0.075,
     outputPrice: 0.30,
-    description: 'Estremamente veloce e leggero, ideale per micro-task a costi minimi.',
+    description: 'Extremely fast and lightweight, ideal for small tasks at minimal cost.',
   },
   {
     id: 'gemini-3-flash-preview',
@@ -44,7 +44,7 @@ export const GEMINI_MODELS: ModelInfo[] = [
     contextWindow: '1M tokens',
     inputPrice: 0.15,
     outputPrice: 0.60,
-    description: 'La nuova generazione di modelli veloci, con capacità di ragionamento superiori.',
+    description: 'A new generation of fast models with stronger reasoning capabilities.',
   },
   {
     id: 'gemini-3.1-pro-preview',
@@ -52,7 +52,7 @@ export const GEMINI_MODELS: ModelInfo[] = [
     contextWindow: '2M tokens',
     inputPrice: 1.50,
     outputPrice: 6.00,
-    description: 'Stato dell\'arte nel ragionamento logico e scientifico e nella generazione di codice avanzata.',
+    description: 'State-of-the-art logical and scientific reasoning with advanced code generation.',
   },
   {
     id: 'gemini-flash-latest',
@@ -60,7 +60,7 @@ export const GEMINI_MODELS: ModelInfo[] = [
     contextWindow: '1M tokens',
     inputPrice: 0.10,
     outputPrice: 0.40,
-    description: 'Il bilanciamento perfetto tra velocità e intelligenza per flussi standard.',
+    description: 'A balanced mix of speed and capability for standard workflows.',
   },
 ];
 

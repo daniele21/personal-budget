@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aura-finance-v9';
+const CACHE_NAME = 'aura-finance-v11';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -7,9 +7,13 @@ const APP_SHELL = [
   '/logo-dark.png',
   '/aura-logo-light.png',
   '/aura-logo-dark.png',
+  '/aura-mark-light.png',
+  '/aura-mark-dark.png',
   '/favicon.png',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
 ];
 
 // Cache shell resources on install

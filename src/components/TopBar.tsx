@@ -145,7 +145,22 @@ export const TopBar = ({ title, variant: explicitVariant, showProfile = true }: 
       className="ml-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-surface bg-primary-container text-xs font-bold text-on-primary shadow-sm transition-all hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       aria-label="Profile"
     >
-      <img src={user.photoUrl} alt={user.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+      {user.photoUrl ? (
+        <img
+          src={user.photoUrl}
+          alt={user.name}
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <span
+          role="img"
+          aria-label={user.name}
+          className="flex h-full w-full items-center justify-center uppercase"
+        >
+          {user.name.trim().charAt(0) || 'A'}
+        </span>
+      )}
     </Link>
   ) : null;
 

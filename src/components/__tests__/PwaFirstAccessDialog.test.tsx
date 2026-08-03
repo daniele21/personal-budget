@@ -53,10 +53,10 @@ describe('PwaFirstAccessDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     firstRender.rerender(<PwaFirstAccessDialog isEligible />);
-    expect(await screen.findByRole('dialog', { name: 'Installa Aura' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Install Aura' })).toBeInTheDocument();
     expect(window.localStorage.getItem(STORAGE_KEYS.pwaInstallDialogShown)).toBe('true');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Non ora' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     firstRender.unmount();
@@ -66,7 +66,7 @@ describe('PwaFirstAccessDialog', () => {
     rememberedRender.unmount();
     window.localStorage.removeItem(STORAGE_KEYS.pwaInstallDialogShown);
     render(<PwaFirstAccessDialog isEligible />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Installa app' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Install app' }));
 
     expect(prompt).toHaveBeenCalledOnce();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

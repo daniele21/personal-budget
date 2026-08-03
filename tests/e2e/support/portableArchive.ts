@@ -178,10 +178,10 @@ export async function wipeLocalDataThroughUi(page: Page): Promise<void> {
   await page.evaluate(() => {
     window.sessionStorage.setItem('aura_e2e_keep_empty_shell_after_reset', 'true');
   });
-  await page.getByRole('button', { name: 'Cancella dati locali', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: 'Cancella dati locali' });
+  await page.getByRole('button', { name: 'Delete local data', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Delete local data' });
   const reloaded = page.waitForEvent('load');
-  await confirmation.getByRole('button', { name: 'Cancella dati locali', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Delete local data', exact: true }).click();
   await reloaded;
   await expect(page.getByRole('button', { name: 'Export complete archive' })).toBeVisible();
   await expect.poll(async () => {

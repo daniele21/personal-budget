@@ -21,7 +21,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   primary: 'bg-gradient-to-b from-primary-container to-primary text-on-primary shadow-md shadow-primary/12 hover:brightness-105 active:brightness-95 border border-primary/20',
   secondary: 'bg-surface-container-lowest text-primary border border-outline-variant/25 shadow-sm hover:bg-surface-container-low hover:text-primary-container active:bg-surface-container-high',
   ghost: 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary active:bg-surface-container-high',
-  danger: 'bg-gradient-to-b from-tertiary to-[color-mix(in_srgb,var(--color-tertiary)_85%,#000)] text-on-primary shadow-md shadow-tertiary/12 hover:brightness-105 active:brightness-95 border border-tertiary/20',
+  danger: 'bg-gradient-to-b from-tertiary to-[color-mix(in_srgb,var(--color-tertiary)_85%,var(--color-inverse-surface))] text-on-primary shadow-md shadow-tertiary/12 hover:brightness-105 active:brightness-95 border border-tertiary/20',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

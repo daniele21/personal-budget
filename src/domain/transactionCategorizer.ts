@@ -670,7 +670,7 @@ export async function extractAndCategorizeTransactions(
 ): Promise<CategorizedTransaction[]> {
   if (!GEMINI_API_KEY) {
     throw new Error(
-      'Gemini API key non configurata. Imposta VITE_GEMINI_API_KEY nel file .env.',
+      'Gemini API key is not configured. Set VITE_GEMINI_API_KEY in the .env file.',
     );
   }
 
@@ -683,7 +683,7 @@ export async function extractAndCategorizeTransactions(
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        onStatus?.(100, 'Risultati caricati dalla cache locale (zero token usati).');
+        onStatus?.(100, 'Results loaded from the local cache (zero tokens used).');
         return JSON.parse(cached) as CategorizedTransaction[];
       }
     } catch (err) {
@@ -701,9 +701,9 @@ export async function extractAndCategorizeTransactions(
   let colMapping = buildHeaderColumnMapping(rawRows);
 
   if (colMapping) {
-    onStatus?.(10, 'Colonne identificate dagli header del file...');
+    onStatus?.(10, 'Columns identified from the file headers...');
   } else {
-    onStatus?.(5, 'Identificazione colonne in corso...');
+    onStatus?.(5, 'Identifying columns...');
 
     // 1. Column Detection (Fase 1)
     // Prendi le prime 50 righe (invece di 10) perché molti export Excel bancari hanno intestazioni lunghissime
@@ -726,23 +726,23 @@ export async function extractAndCategorizeTransactions(
 
       colMapping = mergeColumnMapping(rawRows, parseColumnDetectionResponse(colResponse.text || ''));
     } catch (err) {
-      console.error('[Gemini] Errore rilevamento colonne:', err);
-      throw new Error('Impossibile comprendere la struttura del file. Assicurati che contenga date, descrizioni e importi.');
+      console.error('[Gemini] Column detection failed:', err);
+      throw new Error('The file structure could not be understood. Make sure it contains dates, descriptions, and amounts.');
     }
   }
 
   const splitAmountColumns = getLocalAmountColumns(rawRows, colMapping);
   if (colMapping.descCol === -1 || (colMapping.amountCol === -1 && !splitAmountColumns)) {
-    throw new Error('Colonne necessarie (Descrizione o Importo) non trovate nel file.');
+    throw new Error('Required columns (Description or Amount) were not found in the file.');
   }
 
-  onStatus?.(15, 'Pulizia dati locale in corso...');
+  onStatus?.(15, 'Cleaning data locally...');
 
   // 2. Local Parsing (Fase 2)
   const cleanTransactions = extractTransactionsLocally(rawRows, colMapping);
 
   if (cleanTransactions.length === 0) {
-    throw new Error('Nessuna transazione valida trovata dopo la pulizia del file.');
+    throw new Error('No valid transactions were found after cleaning the file.');
   }
 
   // 3. Categorization (Fase 3) in batches
@@ -753,7 +753,7 @@ export async function extractAndCategorizeTransactions(
     const batch = cleanTransactions.slice(i, i + batchSize);
     // Normalize progress between 20% and 95%
     const batchProgress = 20 + Math.round((i / cleanTransactions.length) * 75);
-    onStatus?.(batchProgress, `Categorizzazione ${i + 1} a ${i + batch.length} di ${cleanTransactions.length}... (Modello: ${modelInfo.name})`);
+    onStatus?.(batchProgress, `Categorizing ${i + 1} to ${i + batch.length} of ${cleanTransactions.length}... (Model: ${modelInfo.name})`);
 
     // Prepare minimal data to send
     const minimalBatch = batch.map(t => ({ id: t.id, description: t.description, amount: t.signedAmount }));
@@ -773,18 +773,18 @@ export async function extractAndCategorizeTransactions(
       totalInputTokens += catResponse.usageMetadata?.promptTokenCount || 0;
       totalOutputTokens += catResponse.usageMetadata?.candidatesTokenCount || 0;
     } catch (err) {
-      console.error('[Gemini] Errore categorizzazione:', err);
-      throw new Error('Errore durante la categorizzazione delle transazioni.');
+      console.error('[Gemini] Categorization failed:', err);
+      throw new Error('An error occurred while categorizing the transactions.');
     }
 
-    onStatus?.(batchProgress + Math.round((batch.length / cleanTransactions.length) * 5), 'Salvataggio risultati...');
+    onStatus?.(batchProgress + Math.round((batch.length / cleanTransactions.length) * 5), 'Saving results...');
 
     try {
       const parsedBatch = parseCategorizationResponse(catResponse.text || '', categories);
       results.push(...mergeCategorizationResults(batch, parsedBatch, categories));
     } catch (err) {
-      console.error('[Gemini] Errore di parsing categorizzazione:', catResponse.text);
-      throw new Error(`Gemini ha restituito un formato non valido per questo blocco di dati. Riprova.`);
+      console.error('[Gemini] Categorization response parsing failed:', catResponse.text);
+      throw new Error('Gemini returned an invalid format for this data batch. Try again.');
     }
   }
 
@@ -802,12 +802,12 @@ export async function extractAndCategorizeTransactions(
     feature: caller.feature,
   });
 
-  onStatus?.(100, 'Completamento in corso...');
+  onStatus?.(100, 'Finishing up...');
 
   try {
     localStorage.setItem(cacheKey, JSON.stringify(results));
   } catch (err) {
-    console.warn('[Gemini] Errore nel salvataggio della cache locale:', err);
+    console.warn('[Gemini] Failed to save the local cache:', err);
   }
 
   return results;

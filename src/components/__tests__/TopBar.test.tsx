@@ -1,11 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { User } from '../../types';
 import { TopBar } from '../TopBar';
 
+const appMocks = vi.hoisted(() => ({ user: null as User | null }));
+
 vi.mock('../../context/AppContext', () => ({
-  useApp: () => ({ user: null }),
+  useApp: () => ({ user: appMocks.user }),
 }));
 
 vi.mock('../../hooks/useNotifications', () => ({
@@ -19,7 +22,7 @@ vi.mock('../../state/PaymentDetectionProvider', () => ({
 }));
 vi.mock('../PwaInstallButton', () => ({
   PwaInstallButton: ({ variant }: { variant: string }) => (
-    <button type="button" aria-label="Installa Aura" data-variant={variant} />
+    <button type="button" aria-label="Install Aura" data-variant={variant} />
   ),
 }));
 
@@ -32,6 +35,10 @@ function renderTopBar(path: string, title: string) {
 }
 
 describe('TopBar route variants', () => {
+  beforeEach(() => {
+    appMocks.user = null;
+  });
+
   it('leaves search to the local Transactions surface', () => {
     renderTopBar('/transactions', 'Transactions');
 
@@ -48,7 +55,7 @@ describe('TopBar route variants', () => {
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'More options' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'More' })).toHaveAttribute('href', '/more');
-    expect(screen.getByRole('button', { name: 'Installa Aura' })).toHaveAttribute('data-variant', 'icon');
+    expect(screen.getByRole('button', { name: 'Install Aura' })).toHaveAttribute('data-variant', 'icon');
   });
 
   it.each([
@@ -62,5 +69,19 @@ describe('TopBar route variants', () => {
     const moreLink = screen.getByRole('link', { name: 'More' });
     expect(moreLink).toHaveAttribute('href', '/more');
     if (path === '/more') expect(moreLink).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('uses an accessible initial instead of rendering an empty avatar source', () => {
+    appMocks.user = {
+      id: 'user-1',
+      name: 'Aura User',
+      email: 'aura@example.com',
+      photoUrl: '',
+    };
+
+    const { container } = renderTopBar('/', 'Dashboard');
+
+    expect(screen.getByRole('img', { name: 'Aura User' })).toHaveTextContent('A');
+    expect(container.querySelector('img[src=""]')).not.toBeInTheDocument();
   });
 });

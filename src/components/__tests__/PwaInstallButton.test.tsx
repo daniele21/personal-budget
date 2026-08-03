@@ -39,7 +39,7 @@ describe('PwaInstallButton', () => {
     render(<PwaInstallButton variant="icon" />);
 
     const installButton = await screen.findByRole('button', {
-      name: 'Installa Aura',
+      name: 'Install Aura',
     });
     expect(screen.queryByText('Install Aura')).not.toBeInTheDocument();
     await userEvent.click(installButton);

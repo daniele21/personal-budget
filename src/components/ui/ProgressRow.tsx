@@ -56,7 +56,7 @@ export function ProgressRow({
       onClick={onClick}
       className={cn(
         'w-full rounded-2xl border border-outline-variant/20 bg-surface-container-lowest',
-        'p-3 text-left shadow-[0_1px_4px_rgba(0,52,97,0.04)] transition-all',
+        'p-3 text-left shadow-[var(--aura-control-shadow)] transition-all',
         onClick &&
           'hover:border-primary/20 hover:bg-surface-container-low active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
         className,

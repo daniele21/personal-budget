@@ -252,17 +252,17 @@ export const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-on-surface-variant">Income</p>
             </div>
-            <p className="mt-1 truncate text-base font-semibold text-secondary">
+            <div className="mt-1 truncate text-base font-semibold text-secondary">
                 {isHydrated ? formatCurrency(safeToSpendTotals.income) : <Skeleton className="h-4 w-12" />}
-            </p>
+            </div>
         </Link>
         <Link to="/transactions?type=expense" className="aura-metric-divider aura-metric-neutral relative min-w-0 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-on-surface-variant">Spent</p>
             </div>
-            <p className="mt-1 truncate text-base font-semibold text-on-surface">
+            <div className="mt-1 truncate text-base font-semibold text-on-surface">
                 {isHydrated ? formatCurrency(safeToSpendTotals.expenses) : <Skeleton className="h-4 w-12" />}
-            </p>
+            </div>
         </Link>
       </Card>
 

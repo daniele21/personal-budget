@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { APP_CONFIG } from '../constants';
 import { SavingsGoal } from '../types';
 import { normalizeCategoryName } from '../domain/categories';
+import { Switch } from './ui';
 
 interface OnboardingDialogProps {
   isOpen: boolean;
@@ -73,19 +74,19 @@ export function OnboardingDialog({
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-micro font-bold text-primary">Primo setup</p>
+            <p className="text-micro font-bold text-primary">First setup</p>
             <h3 id="onboarding-title" className="font-headline text-xl font-extrabold text-on-surface">
-              Configura Aura
+              Set up Aura
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-              Imposta le basi per avere subito numeri utili su budget, report e backup.
+              Add the basics so budgets, reports, and backups are useful from the start.
             </p>
           </div>
           <button
             type="button"
             onClick={onComplete}
             className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high"
-            aria-label="Salta setup"
+            aria-label="Skip setup"
           >
             <X className="h-4 w-4" />
           </button>
@@ -94,7 +95,7 @@ export function OnboardingDialog({
         <div className="space-y-4">
           <div>
             <label className="mb-2 block text-micro font-bold text-on-surface-variant">
-              Budget mensile ({APP_CONFIG.currency})
+              Monthly budget ({APP_CONFIG.currency})
             </label>
             <input
               type="number"
@@ -106,13 +107,13 @@ export function OnboardingDialog({
 
           <div>
             <label className="mb-2 block text-micro font-bold text-on-surface-variant">
-              Categorie extra
+              Additional categories
             </label>
             <input
               value={categoryInput}
               onChange={(event) => setCategoryInput(event.target.value)}
               className="min-h-11 w-full rounded-xl border-none bg-surface-container-high px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
-              placeholder="Es. Viaggi, Famiglia, Formazione"
+              placeholder="e.g. Travel, Family, Education"
             />
           </div>
 
@@ -121,7 +122,7 @@ export function OnboardingDialog({
               value={goalName}
               onChange={(event) => setGoalName(event.target.value)}
               className="min-h-11 rounded-xl border-none bg-surface-container-high px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
-              placeholder="Obiettivo opzionale"
+              placeholder="Optional goal"
             />
             <input
               type="number"
@@ -132,19 +133,19 @@ export function OnboardingDialog({
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => onSetCloudBackupEnabled(!cloudBackupEnabled)}
+          <div
             className="flex w-full items-center justify-between rounded-2xl bg-surface-container-low p-4 text-left"
           >
             <div>
-              <p className="text-sm font-bold text-on-surface">Backup cloud cifrato</p>
-              <p className="text-xs text-on-surface-variant">Opt-in esplicito, disattivabile dal profilo.</p>
+              <p className="text-sm font-bold text-on-surface">Encrypted cloud backup</p>
+              <p className="text-xs text-on-surface-variant">Explicit opt-in; you can disable it later.</p>
             </div>
-            <span className={`flex h-6 w-6 items-center justify-center rounded-full ${cloudBackupEnabled ? 'bg-secondary text-white' : 'bg-surface-container-highest'}`}>
-              {cloudBackupEnabled && <Check className="h-4 w-4" />}
-            </span>
-          </button>
+            <Switch
+              checked={cloudBackupEnabled}
+              onChange={() => onSetCloudBackupEnabled(!cloudBackupEnabled)}
+              label="Toggle encrypted cloud backup"
+            />
+          </div>
 
           <button
             type="button"
@@ -152,7 +153,7 @@ export function OnboardingDialog({
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-headline text-sm font-extrabold text-on-primary active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
-            Completa setup
+            Complete setup
           </button>
         </div>
       </motion.div>

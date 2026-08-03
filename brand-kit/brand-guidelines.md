@@ -1,4 +1,4 @@
-# Aura Finance — Brand Kit v1
+# Aura Finance — Brand Kit v2
 
 ## Direzione: Safe-to-Spend Gauge
 
@@ -62,11 +62,40 @@ Uso per PWA, favicon, mobile home screen e loading state.
 
 Composizione consigliata:
 
-* rounded square;
+* canvas quadrato neutro, senza angoli incorporati nel master;
 * background chiaro o blu profondo;
 * solo simbolo gauge + A;
 * niente wordmark;
-* ago leggermente semplificato per leggibilità a piccole dimensioni.
+* ago e geometria identici al master approvato, senza ridisegni per piattaforma.
+
+#### Regole esecutive per il simbolo quadrato
+
+Il simbolo non deve essere deformato o ritagliato per adattarlo a un contenitore
+quadrato. Il gauge e la A restano invariati; cambia solo il canvas che li
+circonda.
+
+* usare `aura-mark-light-square.png` su fondo chiaro;
+* usare `aura-mark-dark-square.png` su fondo Deep Ocean/Dark Surface;
+* mantenere il simbolo centrato e interamente visibile con margine costante;
+* centrare il bounding box visibile del simbolo sul canvas con una tolleranza
+  massima di 1 px per asse, senza compensazioni incorporate nel contenitore UI;
+* usare sempre `object-fit: contain` nella UI, mai `cover`;
+* per launcher adattivi e PWA maskable usare una variante con ulteriore area
+  sicura, così le maschere circolari, squircle e rounded square non toccano il
+  gauge;
+* non usare il wordmark orizzontale come icona e non ricavare un quadrato
+  tagliando i suoi bordi.
+
+Mappatura canonica:
+
+| Contesto | Asset | Regola |
+|---|---|---|
+| Login, documenti, presentazioni | `aura-logo-light.png` / `aura-logo-dark.png` | Wordmark completo, proporzioni originali |
+| Top Bar e loading UI | `aura-mark-light-square.png` / `aura-mark-dark-square.png` | Canvas 1:1, `contain` |
+| PWA generica | `icon-192.png` / `icon-512.png` | Canvas 1:1 |
+| PWA maskable e Android adaptive icon | `icon-maskable-512.png` e mipmap derivati | Area sicura maggiorata |
+| Apple touch icon | `apple-touch-icon.png` | 180×180 |
+| Favicon | `favicon.png` | Monogramma semplificato a piccole dimensioni |
 
 #### Monogramma
 
@@ -276,25 +305,25 @@ Aura deve parlare in modo:
 * non da trading app;
 * non da consulente finanziario.
 
-Esempi:
+Esempi coerenti con la lingua corrente dell'interfaccia:
 
 Buono:
-“Sei ancora dentro il budget questo mese.”
+“You are still within budget this month.”
 
 Buono:
-“Puoi spendere circa €240 senza superare i tuoi limiti.”
+“You can spend about €240 without exceeding your limits.”
 
 Buono:
-“Tre ricorrenze sono previste nei prossimi 7 giorni.”
+“Three recurring payments are due in the next 7 days.”
 
 Da evitare:
-“Massimizza la tua ricchezza.”
+“Maximize your wealth.”
 
 Da evitare:
-“Investi meglio con la nostra intelligence.”
+“Invest smarter with our intelligence.”
 
 Da evitare:
-“Diventa il CEO delle tue finanze.”
+“Become the CEO of your finances.”
 
 ### 9. Iconografia
 
@@ -392,9 +421,9 @@ Versione consigliata:
 * simbolo centrato;
 * gauge blu/verde/amber;
 * A blu;
-* ago verde;
+* ago Deep Ocean Blue, coerente con il master del marchio;
 * padding interno: 18–22%;
-* rounded corners coerenti con iOS/PWA.
+* nessun rounded corner incorporato nel master: la maschera viene applicata dal sistema operativo.
 
 Versione dark:
 
@@ -407,25 +436,26 @@ Per la PWA, preparare:
 
 * `icon-192.png`;
 * `icon-512.png`;
-* `maskable-icon-512.png`;
-* `favicon.svg`;
+* `icon-maskable-512.png`;
+* `favicon.png`;
 * `apple-touch-icon.png`.
 
 ### 13. Motion identity
 
-Il logo può animarsi così:
+Il logo resta statico nell'uso ordinario. Un'eventuale reveal di loading deve
+concludersi sulla geometria approvata e non cambiare il significato del gauge:
 
 **Loading**
 Il gauge si disegna da sinistra a destra.
 
 **Success state**
-L’ago si muove leggermente verso la zona verde.
+Il simbolo compare con un breve fade, senza cambiare la posizione dell'ago.
 
 **Warning state**
-Il segmento amber pulsa una volta.
+Usare l'icona di stato dell'interfaccia; non alterare il marchio.
 
 **Dashboard entry**
-La A appare prima, poi il gauge si completa intorno.
+Nessuna animazione del logo: il movimento resta nei dati e nei controlli.
 
 Movimento:
 
@@ -472,7 +502,35 @@ Usare:
 * Amber per attenzione;
 * Tertiary/red solo per over-budget reale.
 
-### 15. Brand summary
+### 15. Digital implementation contract
+
+#### Colore
+
+* I valori esadecimali vivono nei token di `src/index.css`, non nei componenti.
+* Deep Ocean/Primary comunica brand e azione; Forest Green comunica solo stato positivo.
+* Amber comunica soglia o attenzione; Tertiary/Red è riservato a errore, rischio o superamento reale.
+* Ogni token usato da una superficie deve avere una variante light e dark.
+
+#### Tipografia
+
+* Manrope è riservato a titoli, azioni e metriche; Inter resta il font del contenuto operativo.
+* `micro` (10 px) è il minimo per badge e metadati non essenziali; il contenuto informativo usa almeno `caption` (12 px).
+* Importi e percentuali usano cifre tabulari.
+
+#### Copy
+
+* L'interfaccia corrente usa inglese coerente finché non esiste un sistema di localizzazione completo.
+* Non mescolare lingue nella stessa schermata o nello stesso flusso.
+* Il tono è diretto, rassicurante e operativo; niente promesse di rendimento o linguaggio da trading.
+
+#### Iconografia e motion
+
+* Lucide è la libreria UI canonica; le illustrazioni SVG sono ammesse solo per dati, gauge e walkthrough.
+* Emoji decorative non sostituiscono icone o label accessibili.
+* Le transizioni standard durano circa 150–350 ms e rispettano `prefers-reduced-motion`.
+* Il movimento del logo è riservato a loading o momenti di stato, non alla navigazione ordinaria.
+
+### 16. Brand summary
 
 Aura Finance deve sembrare:
 

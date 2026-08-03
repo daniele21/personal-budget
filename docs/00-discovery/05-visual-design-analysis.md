@@ -2,7 +2,55 @@
 
 > **Scope**: Audit e piano di miglioramento del sistema grafico per portare Aura a un livello visivo premium  
 > **Baseline**: Material Design 3 tokens · Tailwind 4 `@theme` · Manrope + Inter · Lucide Icons  
-> **Last Updated**: 2026-07-21 — aggiornato dopo la riduzione visuale M8
+> **Last Updated**: 2026-08-03 — consolidato Brand Kit v2 e corretto il sistema logo/app icon
+
+## Correzione identità applicativa — 2026-08-03
+
+Il concept Safe-to-Spend Gauge resta il marchio canonico. Il problema rilevato
+non richiedeva un redesign: derivava dall'uso del PNG rettangolare del simbolo
+dentro contenitori quadrati con `object-cover` e dagli asset launcher/splash
+Android rimasti al placeholder Capacitor.
+
+La correzione introduce master quadrati light/dark, usa `object-contain` nella
+UI, separa icone PWA `any` e `maskable`, aggiunge la Apple touch icon 180×180 e
+allinea launcher adattivo, launcher legacy e splash Android al marchio Aura.
+Wordmark, geometria del gauge, lettera A, ago, palette e tipografia non cambiano.
+
+La revisione di dettaglio del logo ha poi rilevato uno scarto interno del
+simbolo rispetto al canvas: nel master chiaro il bounding box risultava 18 px a
+destra e 14,5 px in alto; la variante dark era ancora più sbilanciata. I master
+sono stati ricomposti deterministicamente dalle fonti approvate, senza
+ridisegnare il simbolo, e ora sono centrati entro 1 px. La correzione è stata
+propagata a favicon, Apple touch icon, icone PWA `any`/`maskable`, launcher
+Android legacy/adaptive/round e splash portrait/landscape.
+
+## Consolidamento Brand Kit v2 — 2026-08-03
+
+L'audit successivo conferma la direzione **calm fintech** già presente: Deep
+Ocean resta l'ancora di fiducia e azione, Forest Green e Amber conservano un
+ruolo esclusivamente semantico, mentre Manrope e Inter continuano a separare
+gerarchia e contenuto operativo. Non emerge alcuna ragione per ridisegnare il
+marchio.
+
+Il kit diventa però un contratto digitale verificabile:
+
+- i valori di palette vivono nel livello token, inclusa la variante RGB del
+  primary necessaria alle ombre del tour in light e dark mode;
+- card, controlli e tooltip riusano la scala di elevation condivisa invece di
+  ombre locali;
+- l'interfaccia resta in inglese fino all'introduzione di una localizzazione
+  completa, evitando flussi con copy misto;
+- Lucide resta il linguaggio iconografico canonico e le emoji decorative non
+  sostituiscono icone o label;
+- il movimento resta breve, orientativo e compatibile con reduced motion; il
+  logo non viene animato nella navigazione ordinaria;
+- un test di policy impedisce di reintrodurre colori esadecimali nelle superfici
+  React e controlla la presenza degli asset quadrati canonici.
+
+Il follow-up non bloccante riguarda la tipografia micro: badge e metadati
+secondari possono restare a 10 px, ma i contenuti informativi residui sotto i
+12 px dovranno essere normalizzati schermata per schermata dopo verifica di
+densità e wrapping mobile.
 
 ## Regole visuali implementate — 2026-07-21
 
@@ -21,7 +69,12 @@ Questa sezione descrive lo stato corrente e sostituisce le indicazioni speriment
 - Overview, Categories, Compare, Year e Calendar applicano la stessa grammatica di focal summary senza introdurre nuove varianti Card.
 - I controlli selezionati, incluse le tab locali Reports e Planning, usano primary pieno con stato accessibile equivalente.
 
-La verifica automatica copre struttura e semantica. Il confronto visuale ai viewport baseline resta da eseguire quando sarà disponibile una sessione browser controllabile.
+La verifica automatica copre struttura e semantica. Il controllo browser a
+390×844 è stato completato in light e dark mode: il mark 512×512 viene reso a
+32×32 con `object-fit: contain`, non produce overflow orizzontale e seleziona
+correttamente la variante tematica. La stessa verifica ha rimosso una `src`
+avatar vuota e un annidamento HTML non valido nello skeleton della Dashboard;
+la sessione pulita termina senza errori console.
 
 ## Visual polish v1 — 2026-07-21
 
@@ -67,7 +120,8 @@ La proposta `Home | Transactions | Add | Budgets | More` resta un intervento sep
 | Item | Stato | Note |
 |---|---|---|
 | Token tipografici semantici | ✅ Implementato | `--font-size-micro` fino a `--font-size-hero` in `@theme` |
-| Brand kit PNG applicato | ✅ Implementato | Logo, wordmark light/dark, favicon e PWA icons derivano dai PNG in `brand-kit/` |
+| Brand kit PNG applicato | ✅ Implementato | Wordmark, mark quadrati light/dark, favicon, PWA maskable, launcher e splash Android derivano dal sistema Aura |
+| Contratto digitale Brand Kit v2 | ✅ Implementato | Token, copy inglese, Lucide, motion e asset canonici hanno regole esplicite e guardrail automatico |
 | Densità UI compatta | ✅ Implementato | Header, nav, card, input, button, dashboard summary e liste usano padding e scale più contenute |
 | Accent colors tokenizzati | ✅ Implementato | 5 accent colors (`purple`, `amber`, `cyan`, `pink`, `lime`) in `@theme` |
 | Dark mode tuning | ✅ Implementato | Container con maggiore separazione + `outline-variant` più visibile |

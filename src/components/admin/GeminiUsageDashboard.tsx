@@ -106,8 +106,8 @@ export function GeminiUsageDashboard() {
             <Activity className="w-5 h-5 text-accent-amber" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-on-surface">Monitoraggio AI</h2>
-            <p className="text-xs text-on-surface-variant">Utilizzo e costi cumulativi Gemini</p>
+            <h2 className="text-lg font-bold text-on-surface">AI monitoring</h2>
+            <p className="text-xs text-on-surface-variant">Cumulative Gemini usage and cost</p>
           </div>
         </div>
         <button
@@ -124,28 +124,28 @@ export function GeminiUsageDashboard() {
       {/* ── Summary cards ─────────────────────────────────────── */}
       {records.length === 0 ? (
         <div className="text-center py-8 text-on-surface-variant/50 text-sm">
-          Nessun dato di utilizzo ancora registrato.
+          No usage data recorded yet.
         </div>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3">
             <SummaryCard
               icon={<DollarSign className="w-4 h-4" />}
-              label="Costo Totale"
+              label="Total cost"
               value={`$${stats.totalCost.toFixed(4)}`}
               accent="text-accent-amber"
               bgAccent="bg-accent-amber/10"
             />
             <SummaryCard
               icon={<Zap className="w-4 h-4" />}
-              label="Token Totali"
+              label="Total tokens"
               value={formatTokens(stats.totalInputTokens + stats.totalOutputTokens)}
               accent="text-primary"
               bgAccent="bg-primary/10"
             />
             <SummaryCard
               icon={<BarChart3 className="w-4 h-4" />}
-              label="Chiamate API"
+              label="API calls"
               value={String(stats.totalCalls)}
               accent="text-secondary"
               bgAccent="bg-secondary/10"
@@ -154,7 +154,7 @@ export function GeminiUsageDashboard() {
 
           {/* Token breakdown */}
           <div className="bg-surface-container-low rounded-2xl p-4 space-y-2">
-            <p className="text-micro font-bold text-on-surface-variant">Dettaglio Token</p>
+            <p className="text-micro font-bold text-on-surface-variant">Token breakdown</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-micro text-on-surface-variant">Input</p>
@@ -170,7 +170,7 @@ export function GeminiUsageDashboard() {
           {/* ── Per-model breakdown ──────────────────────────────── */}
           {stats.byModel.length > 0 && (
             <div className="space-y-2">
-              <p className="text-micro font-bold text-on-surface-variant px-1">Per Modello</p>
+              <p className="text-micro font-bold text-on-surface-variant px-1">By model</p>
               <div className="space-y-2">
                 {stats.byModel.map(([modelId, data]) => {
                   const model = getModelInfo(modelId);
@@ -181,7 +181,7 @@ export function GeminiUsageDashboard() {
                         <span className="text-micro font-bold text-accent-amber">${data.cost.toFixed(4)}</span>
                       </div>
                       <div className="flex items-center gap-4 text-micro text-on-surface-variant">
-                        <span>{data.calls} chiamate</span>
+                        <span>{data.calls} calls</span>
                         <span>In: {formatTokens(data.inputTokens)}</span>
                         <span>Out: {formatTokens(data.outputTokens)}</span>
                       </div>
@@ -197,7 +197,7 @@ export function GeminiUsageDashboard() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-1">
                 <Users className="w-3.5 h-3.5 text-on-surface-variant" />
-                <p className="text-micro font-bold text-on-surface-variant">Per Account</p>
+                <p className="text-micro font-bold text-on-surface-variant">By account</p>
               </div>
               <div className="space-y-2">
                 {stats.byUser.map(([email, data]) => (
@@ -207,7 +207,7 @@ export function GeminiUsageDashboard() {
                       <span className="text-micro font-bold text-accent-amber flex-shrink-0">${data.cost.toFixed(4)}</span>
                     </div>
                     <div className="flex items-center gap-4 text-micro text-on-surface-variant">
-                      <span>{data.calls} chiamate</span>
+                      <span>{data.calls} calls</span>
                       <span>{formatTokens(data.inputTokens + data.outputTokens)} token</span>
                     </div>
                   </div>
@@ -219,7 +219,7 @@ export function GeminiUsageDashboard() {
           {/* ── Recent calls log ─────────────────────────────────── */}
           <div className="space-y-2">
             <p className="text-micro font-bold text-on-surface-variant px-1">
-              Ultime chiamate ({Math.min(records.length, 20)})
+              Latest calls ({Math.min(records.length, 20)})
             </p>
             <div className="space-y-1.5 max-h-[40vh] overflow-y-auto overscroll-contain pr-1 -mr-1">
               {records.slice(0, 20).map((r) => (
@@ -237,7 +237,7 @@ export function GeminiUsageDashboard() {
                       </span>
                     </div>
                     <p className="text-micro text-on-surface-variant truncate">
-                      {r.userEmail} · {r.createdAt.toLocaleDateString('it-IT', {
+                      {r.userEmail} · {r.createdAt.toLocaleDateString('en-GB', {
                         day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
                       })}
                     </p>

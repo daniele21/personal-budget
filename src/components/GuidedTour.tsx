@@ -241,7 +241,7 @@ export function GuidedTour({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.1, ease: 'easeOut' }}
-            className="pointer-events-none fixed border-2 border-primary ring-4 ring-primary/25 shadow-[0_0_24px_rgba(var(--color-primary-rgb),0.7)]"
+            className="pointer-events-none fixed border-2 border-primary ring-4 ring-primary/25 shadow-[0_0_24px_rgba(var(--aura-primary-rgb),0.7)]"
             style={{
               top: Math.max(0, rect.top - 6),
               left: Math.max(0, rect.left - 6),
@@ -366,7 +366,7 @@ export function GuidedTour({
           className={`pointer-events-none absolute ${
             currentStep.showSpotlightBorder === false
               ? ''
-              : 'border-2 border-primary ring-2 ring-primary/20 shadow-[0_0_18px_rgba(var(--color-primary-rgb),0.55)]'
+              : 'border-2 border-primary ring-2 ring-primary/20 shadow-[0_0_18px_rgba(var(--aura-primary-rgb),0.55)]'
           }`}
           style={{ borderRadius: currentStep.spotlightRadius ?? 16 }}
         />
@@ -384,7 +384,7 @@ export function GuidedTour({
               opacity: 1,
             }}
             transition={{ duration: 0 }}
-            className="pointer-events-none fixed bg-primary/10 ring-2 ring-primary/30 shadow-[0_0_16px_rgba(var(--color-primary-rgb),0.5)]"
+            className="pointer-events-none fixed bg-primary/10 ring-2 ring-primary/30 shadow-[0_0_16px_rgba(var(--aura-primary-rgb),0.5)]"
             style={{ borderRadius: navigationRadius(navigationRect) }}
           />
         ))}

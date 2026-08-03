@@ -87,9 +87,9 @@ export function PwaInstallButton({ variant = 'row' }: PwaInstallButtonProps) {
         className={isIcon
           ? 'flex h-9 w-9 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-60'
           : 'flex min-h-14 w-full items-center gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-left text-primary transition-colors hover:bg-surface-container-low'}
-        aria-label={isIcon ? 'Installa Aura' : 'Install Aura Finance as app'}
+        aria-label={isIcon ? 'Install Aura' : 'Install Aura Finance as app'}
         aria-expanded={isPanelOpen}
-        title={isIcon ? 'Installa Aura sul dispositivo' : undefined}
+        title={isIcon ? 'Install Aura on this device' : undefined}
       >
         {isIcon ? (
           isInstalling

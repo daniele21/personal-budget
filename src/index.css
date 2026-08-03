@@ -33,6 +33,7 @@
   --color-on-surface: #101828;
   --color-on-surface-variant: #667085;
   --color-primary: #003461;
+  --aura-primary-rgb: 0, 52, 97;
   --color-primary-container: #004b87;
   --color-on-primary: #ffffff;
   --color-secondary: #1b6d24;
@@ -80,6 +81,7 @@
     --color-on-surface: #f0f6ff;
     --color-on-surface-variant: #94a9be;
     --color-primary: #60a5fa;
+    --aura-primary-rgb: 96, 165, 250;
     --color-primary-container: #1e3a8a;
     --color-on-primary: #0a1921;
     --color-secondary: #4ade80;
@@ -131,7 +133,7 @@
 
 /** Hero gradient for login / splash screens */
 .hero-gradient {
-  background: linear-gradient(135deg, #003461 0%, #004b87 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
 }
 
 /** Glassmorphism surface */
@@ -616,5 +618,5 @@
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 45%, transparent);
   border-radius: var(--radius-2xl);
   padding: 0.875rem;
-  box-shadow: 0 2px 8px 0 rgba(0, 52, 97, 0.04);
+  box-shadow: var(--aura-control-shadow);
 }

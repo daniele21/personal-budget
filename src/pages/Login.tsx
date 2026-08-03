@@ -45,7 +45,7 @@ export const Login = ({ onSignIn, error }: LoginProps) => {
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-6 py-4 text-on-surface shadow-[0_16px_40px_rgba(0,52,97,0.08)] transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_20px_48px_rgba(0,52,97,0.12)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+            className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-6 py-4 text-on-surface shadow-[var(--aura-card-shadow)] transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[var(--aura-card-shadow-elevated)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
           >
             {loading ? (
               <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />

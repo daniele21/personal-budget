@@ -114,7 +114,7 @@ test.describe('Aura M7 browser quality', () => {
         display: string;
         scope: string;
         start_url: string;
-        icons: Array<{ sizes: string }>;
+        icons: Array<{ sizes: string; purpose?: string }>;
       };
       return {
         ...body,
@@ -129,6 +129,14 @@ test.describe('Aura M7 browser quality', () => {
     expect(manifest.resolvedStartUrl).toBe('/');
     expect(manifest.icons.map((icon) => icon.sizes)).toEqual(
       expect.arrayContaining(['192x192', '512x512']),
+    );
+    expect(manifest.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sizes: '512x512',
+          purpose: 'maskable',
+        }),
+      ]),
     );
 
     const registration = await page.evaluate(async () => {

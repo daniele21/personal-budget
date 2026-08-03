@@ -61,13 +61,13 @@ export function InitialDataDialog({
         className="w-full max-w-md rounded-t-3xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-2xl sm:rounded-3xl"
       >
         <div className="mb-5">
-          <p className="text-micro font-bold text-primary">Primo avvio</p>
+          <p className="text-micro font-bold text-primary">First launch</p>
           <h3 id="initial-data-title" className="font-headline text-xl font-extrabold text-on-surface">
-            Come vuoi iniziare?
+            How would you like to start?
           </h3>
           <p id="initial-data-description" className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-            Non ci sono dati locali. Puoi usare dati dimostrativi, partire da zero
-            {backupAvailable ? ' oppure ripristinare il backup cifrato trovato nel cloud.' : '.'}
+            There is no local data yet. You can use demo data, start from scratch
+            {backupAvailable ? ', or restore the encrypted backup found in the cloud.' : '.'}
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export function InitialDataDialog({
               <div
                 className="overflow-hidden rounded-2xl border border-outline-variant/20"
                 role="radiogroup"
-                aria-label="Versione backup da ripristinare"
+                aria-label="Backup version to restore"
               >
                 {backupVersions.map((version, index) => {
                   const selected = version.id === selectedVersionId;
@@ -100,7 +100,7 @@ export function InitialDataDialog({
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-bold">
-                          {version.isLatest ? 'Ultimo backup' : `Backup precedente ${version.position}`}
+                          {version.isLatest ? 'Latest backup' : `Previous backup ${version.position}`}
                         </span>
                         <span className="block text-xs text-on-surface-variant">
                           {formatBackupDate(version.createdAt)}
@@ -113,7 +113,7 @@ export function InitialDataDialog({
 
               {restoreError && (
                 <p role="alert" className="text-xs font-medium text-error">
-                  Impossibile ripristinare la versione selezionata. Riprova quando sei online.
+                  Unable to restore the selected version. Try again when you are online.
                 </p>
               )}
 
@@ -125,7 +125,7 @@ export function InitialDataDialog({
               >
                 <Cloud className="h-5 w-5" />
                 <span className="font-headline text-sm font-extrabold">
-                  {isRestoring ? 'Ripristino in corso...' : 'Ripristina backup selezionato'}
+                  {isRestoring ? 'Restoring...' : 'Restore selected backup'}
                 </span>
               </button>
             </div>
@@ -141,14 +141,14 @@ export function InitialDataDialog({
               <Sparkles className="h-5 w-5" />
             </span>
             <span>
-              <span className="block font-headline text-sm font-extrabold">Usa dati demo</span>
-              <span className="block text-xs opacity-80">Popola dashboard, budget, report e ricorrenze con esempi locali.</span>
+              <span className="block font-headline text-sm font-extrabold">Use demo data</span>
+              <span className="block text-xs opacity-80">Populate the dashboard, budgets, reports, and recurring items with local examples.</span>
             </span>
           </button>
 
           <Button type="button" variant="secondary" fullWidth disabled={isRestoring} onClick={onStartBlank}>
             <Database className="h-4 w-4" />
-            Parti da zero
+            Start from scratch
           </Button>
         </div>
       </motion.div>

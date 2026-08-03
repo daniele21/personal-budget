@@ -39,10 +39,10 @@ describe('InitialDataDialog cloud restore', () => {
       />,
     );
 
-    expect(screen.getByRole('radio', { name: /Ultimo backup/i })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: /Latest backup/i })).toHaveAttribute('aria-checked', 'true');
 
-    await user.click(screen.getByRole('radio', { name: /Backup precedente 2/i }));
-    await user.click(screen.getByRole('button', { name: /Ripristina backup selezionato/i }));
+    await user.click(screen.getByRole('radio', { name: /Previous backup 2/i }));
+    await user.click(screen.getByRole('button', { name: /Restore selected backup/i }));
 
     expect(onRestoreBackup).toHaveBeenCalledWith('oldest');
   });

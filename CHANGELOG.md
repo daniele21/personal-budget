@@ -91,6 +91,12 @@
 
 ### Changed
 
+- Consolidated the Aura Brand Kit v2 into an implementation contract for
+  semantic color tokens, Manrope/Inter roles, English interface copy, Lucide
+  iconography, restrained motion, and canonical square logo assets. Shared
+  surfaces now reuse the light/dark elevation scale and automated policy tests
+  guard against raw palette literals in React UI.
+
 - Added `staituned.owner@gmail.com` as a second designated administrator
   alongside the existing administrator, centralizing application checks and
   routing all privileged Firestore rules through one shared rule helper.
@@ -119,6 +125,14 @@
 - Added Aura Portable Archive V1 under Data Management: one encrypted-by-default, self-verified `.aura` export; local-only unlock and preview; safety-protected replace restore; startup recovery; and clear separation from transaction CSV and AI-assisted bank-statement import. General release remains gated on physical-device/installed-PWA, manual screen-reader, and approximately 32 MiB mobile-memory QA.
 
 ### Fixed
+
+- Replaced empty profile-photo sources with an accessible initial fallback and
+  corrected invalid Dashboard skeleton markup, preventing broken imagery and
+  React console errors in the branded application shell.
+- Replaced the leftover Capacitor launcher and splash marks with Aura assets,
+  added safe-area-aware PWA/Android icon variants, stopped the compact UI mark
+  from cropping its non-square source with `object-cover`, and geometrically
+  centered the approved mark inside every square and splash canvas.
 
 - Scoped the Android development unit-test command to the configured debug
   variant so an isolated debug-only `google-services.json` does not require an

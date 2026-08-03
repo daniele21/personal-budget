@@ -53,12 +53,12 @@ export function CloudBackupRestoreDialog({
   return (
     <BottomSheet
       isOpen={isOpen}
-      eyebrow="Backup cloud"
-      title={isConfirming ? 'Conferma ripristino' : 'Scegli un backup'}
+      eyebrow="Cloud backup"
+      title={isConfirming ? 'Confirm restore' : 'Choose a backup'}
       subtitle={
         isConfirming
-          ? 'Il ripristino sostituisce i dati finanziari presenti su questo dispositivo.'
-          : 'Sono disponibili le ultime tre versioni valide salvate su Firestore.'
+          ? 'Restoring replaces the financial data currently stored on this device.'
+          : 'The latest three valid versions saved to Firestore are available.'
       }
       onClose={isRestoring ? () => {} : onClose}
       footer={
@@ -71,7 +71,7 @@ export function CloudBackupRestoreDialog({
               disabled={isRestoring}
               onClick={() => setIsConfirming(false)}
             >
-              Indietro
+              Back
             </Button>
             <Button
               type="button"
@@ -84,7 +84,7 @@ export function CloudBackupRestoreDialog({
               ) : (
                 <RotateCcw className="h-4 w-4" />
               )}
-              {isRestoring ? 'Ripristino...' : 'Conferma'}
+              {isRestoring ? 'Restoring...' : 'Confirm restore'}
             </Button>
           </div>
         ) : (
@@ -95,7 +95,7 @@ export function CloudBackupRestoreDialog({
             onClick={() => setIsConfirming(true)}
           >
             <RotateCcw className="h-4 w-4" />
-            Ripristina la versione selezionata
+            Restore selected version
           </Button>
         )
       }
@@ -103,34 +103,34 @@ export function CloudBackupRestoreDialog({
       {isLoading ? (
         <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-on-surface-variant">
           <LoaderCircle className="h-5 w-5 animate-spin" />
-          Caricamento backup...
+          Loading backups...
         </div>
       ) : versions.length === 0 ? (
         <div className="rounded-2xl bg-surface-container-low p-5 text-center">
           <Cloud className="mx-auto h-6 w-6 text-on-surface-variant" />
-          <p className="mt-3 text-sm font-bold text-on-surface">Nessun backup disponibile</p>
+          <p className="mt-3 text-sm font-bold text-on-surface">No backups available</p>
           <p className="mt-1 text-xs text-on-surface-variant">
-            Crea un backup quando sei online e riprova.
+            Create a backup while online, then try again.
           </p>
         </div>
       ) : isConfirming && selectedVersion ? (
         <div className="space-y-4">
           <div className="rounded-2xl bg-primary/10 p-4">
-            <p className="text-micro font-bold uppercase text-primary">Versione selezionata</p>
+            <p className="text-micro font-bold uppercase text-primary">Selected version</p>
             <p className="mt-1 text-sm font-bold text-on-surface">
               {formatBackupDate(selectedVersion.createdAt)}
             </p>
           </div>
           <p className="text-xs leading-relaxed text-on-surface-variant">
-            Transazioni, budget, ricorrenze, conti, categorie e obiettivi locali saranno
-            sostituiti. Se vuoi conservare lo stato attuale, esporta prima un archivio Aura.
+            Local transactions, budgets, recurring items, accounts, categories, and goals will
+            be replaced. Export an Aura archive first if you need to keep the current state.
           </p>
         </div>
       ) : (
         <div
           className="overflow-hidden rounded-2xl border border-outline-variant/20"
           role="radiogroup"
-          aria-label="Versione backup da ripristinare"
+          aria-label="Backup version to restore"
         >
           {versions.map((version, index) => {
             const selected = version.id === selectedVersionId;
@@ -164,7 +164,7 @@ export function CloudBackupRestoreDialog({
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-bold">
-                    {version.isLatest ? 'Ultimo backup' : `Backup precedente ${version.position}`}
+                    {version.isLatest ? 'Latest backup' : `Previous backup ${version.position}`}
                   </span>
                   <span className="block text-xs text-on-surface-variant">
                     {formatBackupDate(version.createdAt)}
@@ -178,7 +178,7 @@ export function CloudBackupRestoreDialog({
 
       {restoreError && (
         <p role="alert" className="mt-3 text-xs font-medium text-error">
-          Impossibile ripristinare la versione selezionata. Ricarica l’elenco e riprova.
+          Unable to restore the selected version. Refresh the list and try again.
         </p>
       )}
     </BottomSheet>

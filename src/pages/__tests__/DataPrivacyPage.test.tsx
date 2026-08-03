@@ -81,7 +81,7 @@ describe('DataPrivacyPage', () => {
       </MemoryRouter>,
     );
 
-    const switchBtn = screen.getByRole('switch', { name: 'Attiva backup cloud' });
+    const switchBtn = screen.getByRole('switch', { name: 'Enable cloud backup' });
     await user.click(switchBtn);
     expect(mocks.setCloudBackupEnabled).toHaveBeenCalledWith(true);
   });
@@ -95,14 +95,14 @@ describe('DataPrivacyPage', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /Ripristina backup cloud/i }));
+    await user.click(screen.getByRole('button', { name: /Restore cloud backup/i }));
     expect(mocks.refreshBackupVersions).toHaveBeenCalledOnce();
 
-    await user.click(screen.getByRole('radio', { name: /Backup precedente 1/i }));
-    await user.click(screen.getByRole('button', { name: /Ripristina la versione selezionata/i }));
-    await user.click(screen.getByRole('button', { name: 'Conferma' }));
+    await user.click(screen.getByRole('radio', { name: /Previous backup 1/i }));
+    await user.click(screen.getByRole('button', { name: /Restore selected version/i }));
+    await user.click(screen.getByRole('button', { name: 'Confirm restore' }));
 
     expect(mocks.restoreFromCloud).toHaveBeenCalledWith('previous');
-    expect(mocks.toast).toHaveBeenCalledWith('Backup ripristinato sul dispositivo', 'success');
+    expect(mocks.toast).toHaveBeenCalledWith('Backup restored on this device', 'success');
   });
 });

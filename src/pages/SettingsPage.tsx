@@ -55,7 +55,7 @@ export function SettingsPage() {
     if (nextCategories === categories) return;
     setCategories(nextCategories);
     setArchivedCategories(archivedCategories.filter((category) => category !== name));
-    toast('Categoria aggiunta', 'success');
+    toast('Category added', 'success');
   };
 
   const handleRenameCategory = (oldName: string, newName: string) => {
@@ -67,21 +67,21 @@ export function SettingsPage() {
     setTransactions(nextData.transactions);
     setBudgets(nextData.budgets);
     setRecurring(nextData.recurring);
-    toast('Categoria aggiornata', 'success');
+    toast('Category updated', 'success');
   };
 
   const handleDeleteCategory = (name: string) => {
     const next = archiveCategoryName(categories, archivedCategories, name);
     setCategories(next.activeCategories);
     setArchivedCategories(next.archivedCategories);
-    toast('Categoria archiviata', 'info');
+    toast('Category archived', 'info');
   };
 
   const handleRestoreCategory = (name: string) => {
     const next = restoreCategoryName(categories, archivedCategories, name);
     setCategories(next.activeCategories);
     setArchivedCategories(next.archivedCategories);
-    toast('Categoria ripristinata', 'success');
+    toast('Category restored', 'success');
   };
 
   const handleAddGoal = () => {
@@ -89,15 +89,15 @@ export function SettingsPage() {
     const targetAmount = parseFloat(goalTarget);
     const currentAmount = goalCurrent ? parseFloat(goalCurrent) : 0;
     if (!trimmedName) {
-      toast('Inserisci un nome per l’obiettivo', 'warning');
+      toast('Enter a name for the goal', 'warning');
       return;
     }
     if (isNaN(targetAmount) || targetAmount <= 0) {
-      toast('Inserisci un target valido', 'warning');
+      toast('Enter a valid target', 'warning');
       return;
     }
     if (isNaN(currentAmount) || currentAmount < 0) {
-      toast('Inserisci un importo attuale valido', 'warning');
+      toast('Enter a valid current amount', 'warning');
       return;
     }
 
@@ -114,12 +114,12 @@ export function SettingsPage() {
     setGoalName('');
     setGoalTarget('');
     setGoalCurrent('');
-    toast('Obiettivo aggiunto', 'success');
+    toast('Goal added', 'success');
   };
 
   const handleDeleteGoal = (id: string) => {
     setSavingsGoals(savingsGoals.filter((goal) => goal.id !== id));
-    toast('Obiettivo rimosso', 'info');
+    toast('Goal removed', 'info');
   };
 
   return (
@@ -242,7 +242,7 @@ export function SettingsPage() {
       {/* Savings Goals */}
       <section id="goals">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-headline font-bold text-primary">Obiettivi di risparmio</h3>
+          <h3 className="text-xl font-headline font-bold text-primary">Savings goals</h3>
           <Target className="w-5 h-5 text-on-surface-variant" />
         </div>
         <div className="space-y-3">
@@ -257,13 +257,13 @@ export function SettingsPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-on-surface truncate">{goal.name}</p>
                     <p className="text-xs text-on-surface-variant">
-                      {formatCurrency(goal.currentAmount)} di {formatCurrency(goal.targetAmount)}
+                      {formatCurrency(goal.currentAmount)} of {formatCurrency(goal.targetAmount)}
                     </p>
                   </div>
                   <button
                     onClick={() => handleDeleteGoal(goal.id)}
                     className="h-10 w-10 shrink-0 rounded-xl text-tertiary hover:bg-tertiary/10 flex items-center justify-center"
-                    aria-label={`Rimuovi obiettivo ${goal.name}`}
+                    aria-label={`Remove goal ${goal.name}`}
                   >
                     <Target className="w-4 h-4" />
                   </button>
@@ -271,7 +271,7 @@ export function SettingsPage() {
                 <div className="mt-3 h-2 w-full rounded-full bg-surface-container-high overflow-hidden">
                   <div className="h-full rounded-full bg-secondary transition-all" style={{ width: `${progress}%` }} />
                 </div>
-                <p className="mt-2 text-micro font-bold text-secondary">{progress}% completato</p>
+                <p className="mt-2 text-micro font-bold text-secondary">{progress}% complete</p>
               </div>
             );
           })}
@@ -282,7 +282,7 @@ export function SettingsPage() {
                 value={goalName}
                 onChange={(e) => setGoalName(e.target.value)}
                 className="min-h-11 rounded-xl border-none bg-surface-container-lowest px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
-                placeholder="Nome"
+                placeholder="Name"
               />
               <input
                 value={goalTarget}
@@ -296,14 +296,14 @@ export function SettingsPage() {
                 onChange={(e) => setGoalCurrent(e.target.value)}
                 type="number"
                 className="min-h-11 rounded-xl border-none bg-surface-container-lowest px-3 text-sm text-on-surface focus:ring-2 focus:ring-primary"
-                placeholder="Attuale"
+                placeholder="Current"
               />
             </div>
             <button
               onClick={handleAddGoal}
               className="w-full min-h-11 rounded-xl bg-primary text-on-primary text-sm font-headline font-extrabold active:scale-[0.98] transition-all"
             >
-              Aggiungi obiettivo
+              Add goal
             </button>
           </div>
         </div>

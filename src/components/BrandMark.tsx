@@ -9,10 +9,10 @@ interface BrandMarkProps {
 }
 
 export function BrandMark({ className, iconClassName, wordmark = true, inverted = false }: BrandMarkProps) {
-  const lightSrc = wordmark ? '/aura-logo-light.png' : '/logo.png';
-  const darkSrc = wordmark ? '/aura-logo-dark.png' : '/logo-dark.png';
+  const lightSrc = wordmark ? '/aura-logo-light.png' : '/aura-mark-light.png';
+  const darkSrc = wordmark ? '/aura-logo-dark.png' : '/aura-mark-dark.png';
   const imageClassName = cn(
-    wordmark ? 'h-12 w-auto object-contain' : 'h-10 w-10 rounded-2xl object-cover',
+    wordmark ? 'h-12 w-auto object-contain' : 'h-10 w-10 rounded-2xl object-contain',
     iconClassName,
   );
 

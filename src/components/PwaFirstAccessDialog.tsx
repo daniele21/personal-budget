@@ -106,19 +106,19 @@ export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) 
             type="button"
             onClick={dismiss}
             className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label="Non mostrare ora l'installazione"
+            aria-label="Dismiss installation for now"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="mt-4">
-          <p className="text-micro font-bold text-primary">App sul dispositivo</p>
+          <p className="text-micro font-bold text-primary">App on this device</p>
           <h2 id="pwa-first-access-title" className="mt-1 font-headline text-xl font-extrabold text-on-surface">
-            Installa Aura
+            Install Aura
           </h2>
           <p id="pwa-first-access-description" className="mt-2 text-sm leading-6 text-on-surface-variant">
-            Apri Aura dalla schermata Home e usala come un’app, senza scaricare file o APK.
+            Open Aura from your Home Screen and use it like an app, without downloading a separate file or APK.
           </p>
         </div>
 
@@ -126,13 +126,13 @@ export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) 
           <div className="mt-4 rounded-2xl bg-surface-container-low p-4">
             {isIosOtherBrowser && (
               <p className="mb-2 text-xs font-bold text-on-surface">
-                Prima apri questa pagina in Safari.
+                Open this page in Safari first.
               </p>
             )}
             <ol className="space-y-1.5 text-xs font-medium leading-5 text-on-surface-variant">
-              <li>1. Tocca Condividi in Safari.</li>
-              <li>2. Seleziona “Aggiungi alla schermata Home”.</li>
-              <li>3. Attiva “Apri come app web” e tocca Aggiungi.</li>
+              <li>1. Tap Share in Safari.</li>
+              <li>2. Select Add to Home Screen.</li>
+              <li>3. Enable Open as Web App, then tap Add.</li>
             </ol>
           </div>
         )}
@@ -140,13 +140,13 @@ export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) 
         {!manualInstallMode && (
           <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-on-surface-variant">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <p>Il browser aprirà la conferma di installazione nativa.</p>
+            <p>Your browser will open its native installation confirmation.</p>
           </div>
         )}
 
         {installError && (
           <p className="mt-3 text-xs font-medium leading-5 text-error" role="alert">
-            Il browser non ha aperto l’installer. Puoi riprovare dalla pagina Altro.
+            The browser did not open the installer. You can try again from the More page.
           </p>
         )}
 
@@ -156,7 +156,7 @@ export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) 
             onClick={dismiss}
             className="min-h-12 flex-1 rounded-2xl bg-surface-container-high px-4 text-sm font-bold text-on-surface-variant transition-all hover:bg-surface-container-highest active:scale-[0.98]"
           >
-            Non ora
+            Not now
           </button>
           <button
             type="button"
@@ -170,7 +170,7 @@ export function PwaFirstAccessDialog({ isEligible }: PwaFirstAccessDialogProps) 
               : manualInstallMode
                 ? <Share className="h-4 w-4" />
                 : <Download className="h-4 w-4" />}
-            {isInstalling ? 'Apertura…' : manualInstallMode ? 'Ho capito' : 'Installa app'}
+            {isInstalling ? 'Opening…' : manualInstallMode ? 'Got it' : 'Install app'}
           </button>
         </div>
       </motion.div>

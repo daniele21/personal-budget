@@ -45,7 +45,7 @@ export function FinancialTrajectoryCard({ data }: FinancialTrajectoryCardProps) 
                 borderRadius: '12px',
                 fontSize: '12px',
                 fontWeight: 'bold',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                boxShadow: 'var(--aura-card-shadow)',
               }}
               itemStyle={{ color: 'var(--color-primary)' }}
             />

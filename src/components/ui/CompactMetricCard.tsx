@@ -49,7 +49,7 @@ export function CompactMetricCard({
     <div
       className={cn(
         'rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-3',
-        'shadow-[0_2px_8px_rgba(0,52,97,0.04)]',
+        'shadow-[var(--aura-control-shadow)]',
         className,
       )}
     >

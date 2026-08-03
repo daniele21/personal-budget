@@ -42,12 +42,12 @@ async function parseCsvFile(file: File): Promise<ParsedSpreadsheet> {
   });
 
   if (result.errors.length > 0) {
-    throw new Error(`CSV non valido: ${result.errors[0]?.message ?? 'errore di parsing'}.`);
+    throw new Error(`Invalid CSV: ${result.errors[0]?.message ?? 'parsing error'}.`);
   }
 
   const cleanRows = cleanRawRows(result.data.map((row) => row.map((cell) => String(cell))));
   if (cleanRows.length === 0) {
-    throw new Error('Il file è vuoto o non contiene dati validi.');
+    throw new Error('The file is empty or does not contain valid data.');
   }
 
   return {
@@ -64,7 +64,7 @@ async function parseXlsxFile(file: File): Promise<ParsedSpreadsheet> {
 
   const sheet = workbook.worksheets[0];
   if (!sheet) {
-    throw new Error('Il file non contiene fogli di lavoro.');
+    throw new Error('The file does not contain any worksheets.');
   }
 
   const rawRows: string[][] = [];
@@ -78,7 +78,7 @@ async function parseXlsxFile(file: File): Promise<ParsedSpreadsheet> {
 
   const cleanRows = cleanRawRows(rawRows);
   if (cleanRows.length === 0) {
-    throw new Error('Il foglio è vuoto o non contiene dati validi.');
+    throw new Error('The worksheet is empty or does not contain valid data.');
   }
 
   return {
@@ -96,7 +96,7 @@ export async function parseSpreadsheetFile(file: File): Promise<ParsedSpreadshee
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith('.csv')) return parseCsvFile(file);
   if (lowerName.endsWith('.xlsx')) return parseXlsxFile(file);
-  throw new Error(`Formato file non supportato. Carica uno di questi formati: ${SUPPORTED_EXTENSIONS.join(', ')}.`);
+  throw new Error(`Unsupported file format. Upload one of these formats: ${SUPPORTED_EXTENSIONS.join(', ')}.`);
 }
 
 /**

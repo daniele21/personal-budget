@@ -345,11 +345,11 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
         {/* Legend */}
         <div className="flex items-center gap-4 text-[10px] font-bold text-on-surface-variant">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-secondary to-[#34d399]" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-secondary to-secondary/55" />
             Income
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-tertiary to-[#f87171]" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-tr from-tertiary to-tertiary/55" />
             Expenses
           </span>
           <span className="flex items-center gap-1.5">
@@ -363,11 +363,11 @@ export const InsightsPage = ({ analyticsLens, onAnalyticsLensChange, showLensCon
             <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="incomeComposedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#34d399" />
+                  <stop offset="0%" stopColor="var(--color-secondary)" stopOpacity={0.55} />
                   <stop offset="100%" stopColor="var(--color-secondary)" />
                 </linearGradient>
                 <linearGradient id="expenseComposedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f87171" />
+                  <stop offset="0%" stopColor="var(--color-tertiary)" stopOpacity={0.55} />
                   <stop offset="100%" stopColor="var(--color-tertiary)" />
                 </linearGradient>
               </defs>
