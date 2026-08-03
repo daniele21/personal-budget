@@ -1,7 +1,12 @@
 /**
- * Spreadsheet file parser — extracts raw rows from .xlsx / .csv files.
+ * Compatibility facade for the existing import wizard.
+ * New structured imports use the typed reader in src/data/import directly.
  */
-import type ExcelJS from 'exceljs';
+import {
+  readRawSpreadsheetFileForLegacyFlow,
+  isSupportedStructuredImportFile,
+  SUPPORTED_STRUCTURED_IMPORT_EXTENSIONS,
+} from '../data/import/spreadsheetFileReader';
 
 /** A single parsed row from the spreadsheet, keyed by column header */
 export type SpreadsheetRow = Record<string, string | number | undefined>;
@@ -13,101 +18,23 @@ export interface ParsedSpreadsheet {
   rawRows: string[][];
 }
 
-function cellValueToString(value: ExcelJS.CellValue): string {
-  if (value == null) return '';
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') {
-    if ('text' in value && typeof value.text === 'string') return value.text;
-    if ('result' in value) return cellValueToString(value.result as ExcelJS.CellValue);
-    if ('richText' in value && Array.isArray(value.richText)) {
-      return value.richText.map((part) => part.text).join('');
-    }
-    if ('hyperlink' in value && 'text' in value && typeof value.text === 'string') return value.text;
-    return String(value);
-  }
-  return String(value);
-}
-
-function cleanRawRows(rawRows: string[][]): string[][] {
-  return rawRows
-    .filter((row) => row.some((cell) => cell.trim() !== ''))
-    .map((row) => row.map((cell) => cell.trim()));
-}
-
-async function parseCsvFile(file: File): Promise<ParsedSpreadsheet> {
-  const { default: Papa } = await import('papaparse');
-  const text = await file.text();
-  const result = Papa.parse<string[]>(text, {
-    skipEmptyLines: 'greedy',
-  });
-
-  if (result.errors.length > 0) {
-    throw new Error(`Invalid CSV: ${result.errors[0]?.message ?? 'parsing error'}.`);
-  }
-
-  const cleanRows = cleanRawRows(result.data.map((row) => row.map((cell) => String(cell))));
-  if (cleanRows.length === 0) {
-    throw new Error('The file is empty or does not contain valid data.');
-  }
-
-  return {
-    sheetName: 'CSV',
-    rawRows: cleanRows,
-  };
-}
-
-async function parseXlsxFile(file: File): Promise<ParsedSpreadsheet> {
-  const { default: ExcelJS } = await import('exceljs');
-  const buffer = await file.arrayBuffer();
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-
-  const sheet = workbook.worksheets[0];
-  if (!sheet) {
-    throw new Error('The file does not contain any worksheets.');
-  }
-
-  const rawRows: string[][] = [];
-  sheet.eachRow({ includeEmpty: false }, (row) => {
-    const values: string[] = [];
-    for (let column = 1; column <= sheet.actualColumnCount; column += 1) {
-      values.push(cellValueToString(row.getCell(column).value));
-    }
-    rawRows.push(values);
-  });
-
-  const cleanRows = cleanRawRows(rawRows);
-  if (cleanRows.length === 0) {
-    throw new Error('The worksheet is empty or does not contain valid data.');
-  }
-
-  return {
-    sheetName: sheet.name,
-    rawRows: cleanRows,
-  };
-}
-
 /**
  * Parse an Excel or CSV file from a browser File object.
- * Extracts all non-empty rows as a 2D array of strings.
- * We do not attempt to guess the header row locally, as the AI handles it better.
+ * This adapter can be removed when the deterministic wizard replaces the
+ * remaining generic pre-M3 flow.
  */
 export async function parseSpreadsheetFile(file: File): Promise<ParsedSpreadsheet> {
-  const lowerName = file.name.toLowerCase();
-  if (lowerName.endsWith('.csv')) return parseCsvFile(file);
-  if (lowerName.endsWith('.xlsx')) return parseXlsxFile(file);
-  throw new Error(`Unsupported file format. Upload one of these formats: ${SUPPORTED_EXTENSIONS.join(', ')}.`);
+  return readRawSpreadsheetFileForLegacyFlow(file);
 }
 
 /**
  * Supported file extensions for import.
  */
-export const SUPPORTED_EXTENSIONS = ['.xlsx', '.csv'];
+export const SUPPORTED_EXTENSIONS = [...SUPPORTED_STRUCTURED_IMPORT_EXTENSIONS].reverse();
 
 /**
  * Check if a filename has a supported extension.
  */
 export function isSupportedFile(filename: string): boolean {
-  const lower = filename.toLowerCase();
-  return SUPPORTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  return isSupportedStructuredImportFile(filename);
 }

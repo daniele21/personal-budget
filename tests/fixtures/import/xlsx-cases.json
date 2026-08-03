@@ -1,0 +1,60 @@
+{
+  "valid": {
+    "worksheets": [
+      {
+        "name": "Transactions",
+        "state": "visible",
+        "rows": [
+          ["date", "description", "amount"],
+          ["2026-08-01", "Synthetic Grocery", -42.7],
+          ["2026-08-02", "Synthetic Salary", 2500]
+        ]
+      }
+    ],
+    "expectedIssueCodes": []
+  },
+  "additionalWorksheets": {
+    "worksheets": [
+      {
+        "name": "Transactions",
+        "state": "visible",
+        "rows": [
+          ["date", "description", "amount"],
+          ["2026-08-01", "Synthetic Grocery", -42.7]
+        ]
+      },
+      {
+        "name": "Ignored",
+        "state": "visible",
+        "rows": [["not", "read", "by-v1"]]
+      }
+    ],
+    "expectedIssueCodes": ["additional_worksheets_ignored"]
+  },
+  "hiddenFirstWorksheet": {
+    "worksheets": [
+      {
+        "name": "Hidden Transactions",
+        "state": "hidden",
+        "rows": [
+          ["date", "description", "amount"],
+          ["2026-08-01", "Synthetic Hidden", -1]
+        ]
+      }
+    ],
+    "expectedIssueCodes": ["hidden_first_worksheet"]
+  },
+  "formulaCell": {
+    "worksheets": [
+      {
+        "name": "Transactions",
+        "state": "visible",
+        "rows": [
+          ["date", "description", "amount"],
+          ["2026-08-01", { "formula": "CONCAT(\"Synthetic\",\" Merchant\")", "result": "Synthetic Merchant" }, -1]
+        ]
+      }
+    ],
+    "expectedIssueCodes": ["formula_cell_not_supported"]
+  }
+}

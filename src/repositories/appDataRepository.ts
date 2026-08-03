@@ -59,6 +59,26 @@ export const appDataRepository = {
     window.localStorage.setItem(STORAGE_KEYS.monthlyBudget, JSON.stringify(validated.monthlyBudget));
   },
 
+  readSerializedTransactionsStrict(): string | null {
+    return window.localStorage.getItem(STORAGE_KEYS.transactions);
+  },
+
+  saveTransactionsStrict(data: AppData): void {
+    const validated = validateAppData(projectAppData(data)).value;
+    window.localStorage.setItem(
+      STORAGE_KEYS.transactions,
+      JSON.stringify(validated.transactions),
+    );
+  },
+
+  restoreSerializedTransactionsStrict(serialized: string | null): void {
+    if (serialized === null) {
+      window.localStorage.removeItem(STORAGE_KEYS.transactions);
+      return;
+    }
+    window.localStorage.setItem(STORAGE_KEYS.transactions, serialized);
+  },
+
   clear(): void {
     try {
       Object.values(STORAGE_KEYS).forEach((key) => {

@@ -229,4 +229,44 @@ describe('recurring consistency across history and derived finance views', () =>
     expect(calculateTotals(filterByMonth(synced, new Date(2026, 4, 15))).expenses).toBe(950);
     expect(getAnnualReview(synced, 2026).totals.expenses).toBe(1_940);
   });
+
+  it('uses stable IDs for new occurrences while preserving historical linked IDs', () => {
+    const bill = recurring({
+      startDate: '2026-04-01T00:00:00.000Z',
+      endDate: '2026-04-30T00:00:00.000Z',
+    });
+
+    const first = syncRecurringTransactions([bill], [], new Date(2026, 3, 15));
+    const second = syncRecurringTransactions([bill], [], new Date(2026, 3, 15));
+
+    expect(first[0].id).toBe('rec_rent_2026-04');
+    expect(second[0].id).toBe(first[0].id);
+
+    const historical = { ...first[0], id: 'rec_rent_2026-04_legacy' };
+    const reconciled = syncRecurringTransactions([bill], [historical], new Date(2026, 3, 15));
+
+    expect(reconciled).toHaveLength(1);
+    expect(reconciled[0].id).toBe('rec_rent_2026-04_legacy');
+  });
+
+  it('resolves a deterministic recurring ID collision without replacing the existing row', () => {
+    const bill = recurring({
+      startDate: '2026-04-01T00:00:00.000Z',
+      endDate: '2026-04-30T00:00:00.000Z',
+    });
+    const unrelated = generatedTransaction({
+      id: 'rec_rent_2026-04',
+      sourceRecurringId: undefined,
+      sourceMonthKey: undefined,
+      title: 'Manual collision',
+      description: 'Manual transaction',
+    });
+
+    const synced = syncRecurringTransactions([bill], [unrelated], new Date(2026, 3, 15));
+
+    expect(synced.map((transaction) => transaction.id)).toEqual([
+      'rec_rent_2026-04_2',
+      'rec_rent_2026-04',
+    ]);
+  });
 });

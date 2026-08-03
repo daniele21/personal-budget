@@ -10,7 +10,50 @@ import {
 const DEFAULT_RECURRING_PAYMENT_METHOD = 'Bank Transfer';
 const DEFAULT_RECURRING_REMINDER_LEAD_DAYS = 0;
 const MAX_RECURRING_REMINDER_LEAD_DAYS = 30;
+const MAX_TRANSACTION_ID_LENGTH = 256;
 const RECURRING_FREQUENCIES: RecurringFrequency[] = ['daily', 'weekly', 'monthly', 'yearly'];
+
+function stableRecurringIdHash(value: string): string {
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= BigInt(value.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * prime);
+  }
+
+  return hash.toString(36);
+}
+
+/**
+ * Recurring materialization is a pure projection of a source template and an
+ * occurrence. New occurrences therefore use a stable ID. Existing linked
+ * transactions keep their historical IDs during reconciliation.
+ */
+export function getRecurringTransactionId(recurringId: string, occurrenceKey: string): string {
+  const readableId = `rec_${recurringId}_${occurrenceKey}`;
+  if (readableId.length <= MAX_TRANSACTION_ID_LENGTH) {
+    return readableId;
+  }
+
+  return `rec_${stableRecurringIdHash(readableId)}_${occurrenceKey}`
+    .slice(0, MAX_TRANSACTION_ID_LENGTH);
+}
+
+export function getAvailableRecurringTransactionId(
+  baseId: string,
+  occupiedIds: ReadonlySet<string>,
+): string {
+  if (!occupiedIds.has(baseId)) return baseId;
+
+  let suffixNumber = 2;
+  while (true) {
+    const suffix = `_${suffixNumber}`;
+    const candidate = `${baseId.slice(0, MAX_TRANSACTION_ID_LENGTH - suffix.length)}${suffix}`;
+    if (!occupiedIds.has(candidate)) return candidate;
+    suffixNumber += 1;
+  }
+}
 
 function ensureDate(value: string | undefined, fallback: Date = new Date()): Date {
   if (!value) return new Date(fallback);
@@ -377,7 +420,7 @@ export function buildRecurringTransaction(
   }
 
   return {
-    id: `rec_${recurring.id}_${occurrenceKey}_${Math.random().toString(36).slice(2, 6)}`,
+    id: getRecurringTransactionId(recurring.id, occurrenceKey),
     amount: override?.amount ?? recurring.amount,
     type: override?.type ?? recurring.type ?? 'expense',
     category: override?.category ?? recurring.category,

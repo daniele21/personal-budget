@@ -5,6 +5,7 @@
 import { Transaction, Budget, RecurringExpense, TransactionReportingClass } from '../types';
 import {
   buildRecurringTransaction,
+  getAvailableRecurringTransactionId,
   getRecurringOccurrenceKey,
   getRecurringOccurrencesInMonth,
   getUtcDateInputValue,
@@ -645,6 +646,7 @@ export function getRecurringDue(
 ): GeneratedTransaction[] {
   const result: GeneratedTransaction[] = [];
   const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const occupiedTransactionIds = new Set(existingTransactions.map((transaction) => transaction.id));
 
   recurring.forEach(bill => {
     getRecurringCandidateMonths(bill, todayNormalized).forEach(({ year, monthIndex }) => {
@@ -669,7 +671,18 @@ export function getRecurringDue(
         const transaction = buildRecurringTransaction(bill, occurrenceKey, occurrenceDate);
         if (!transaction) return;
 
-        result.push({ bill, transaction, monthKey: occurrenceKey });
+        const transactionId = getAvailableRecurringTransactionId(
+          transaction.id,
+          occupiedTransactionIds,
+        );
+        occupiedTransactionIds.add(transactionId);
+        result.push({
+          bill,
+          transaction: transactionId === transaction.id
+            ? transaction
+            : { ...transaction, id: transactionId },
+          monthKey: occurrenceKey,
+        });
       });
     });
   });

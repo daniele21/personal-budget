@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Transaction, Budget, RecurringExpense, Account, SavingsGoal } from '../types';
 import { AppData, INITIAL_APP_DATA, syncAppData, isFinancialDataEmpty } from '../data/model';
 import { appDataRepository } from '../repositories/appDataRepository';
@@ -7,6 +7,18 @@ import { usePreferences } from './PreferencesProvider';
 import * as Finance from '../domain/finance';
 import { STORAGE_KEYS } from '../data/storageKeys';
 import { persistTransactionAndVerify } from '../services/payment-detection/verifiedTransactionService';
+import {
+  changeTransactionCategories,
+  commitExistingTransactions,
+  commitTransactionImport,
+  undoCommittedImport,
+  undoTransactionCategoryChange,
+  type CategoryUndoToken,
+  type CommitTransactionImportResult,
+  type ImportUndoToken,
+  type UndoImportResult,
+} from '../services/import';
+import type { PreparedTransactionImport } from '../domain/import';
 
 // ─── State and Actions ──────────────────────────────────────────────
 
@@ -37,6 +49,7 @@ export type AppDataAction =
   | { type: 'data/hydrated'; data: AppData }
   | { type: 'data/reset' }
   | { type: 'transactions/replaced'; transactions: Transaction[] }
+  | { type: 'transactions/verified-replaced'; transactions: Transaction[] }
   | { type: 'budgets/replaced'; budgets: Budget[] }
   | { type: 'recurring/replaced'; recurring: RecurringExpense[] }
   | { type: 'categories/replaced'; categories: string[] };
@@ -187,6 +200,7 @@ export function appDataReducer(state: AppDataState, action: AppDataAction): AppD
       break;
 
     case 'transactions/replaced':
+    case 'transactions/verified-replaced':
       nextState = {
         ...state,
         transactions: action.transactions,
@@ -234,6 +248,11 @@ interface AppDataContextType {
   state: AppDataState;
   dispatch: (action: AppDataAction) => void;
   createTransactionVerified: (transaction: Transaction) => Promise<void>;
+  commitPreparedTransactionImport: (prepared: PreparedTransactionImport) => Promise<CommitTransactionImportResult>;
+  commitExistingTransactionImport: (transactions: Transaction[]) => Promise<CommitTransactionImportResult>;
+  undoTransactionImport: (token: ImportUndoToken) => Promise<UndoImportResult>;
+  changeCategoriesVerified: (ids: string[], category: string) => Promise<CategoryUndoToken>;
+  undoCategoriesVerified: (token: CategoryUndoToken) => Promise<void>;
   isHydrated: boolean;
 
   // Domain Derived Data
@@ -256,6 +275,7 @@ const AppDataContext = createContext<AppDataContextType | null>(null);
 export const AppDataProvider = ({ children }: { children: React.ReactNode }) => {
   const { selectedMonth, analyticsLens } = usePreferences();
   const [isHydrated, setIsHydrated] = useState(false);
+  const skipNextPersistenceRef = useRef(false);
 
   // Initialize state from appDataRepository
   const [state, reactDispatch] = useReducer(appDataReducer, null as any, () => {
@@ -278,6 +298,10 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   useEffect(() => {
     if (!isHydrated) return;
     if (localStorage.getItem(STORAGE_KEYS.restoreInProgress) === 'true') return;
+    if (skipNextPersistenceRef.current) {
+      skipNextPersistenceRef.current = false;
+      return;
+    }
     appDataRepository.saveAppData(state);
     localStorage.setItem(STORAGE_KEYS.onboardingComplete, String(state.onboardingComplete));
     if (state.initialDataChoice) {
@@ -311,6 +335,40 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     persistTransactionAndVerify(transaction);
     reactDispatch({ type: 'transaction/created', transaction });
   }, []);
+
+  const hydrateVerifiedTransactions = useCallback((data: AppData) => {
+    skipNextPersistenceRef.current = true;
+    reactDispatch({ type: 'transactions/verified-replaced', transactions: data.transactions });
+  }, []);
+
+  const commitPreparedTransactionImport = useCallback(async (prepared: PreparedTransactionImport) => {
+    const result = await commitTransactionImport(prepared);
+    hydrateVerifiedTransactions(result.data);
+    return result;
+  }, [hydrateVerifiedTransactions]);
+
+  const commitExistingTransactionImport = useCallback(async (transactions: Transaction[]) => {
+    const result = commitExistingTransactions(transactions);
+    hydrateVerifiedTransactions(result.data);
+    return result;
+  }, [hydrateVerifiedTransactions]);
+
+  const undoTransactionImport = useCallback(async (token: ImportUndoToken) => {
+    const result = undoCommittedImport(token);
+    hydrateVerifiedTransactions(result.data);
+    return result;
+  }, [hydrateVerifiedTransactions]);
+
+  const changeCategoriesVerified = useCallback(async (ids: string[], category: string) => {
+    const result = changeTransactionCategories(ids, category);
+    hydrateVerifiedTransactions(result.data);
+    return result.undoToken;
+  }, [hydrateVerifiedTransactions]);
+
+  const undoCategoriesVerified = useCallback(async (token: CategoryUndoToken) => {
+    const result = undoTransactionCategoryChange(token);
+    hydrateVerifiedTransactions(result.data);
+  }, [hydrateVerifiedTransactions]);
 
   // Derived calculations
   const monthlyTransactions = useMemo(() => Finance.filterByMonth(state.transactions, selectedMonth), [state.transactions, selectedMonth]);
@@ -361,6 +419,11 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     state,
     dispatch,
     createTransactionVerified,
+    commitPreparedTransactionImport,
+    commitExistingTransactionImport,
+    undoTransactionImport,
+    changeCategoriesVerified,
+    undoCategoriesVerified,
     isHydrated,
     monthlyTransactions,
     monthlyTotals,
@@ -376,6 +439,11 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
     state,
     dispatch,
     createTransactionVerified,
+    commitPreparedTransactionImport,
+    commitExistingTransactionImport,
+    undoTransactionImport,
+    changeCategoriesVerified,
+    undoCategoriesVerified,
     isHydrated,
     monthlyTransactions,
     monthlyTotals,

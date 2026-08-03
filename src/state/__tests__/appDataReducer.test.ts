@@ -55,6 +55,19 @@ describe('appDataReducer regression tests', () => {
     expect(nextState.transactions.map(t => t.id)).toEqual(['new-1', 'new-2']);
   });
 
+  it('transactions/verified-replaced atomically hydrates the verified ledger', () => {
+    const stateWithTx = { ...BASE_STATE, transactions: [mockTransaction('old')] };
+    const verified = [mockTransaction('imported-1'), mockTransaction('imported-2')];
+    const nextState = appDataReducer(stateWithTx, {
+      type: 'transactions/verified-replaced',
+      transactions: verified,
+    });
+
+    expect(nextState.transactions).toEqual(verified);
+    expect(nextState.budgets).toBe(stateWithTx.budgets);
+    expect(nextState.categories).toBe(stateWithTx.categories);
+  });
+
   it('budgets/replaced replaces the entire budgets list, removing absent budgets', () => {
     const stateWithBudgets = {
       ...BASE_STATE,

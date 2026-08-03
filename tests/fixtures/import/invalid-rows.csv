@@ -1,0 +1,6 @@
+date,description,amount
+2026-02-30,Synthetic Invalid Date,-10.00
+2026-08-01,   ,-4.00
+2026-08-02,Synthetic Zero,0.00
+2026-08-03,Synthetic Precision,-1.234
+2026-08-03,Synthetic Missing Amount

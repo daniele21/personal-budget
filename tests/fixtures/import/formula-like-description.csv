@@ -1,0 +1,3 @@
+date,description,amount
+2026-08-01,"=HYPERLINK(""https://invalid.example"",""Synthetic"")",-1.00
+2026-08-02,"@SyntheticReference",-2.00

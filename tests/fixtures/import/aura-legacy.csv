@@ -1,0 +1,2 @@
+id,amount,type,category,date,title,description,paymentMethod,reportingClass
+fixture-aura-1,12.50,expense,Groceries,2026-08-01T00:00:00.000Z,Synthetic Grocery,Synthetic legacy row,Bank Transfer,regular

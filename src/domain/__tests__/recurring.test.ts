@@ -6,6 +6,7 @@ import {
   getRecurringOccurrencesInMonth,
   getRecurringReminderCandidates,
   getRecurringReminderSettings,
+  getRecurringTransactionId,
   reconcileRecurringTransactions,
   isRecurringActiveInMonth,
   normalizeRecurringExpense,
@@ -14,6 +15,17 @@ import {
 import { RecurringExpense, Transaction } from '../../types';
 
 describe('recurring domain helpers', () => {
+  it('builds bounded deterministic transaction IDs for recurring occurrences', () => {
+    expect(getRecurringTransactionId('rent', '2026-08')).toBe('rec_rent_2026-08');
+
+    const longRecurringId = 'r'.repeat(256);
+    const first = getRecurringTransactionId(longRecurringId, '2026-08');
+    const second = getRecurringTransactionId(longRecurringId, '2026-08');
+
+    expect(first).toBe(second);
+    expect(first.length).toBeLessThanOrEqual(256);
+  });
+
   it('defaults the end date to one year minus one day from the start date', () => {
     expect(getDefaultRecurringEndDate('2026-04-05T00:00:00.000Z')).toBe('2027-04-04T00:00:00.000Z');
   });

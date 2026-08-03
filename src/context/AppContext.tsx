@@ -12,6 +12,8 @@ import { buildDemoData } from '../data/demoData';
 import { PrimaryAnalyticsLens } from '../domain/finance';
 import { RestoreRecoveryGate } from '../components/archive/RestoreRecoveryGate';
 import type { BackupVersion } from '../lib/backup';
+import type { PreparedTransactionImport } from '../domain/import';
+import type { CategoryUndoToken, CommitTransactionImportResult, ImportUndoToken, UndoImportResult } from '../services/import';
 
 // ─── Legacy Context Shape (compatible facade) ───────────────────────
 
@@ -65,6 +67,11 @@ interface AppState {
   // Compatible Actions
   addTransaction: (tx: Transaction) => void;
   createTransactionVerified: (tx: Transaction) => Promise<void>;
+  commitPreparedTransactionImport: (prepared: PreparedTransactionImport) => Promise<CommitTransactionImportResult>;
+  commitExistingTransactionImport: (transactions: Transaction[]) => Promise<CommitTransactionImportResult>;
+  undoTransactionImport: (token: ImportUndoToken) => Promise<UndoImportResult>;
+  changeCategoriesVerified: (ids: string[], category: string) => Promise<CategoryUndoToken>;
+  undoCategoriesVerified: (token: CategoryUndoToken) => Promise<void>;
   addTransactions: (txs: Transaction[]) => void;
   updateTransaction: (id: string, tx: Transaction) => void;
   deleteTransaction: (id: string) => void;
@@ -112,6 +119,11 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     state,
     dispatch,
     createTransactionVerified,
+    commitPreparedTransactionImport,
+    commitExistingTransactionImport,
+    undoTransactionImport,
+    changeCategoriesVerified,
+    undoCategoriesVerified,
     isHydrated,
     monthlyTransactions,
     monthlyTotals,
@@ -254,6 +266,11 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
 
     addTransaction,
     createTransactionVerified,
+    commitPreparedTransactionImport,
+    commitExistingTransactionImport,
+    undoTransactionImport,
+    changeCategoriesVerified,
+    undoCategoriesVerified,
     addTransactions,
     updateTransaction,
     deleteTransaction,
@@ -316,6 +333,11 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     signOut,
     addTransaction,
     createTransactionVerified,
+    commitPreparedTransactionImport,
+    commitExistingTransactionImport,
+    undoTransactionImport,
+    changeCategoriesVerified,
+    undoCategoriesVerified,
     addTransactions,
     updateTransaction,
     deleteTransaction,
