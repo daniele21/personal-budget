@@ -24,4 +24,10 @@ describe('Firestore admin policy alignment', () => {
       "request.auth.token.email == 'danielemoltisanti@gmail.com'",
     );
   });
+
+  it('keeps backup parents and version documents scoped to the authenticated UID', () => {
+    expect(firestoreRules).toContain('match /backups/{userId}');
+    expect(firestoreRules).toContain('match /versions/{versionId}');
+    expect(firestoreRules.match(/request\.auth\.uid == userId/g)).toHaveLength(2);
+  });
 });

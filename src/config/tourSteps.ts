@@ -21,7 +21,7 @@ export interface TourStep {
  * Targets intentionally identify stable feature regions instead of individual
  * implementation details so the tour remains useful as each screen evolves.
  */
-export const TOUR_STEPS: TourStep[] = [
+const ALL_TOUR_STEPS: TourStep[] = [
   {
     id: 'home-period',
     target: '[data-tour-id="home-period"]',
@@ -229,7 +229,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/',
     section: 'Global tools',
     title: 'Search, alerts, and tools',
-    description: 'Search across your workspace, review local alerts, install the app when supported, or open secondary tools from the More menu.',
+    description: 'Search across your workspace, review local alerts, or open secondary tools from the More menu.',
     placement: 'bottom',
     spotlightPadding: 4,
     spotlightRadius: 999,
@@ -271,3 +271,61 @@ export const TOUR_STEPS: TourStep[] = [
     placement: 'top',
   },
 ];
+
+export type TourId = 'home' | 'first-transaction' | 'budgets' | 'reports' | 'planning';
+
+export interface TourDefinition {
+  id: TourId;
+  title: string;
+  description: string;
+  steps: TourStep[];
+}
+
+function selectSteps(...ids: string[]): TourStep[] {
+  return ids.map((id) => {
+    const step = ALL_TOUR_STEPS.find((candidate) => candidate.id === id);
+    if (!step) throw new Error(`Unknown tour step: ${id}`);
+    return step;
+  });
+}
+
+export const TOUR_CATALOG: Record<TourId, TourDefinition> = {
+  home: {
+    id: 'home',
+    title: 'Home essentials',
+    description: 'Understand the current period, available spending, and monthly totals.',
+    steps: selectSteps('home-period', 'safe-to-spend', 'home-monthly-summary'),
+  },
+  'first-transaction': {
+    id: 'first-transaction',
+    title: 'Add a transaction',
+    description: 'Record an amount, add the essential details, and understand reporting treatment.',
+    steps: selectSteps('add-entry', 'add-details', 'reporting-treatment'),
+  },
+  budgets: {
+    id: 'budgets',
+    title: 'Category budgets',
+    description: 'Read your monthly position and manage category limits.',
+    steps: selectSteps('budget-summary', 'budget-categories'),
+  },
+  reports: {
+    id: 'reports',
+    title: 'Reports overview',
+    description: 'Choose scope, read totals, and understand spending pace.',
+    steps: selectSteps(
+      'reports-navigation',
+      'reports-options',
+      'reports-overview-summary',
+      'reports-spending-pace',
+    ),
+  },
+  planning: {
+    id: 'planning',
+    title: 'Planning',
+    description: 'Use calendar and recurring views to understand upcoming commitments.',
+    steps: selectSteps('planning-tabs', 'planning-summary', 'planning-calendar'),
+  },
+};
+
+// Compatibility export for consumers that start the default contextual tour.
+export const TOUR_STEPS = TOUR_CATALOG.home.steps;

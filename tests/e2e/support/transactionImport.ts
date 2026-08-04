@@ -26,7 +26,6 @@ export async function seedImportWorkspace(
     window.localStorage.setItem('aura_onboarding_complete', 'true');
     window.localStorage.setItem('aura_initial_data_choice', 'blank');
     window.localStorage.setItem('aura_guided_tour_complete', 'true');
-    window.localStorage.setItem('aura_pwa_install_dialog_shown', 'true');
     window.sessionStorage.setItem('aura_import_e2e_seeded', 'true');
   }, { seededTransactions: transactions, seededDarkMode: darkMode });
 }

@@ -318,7 +318,7 @@ export function DataPrivacyPage() {
               <span>
                 <span className="block text-sm font-bold">Restore cloud backup</span>
                 <span className="block text-micro text-on-surface-variant">
-                  Choose from the latest three saved versions
+                  Choose from the latest five saved versions
                 </span>
               </span>
             </span>

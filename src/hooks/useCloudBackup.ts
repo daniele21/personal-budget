@@ -46,9 +46,9 @@ function restoreIsInProgress(): boolean {
 
 export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData }: UseCloudBackupOptions) {
   const backupInFlight = useRef(false);
-  const backupCheckUid = useRef<string | null>(null);
   const [backupAvailable, setBackupAvailable] = useState(false);
   const [backupCheckComplete, setBackupCheckComplete] = useState(false);
+  const [backupCheckTimedOut, setBackupCheckTimedOut] = useState(false);
   const [backupVersions, setBackupVersions] = useState<BackupVersion[]>([]);
   const [backupVersionsLoading, setBackupVersionsLoading] = useState(false);
   const [backupStatus, setBackupStatus] = useState<BackupStatus>('idle');
@@ -72,7 +72,6 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
   useEffect(() => {
     if (restoreIsInProgress()) return;
     if (!uid) {
-      backupCheckUid.current = null;
       setBackupAvailable(false);
       setBackupVersions([]);
       setBackupCheckComplete(true);
@@ -80,20 +79,21 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
     }
 
     if (!isLocalEmpty()) {
-      backupCheckUid.current = uid;
       setBackupAvailable(false);
       setBackupCheckComplete(true);
       return;
     }
 
-    if (backupCheckUid.current === uid) return;
-
     let cancelled = false;
-    backupCheckUid.current = uid;
     setBackupAvailable(false);
     setBackupCheckComplete(false);
+    setBackupCheckTimedOut(false);
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) setBackupCheckTimedOut(true);
+    }, 8_000);
     listBackupVersions(uid).then((versions) => {
       if (cancelled) return;
+      window.clearTimeout(timeout);
       setBackupVersions(versions);
       if (versions.length > 0) {
         setBackupAvailable(true);
@@ -103,6 +103,7 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
     };
   }, [uid, enabled, isLocalEmpty]);
 
@@ -162,6 +163,10 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
   }, [uid, applyData]);
 
   const dismissRestore = useCallback(() => setBackupAvailable(false), []);
+  const continueOffline = useCallback(() => {
+    setBackupCheckTimedOut(false);
+    setBackupCheckComplete(true);
+  }, []);
 
   const deleteCloudBackup = useCallback(async (): Promise<boolean> => {
     if (!uid) return false;
@@ -213,6 +218,8 @@ export function useCloudBackup({ uid, enabled, getData, isLocalEmpty, applyData 
     backupVersionsLoading,
     backupAvailable,
     backupCheckComplete,
+    backupCheckTimedOut,
+    continueOffline,
     dismissRestore,
     deleteCloudBackup,
     pushNow,

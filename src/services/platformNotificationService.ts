@@ -1,4 +1,5 @@
 import { getPlatformCapabilities } from '../platform/platformCapabilities';
+import { NativeLocalNotifications } from '../platform/nativeLocalNotifications';
 
 export interface LocalNotificationPayload {
   id: string;
@@ -10,6 +11,7 @@ export interface LocalNotificationPayload {
 
 export function getLocalNotificationPermission(): NotificationPermission {
   const capabilities = getPlatformCapabilities();
+  if (capabilities.isAndroid) return 'default';
   if (
     !capabilities.browserNotificationsSupported ||
     typeof window === 'undefined' ||
@@ -22,6 +24,10 @@ export function getLocalNotificationPermission(): NotificationPermission {
 
 export async function requestLocalNotificationPermission(): Promise<NotificationPermission> {
   const capabilities = getPlatformCapabilities();
+  if (capabilities.isAndroid) {
+    const result = await NativeLocalNotifications.requestPermission();
+    return result.granted ? 'granted' : 'denied';
+  }
   if (
     !capabilities.browserNotificationsSupported ||
     typeof window === 'undefined' ||
@@ -36,6 +42,10 @@ export async function deliverLocalNotification(
   payload: LocalNotificationPayload,
 ): Promise<void> {
   const capabilities = getPlatformCapabilities();
+  if (capabilities.isAndroid) {
+    await NativeLocalNotifications.deliver(payload);
+    return;
+  }
   if (
     !capabilities.browserNotificationsSupported ||
     getLocalNotificationPermission() !== 'granted'
@@ -43,25 +53,6 @@ export async function deliverLocalNotification(
     return;
   }
 
-  if (
-    capabilities.serviceWorkerSupported &&
-    'serviceWorker' in navigator
-  ) {
-    const registration = await navigator.serviceWorker.ready;
-    registration.active?.postMessage({
-      type: 'AURA_SHOW_NOTIFICATION',
-      payload: {
-        title: payload.title,
-        body: payload.body,
-        route: payload.route,
-        tag: payload.dedupeKey ?? payload.id,
-      },
-    });
-    return;
-  }
-
-  new Notification(payload.title, {
-    body: payload.body,
-    data: { route: payload.route },
-  });
+  // Browser execution is retained only as a test harness. Public notification
+  // delivery belongs to the Android native adapter.
 }

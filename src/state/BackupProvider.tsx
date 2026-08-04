@@ -14,6 +14,8 @@ interface BackupContextType {
   backupStatus: 'idle' | 'syncing' | 'success' | 'error' | 'skipped';
   lastBackupDate: string | null;
   backupCheckComplete: boolean;
+  backupCheckTimedOut: boolean;
+  continueOffline: () => void;
   backupVersions: BackupVersion[];
   backupVersionsLoading: boolean;
   refreshBackupVersions: () => Promise<BackupVersion[]>;
@@ -65,6 +67,8 @@ export const BackupProvider = ({ children }: { children: React.ReactNode }) => {
     restoreFromCloud,
     backupAvailable,
     backupCheckComplete,
+    backupCheckTimedOut,
+    continueOffline,
     backupVersions,
     backupVersionsLoading,
     refreshBackupVersions,
@@ -97,6 +101,8 @@ export const BackupProvider = ({ children }: { children: React.ReactNode }) => {
         backupStatus,
         lastBackupDate,
         backupCheckComplete,
+        backupCheckTimedOut,
+        continueOffline,
         backupVersions,
         backupVersionsLoading,
         refreshBackupVersions,

@@ -17,7 +17,7 @@ vi.mock('../firebase', () => ({
 }));
 
 vi.mock('firebase/firestore', () => ({
-  doc: (_db: any, collection: string, id: string) => `${collection}/${id}`,
+  doc: (_db: any, ...segments: string[]) => segments.join('/'),
   getDoc: async (path: string) => {
     const data = firestoreStore.get(path);
     return {
@@ -39,6 +39,9 @@ vi.mock('firebase/firestore', () => ({
       },
       set: (path: string, payload: any) => {
         firestoreStore.set(path, structuredClone(payload));
+      },
+      delete: (path: string) => {
+        firestoreStore.delete(path);
       },
     };
     return update(transaction);
@@ -87,37 +90,72 @@ describe('lib/backup', () => {
       expect(storedDoc.iv).toBeDefined();
       expect(typeof storedDoc.payloadSha256).toBe('string');
       expect(storedDoc.payloadSha256.length).toBe(64); // SHA-256 hex string length
-      expect(Array.isArray(storedDoc.slots)).toBe(true);
-      expect(storedDoc.slots.length).toBe(1);
-      expect(storedDoc.slots[0].id).toEqual(expect.any(String));
-      expect(new Date(storedDoc.slots[0].createdAt).getTime()).not.toBeNaN();
+      expect(storedDoc.schemaVersion).toBe(2);
+      expect(Array.isArray(storedDoc.versionIndex)).toBe(true);
+      expect(storedDoc.versionIndex.length).toBe(1);
+      expect(storedDoc.versionIndex[0].id).toEqual(expect.any(String));
+      expect(new Date(storedDoc.versionIndex[0].createdAt).getTime()).not.toBeNaN();
+      expect(firestoreStore.has(`backups/${uid}/versions/${storedDoc.versionIndex[0].id}`)).toBe(true);
     });
 
-    it('maintains a maximum of 3 historical rotation slots across multiple pushes', async () => {
+    it('maintains a maximum of 5 version documents across multiple pushes', async () => {
       const data1 = { ...INITIAL_APP_DATA, monthlyBudget: 1000 };
       const data2 = { ...INITIAL_APP_DATA, monthlyBudget: 2000 };
       const data3 = { ...INITIAL_APP_DATA, monthlyBudget: 3000 };
       const data4 = { ...INITIAL_APP_DATA, monthlyBudget: 4000 };
+      const data5 = { ...INITIAL_APP_DATA, monthlyBudget: 5000 };
+      const data6 = { ...INITIAL_APP_DATA, monthlyBudget: 6000 };
 
       await pushBackup(uid, data1);
       await pushBackup(uid, data2);
       await pushBackup(uid, data3);
       await pushBackup(uid, data4);
+      await pushBackup(uid, data5);
+      await pushBackup(uid, data6);
 
       const storedDoc = firestoreStore.get(`backups/${uid}`);
-      expect(storedDoc.slots.length).toBe(3);
+      expect(storedDoc.versionIndex.length).toBe(5);
+      const storedVersions = [...firestoreStore.keys()]
+        .filter((path) => path.startsWith(`backups/${uid}/versions/`));
+      expect(storedVersions).toHaveLength(5);
     });
 
-    it('lists exactly the three latest valid versions with their creation dates', async () => {
+    it('migrates a legacy three-slot parent into managed version documents on the next push', async () => {
+      await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 1000 });
+      const managedParent = structuredClone(firestoreStore.get(`backups/${uid}`));
+      const firstVersionPath = `backups/${uid}/versions/${managedParent.versionIndex[0].id}`;
+      const legacySlot = structuredClone(firestoreStore.get(firstVersionPath));
+
+      firestoreStore.set(`backups/${uid}`, {
+        ciphertext: legacySlot.ciphertext,
+        iv: legacySlot.iv,
+        payloadSha256: legacySlot.payloadSha256,
+        slots: [legacySlot],
+        updatedAt: legacySlot.createdAt,
+      });
+      firestoreStore.delete(firstVersionPath);
+
+      await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 2000 });
+
+      const migratedParent = firestoreStore.get(`backups/${uid}`);
+      expect(migratedParent.schemaVersion).toBe(2);
+      expect(migratedParent.versionIndex).toHaveLength(2);
+      await expect(pullBackupVersion(uid, migratedParent.versionIndex[1].id))
+        .resolves.toMatchObject({ monthlyBudget: 1000 });
+    });
+
+    it('lists exactly the five latest valid versions with their creation dates', async () => {
       await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 1000 });
       await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 2000 });
       await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 3000 });
       await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 4000 });
+      await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 5000 });
+      await pushBackup(uid, { ...INITIAL_APP_DATA, monthlyBudget: 6000 });
 
       const versions = await listBackupVersions(uid);
 
-      expect(versions).toHaveLength(3);
-      expect(versions.map((version) => version.position)).toEqual([0, 1, 2]);
+      expect(versions).toHaveLength(5);
+      expect(versions.map((version) => version.position)).toEqual([0, 1, 2, 3, 4]);
       expect(versions[0].isLatest).toBe(true);
       expect(versions.slice(1).every((version) => !version.isLatest)).toBe(true);
       expect(versions.every((version) => !Number.isNaN(Date.parse(version.createdAt ?? '')))).toBe(true);
@@ -139,14 +177,11 @@ describe('lib/backup', () => {
             };
           },
           set: (path: string, payload: any) => {
-            const corruptedSlots = structuredClone(payload.slots);
-            corruptedSlots[0].payloadSha256 = 'corrupted-sha-256-hash';
-            firestoreStore.set(path, {
-              ...structuredClone(payload),
-              payloadSha256: 'corrupted-sha-256-hash',
-              slots: corruptedSlots,
-            });
+            firestoreStore.set(path, path.includes('/versions/')
+              ? { ...structuredClone(payload), payloadSha256: 'corrupted-sha-256-hash' }
+              : structuredClone(payload));
           },
+          delete: (path: string) => firestoreStore.delete(path),
         };
         return update(transaction);
       });
@@ -189,7 +224,8 @@ describe('lib/backup', () => {
       expect(pulledRootCorrupted?.monthlyBudget).toBe(3000);
 
       // Case B: Corrupt slot #0 as well -> falls back to historical slot #1 (1500)
-      storedDoc.slots[0].ciphertext = 'CORRUPTED_CIPHERTEXT_BASE64==';
+      const latestVersionPath = `backups/${uid}/versions/${storedDoc.versionIndex[0].id}`;
+      firestoreStore.get(latestVersionPath).ciphertext = 'CORRUPTED_CIPHERTEXT_BASE64==';
       const pulledBothCorrupted = await pullBackup(uid);
       expect(pulledBothCorrupted).not.toBeNull();
       expect(pulledBothCorrupted?.monthlyBudget).toBe(1500);
@@ -212,7 +248,8 @@ describe('lib/backup', () => {
 
       const versions = await listBackupVersions(uid);
       const storedDoc = firestoreStore.get(`backups/${uid}`);
-      storedDoc.slots[1].ciphertext = 'CORRUPTED_CIPHERTEXT_BASE64==';
+      const selectedVersionPath = `backups/${uid}/versions/${versions[1].id}`;
+      firestoreStore.get(selectedVersionPath).ciphertext = 'CORRUPTED_CIPHERTEXT_BASE64==';
 
       const selected = await pullBackupVersion(uid, versions[1].id);
 
@@ -228,6 +265,7 @@ describe('lib/backup', () => {
       const deleted = await deleteBackup(uid);
       expect(deleted).toBe(true);
       expect(firestoreStore.has(`backups/${uid}`)).toBe(false);
+      expect([...firestoreStore.keys()].some((path) => path.startsWith(`backups/${uid}/versions/`))).toBe(false);
     });
   });
 });

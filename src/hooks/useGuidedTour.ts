@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { STORAGE_KEYS } from '../data/storageKeys';
-import { TOUR_STEPS, TourStep } from '../config/tourSteps';
+import { TOUR_CATALOG, TourId, TourStep } from '../config/tourSteps';
 
 const ROUTE_HANDOFF_MS = 520;
 
@@ -15,19 +15,25 @@ interface UseGuidedTourReturn {
   targetRect: DOMRect | null;
   navigationRects: DOMRect[];
   transitionRect: DOMRect | null;
-  startTour: () => void;
+  startTour: (tourId?: TourId) => void;
   nextStep: () => void;
   prevStep: () => void;
   skipTour: () => void;
 }
 
-export function wasTourCompleted(): boolean {
+function tourStateKey(tourId: TourId): string {
+  return `aura_tour_state_v1:${tourId}`;
+}
+
+export function wasTourCompleted(tourId: TourId = 'home'): boolean {
   if (typeof window === 'undefined') return true;
-  return window.localStorage.getItem(STORAGE_KEYS.guidedTourComplete) === 'true';
+  return window.localStorage.getItem(tourStateKey(tourId)) === 'completed'
+    || window.localStorage.getItem(STORAGE_KEYS.guidedTourComplete) === 'true';
 }
 
 export function useGuidedTour(): UseGuidedTourReturn {
   const [isActive, setIsActive] = useState(false);
+  const [activeTourId, setActiveTourId] = useState<TourId>('home');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionDestination, setTransitionDestination] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -41,11 +47,12 @@ export function useGuidedTour(): UseGuidedTourReturn {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const totalSteps = TOUR_STEPS.length;
-  const currentStep = isActive && TOUR_STEPS[currentStepIndex] ? TOUR_STEPS[currentStepIndex] : null;
+  const tourSteps = TOUR_CATALOG[activeTourId].steps;
+  const totalSteps = tourSteps.length;
+  const currentStep = isActive && tourSteps[currentStepIndex] ? tourSteps[currentStepIndex] : null;
 
   // Finish and persist completion
-  const completeTour = useCallback(() => {
+  const finishTour = useCallback((state: 'completed' | 'dismissed') => {
     setIsActive(false);
     setIsTransitioning(false);
     setTransitionDestination(null);
@@ -56,29 +63,30 @@ export function useGuidedTour(): UseGuidedTourReturn {
     setTransitionRect(null);
     transitionRectRef.current = null;
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEYS.guidedTourComplete, 'true');
+      window.localStorage.setItem(tourStateKey(activeTourId), state);
     }
-  }, []);
+  }, [activeTourId]);
+
+  const completeTour = useCallback(() => finishTour('completed'), [finishTour]);
 
   // Skip
   const skipTour = useCallback(() => {
-    completeTour();
-  }, [completeTour]);
+    finishTour('dismissed');
+  }, [finishTour]);
 
   // Start tour manually or automatically
-  const startTour = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(STORAGE_KEYS.guidedTourComplete);
-    }
+  const startTour = useCallback((tourId: TourId = 'home') => {
+    const nextSteps = TOUR_CATALOG[tourId].steps;
+    setActiveTourId(tourId);
     setCurrentStepIndex(0);
     setIsActive(true);
-    if (TOUR_STEPS[0] && location.pathname !== TOUR_STEPS[0].route) {
+    if (nextSteps[0] && location.pathname !== nextSteps[0].route) {
       setIsTransitioning(true);
-      setTransitionDestination(TOUR_STEPS[0].section);
+      setTransitionDestination(nextSteps[0].section);
       transitionStartedAtRef.current = window.performance.now();
       transitionRectRef.current = null;
       setTransitionRect(null);
-      navigate(TOUR_STEPS[0].route);
+      navigate(nextSteps[0].route);
     } else {
       setIsTransitioning(false);
       setTransitionDestination(null);
@@ -93,7 +101,7 @@ export function useGuidedTour(): UseGuidedTourReturn {
       return;
     }
     const nextIndex = currentStepIndex + 1;
-    const nextStepConfig = TOUR_STEPS[nextIndex];
+    const nextStepConfig = tourSteps[nextIndex];
     setCurrentStepIndex(nextIndex);
     if (nextStepConfig && location.pathname !== nextStepConfig.route) {
       setIsTransitioning(true);
@@ -103,13 +111,13 @@ export function useGuidedTour(): UseGuidedTourReturn {
       setTransitionRect(null);
       navigate(nextStepConfig.route);
     }
-  }, [completeTour, currentStepIndex, location.pathname, navigate, totalSteps]);
+  }, [completeTour, currentStepIndex, location.pathname, navigate, totalSteps, tourSteps]);
 
   // Go to previous step
   const prevStep = useCallback(() => {
     if (currentStepIndex <= 0) return;
     const prevIndex = currentStepIndex - 1;
-    const prevStepConfig = TOUR_STEPS[prevIndex];
+    const prevStepConfig = tourSteps[prevIndex];
     setCurrentStepIndex(prevIndex);
     if (prevStepConfig && location.pathname !== prevStepConfig.route) {
       setIsTransitioning(true);
@@ -119,7 +127,7 @@ export function useGuidedTour(): UseGuidedTourReturn {
       setTransitionRect(null);
       navigate(prevStepConfig.route);
     }
-  }, [currentStepIndex, location.pathname, navigate]);
+  }, [currentStepIndex, location.pathname, navigate, tourSteps]);
 
   // Reveal the current feature, then keep the spotlight attached while the
   // route renders and the smooth scroll is still moving.

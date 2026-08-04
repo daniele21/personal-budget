@@ -2,15 +2,23 @@
 
 ## Chosen Direction
 
-Aura Finance remains a local-first personal budget PWA. Cloud storage is limited to an explicit opt-in encrypted backup used for restore across devices.
+Aura Finance is a local-first Android application distributed through
+Capacitor. The React/Vite application remains the canonical bundled runtime and
+browser regression harness; the PWA and full hosted financial application are
+retired. Cloud storage remains limited to an explicit opt-in encrypted backup
+used for restore across devices.
 
-Aura also gains a companion Android distribution through Capacitor. The PWA remains supported; the Android app packages the same React build and adds native capabilities behind typed adapters. Production Android builds use bundled web assets rather than a remote `server.url`.
+Production Android builds use bundled web assets rather than a remote
+`server.url`. Public web hosting is limited to landing, privacy, support and
+account-deletion surfaces. This distribution decision is fixed in
+[`ADR 0006`](../../adr/0006-aura-android-only-distribution.md).
 
 ## Decisions
 
 ### Android Companion And Payment Detection
 
-Chosen: add an Android Capacitor companion while retaining the PWA, then implement optional local payment detection through a custom Kotlin plugin.
+Chosen: use the Android Capacitor application as the only product distribution
+and implement optional local payment detection through a custom Kotlin plugin.
 
 Rationale: notification access requires Android native APIs, but Aura's existing React UI, financial domain, storage behavior, accessibility work, cloud backup, and archive workflows should not be duplicated. Capacitor provides the smallest native boundary that satisfies the requirement.
 
@@ -84,12 +92,16 @@ Chosen: opt-in encrypted backup with visible status.
 
 Rationale: financial records are sensitive; users should know when data leaves the device. Firestore stores only encrypted backup payloads tied to the authenticated UID.
 
-Each UID keeps the latest three encrypted `AppData` snapshots inside one
-Firestore document. Rotation is transactional, every snapshot carries a stable
-version ID and creation timestamp, and the user can select an exact version from
-empty-workspace recovery or Data & Privacy. Explicit selection never falls back
-to a different version; automatic corruption recovery may still try older valid
-slots. The detailed contract is defined in
+Each UID keeps the latest five encrypted `AppData` snapshots as bounded
+user-scoped version documents below `backups/{uid}`. The parent stores metadata
+and a temporary latest-payload compatibility mirror. Rotation is concurrency
+safe, every snapshot carries a stable version ID and creation timestamp, and the
+user can select an exact version from empty-workspace recovery or Data &
+Privacy. Explicit selection never falls back to a different version; automatic
+corruption recovery may still try older valid versions. Deletion enumerates and
+verifies all version documents before removing the parent. The storage decision
+is fixed in [`ADR 0007`](../../adr/0007-aura-five-version-cloud-backup.md) and
+the detailed contract is defined in
 [`cloud-backup-version-history.md`](../specs/cloud-backup-version-history.md).
 
 ### Portable Disaster Recovery Archive
@@ -274,36 +286,23 @@ Rationale: a reimbursement is a real cash inflow, but it is not income for repor
 
 ### Notifications
 
-Chosen: local-only web notifications using browser permission, local preferences, local reminders, and the existing service worker.
+Chosen: local-only Android notifications using local preferences, deterministic
+reminder intents and a typed native scheduling adapter.
 
 Rationale: budget alerts, recurring reminders, and custom reminders should preserve the local-first privacy posture. Firebase Cloud Messaging or backend scheduling is intentionally out of scope because it would introduce provider cost, operational complexity, and additional privacy documentation.
 
-Recurring items may carry their own reminder setting, including due-date reminders and short lead-time reminders. The global recurring reminder preference remains the master switch, while each recurring item can opt in or out of its own local reminder.
+Recurring items may carry their own reminder setting, including due-date
+reminders and short lead-time reminders. The global recurring reminder
+preference remains the master switch, while each recurring item can opt in or
+out of its own local reminder. Scheduling, reconciliation, reboot handling,
+permission and cancellation are Android-native; no FCM or remote scheduler is
+introduced.
 
-Known limitation: web notifications are browser and platform dependent. On iOS, reliable notification behavior requires the app to be installed as a PWA on supported versions.
+### Public Web Surfaces
 
-### PWA Install Action
-
-Chosen: on the first eligible authenticated browser access, show one install
-dialog after initial-data selection and onboarding have completed. Keep a
-compact install action in the authenticated top bar and the descriptive action
-in More for later use. The top-bar action remains visible whenever Aura is
-running as a browser tab and falls back to browser-menu guidance when no native
-prompt exists. The introductory dialog and More action appear only when the
-browser exposes a real native prompt or when iOS guidance is actionable.
-
-Rationale: Aura Finance already ships a manifest and service worker, but
-installation is most discoverable during the first successful setup but remains
-an occasional action afterward. A browser-local flag prevents the introductory
-dialog from appearing again once it has actually been shown; dismissing it does
-not remove the persistent top-bar and More actions. Chromium can
-emit the one-shot `beforeinstallprompt` event during initial page load, before
-the lazy-loaded More route mounts, so the app captures and retains it from the
-main entrypoint. The button then invokes the native prompt on supported Android
-and desktop Chromium browsers. iOS requires concise manual guidance through
-Safari, Share, Add to Home Screen, and Open as Web App because JavaScript cannot
-open a native install prompt there. The action is hidden after installation or
-when no real installation path is available.
+Chosen: keep only a minimal public portal for landing, privacy, support and
+account deletion. It is deployed separately from the authenticated financial
+application and does not expose PWA installation or service-worker behavior.
 
 ### Admin
 
@@ -319,8 +318,11 @@ test.
 - Local-first storage favors privacy and simplicity, but large transaction histories may eventually need IndexedDB-backed domain repositories.
 - Encrypted Firestore backup improves restore capability, but requires clear user-facing status and deletion controls.
 - Category archive is simpler than a full category entity model; a future migration to category IDs may be needed for stronger rename semantics.
-- Local-only notifications are simpler and more private than cloud push, but they cannot guarantee delivery when the browser or installed PWA is not allowed to run.
+- Local-only Android notifications are simpler and more private than cloud
+  push, but require lifecycle reconciliation across reboot, timezone and app
+  updates.
 - Year-in-review sharing uses text summary sharing/copy in v1; PNG export remains a future option to avoid adding a heavy DOM capture dependency.
-- PWA install prompting depends on browser support. iOS cannot trigger native installation from JavaScript, so the app shows manual install instructions instead.
+- Android-only distribution reduces channel complexity but removes universal
+  browser access; the public portal preserves legal, support and deletion paths.
 - A complete portable archive increases client memory and implementation complexity because it includes attachments and must bridge localStorage and IndexedDB; explicit limits, staging, self-verification, and a restore journal are required from V1.
 - Optional plaintext export preserves recoverability for users who cannot retain a passphrase, but exposes sensitive financial and receipt data; encryption remains selected by default and plaintext requires an explicit warning.

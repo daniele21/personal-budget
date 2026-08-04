@@ -6,7 +6,6 @@ export interface PlatformCapabilities {
   platform: AppRuntimePlatform;
   isNative: boolean;
   isAndroid: boolean;
-  pwaInstallSupported: boolean;
   serviceWorkerSupported: boolean;
   browserNotificationsSupported: boolean;
   paymentDetectionSupported: boolean;
@@ -21,9 +20,8 @@ export function resolvePlatformCapabilities(
     platform,
     isNative,
     isAndroid: platform === 'android',
-    pwaInstallSupported: platform === 'web',
-    serviceWorkerSupported: platform === 'web',
-    browserNotificationsSupported: platform === 'web',
+    serviceWorkerSupported: false,
+    browserNotificationsSupported: false,
     paymentDetectionSupported: platform === 'android',
   };
 }

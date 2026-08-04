@@ -15,6 +15,7 @@ evidenze ed exit gate:
 - [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md);
 - [`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md);
 - [`13-android-production-release-plan.md`](./13-android-production-release-plan.md).
+- [`16-android-only-onboarding-backup-progress-plan.md`](./16-android-only-onboarding-backup-progress-plan.md).
 
 In caso di conflitto:
 
@@ -35,7 +36,12 @@ privacy, sicurezza e pilot applicabili non sono approvati.
 
 ### Implementato
 
-- La PWA e l'app Android Capacitor condividono UI React e dominio finanziario.
+- React/Vite e il dominio finanziario sono incorporati nell'app Android; il
+  browser resta solo un harness di regressione e la distribuzione PWA e ritirata.
+- Primo accesso mobile, tour contestuali e storage backup cifrato a cinque
+  versioni sono implementati con copertura automatica.
+- Il portale pubblico minimo e costruibile separatamente, ma non e ancora
+  pubblicato o monitorato.
 - UX simplification e color hierarchy sono implementate; resta la matrice
   manuale di release.
 - Portable Archive M0-M6 e hardening automatico M7 sono implementati.
@@ -53,11 +59,12 @@ privacy, sicurezza e pilot applicabili non sono approvati.
 
 - evidenze operative Play e backup owner prima della closed beta, ora governati
   da C5/C8;
-- cancellazione account end-to-end, in-app e web;
+- cancellazione account end-to-end sul portale pubblicato e su device;
 - configurazione Play production, supply chain e audit residui;
 - matrice fisica, accessibilita manuale ed evidenze redatte;
 - legal baseline, data inventory, lawful basis, DPIA e Data Safety whole-app;
-- landing, privacy, deletion, support e store listing pubblici;
+- pubblicazione e monitoring di landing, privacy, deletion e support, oltre
+  alla store listing;
 - internal testing, beta, produzione e stabilizzazione.
 
 ### Correzioni documentali da applicare

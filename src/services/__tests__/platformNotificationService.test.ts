@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const platform = vi.hoisted(() => ({ value: 'web' }));
+const native = vi.hoisted(() => ({
+  requestPermission: vi.fn(async () => ({ granted: true })),
+  deliver: vi.fn(async () => ({ delivered: true })),
+  cancel: vi.fn(),
+  cancelAll: vi.fn(),
+}));
 
 vi.mock('@capacitor/core', () => ({
   Capacitor: {
     getPlatform: () => platform.value,
   },
+  registerPlugin: () => native,
 }));
 
 import {
@@ -19,16 +26,16 @@ describe('platform notification service', () => {
     platform.value = 'web';
   });
 
-  it('preserves browser notification permission behavior on the web', async () => {
+  it('keeps notification delivery disabled in the browser test harness', async () => {
     const requestPermission = vi.fn(async () => 'granted' as NotificationPermission);
     vi.stubGlobal('Notification', Object.assign(vi.fn(), {
       permission: 'default' as NotificationPermission,
       requestPermission,
     }));
 
-    expect(getLocalNotificationPermission()).toBe('default');
-    await expect(requestLocalNotificationPermission()).resolves.toBe('granted');
-    expect(requestPermission).toHaveBeenCalledOnce();
+    expect(getLocalNotificationPermission()).toBe('denied');
+    await expect(requestLocalNotificationPermission()).resolves.toBe('denied');
+    expect(requestPermission).not.toHaveBeenCalled();
   });
 
   it('does not invoke browser notification APIs in the Android WebView', async () => {
@@ -40,8 +47,8 @@ describe('platform notification service', () => {
     });
     vi.stubGlobal('Notification', notification);
 
-    expect(getLocalNotificationPermission()).toBe('denied');
-    await expect(requestLocalNotificationPermission()).resolves.toBe('denied');
+    expect(getLocalNotificationPermission()).toBe('default');
+    await expect(requestLocalNotificationPermission()).resolves.toBe('granted');
     await deliverLocalNotification({
       id: 'notification-1',
       title: 'Budget update',
@@ -50,5 +57,10 @@ describe('platform notification service', () => {
 
     expect(requestPermission).not.toHaveBeenCalled();
     expect(notification).not.toHaveBeenCalled();
+    expect(native.requestPermission).toHaveBeenCalledOnce();
+    expect(native.deliver).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'notification-1',
+      title: 'Budget update',
+    }));
   });
 });

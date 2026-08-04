@@ -2,9 +2,8 @@
 
 ## Purpose
 
-Aura keeps a short encrypted Firestore history so a user can restore the latest,
-previous, or third-latest cloud backup instead of being limited to the newest
-valid payload.
+Aura keeps a short encrypted Firestore history so a user can restore any of the
+latest five valid cloud backups instead of being limited to the newest payload.
 
 This transport remains distinct from Aura Portable Archive V1. Cloud backup
 contains canonical `AppData`; it does not add receipt attachments or the portable
@@ -12,20 +11,23 @@ preference sections to Firestore.
 
 ## Storage Contract
 
-- Each authenticated Firebase UID owns one document at `backups/{uid}`.
-- The document contains at most three distinct encrypted slots, newest first.
+- Each authenticated Firebase UID owns one metadata/compatibility document at
+  `backups/{uid}` and at most five encrypted version documents at
+  `backups/{uid}/versions/{versionId}`.
 - Every newly created slot has a stable version ID, an ISO creation timestamp,
   AES-GCM ciphertext and IV, and a SHA-256 checksum of the plaintext payload.
-- The root ciphertext fields mirror the newest slot for backward compatibility;
-  they are not a fourth backup.
-- Rotation is committed in a Firestore transaction so concurrent devices cannot
-  lose a version between the history read and write.
-- A fourth successful backup removes the oldest slot.
-- Deleting the cloud backup deletes the document and all three versions.
+- The root ciphertext fields temporarily mirror the newest version for backward
+  compatibility; they are not a sixth backup.
+- The parent keeps a bounded metadata index. Version creation, index update and
+  pruning are committed in one Firestore transaction so concurrent devices do
+  not lose a version.
+- A sixth successful backup removes the oldest managed version document.
+- Deleting the cloud backup enumerates and deletes all version documents,
+  verifies the bounded index, and then deletes the parent.
 
-Legacy single-slot documents remain readable. Their Firestore update timestamp
-is used as the version date when available, and the first subsequent push
-migrates them into the three-slot shape.
+Legacy single-slot and three-slot documents remain readable. Their Firestore
+update timestamp is used as a fallback date when available, and the first
+subsequent push migrates them idempotently into version documents.
 
 ## Restore Contract
 
@@ -49,9 +51,11 @@ separate safety copy.
 
 Automated coverage must verify:
 
-- transactional rotation retains only the latest three slots;
+- transactional rotation retains only the latest five version documents;
 - every new slot has a stable ID and creation date;
-- listing returns the three versions in newest-first order;
+- listing returns up to five versions in newest-first order;
 - selecting the previous version restores that exact payload;
 - an invalid selected version fails without restoring a different version;
-- the UI exposes all three dates and passes the selected version ID to restore.
+- the UI exposes all available dates and passes the selected version ID to restore;
+- deletion and account deletion remove every version document before success;
+- Firestore rules deny signed-out and cross-UID access to parent and versions.

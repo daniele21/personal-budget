@@ -21,7 +21,7 @@ if [ -z "$PROJECT_ID" ] && [ -f ".env" ]; then
   )"
 fi
 
-npm run build
+npm run build:portal
 
 if [ -n "$PROJECT_ID" ]; then
   firebase deploy --only hosting --project "$PROJECT_ID"

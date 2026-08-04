@@ -32,8 +32,8 @@ export function PaymentDetectionPage() {
             Available in the Android app
           </h2>
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
-            Notification-based payment detection requires Aura’s native Android
-            app. The web and PWA versions remain fully usable without it.
+            Notification-based payment detection is available only inside the
+            bundled Aura Android runtime.
           </p>
         </div>
       </motion.div>

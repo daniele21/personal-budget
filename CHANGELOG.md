@@ -4,6 +4,21 @@
 
 ### Added
 
+- Added a deterministic two-step mobile first-run flow with a required positive
+  monthly budget for real setup, starter-category choices, explicit backup
+  checking/offline continuation, focus containment and mobile axe coverage.
+- Added five short, manually started contextual tours with independent local
+  completion/dismissal state, replacing the automatic 27-step global tour.
+- Added five-version encrypted cloud-backup storage with transactional rotation,
+  legacy single/three-slot migration, exact-version restore and complete
+  user-scoped deletion.
+- Added a first-party Android local-notification delivery bridge with runtime
+  permission handling, private lock-screen content, allowlisted deep links and
+  deterministic cancellation.
+- Added a separately built public portal for landing, privacy, support and
+  authenticated account deletion while keeping the financial runtime bundled
+  inside Android.
+
 - Added conservative payment duplicate handling: stronger merchant
   normalization for exact cross-source suppression, transient warnings for
   same-amount nearby candidates and same-day ledger expenses, and an explicit
@@ -160,6 +175,10 @@
   transaction, archive, cloud, Gemini, analytics, and network paths.
 
 ### Changed
+
+- Retired public PWA installation, manifest, service worker and browser
+  notification delivery. Startup now performs a scoped best-effort cleanup of
+  legacy Aura service-worker registrations and caches.
 
 - Consolidated the Aura Brand Kit v2 into an implementation contract for
   semantic color tokens, Manrope/Inter roles, English interface copy, Lucide

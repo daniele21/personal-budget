@@ -23,7 +23,6 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      grepInvert: /@pwa/,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { args: ['--enable-precise-memory-info'] },
@@ -43,14 +42,6 @@ export default defineConfig({
       name: 'mobile-webkit',
       grep: /@mobile/,
       use: { ...devices['iPhone 13'] },
-    },
-    {
-      name: 'pwa-chromium',
-      grep: /@pwa/,
-      use: {
-        ...devices['Desktop Chrome'],
-        serviceWorkers: 'allow',
-      },
     },
   ],
   webServer: {

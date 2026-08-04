@@ -21,7 +21,7 @@ application logs or deletion status. The UI exposes bounded phases only.
 | Data | Outcome |
 |---|---|
 | Firebase Authentication identity | deleted after recent reauthentication |
-| Firestore encrypted backup and three-version history | deleted before Auth identity |
+| Firestore encrypted backup and five-version subcollection history | every version document is deleted and verified before parent and Auth identity |
 | Aura localStorage and IndexedDB namespaces | deleted on the initiating device |
 | Android candidate store, settings, tombstones, purge journal and applicable keys | purged through the existing total-deletion boundary |
 | User-exported `.aura`/CSV files | outside Aura control; user must delete copies |

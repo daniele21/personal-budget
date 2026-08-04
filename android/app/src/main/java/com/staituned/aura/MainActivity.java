@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(NativeGoogleAuthPlugin.class);
         registerPlugin(NativeAppRuntimePlugin.class);
+        registerPlugin(NativeLocalNotificationsPlugin.class);
         registerPlugin(PaymentDetectionPrivacyPlugin.class);
         super.onCreate(savedInstanceState);
         bridge.setWebViewClient(new AuraBridgeWebViewClient(bridge));

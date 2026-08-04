@@ -27,7 +27,7 @@ export function InitialDataDialog({
   const [selectedVersionId, setSelectedVersionId] = React.useState('');
   const [isRestoring, setIsRestoring] = React.useState(false);
   const [restoreError, setRestoreError] = React.useState(false);
-  useFocusTrap(dialogRef, isOpen, isRestoring ? undefined : onStartBlank);
+  useFocusTrap(dialogRef, isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -141,14 +141,14 @@ export function InitialDataDialog({
               <Sparkles className="h-5 w-5" />
             </span>
             <span>
-              <span className="block font-headline text-sm font-extrabold">Use demo data</span>
-              <span className="block text-xs opacity-80">Populate the dashboard, budgets, reports, and recurring items with local examples.</span>
+              <span className="block font-headline text-sm font-extrabold">Explore demo</span>
+              <span className="block text-xs text-on-surface">Populate the dashboard, budgets, reports, and recurring items with local examples.</span>
             </span>
           </button>
 
           <Button type="button" variant="secondary" fullWidth disabled={isRestoring} onClick={onStartBlank}>
             <Database className="h-4 w-4" />
-            Start from scratch
+            Set up my budget
           </Button>
         </div>
       </motion.div>

@@ -9,4 +9,7 @@
     <string name="payment_candidate_notification_text">Nuovo pagamento da verificare</string>
     <string name="payment_candidate_verify_action">Verifica</string>
     <string name="payment_candidate_ignore_action">Ignora</string>
+    <string name="local_reminder_channel_name">Promemoria Aura</string>
+    <string name="local_reminder_channel_description">Promemoria locali per budget, ricorrenze e attività selezionate</string>
+    <string name="local_reminder_public_text">Promemoria Aura disponibile</string>
 </resources>

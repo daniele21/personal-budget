@@ -43,6 +43,7 @@ export const Login = ({ onSignIn, error }: LoginProps) => {
           className="space-y-4"
         >
           <button
+            type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
             className="group flex w-full items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-6 py-4 text-on-surface shadow-[var(--aura-card-shadow)] transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[var(--aura-card-shadow-elevated)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
@@ -57,17 +58,24 @@ export const Login = ({ onSignIn, error }: LoginProps) => {
           </button>
 
           {error && (
-            <p className="text-center text-xs font-medium text-tertiary">{error}</p>
+            <p role="alert" className="text-center text-xs font-medium text-tertiary">{error}</p>
           )}
         
           <div className="rounded-3xl border border-outline-variant/25 bg-surface-container-low p-4">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
               <p className="text-xs font-medium leading-relaxed text-on-surface-variant">
-                Your data stays on this device. Cloud backup is optional and encrypted when you turn it on.
+                Google sign-in identifies your Aura workspace and protects optional encrypted recovery versions. Your financial data stays on this device unless you explicitly enable cloud backup.
               </p>
             </div>
           </div>
+          <p className="text-center text-xs text-on-surface-variant">
+            <a className="font-bold text-primary" href="https://aura.staituned.com/privacy">Privacy</a>
+            {' · '}
+            <a className="font-bold text-primary" href="https://aura.staituned.com/support">Support</a>
+            {' · '}
+            <a className="font-bold text-primary" href="https://aura.staituned.com/account-deletion">Delete account</a>
+          </p>
         </motion.div>
       </div>
     </div>

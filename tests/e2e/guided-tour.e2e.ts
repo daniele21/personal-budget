@@ -5,30 +5,25 @@ import { TOUR_STEPS } from '../../src/config/tourSteps';
 test.describe('Aura Guided Tour E2E', () => {
   test.beforeEach(async ({ page }) => {
     await seedPortableWorkspace(page);
-    // Clear guided tour complete flag so tour auto-starts on first access
     await page.evaluate(() => {
-      window.localStorage.removeItem('aura_guided_tour_complete');
+      window.localStorage.removeItem('aura_tour_state_v1:home');
     });
   });
 
-  test('auto-starts on first access and navigates across pages step by step', async ({ page }) => {
-    await page.goto('/');
+  test('does not auto-start and runs one short single-route tour on request', async ({ page }) => {
+    await page.goto('/more');
 
     const tourDialog = page.getByRole('dialog', { name: 'Guided Tour' });
-    await expect(tourDialog).toBeVisible({ timeout: 5000 });
+    await expect(tourDialog).toBeHidden();
+    await page.getByRole('button', { name: /Help & tours/i }).click();
+    await page.getByRole('button', { name: 'Start Home essentials tour' }).click();
+    await expect(tourDialog).toBeVisible();
 
     for (const [index, step] of TOUR_STEPS.entries()) {
       await expect.poll(() => new URL(page.url()).pathname).toBe(step.route);
       await expect(tourDialog.getByRole('heading', { name: step.title })).toBeVisible();
       await expect(tourDialog).toHaveAttribute('data-tour-target-ready', 'true');
       await expect(page.locator(step.target)).toBeVisible();
-      const expectsPersistentNavigation =
-        step.id !== 'primary-navigation' && !step.route.startsWith('/planning');
-
-      if (expectsPersistentNavigation) {
-        await expect(tourDialog.locator('[data-tour-navigation-highlight="true"]').first()).toBeVisible();
-      }
-
       const panel = tourDialog.locator('[data-tour-placement]');
       const spotlight = tourDialog.locator('[data-tour-spotlight="true"]');
       const [panelBox, spotlightBox] = await Promise.all([
@@ -46,33 +41,22 @@ test.describe('Aura Guided Tour E2E', () => {
       }
 
       if (index < TOUR_STEPS.length - 1) {
-        const nextStep = TOUR_STEPS[index + 1];
         await tourDialog.getByRole('button', { name: 'Next' }).click();
-        if (nextStep.route !== step.route) {
-          await expect(tourDialog).toHaveAttribute('data-tour-transition', 'true');
-          await expect(tourDialog.locator('[data-tour-navigation-highlight="true"]').first()).toBeVisible();
-        }
       }
     }
 
     await tourDialog.getByRole('button', { name: 'Done' }).click();
     await expect(tourDialog).not.toBeVisible();
 
-    // Verify localStorage has guidedTourComplete set to true
-    const isComplete = await page.evaluate(() => window.localStorage.getItem('aura_guided_tour_complete'));
-    expect(isComplete).toBe('true');
+    const state = await page.evaluate(() => window.localStorage.getItem('aura_tour_state_v1:home'));
+    expect(state).toBe('completed');
   });
 
   test('can be manually triggered from the More page and skipped', async ({ page }) => {
-    // Mark tour complete initially
-    await page.evaluate(() => {
-      window.localStorage.setItem('aura_guided_tour_complete', 'true');
-    });
-
     await page.goto('/more');
 
-    // Click "Guided Tour" button on More page
-    await page.getByRole('button', { name: 'Guided Tour' }).click();
+    await page.getByRole('button', { name: /Help & tours/i }).click();
+    await page.getByRole('button', { name: 'Start Home essentials tour' }).click();
 
     // Tour overlay should open at Step 1
     const tourDialog = page.getByRole('dialog', { name: 'Guided Tour' });
@@ -82,5 +66,6 @@ test.describe('Aura Guided Tour E2E', () => {
     // Click "Skip tour"
     await tourDialog.getByRole('button', { name: 'Skip tour' }).first().click();
     await expect(tourDialog).not.toBeVisible();
+    expect(await page.evaluate(() => window.localStorage.getItem('aura_tour_state_v1:home'))).toBe('dismissed');
   });
 });

@@ -31,7 +31,7 @@ vi.mock('../../state/PaymentDetectionProvider', () => ({
 }));
 
 describe('PaymentDetectionPage', () => {
-  it('shows an informational Android-only state on the PWA without fake setup controls', () => {
+  it('shows an informational Android-only state in the browser harness without fake setup controls', () => {
     mocks.availability = 'unsupported';
     render(
       <MemoryRouter>

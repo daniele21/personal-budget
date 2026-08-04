@@ -70,7 +70,7 @@ npm run test:react
 
 Cloud-backup changes require coverage for:
 
-- transactional newest-first rotation capped at three encrypted snapshots;
+- transactional newest-first rotation capped at five encrypted version documents;
 - creation timestamp, stable version ID, checksum, and read-back verification;
 - listing only decryptable and structurally valid versions;
 - exact selected-version restore with no silent fallback;
@@ -116,7 +116,8 @@ Run unit, component, build, and browser gates together with:
 npm run test:full
 ```
 
-The Playwright suite contains 31 project cases across desktop Chromium, desktop WebKit, Pixel 5/iPhone 13 emulation, and a service-worker-enabled Chromium project. Its recovery journeys include:
+The Playwright suite runs the bundled React runtime across desktop Chromium,
+desktop WebKit and Pixel 5/iPhone 13 emulation. Its recovery journeys include:
 
 - synthetic non-admin authentication without a login prompt;
 - encrypted export through the real browser download flow;
@@ -125,9 +126,12 @@ The Playwright suite contains 31 project cases across desktop Chromium, desktop 
 - tampered-archive rejection with unchanged current data;
 - mandatory safety-copy download before replacing a non-empty workspace.
 
-The recovery comparison reads every canonical AppData section, portable notification/appearance preferences, custom reminders, and the referenced IndexedDB receipt. Additional browser tests reload from all 11 restore-journal statuses; exercise 320/360/390/430 px layouts; scan light/dark archive surfaces with axe; verify focus trapping/restoration and reduced motion; record bounded typical-workspace resource evidence; and verify the production manifest/service-worker registration lifecycle. Playwright retains trace, screenshot, and video evidence on failure.
+The recovery comparison reads every canonical AppData section, portable notification/appearance preferences, custom reminders, and the referenced IndexedDB receipt. Additional browser tests reload from all 11 restore-journal statuses; exercise 320/360/390/430 px layouts; scan light/dark archive surfaces with axe; verify focus trapping/restoration and reduced motion; record bounded typical-workspace resource evidence; and verify that retired manifest, install and service-worker behavior is absent. Playwright retains trace, screenshot, and video evidence on failure.
 
-Physical-device Safari/Chrome, actual installed-PWA execution, manual screen-reader output, and the approximately 32 MiB least-capable-mobile measurement remain manual M7 release gates.
+Physical Android-device WebView execution, manual TalkBack output, lock-screen
+notification review and the approximately 32 MiB least-capable-mobile
+measurement remain manual release gates. Browser mobile emulation is a React
+runtime regression harness, not a supported distribution channel.
 
 ## Android Payment Detection Coverage
 
@@ -151,30 +155,23 @@ security, and release-owner approval.
 
 ## Guided Tour Coverage
 
-The guided-tour browser journey verifies every configured step rather than a
-fixed subset of route transitions. For each step it checks:
+The guided-tour browser journey verifies the bounded contextual tour catalog.
+It checks:
 
-- the expected route, heading, and stable feature target;
+- a maximum of four steps and stable targets within the selected module;
 - successful target discovery after lazy route rendering;
 - automatic spotlight tracking and an explanation panel that does not overlap
   the highlighted viewport region;
-- persistent highlighting of the current primary destination, plus explicit
-  Reports/Planning destination highlighting during route-transition handoffs;
+- absence of automatic startup during first-run;
 - completion persistence and manual replay/skip behavior.
 
 Pure layout tests also cover top, bottom, and oversized-target positioning on
 mobile viewport dimensions.
 
-PWA installation coverage verifies:
-
-- stable manifest identity, root scope/start URL, standalone display, and 192/512 icons;
-- immediate service-worker registration and active root scope;
-- global capture of `beforeinstallprompt` before lazy route components mount;
-- one-shot native prompt invocation and accepted/dismissed state handling;
-- first-access dialog sequencing after initial-data selection/onboarding and
-  browser-local one-time suppression after it is shown;
-- browser-only top-bar install affordance backed by the same retained prompt;
-- install-action suppression in standalone mode and manual Safari guidance on iOS.
+Retired-PWA coverage verifies absence of manifest/install affordances and active
+service-worker registrations. A best-effort startup migration unregisters old
+Aura registrations and removes only caches with the retired
+`aura-finance-` prefix.
 
 ## Extra Transaction Analytics Coverage
 

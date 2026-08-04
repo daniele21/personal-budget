@@ -104,50 +104,11 @@ test.describe('Aura M7 browser quality', () => {
     expect(await page.evaluate(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
   });
 
-  test('registers the production service-worker shell and exposes an installable manifest @pwa', async ({ page }) => {
+  test('does not expose retired PWA installation or service-worker behavior', async ({ page }) => {
     await page.goto('/');
-    const manifest = await page.evaluate(async () => {
-      const response = await fetch('/manifest.json');
-      const body = await response.json() as {
-        id: string;
-        name: string;
-        display: string;
-        scope: string;
-        start_url: string;
-        icons: Array<{ sizes: string; purpose?: string }>;
-      };
-      return {
-        ...body,
-        resolvedStartUrl: new URL(body.start_url, response.url).pathname,
-      };
-    });
-
-    expect(manifest.name).toBeTruthy();
-    expect(manifest.id).toBe('/');
-    expect(manifest.display).toBe('standalone');
-    expect(manifest.scope).toBe('/');
-    expect(manifest.resolvedStartUrl).toBe('/');
-    expect(manifest.icons.map((icon) => icon.sizes)).toEqual(
-      expect.arrayContaining(['192x192', '512x512']),
-    );
-    expect(manifest.icons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          sizes: '512x512',
-          purpose: 'maskable',
-        }),
-      ]),
-    );
-
-    const registration = await page.evaluate(async () => {
-      const ready = await navigator.serviceWorker.ready;
-      return {
-        scope: ready.scope,
-        active: Boolean(ready.active),
-      };
-    });
-    expect(registration.active).toBe(true);
-    expect(registration.scope).toBe('http://127.0.0.1:4173/');
+    expect(await page.locator('link[rel="manifest"]').count()).toBe(0);
+    expect(await page.getByRole('button', { name: /install aura/i }).count()).toBe(0);
+    expect(await page.evaluate(() => navigator.serviceWorker?.controller ?? null)).toBeNull();
   });
 
   test('records bounded typical-workspace export resource evidence', async ({ page }, testInfo) => {

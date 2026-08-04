@@ -5,7 +5,8 @@ export const APP_CONFIG = {
   tagline: 'Clarity today. Confidence tomorrow.',
   description: 'Your private budget companion, built around your data.',
   currency: '€',
-  defaultMonthlyBudget: 5000,
+  defaultMonthlyBudget: 0,
+  demoMonthlyBudget: 5000,
 };
 
 export const INITIAL_ACCOUNTS: Account[] = [];

@@ -1,4 +1,4 @@
-import { doc, getDoc, runTransaction, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import type { BackupPayload } from '../data/model';
 import { validateAppData, sha256String } from '../domain/archive';
@@ -10,6 +10,11 @@ export interface BackupSlot {
   ciphertext: string;
   iv: string;
   payloadSha256: string;
+  createdAt: string;
+}
+
+interface BackupVersionMetadata {
+  id: string;
   createdAt: string;
 }
 
@@ -25,12 +30,17 @@ export interface BackupDocData {
   iv: string;
   payloadSha256?: string;
   slots?: Array<Partial<BackupSlot> & Pick<BackupSlot, 'ciphertext' | 'iv'>>;
+  schemaVersion?: number;
+  versionIndex?: BackupVersionMetadata[];
   updatedAt?: unknown;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
 
 const BACKUP_COLLECTION = 'backups';
+const VERSION_COLLECTION = 'versions';
+const BACKUP_SCHEMA_VERSION = 2;
+const MAX_BACKUP_VERSIONS = 5;
 const PBKDF2_ITERATIONS = 100_000;
 const SALT = new TextEncoder().encode('aura-personal-budget-v1');
 
@@ -144,6 +154,56 @@ function getHistoricalSlots(docData: BackupDocData): BackupSlot[] {
   return [];
 }
 
+function normalizeVersionIndex(docData: BackupDocData): BackupVersionMetadata[] {
+  if (!Array.isArray(docData.versionIndex)) return [];
+  const seen = new Set<string>();
+  return docData.versionIndex
+    .filter((entry): entry is BackupVersionMetadata => (
+      typeof entry?.id === 'string' &&
+      entry.id.length > 0 &&
+      !entry.id.includes('/') &&
+      typeof entry.createdAt === 'string' &&
+      timestampToIso(entry.createdAt) !== null
+    ))
+    .filter((entry) => {
+      if (seen.has(entry.id)) return false;
+      seen.add(entry.id);
+      return true;
+    })
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, MAX_BACKUP_VERSIONS);
+}
+
+function versionRef(uid: string, versionId: string) {
+  return doc(db, BACKUP_COLLECTION, uid, VERSION_COLLECTION, versionId);
+}
+
+function safeLegacyVersionId(slot: BackupSlot, index: number): string {
+  if (/^[A-Za-z0-9_-]{1,128}$/.test(slot.id)) return slot.id;
+  const checksum = slot.payloadSha256 || 'legacy';
+  const timestamp = slot.createdAt.replace(/[^0-9]/g, '').slice(0, 17) || 'unknown';
+  return `${checksum.slice(0, 40)}-${timestamp}-${index}`;
+}
+
+async function loadManagedSlots(uid: string, docData: BackupDocData): Promise<BackupSlot[]> {
+  const index = normalizeVersionIndex(docData);
+  if (index.length === 0) return getHistoricalSlots(docData);
+
+  const snapshots = await Promise.all(index.map((entry) => getDoc(versionRef(uid, entry.id))));
+  return snapshots.flatMap((snapshot, position) => {
+    if (!snapshot.exists()) return [];
+    const data = snapshot.data() as Partial<BackupSlot>;
+    if (typeof data.ciphertext !== 'string' || typeof data.iv !== 'string') return [];
+    return [normalizeSlot({
+      ...data,
+      id: index[position].id,
+      createdAt: data.createdAt ?? index[position].createdAt,
+      ciphertext: data.ciphertext,
+      iv: data.iv,
+    }, index[position].createdAt, position)];
+  });
+}
+
 async function decryptAndValidateSlot(
   slot: Pick<BackupSlot, 'ciphertext' | 'iv' | 'payloadSha256'>,
   key: CryptoKey,
@@ -225,16 +285,52 @@ export async function pushBackup(uid: string, data: BackupPayload): Promise<bool
     const backupRef = doc(db, BACKUP_COLLECTION, uid);
     await runTransaction(db, async (transaction) => {
       const existingSnap = await transaction.get(backupRef);
-      const existingSlots = existingSnap.exists()
-        ? getHistoricalSlots(existingSnap.data() as BackupDocData)
+      const existingData = existingSnap.exists()
+        ? existingSnap.data() as BackupDocData
+        : null;
+      const existingIndex = existingData ? normalizeVersionIndex(existingData) : [];
+      const migratedLegacy = existingData && existingIndex.length === 0
+        ? getHistoricalSlots(existingData).map((slot, index) => ({
+            ...slot,
+            id: safeLegacyVersionId(slot, index),
+          }))
         : [];
-      const slots = [newSlot, ...existingSlots].slice(0, 3);
+
+      for (const slot of migratedLegacy) {
+        transaction.set(versionRef(uid, slot.id), {
+          ...slot,
+          schemaVersion: BACKUP_SCHEMA_VERSION,
+        });
+      }
+      transaction.set(versionRef(uid, newSlot.id), {
+        ...newSlot,
+        schemaVersion: BACKUP_SCHEMA_VERSION,
+      });
+
+      const candidates = [
+        { id: newSlot.id, createdAt: newSlot.createdAt },
+        ...existingIndex,
+        ...migratedLegacy.map(({ id, createdAt }) => ({ id, createdAt })),
+      ];
+      const seen = new Set<string>();
+      const ordered = candidates
+        .filter((entry) => {
+          if (seen.has(entry.id)) return false;
+          seen.add(entry.id);
+          return true;
+        })
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      const versionIndex = ordered.slice(0, MAX_BACKUP_VERSIONS);
+      for (const stale of ordered.slice(MAX_BACKUP_VERSIONS)) {
+        transaction.delete(versionRef(uid, stale.id));
+      }
 
       transaction.set(backupRef, {
         ciphertext,
         iv,
         payloadSha256,
-        slots,
+        schemaVersion: BACKUP_SCHEMA_VERSION,
+        versionIndex,
         updatedAt: serverTimestamp(),
       });
     });
@@ -247,8 +343,10 @@ export async function pushBackup(uid: string, data: BackupPayload): Promise<bool
     }
 
     const readBackData = readBackSnap.data() as BackupDocData;
-    const readBackSlot = getHistoricalSlots(readBackData)
-      .find((slot) => slot.id === newSlot.id);
+    const readBackSlotSnap = await getDoc(versionRef(uid, newSlot.id));
+    const readBackSlot = readBackSlotSnap.exists()
+      ? normalizeSlot(readBackSlotSnap.data() as BackupSlot, createdAt, 0)
+      : null;
     if (!readBackSlot) {
       console.warn('[Backup] Read-back verification failed: written version not found');
       return false;
@@ -307,7 +405,7 @@ export async function pullBackup(uid: string): Promise<BackupPayload | null> {
     }
 
     // 2. Fallback: Try historical slots in order
-    const slots = getHistoricalSlots(docData);
+    const slots = await loadManagedSlots(uid, docData);
     if (slots.length > 0) {
       for (let i = 0; i < slots.length; i++) {
         const slotResult = await decryptAndValidateSlot(slots[i], key);
@@ -335,7 +433,7 @@ export async function listBackupVersions(uid: string): Promise<BackupVersion[]> 
     const snap = await getDoc(doc(db, BACKUP_COLLECTION, uid));
     if (!snap.exists()) return [];
 
-    const slots = getHistoricalSlots(snap.data() as BackupDocData);
+    const slots = await loadManagedSlots(uid, snap.data() as BackupDocData);
     const key = await deriveKey(uid);
     const versions: BackupVersion[] = [];
     for (let index = 0; index < slots.length; index++) {
@@ -368,7 +466,7 @@ export async function pullBackupVersion(
     const snap = await getDoc(doc(db, BACKUP_COLLECTION, uid));
     if (!snap.exists()) return null;
 
-    const slot = getHistoricalSlots(snap.data() as BackupDocData)
+    const slot = (await loadManagedSlots(uid, snap.data() as BackupDocData))
       .find((candidate) => candidate.id === versionId);
     if (!slot) return null;
 
@@ -385,7 +483,17 @@ export async function pullBackupVersion(
  */
 export async function deleteBackup(uid: string): Promise<boolean> {
   try {
-    await deleteDoc(doc(db, BACKUP_COLLECTION, uid));
+    const backupRef = doc(db, BACKUP_COLLECTION, uid);
+    const snapshot = await getDoc(backupRef);
+    const versionIndex = snapshot.exists()
+      ? normalizeVersionIndex(snapshot.data() as BackupDocData)
+      : [];
+    await runTransaction(db, async (transaction) => {
+      for (const version of versionIndex) {
+        transaction.delete(versionRef(uid, version.id));
+      }
+      transaction.delete(backupRef);
+    });
     console.log('[Backup] Cloud backup deleted');
     return true;
   } catch (err) {

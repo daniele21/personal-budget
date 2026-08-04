@@ -140,7 +140,7 @@ test.describe('deterministic transaction import M6 quality', () => {
     if (heapDeltaMiB !== null) expect(heapDeltaMiB).toBeLessThan(256);
   });
 
-  test('downloads the CSV template through the installable PWA path @pwa', async ({ page }) => {
+  test('downloads the CSV template through the bundled runtime', async ({ page }) => {
     await page.goto('/history?import=1');
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('dialog', { name: 'Import transactions' })

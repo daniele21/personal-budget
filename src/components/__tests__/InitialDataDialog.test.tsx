@@ -46,4 +46,24 @@ describe('InitialDataDialog cloud restore', () => {
 
     expect(onRestoreBackup).toHaveBeenCalledWith('oldest');
   });
+
+  it('does not choose a blank workspace when Escape is pressed', async () => {
+    const onStartBlank = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <InitialDataDialog
+        isOpen
+        backupAvailable={false}
+        backupVersions={[]}
+        onRestoreBackup={vi.fn().mockResolvedValue(false)}
+        onStartBlank={onStartBlank}
+        onUseDemoData={vi.fn()}
+      />,
+    );
+
+    await user.keyboard('{Escape}');
+
+    expect(onStartBlank).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
 });

@@ -2,7 +2,10 @@
 
 ## Product Goal
 
-Aura Finance is a mobile-first personal budget PWA for tracking income, expenses, budgets, recurring payments, savings goals, and financial reports.
+Aura Finance is an Android-first personal budget application for tracking
+income, expenses, budgets, recurring payments, savings goals, and financial
+reports. Its React/Vite runtime is bundled locally inside Capacitor; it is not
+distributed as a public PWA or full hosted web application.
 
 ## Target User
 
@@ -34,8 +37,8 @@ Individuals who want a private, lightweight way to manage personal finances from
 
 ## Implemented Shared Reporting Initiative
 
-Aura extends the shared React reporting experience used by both the hosted
-PWA and the bundled Android Capacitor application.
+Aura extends the shared React reporting experience bundled inside the Android
+Capacitor application and exercised by the browser regression harness.
 
 - Category rows expose total selected-period spending and, when at least
   two complete calendar months are available, average monthly spending.
@@ -61,13 +64,20 @@ implementation.
 - Portable archive import remains separate from transaction CSV and structured
   transaction import.
 - Passphrase protection is selected by default, with an explicitly warned unencrypted option.
-- General release remains gated on physical-device/installed-PWA, manual screen-reader, approximately 32 MiB mobile-memory acceptance, and privacy-owner governance confirmation.
+- General release remains gated on physical Android-device, manual
+  screen-reader, approximately 32 MiB mobile-memory acceptance, and
+  privacy-owner governance confirmation.
 
 Delivery scope and progress are tracked in [`docs/00-discovery/10-portable-archive-progress-plan.md`](../docs/00-discovery/10-portable-archive-progress-plan.md).
 
-## Planned Android Initiative
+## Android Product Direction
 
-Aura will retain the existing PWA and add a companion Android distribution based on Capacitor. Both distributions share the React application and canonical financial domain; Android-only capabilities are isolated behind typed platform adapters and native Kotlin plugins.
+Aura uses Capacitor as its only application distribution. The React application
+and canonical financial domain remain shared internally between the bundled
+Android runtime and browser-based automated tests; Android-only capabilities
+are isolated behind typed platform adapters and native Kotlin plugins. Public
+web hosting is limited to landing, privacy, support and account-deletion
+surfaces.
 
 The first planned native capability is optional payment detection from notifications:
 
@@ -131,7 +141,7 @@ The planned V1:
 - removes the runtime Gemini import path, client API-key configuration and
   related admin surfaces.
 
-M1-M5 are implemented. Broader browser, PWA, accessibility and Android release
+M1-M5 are implemented. Broader browser-runtime, accessibility and Android release
 acceptance remains governed by the later milestones in
 [`docs/00-discovery/12-deterministic-transaction-import-progress-plan.md`](../docs/00-discovery/12-deterministic-transaction-import-progress-plan.md)
 and does not make the feature generally released by itself.
@@ -141,4 +151,5 @@ and does not make the feature generally released by itself.
 - AI recommendations or automated financial advice.
 - Admin visibility into users' financial records.
 - Bank account aggregation or open banking integrations.
-- Replacing or deprecating the PWA when the Android companion is introduced.
+- A full Kotlin or React Native rewrite of the bundled React application.
+- Public PWA or authenticated hosted-webapp distribution.

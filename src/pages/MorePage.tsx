@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import {
@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Card } from '../components/ui';
-import { PwaInstallButton } from '../components/PwaInstallButton';
 import { pageTransition } from '../utils/motion';
 import { getPlatformCapabilities } from '../platform/platformCapabilities';
+import { TOUR_CATALOG, type TourId } from '../config/tourSteps';
 
 /**
  * Primary links shown in the More page.
@@ -46,6 +46,7 @@ const primaryLinks = [
 
 export function MorePage() {
   const { isAdmin } = useApp();
+  const [areToursExpanded, setAreToursExpanded] = useState(false);
   const androidLinks = getPlatformCapabilities().paymentDetectionSupported
     ? [
         {
@@ -69,8 +70,8 @@ export function MorePage() {
       ]
     : userLinks;
 
-  const handleStartTour = () => {
-    window.dispatchEvent(new CustomEvent('aura:start-guided-tour'));
+  const handleStartTour = (tourId: TourId) => {
+    window.dispatchEvent(new CustomEvent('aura:start-guided-tour', { detail: { tourId } }));
   };
 
   return (
@@ -80,22 +81,46 @@ export function MorePage() {
         <h2 className="font-headline text-2xl font-extrabold text-primary">Tools and settings</h2>
       </section>
 
-      <button
-        type="button"
-        onClick={handleStartTour}
-        className="flex w-full items-center gap-4 rounded-2xl border border-primary/20 bg-primary/10 p-4 text-left transition-all hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary shadow-md shadow-primary/20">
-          <Compass className="h-5 w-5" aria-hidden="true" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-headline text-base font-bold text-primary">Guided Tour</span>
-          <span className="mt-0.5 block text-xs text-on-surface-variant">
-            Explore and learn all features of Aura step-by-step
+      <Card as="section" className="space-y-1 p-3" aria-label="Help and tours">
+        <button
+          type="button"
+          onClick={() => setAreToursExpanded((current) => !current)}
+          className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-colors hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-expanded={areToursExpanded}
+          aria-controls="help-and-tours-list"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary">
+            <Compass className="h-5 w-5" aria-hidden="true" />
           </span>
-        </span>
-        <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
-      </button>
+          <span className="min-w-0 flex-1">
+            <h3 className="font-headline text-base font-bold text-primary">Help & tours</h3>
+            <p className="text-xs text-on-surface-variant">Choose one short guide. Each stays inside a single area.</p>
+          </span>
+          <ChevronRight
+            className={`h-4 w-4 shrink-0 text-primary transition-transform ${areToursExpanded ? 'rotate-90' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+        {areToursExpanded && (
+          <div id="help-and-tours-list">
+            {Object.values(TOUR_CATALOG).map((definition) => (
+              <button
+                key={definition.id}
+                type="button"
+                onClick={() => handleStartTour(definition.id)}
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-all hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label={`Start ${definition.title} tour`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold text-on-surface">{definition.title}</span>
+                  <span className="block text-xs text-on-surface-variant">{definition.steps.length} steps · {definition.description}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <Card as="section" data-tour-id="more-tools" className="space-y-0 p-3">
         {links.map((item, i) => {
@@ -127,7 +152,6 @@ export function MorePage() {
         })}
       </Card>
 
-      <PwaInstallButton />
     </motion.div>
   );
 }

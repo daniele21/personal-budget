@@ -4,13 +4,14 @@ import { TopBar } from './TopBar';
 import { BottomNav } from './BottomNav';
 import { GuidedTour } from './GuidedTour';
 import { useApp } from '../context/AppContext';
-import { useGuidedTour, wasTourCompleted } from '../hooks/useGuidedTour';
+import { useGuidedTour } from '../hooks/useGuidedTour';
 import { useNotificationScheduler } from '../hooks/useNotificationScheduler';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 import { useToast } from './Toast';
 import { haptics } from '../utils/haptics';
 import { PaymentCandidateInboxBanner } from './payment-detection/PaymentCandidateInboxBanner';
+import type { TourId } from '../config/tourSteps';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,33 +19,23 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, title }: LayoutProps) => {
-  const { transactions, recurring, budgetStatuses, isHydrated } = useApp();
+  const { transactions, recurring, budgetStatuses } = useApp();
   const { toast } = useToast();
   useNotificationScheduler({ transactions, recurring, budgetStatuses });
   useSwipeNavigation();
 
   const tour = useGuidedTour();
 
-  // Listen for manual trigger from MorePage or auto-start on first access
+  // Guided help is user-initiated; first-run setup owns initial education.
   useEffect(() => {
-    const handleStartTourEvent = () => {
-      tour.startTour();
+    const handleStartTourEvent = (event: Event) => {
+      const detail = (event as CustomEvent<{ tourId?: TourId }>).detail;
+      tour.startTour(detail?.tourId);
     };
 
     window.addEventListener('aura:start-guided-tour', handleStartTourEvent);
     return () => window.removeEventListener('aura:start-guided-tour', handleStartTourEvent);
   }, [tour]);
-
-  // Auto-start on first access once app is hydrated
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (!wasTourCompleted()) {
-      const timer = setTimeout(() => {
-        tour.startTour();
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [isHydrated]);
 
   const pull = usePullToRefresh({
     onRefresh: () => {

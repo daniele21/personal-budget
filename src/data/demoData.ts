@@ -42,6 +42,6 @@ export function buildDemoData(now = new Date()): DemoDataSet {
     categories,
     archivedCategories: [],
     savingsGoals,
-    monthlyBudget: APP_CONFIG.defaultMonthlyBudget,
+    monthlyBudget: APP_CONFIG.demoMonthlyBudget,
   };
 }

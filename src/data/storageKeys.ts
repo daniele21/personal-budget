@@ -19,7 +19,6 @@ export const STORAGE_KEYS = {
   cloudBackupEnabled: 'aura_cloud_backup_enabled',
   onboardingComplete: 'aura_onboarding_complete',
   initialDataChoice: 'aura_initial_data_choice',
-  pwaInstallDialogShown: 'aura_pwa_install_dialog_shown',
   allowedUsersCache: 'aura_allowed_users_cache',
   allowedUsersCacheTs: 'aura_allowed_users_cache_ts',
   recentSearches: 'aura_recent_searches',

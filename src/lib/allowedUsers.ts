@@ -6,7 +6,7 @@
  *   plus a masked version (e.g. "da***@gmail.com") for admin recognition.
  *   No plain-text email ever reaches Firestore.
  * - A local cache of allowed hashes is kept in localStorage so the
- *   PWA works offline. The cache is refreshed on every successful
+ *   bundled runtime works offline. The cache is refreshed on every successful
  *   Firestore read.
  * - The admin email is always allowed regardless of Firestore/cache state.
  */

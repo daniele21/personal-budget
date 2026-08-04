@@ -5,19 +5,12 @@ import App from './App.tsx';
 import { ToastProvider } from './components/Toast';
 import { AppProvider } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { getPlatformCapabilities } from './platform/platformCapabilities';
-import { initializePwaInstall } from './services/pwaInstallService';
 import { retireLegacyGeminiLocalCache } from './services/migrations/retireLegacyGeminiLocalCache';
+import { retirePwaRuntime } from './services/migrations/retirePwaRuntime';
 import './index.css';
 
-const platformCapabilities = getPlatformCapabilities();
-
 retireLegacyGeminiLocalCache();
-
-if (platformCapabilities.pwaInstallSupported) {
-  // Capture Chromium's one-shot install event before lazy routes can miss it.
-  initializePwaInstall();
-}
+void retirePwaRuntime();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -32,12 +25,3 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
-
-if (
-  platformCapabilities.serviceWorkerSupported &&
-  'serviceWorker' in navigator
-) {
-  navigator.serviceWorker.register('/sw.js').catch(err => {
-    console.warn('ServiceWorker registration failed: ', err);
-  });
-}

@@ -20,12 +20,6 @@ vi.mock('../NotificationCenter', () => ({ NotificationCenter: () => null }));
 vi.mock('../../state/PaymentDetectionProvider', () => ({
   usePaymentDetection: () => ({ candidates: [] }),
 }));
-vi.mock('../PwaInstallButton', () => ({
-  PwaInstallButton: ({ variant }: { variant: string }) => (
-    <button type="button" aria-label="Install Aura" data-variant={variant} />
-  ),
-}));
-
 function renderTopBar(path: string, title: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -55,7 +49,7 @@ describe('TopBar route variants', () => {
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'More options' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'More' })).toHaveAttribute('href', '/more');
-    expect(screen.getByRole('button', { name: 'Install Aura' })).toHaveAttribute('data-variant', 'icon');
+    expect(screen.queryByRole('button', { name: 'Install Aura' })).not.toBeInTheDocument();
   });
 
   it.each([

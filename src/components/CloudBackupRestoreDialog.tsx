@@ -58,7 +58,7 @@ export function CloudBackupRestoreDialog({
       subtitle={
         isConfirming
           ? 'Restoring replaces the financial data currently stored on this device.'
-          : 'The latest three valid versions saved to Firestore are available.'
+          : 'The latest five valid versions saved to Firestore are available.'
       }
       onClose={isRestoring ? () => {} : onClose}
       footer={

@@ -122,7 +122,11 @@ The living implementation tracker is [`10-portable-archive-progress-plan.md`](./
 
 Discovery status: **converged for a synthetic technical spike; M0 complete** on 2026-07-25. Real financial sources and signed distribution remain behind the external gates below.
 
-Aura will continue as a PWA and gain a companion Android distribution through Capacitor. The Android build reuses the React product and adds a narrow Kotlin capability for opt-in notification-based payment candidates. The initiative does not turn the PWA into a deprecated fallback and does not create a separate financial domain.
+Aura is transitioning to Android-only product distribution through Capacitor.
+The Android build reuses the React product and adds narrow Kotlin capabilities
+behind typed adapters. React/Vite remains the bundled runtime and browser test
+harness; the public web surface is reduced to landing, privacy, support and
+account deletion.
 
 ### Problem
 
@@ -130,7 +134,7 @@ Users already receive a device notification after many card payments but must la
 
 ### Approved Direction
 
-- Keep PWA and Android available in parallel.
+- Retire PWA/full-webapp distribution after the Android and public-portal gates.
 - Use one React/Vite product with platform adapters.
 - Use Capacitor 8 and a custom Kotlin plugin rather than a React Native or full-native rewrite.
 - Use package `com.staituned.aura` as the Android application ID, subject to final Play Console availability and domain-control verification before publication.
@@ -148,9 +152,10 @@ Users already receive a device notification after many card payments but must la
 
 ### Alternatives Considered
 
-#### Replace The PWA With A Native App
+#### Replace The React Runtime With A Native App
 
-Rejected. It would remove browser and desktop access, split delivery, and duplicate mature React behavior without improving the core detection capability.
+Rejected. It would duplicate mature React behavior, domain logic and recovery
+work without improving the narrow native capabilities.
 
 #### React Native Or Full Kotlin Rewrite
 

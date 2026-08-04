@@ -7,13 +7,14 @@ import { Transaction, Budget, RecurringExpense, Account, User, SavingsGoal } fro
 import * as Finance from '../domain/finance';
 import { InitialDataDialog } from '../components/InitialDataDialog';
 import { OnboardingDialog } from '../components/OnboardingDialog';
-import { PwaFirstAccessDialog } from '../components/PwaFirstAccessDialog';
 import { buildDemoData } from '../data/demoData';
 import { PrimaryAnalyticsLens } from '../domain/finance';
 import { RestoreRecoveryGate } from '../components/archive/RestoreRecoveryGate';
 import type { BackupVersion } from '../lib/backup';
 import type { PreparedTransactionImport } from '../domain/import';
 import type { CategoryUndoToken, CommitTransactionImportResult, ImportUndoToken, UndoImportResult } from '../services/import';
+import { deriveFirstRunState } from '../domain/firstRun';
+import { FirstRunStatusDialog } from '../components/FirstRunStatusDialog';
 
 // ─── Legacy Context Shape (compatible facade) ───────────────────────
 
@@ -156,6 +157,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     backupStatus,
     lastBackupDate,
     backupCheckComplete,
+    backupCheckTimedOut,
+    continueOffline,
     backupVersions,
     backupVersionsLoading,
     refreshBackupVersions,
@@ -381,24 +384,31 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     currentBalance,
   ]);
 
-  const showInitialDataDialog = (
-    isLoggedIn &&
-    isHydrated &&
-    backupCheckComplete &&
-    isLocalEmpty() &&
-    state.initialDataChoice === null
-  );
-  const showOnboardingDialog = (
-    isLoggedIn &&
-    !showInitialDataDialog &&
-    !state.onboardingComplete &&
-    state.initialDataChoice === 'blank' &&
-    isLocalEmpty()
-  );
+  const firstRunState = deriveFirstRunState({
+    isLoggedIn,
+    isHydrated,
+    backupCheckComplete,
+    localDataEmpty: isLocalEmpty(),
+    initialDataChoice: state.initialDataChoice,
+    onboardingComplete: state.onboardingComplete,
+  });
+  const showInitialDataDialog = firstRunState === 'choose-start';
+  const showOnboardingDialog = firstRunState === 'essential-setup';
+  const blockAppContent = firstRunState === 'checking-backup'
+    || showInitialDataDialog
+    || showOnboardingDialog;
 
   return (
     <LegacyAppContext.Provider value={value}>
-      {children}
+      <div aria-hidden={blockAppContent || undefined} className={blockAppContent ? 'invisible' : undefined}>
+        {children}
+      </div>
+      {firstRunState === 'checking-backup' && (
+        <FirstRunStatusDialog
+          hasTimedOut={backupCheckTimedOut}
+          onContinueOffline={continueOffline}
+        />
+      )}
       <InitialDataDialog
         isOpen={showInitialDataDialog}
         backupAvailable={backupAvailable}
@@ -412,19 +422,7 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
         monthlyBudget={state.monthlyBudget}
         onSetMonthlyBudget={setMonthlyBudget}
         onAddCategory={addCategory}
-        onAddGoal={(goal) => setSavingsGoals([...state.savingsGoals, goal])}
-        cloudBackupEnabled={cloudBackupEnabled}
-        onSetCloudBackupEnabled={setCloudBackupEnabled}
         onComplete={() => setOnboardingComplete(true)}
-      />
-      <PwaFirstAccessDialog
-        isEligible={
-          isLoggedIn &&
-          isHydrated &&
-          state.onboardingComplete &&
-          !showInitialDataDialog &&
-          !showOnboardingDialog
-        }
       />
     </LegacyAppContext.Provider>
   );

@@ -21,15 +21,16 @@ backups. Adding the second administrator
 changes authorization only: it introduces no new data category, processor,
 transfer, retention period, or admin visibility into financial content.
 
-The optional Firestore backup retains the latest three encrypted `AppData`
-snapshots per authenticated UID in one user-scoped document. Each snapshot has a
-creation timestamp and stable opaque version ID; Firestore does not receive
-decrypted financial content. The user can restore an exact version or delete the
-cloud document, which removes all three managed versions. Restoring an older
+The optional Firestore backup retains the latest five encrypted `AppData`
+snapshots per authenticated UID as bounded version documents below one
+user-scoped metadata document. Each snapshot has a creation timestamp and stable
+opaque version ID; Firestore does not receive decrypted financial content. The
+user can restore an exact version or delete the cloud backup, which explicitly
+removes all managed version documents before the parent. Restoring an older
 version replaces newer local financial data after explicit confirmation. This
-history adds no provider, recipient, data category, or transfer beyond the
-existing Firebase backup, but it increases the encrypted backup retention from
-one recoverable state to three.
+history adds no provider, recipient, data category, cleartext access or transfer
+beyond the existing Firebase backup, but it increases encrypted retention from
+three recoverable states to five.
 
 ## Demo Data
 
@@ -39,9 +40,13 @@ Demo data is generated in the browser and stored in the same local storage surfa
 
 ## Notifications
 
-Notification preferences, notification records, recurring reminder settings, and custom reminders are stored in localStorage. Native notifications use the browser Notification API and the existing service worker. Browser or operating-system notification services may display the notification on the device, but Aura does not send reminder or financial data to Firebase Cloud Messaging or any backend scheduler.
-
-Known platform limitation: on iOS, reliable web notification behavior requires the app to be installed as a supported PWA.
+Notification preferences, notification records, recurring reminder settings,
+and custom reminders are stored locally. The Android application uses a
+first-party Capacitor plugin to request notification permission and display
+local reminders. The plugin accepts bounded title/body values, allowlists deep
+link routes and exposes a redacted public lock-screen version. Aura does not send
+reminder or financial data to Firebase Cloud Messaging or any backend scheduler.
+The browser execution path is a test harness and does not deliver notifications.
 
 ## Android Authentication
 

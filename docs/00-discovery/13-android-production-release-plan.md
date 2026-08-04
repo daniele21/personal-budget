@@ -14,6 +14,8 @@ Il piano non sostituisce i tracker di feature. Li usa come dipendenze:
   governa il payment detection Android;
 - [`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md)
   governa la sostituzione del runtime Gemini con l'import locale;
+- [`16-android-only-onboarding-backup-progress-plan.md`](./16-android-only-onboarding-backup-progress-plan.md)
+  governa ritiro PWA, primo accesso, tour, backup x5, reminder e portale;
 - questo documento governa scope di release, account Play, configurazione
   production, compliance whole-app, landing page, store listing, QA fisica,
   internal testing, beta, rollout, rollback e stabilizzazione post-lancio.
@@ -34,7 +36,9 @@ conferma inoltre che runtime, SDK, env e superfici client Gemini sono rimossi e
 che gli asset web/Android non contengono marker del runtime ritirato. L'AAB
 corrente non e ancora un release candidate caricabile perche la sorgente
 sintetica resta nella package visibility production e non sono chiusi account
-deletion, privacy whole-app, QA fisica e Play Console.
+deletion, privacy whole-app, QA fisica e Play Console. Il portale pubblico
+minimo e ora implementato come artifact separato, ma non e ancora pubblicato o
+monitorato; il cutover hosting resta quindi un gate, non un risultato acquisito.
 
 ### Dashboard
 

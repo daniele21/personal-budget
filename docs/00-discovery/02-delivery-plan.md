@@ -1,5 +1,24 @@
 # Delivery Plan
 
+## Planned Initiative: Android-Only Distribution, First-Run And Backup History
+
+Aura plans to retire the PWA and full hosted web application as product
+distribution channels while retaining the React/Vite application as bundled
+Capacitor runtime and browser-based regression harness. The same program will
+replace the current first-run race and 27-step global tour, increase encrypted
+cloud history from three to five recoverable versions, provide native Android
+delivery for retained reminders, and add mobile/accessibility acceptance.
+
+The execution source of truth, decision gates, milestone dashboard, task-level
+progress, risks, evidence register and definitions of ready/done are maintained
+in
+[`16-android-only-onboarding-backup-progress-plan.md`](./16-android-only-onboarding-backup-progress-plan.md).
+
+Implementation has not started. M0 must first reconcile the project brief,
+solution strategy, accepted ADRs and release trackers that currently describe
+PWA + Android dual distribution, and must freeze the five-version storage and
+native-reminder decisions before their dependent slices begin.
+
 ## Implemented Initiative: Category Reporting And Calendar-Month Spending Pace
 
 The product and metric decisions were approved and implemented on 2026-07-29.

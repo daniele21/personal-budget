@@ -4,11 +4,11 @@ import { renderHook, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useGuidedTour, wasTourCompleted } from '../useGuidedTour';
 import { TOUR_STEPS } from '../../config/tourSteps';
-import { STORAGE_KEYS } from '../../data/storageKeys';
 
 describe('TOUR_STEPS config', () => {
   it('contains the complete guided journey with valid English copy', () => {
-    expect(TOUR_STEPS.length).toBe(27);
+    expect(TOUR_STEPS.length).toBeGreaterThan(0);
+    expect(TOUR_STEPS.length).toBeLessThanOrEqual(4);
     expect(new Set(TOUR_STEPS.map((step) => step.id)).size).toBe(TOUR_STEPS.length);
     TOUR_STEPS.forEach((step) => {
       expect(step.id).toBeTruthy();
@@ -53,7 +53,7 @@ describe('useGuidedTour', () => {
     expect(wasTourCompleted()).toBe(false);
   });
 
-  it('navigates through steps and completes tour', () => {
+  it('navigates through steps and records dismissal separately from completion', () => {
     const { result } = renderHook(() => useGuidedTour(), { wrapper });
 
     act(() => {
@@ -82,8 +82,8 @@ describe('useGuidedTour', () => {
     });
 
     expect(result.current.isActive).toBe(false);
-    expect(wasTourCompleted()).toBe(true);
-    expect(store.get(STORAGE_KEYS.guidedTourComplete)).toBe('true');
+    expect(wasTourCompleted()).toBe(false);
+    expect(store.get('aura_tour_state_v1:home')).toBe('dismissed');
   });
 
   it('announces the destination when starting from another page', () => {
