@@ -50,6 +50,34 @@ That tracker owns the cross-feature release gates for public access, account
 deletion, production configuration, privacy/Data Safety, landing/store
 presence, physical-device evidence, rollout and rollback.
 
+Release scope confirmed on 2026-08-04:
+
+- internal testing precedes an allowlisted closed beta; public self-service is
+  not authorized by the current decision;
+- payment detection is beta-only; initial production is a core-only variant
+  without listener, source package visibility or payment rules;
+- internal and beta support Android 16/API 36 only;
+- Italy is the initial country, with English UI, store and support content and
+  an 18+ target audience; European expansion requires a later rollout decision;
+- the product is free and introduces no billing dependency;
+- the personal developer identity is Daniele Moltisanti;
+- public landing/legal/support surfaces use `aura.staituned.com`, with
+  `support@staituned.com` as the public channel.
+
+The build-variant consequence of beta-only detection is accepted in
+[`ADR 0004`](../../adr/0004-aura-payment-detection-beta-only-release.md).
+The owner confirms the personal Play account, applicable verification and
+registration of `com.staituned.aura`. Single-person support risk is accepted
+for Internal Testing only, with a one-week response target; a backup owner
+remains a closed-beta gate.
+
+Account deletion uses a separate fail-closed cross-storage orchestrator rather
+than the local reset reducer. Recent reauthentication precedes UID-scoped backup
+deletion, native purge, finite browser-data deletion and Firebase Auth identity
+deletion. The durable ordering and allowlist authorization constraint are fixed
+in [`ADR 0005`](../../adr/0005-aura-account-deletion-orchestration.md), with the
+user contract in [`account-deletion-v1.md`](../specs/account-deletion-v1.md).
+
 ### Cloud Backup
 
 Chosen: opt-in encrypted backup with visible status.

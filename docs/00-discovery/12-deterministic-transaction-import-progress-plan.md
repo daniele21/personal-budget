@@ -54,7 +54,7 @@ review privacy/security e la documentazione applicabile.
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-08-03
+Ultimo aggiornamento: 2026-08-04
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -64,8 +64,8 @@ Ultimo aggiornamento: 2026-08-03
 | M3. Wizard locale e categorizzazione in blocco | Completato | Wizard locale a 5 step, review paginata, scope categoria, warning/undo e 11 nuovi test; regression 470/470 verde |
 | M4. Commit verificato e correzione batch in cronologia | Completato | Commit transaction-only con rollback/read-back, undo effimero, history batch e 2 E2E Chromium; regression 482/482 verde |
 | M5. Rimozione del runtime Gemini e delle superfici collegate | Completato | SDK/runtime/env/admin rimossi, cache V6 ritirata, asset web/Android verificati; regression 472/472 e 2/2 E2E verdi |
-| M6. Hardening, accessibilita e QA web/Android | In corso | Gate automatici web/PWA/Android verdi; picker Android e screen reader manuale restano release-blocking |
-| M7. Documentazione, release e chiusura | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M6 |
+| M6. Hardening, accessibilita e QA web/Android | In corso | Regression 482/482, build, Gemini scan, Android unit/lint e 34/34 instrumentation verdi; full E2E 47/48 con finding intermittente tour, picker Android e screen reader manuale aperti |
+| M7. Documentazione, release e chiusura | In corso | Spec, brief/strategy/delivery, privacy notes, testing strategy, acceptance checklist, changelog e Gemini retirement sono allineati; evidenze manuali/go-no-go e monitoraggio restano aperti |
 
 Focus corrente: **M6 - completare acceptance manuale del picker Android e
 screen reader dopo la chiusura dei gate automatici**.
@@ -844,12 +844,15 @@ Task:
 Evidenza e checklist ripetibile:
 [`deterministic-transaction-import-m6-acceptance.md`](../07-qa/deterministic-transaction-import-m6-acceptance.md).
 
-Esito automatico M6 al 2026-08-03: `test:regression` verde su 102 file e
+Esito automatico M6 al 2026-08-04: `test:regression` verde su 102 file e
 482/482 test; 7/7 E2E funzionali Chromium e 10/10 quality test cross-browser,
 mobile e PWA; Android JVM test, lint, `assembleDebug`, 34/34 instrumentation e
 WebView runtime verdi su `aura_api_36`; Google Sign-In e import bundled da
-20.000 righe verdi su Pixel 9 Pro API 36. La regression finale sale a 102 file
-e 482/482 test.
+20.000 righe verdi su Pixel 9 Pro API 36. Il run aggregato C1 passa 47/48 E2E:
+un controllo geometrico del tour guidato fallisce una volta al passo 18 e passa
+2/2 nel rerun Chromium mirato. Il full gate resta quindi aperto come finding
+intermittente F-C1-001. Evidenza:
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
 
 Exit criteria:
 
@@ -867,16 +870,17 @@ Dipendenze: viaggia con M0-M6; chiusura dopo M6.
 
 Task:
 
-- [ ] Allineare project brief, brainstorm, strategy e delivery plan allo stato
+- [x] Allineare project brief, brainstorm, strategy e delivery plan allo stato
   implementato.
-- [ ] Completare la feature spec V1 e aggiungere un ADR se il protocollo di
-  import verificato introduce una nuova boundary architetturale duratura.
+- [x] Completare la feature spec V1; C1 conferma che il protocollo conserva le
+  boundary domain/data/service e il ledger canonico, quindi non richiede un ADR
+  aggiuntivo.
 - [ ] Aggiornare `docs/04-privacy-gdpr/privacy-notes.md` e creare un processing
   record locale se richiesto dal privacy owner.
-- [ ] Aggiornare documentazione Data & Privacy, template, errori e limiti.
-- [ ] Aggiornare la testing strategy e aggiungere una checklist browser/PWA/
+- [x] Aggiornare documentazione Data & Privacy, template, errori e limiti.
+- [x] Aggiornare la testing strategy e aggiungere una checklist browser/PWA/
   Android ripetibile.
-- [ ] Aggiornare `CHANGELOG.md` soltanto quando il comportamento e realmente
+- [x] Aggiornare `CHANGELOG.md` soltanto quando il comportamento e realmente
   implementato.
 - [x] Documentare rimozione Gemini, dipendenza, env, superfici admin e stato dei
   documenti Firestore storici.

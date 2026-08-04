@@ -3,9 +3,11 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 
+const appState = vi.hoisted(() => ({ isLoggedIn: true }));
+
 vi.mock('../context/AppContext', () => ({
   useApp: () => ({
-    isLoggedIn: true,
+    isLoggedIn: appState.isLoggedIn,
     authLoading: false,
     authError: null,
     signInWithGoogle: vi.fn(),
@@ -55,10 +57,18 @@ function renderRoute(path: string) {
 
 afterEach(() => {
   cleanup();
+  appState.isLoggedIn = true;
   window.history.pushState({}, '', '/');
 });
 
 describe('canonical application routes', () => {
+  it('keeps the account-deletion route public without an active session', async () => {
+    appState.isLoggedIn = false;
+    renderRoute('/account-deletion');
+    expect(await screen.findByText('Delete your Aura account')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in to continue' })).toBeInTheDocument();
+  });
+
   it('renders the canonical Reports route', async () => {
     renderRoute('/reports');
     expect(await screen.findByText('Reports overview page')).toBeInTheDocument();

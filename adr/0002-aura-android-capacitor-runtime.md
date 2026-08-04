@@ -4,7 +4,7 @@
 - Date: 2026-07-25
 - Owners: Aura Finance maintainers
 - Delivery tracker: [`docs/00-discovery/11-android-payment-detection-progress-plan.md`](../docs/00-discovery/11-android-payment-detection-progress-plan.md)
-- Related: [`ADR 0003`](./0003-aura-payment-candidate-acceptance.md)
+- Related: [`ADR 0003`](./0003-aura-payment-candidate-acceptance.md), [`ADR 0004`](./0004-aura-payment-detection-beta-only-release.md)
 
 ## Context
 

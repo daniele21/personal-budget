@@ -89,6 +89,27 @@ which aggregates Play Console, signing, account deletion, whole-app privacy and
 Data Safety, landing/store presence, physical QA, beta, rollout and rollback
 gates without duplicating the payment-detection implementation tracker.
 
+Release direction confirmed on 2026-08-04:
+
+- begin with Play Internal Testing and a closed beta using named/allowlisted
+  participants; public self-service distribution is not yet authorized;
+- keep payment detection beta-only and make the initial production build
+  core-only without the listener;
+- support Android 16/API 36 only for internal and beta;
+- launch the initial tracks in Italy with an English product and English store
+  presence, then expand to Europe through a later rollout decision;
+- keep the initial product free;
+- use a personal developer identity under the public name Daniele Moltisanti;
+- publish landing/legal/support surfaces under `aura.staituned.com` and use
+  `support@staituned.com` as the public support address.
+
+The initial country is Italy and the target audience is 18+. The personal Play
+account, applicable verification and `com.staituned.aura` registration are
+confirmed by the owner. Single-person support risk is accepted for Internal
+Testing only, with a one-week response target and a backup owner required before
+closed beta. The decision record is
+[`15-c2-release-decision-pack.md`](../docs/00-discovery/15-c2-release-decision-pack.md).
+
 ## Implemented, Release-Gated Initiative: Deterministic Transaction Import
 
 Aura has replaced the former Gemini-assisted generic spreadsheet workflow with

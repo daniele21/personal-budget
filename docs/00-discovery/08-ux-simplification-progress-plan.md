@@ -21,6 +21,7 @@ Update this file whenever a task starts, completes, becomes blocked, or changes 
 | `Not started` | No implementation work has begun |
 | `In progress` | Work is actively underway |
 | `Blocked` | Progress requires a decision or external change |
+| `Closed by supersession` | The original evidence cannot be produced faithfully and a dated replacement gate is recorded |
 | `Done` | Code, tests, visual verification, and required docs are complete |
 
 For task lists:
@@ -30,22 +31,24 @@ For task lists:
 
 ## Progress Dashboard
 
-Last updated: 2026-07-21
+Last updated: 2026-08-04
 
 | Milestone | Status | Progress note |
 |---|---|---|
-| M0. Decisions, documentation, and baseline | Blocked | Product decisions approved; baseline capture awaits an available browser session |
-| M1. Shared UX and visual foundations | In progress | Shared lens control and session state implemented; remaining visual primitives stay open |
+| M0. Decisions, documentation, and baseline | Closed by supersession | Product decisions and test map are complete; the missing historical pre-change screenshot baseline cannot be reconstructed, so C4 will capture a current release reference |
+| M1. Shared UX and visual foundations | In progress | Shared controls, bottom sheet and visual primitives are implemented; manual theme/accessibility release evidence stays open |
 | M2. Navigation, routes, and shell | In progress | Routes, shell, aliases, and automated tests implemented; narrow-width visual QA remains open |
-| M3. Unified Reports | In progress | Shared route-aware report shell, canonical views, and session-scoped three-state lens implemented; content reduction remains open |
+| M3. Unified Reports | In progress | Shared route-aware report shell, canonical views, lens and content reduction are implemented; manual release evidence stays open |
 | M4. Unified Planning | In progress | Functional implementation and automated coverage complete; narrow-width and light/dark visual verification remains open |
-| M5. Transactions simplification | In progress | Primary controls simplified; combined Filters/Sort and Import relocation implemented; operational regression coverage remains open |
+| M5. Transactions simplification | In progress | Primary controls, Filters/Sort, Import relocation and automated operational coverage are implemented; manual release evidence stays open |
 | M6. Add Transaction simplification | Done | Decision superseded: optional fields now use accessible progressive disclosure with edit-state protection |
 | M7. Home and Budgets simplification | In progress | Functional UI and regression coverage complete; visual viewport/theme verification remains open |
-| M8. More and visual-system reduction | In progress | More inventory and neutral shared surfaces implemented; visual comparison and theme verification remain open |
-| M9. Regression, release, and documentation sync | In progress | Automated quality gate and documentation sync complete; manual visual/accessibility release checks remain open |
+| M8. More and visual-system reduction | In progress | More inventory and neutral shared surfaces are implemented; current-reference and theme verification remain open |
+| M9. Regression, release, and documentation sync | In progress | C1 baseline passes 482/482 Vitest and build; full E2E is 47/48 with one intermittent guided-tour finding, while manual visual/accessibility checks remain open |
 
-Current delivery focus: **M1–M3**. M0 visual baseline capture remains blocked by the unavailable browser and must be completed before these milestones are marked Done.
+Current delivery focus: **M9 through the consolidated C4 matrix**. C1 evidence
+and the supersession mapping are recorded in
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
 
 ## Approved Decisions
 
@@ -153,7 +156,7 @@ The two views share one recurring-entry form and common orchestration. `/calenda
 
 Goal: create an approved, verifiable baseline before implementation.
 
-Status: **Blocked**
+Status: **Closed by supersession — replacement evidence assigned to C4**
 
 Tasks:
 
@@ -165,8 +168,12 @@ Tasks:
 - [x] Create this progress tracker.
 - [x] Record the approved UX direction in the solution strategy.
 - [x] Point the main delivery plan to this tracker.
-- [ ] Capture baseline screenshots for Home, Transactions, Add, Budgets, Insights, Reports, More, Calendar, and Recurring.
-- [ ] Record the baseline at 320 px, 360 px, 390 px, 430 px, 768 px, and the supported desktop shell width.
+- Superseded on 2026-08-04: historical pre-change screenshots cannot be
+  reconstructed after implementation; C4 will capture a current release
+  reference for Home, Transactions, Add, Budgets, Reports, Planning and More.
+- Superseded on 2026-08-04: the missing historical width baseline is replaced
+  by the current-reference and physical acceptance matrix at 320, 360, 390,
+  430 and 768 px.
 - [x] Confirm the existing test inventory and map each affected flow to a regression test.
 
 Exit criteria:
@@ -207,12 +214,12 @@ Tasks:
 - [x] Define the full Reports lens selector with `Actual`, `Net of extras`, and `Extras only`.
 - [x] Place session lens state in `PreferencesProvider` and expose it through the compatibility app context without persisting it.
 - [x] Keep the full Reports lens in separate session state so its three states survive report-view navigation without affecting Home or Budgets.
-- [ ] Add or refine shared report tabs and route-aware segmented navigation.
-- [ ] Consolidate reusable bottom-sheet structure for filters and advanced options.
+- [x] Add or refine shared report tabs and route-aware segmented navigation.
+- [x] Consolidate reusable bottom-sheet structure for filters and advanced options.
 - [x] Confirm and retain the existing shared compact progress row for category budgets.
-- [ ] Make standard cards visually neutral by default.
-- [ ] Reserve inverse and elevated variants for explicitly approved focal surfaces.
-- [ ] Remove hardcoded decorative colors in changed components.
+- [x] Make standard cards visually neutral by default.
+- [x] Reserve inverse and elevated variants for explicitly approved focal surfaces.
+- [x] Remove hardcoded decorative colors in changed components.
 - [x] Add component tests for lens labels and selected state; keyboard, focus, and Escape coverage remains attached to the bottom-sheet consolidation task.
 
 Exit criteria:
@@ -318,15 +325,15 @@ Tasks:
 
 - [x] Remove the redundant `Recent activity` page heading.
 - [x] Keep one prominent local transaction search field.
-- [ ] Keep the compact `All | Expenses | Income` type control.
+- [x] Keep the compact `All | Expenses | Income` type control.
 - [x] Merge filtering and sorting into one Filters sheet.
 - [x] Show active filter chips only for non-default state.
 - [x] Show result metadata only when search, filters, or non-default sorting make it useful.
 - [x] Move Import out of the primary control row and into More through a direct import entry.
 - [x] Remove Financial Trajectory after its primary cash-flow reading exists in Reports.
 - [x] Preserve transaction grouping, detail sheet, swipe edit actions, batch actions, export, delete, and undo; consolidate editing into the shared Add/Edit form.
-- [ ] Keep transaction rows neutral for ordinary expenses and semantic for income or exceptional states.
-- [ ] Add regression tests for search, filtering, sorting, grouping, batch actions, detail, edit, delete, and undo.
+- [x] Keep transaction rows neutral for ordinary expenses and semantic for income or exceptional states.
+- [x] Add regression tests for search, filtering, sorting, grouping, batch actions, detail, edit, delete, and undo.
 
 Exit criteria:
 
@@ -413,7 +420,8 @@ Tasks:
 - [x] Keep TopBar, BottomNav, reading surfaces, and standard controls neutral.
 - [ ] Verify semantic color use and dark-mode parity.
 - [x] Verify typography hierarchy, tabular financial values, and minimum touch targets in code and automated semantics.
-- [ ] Run visual comparison against the M0 baseline.
+- Superseded on 2026-08-04: no trustworthy pre-change M0 baseline exists;
+  compare the final candidate against the current C4 release reference.
 
 Exit criteria:
 
@@ -590,7 +598,10 @@ Use this table for decisions or conditions that change delivery.
 | 2026-07-21 | Progress | M8 | Limited More to Planning, Import/Export, Privacy & Backup, Settings, and authorized Admin; merged privacy/backup status and made install guidance conditional | Primary destinations no longer repeat in More; Profile anchors provide direct destinations |
 | 2026-07-21 | Visual system | M8 | Removed gradient, glow, and multilayer elevation from standard cards and control surfaces | Inverse financial anchors retain intentional depth; semantic tokens preserve theme parity by construction |
 | 2026-07-21 | Verification | M9 | Synced UX/visual documentation and passed lint, 28 test files/202 tests, production build, and diff validation | Release remains pending manual multi-viewport, light/dark, keyboard, and reduced-motion verification |
+| 2026-08-04 | Reconciliation | M0-M9 | Reclassified implemented, residual and superseded tasks against tracker 09, current code and the C1 baseline | Historical screenshot tasks are superseded; manual C4 evidence and intermittent guided-tour E2E remain open |
 
 ## Next Action
 
-Run the outstanding manual visual/accessibility matrix for M0–M9 as soon as a controllable browser is available. Until then, keep M1–M5 and M7–M9 open where their definition of done requires viewport or theme evidence.
+Resolve or stabilize F-C1-001, then run the outstanding C4 manual
+visual/accessibility matrix. Keep milestones open wherever their definition of
+done still requires physical viewport, theme or assistive-technology evidence.

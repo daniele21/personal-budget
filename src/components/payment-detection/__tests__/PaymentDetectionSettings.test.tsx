@@ -45,6 +45,13 @@ vi.mock('../../../state/PaymentDetectionProvider', () => ({
         syntheticOnly: false,
         installed: true,
       },
+      {
+        id: 'paypal',
+        packageName: 'com.paypal.android.p2pmobile',
+        displayName: 'PayPal',
+        syntheticOnly: false,
+        installed: true,
+      },
     ],
     candidates: [{ id: 'candidate' }],
     updateSelectedApps: mocks.updateSelectedApps,
@@ -125,6 +132,20 @@ describe('PaymentDetectionSettings', () => {
 
     expect(mocks.updateSelectedApps).toHaveBeenCalledWith([
       'com.google.android.apps.walletnfcrel',
+    ]);
+  });
+
+  it('shows and explicitly selects the installed PayPal source', async () => {
+    const user = userEvent.setup();
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('PayPal')).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', {
+      name: 'Monitor PayPal',
+    }));
+
+    expect(mocks.updateSelectedApps).toHaveBeenCalledWith([
+      'com.paypal.android.p2pmobile',
     ]);
   });
 });

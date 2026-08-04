@@ -176,7 +176,9 @@ Rejected. Native acceptance instead reserves the final normal transaction ID and
 
 - Verify `com.staituned.aura` availability in Play Console and confirm control of the `staituned.com` namespace before the first signed distributable.
 - Install Android Studio 2025.2.1 or newer and Android SDK 36.
-- Assign named product, Android, React, QA, security, privacy, and release owners.
+- Daniele Moltisanti is the named product, Android, React, QA, security,
+  privacy, release, content and support owner. No substitute is assigned;
+  continuity and competent external review remain explicit risks where needed.
 - Select the first real payment app after a user-approved, redacted fixture source exists.
 - Complete lawful-basis, role-allocation, data-inventory, retention, and DPIA screening with the privacy owner.
 - Confirm Play Console developer verification, app signing, Data Safety, and prominent-disclosure evidence.
@@ -188,6 +190,27 @@ The cross-feature path from signed artifact to Play production is tracked in
 It consumes the release gates from portable archive, payment detection and
 deterministic import and owns the unresolved public-distribution, compliance,
 landing, physical-QA, beta, rollout and rollback decisions.
+
+### C2 Release Direction — 2026-08-04
+
+- Start with Play Internal Testing and a closed beta using named/allowlisted
+  participants; public self-service remains a later decision.
+- Keep payment detection beta-only. The first production candidate is core-only
+  and must exclude the listener and payment-source visibility.
+- Keep Android 16/API 36-only for internal and beta.
+- Start in Italy with an English product/store, target audience 18+, and expand
+  to Europe only through a later rollout decision; keep the product free.
+- Use a personal developer identity under Daniele Moltisanti, with account
+  credentials retained outside the repository.
+- Use `aura.staituned.com` for public surfaces and `support@staituned.com` for
+  support.
+- The owner confirms the personal Play account, applicable verification and
+  registration of `com.staituned.aura`. Single-person support is accepted for
+  Internal Testing with a one-week response target; a backup owner is required
+  before closed beta.
+
+Detailed tradeoffs and residual confirmations are in
+[`15-c2-release-decision-pack.md`](./15-c2-release-decision-pack.md).
 
 ## Problem
 

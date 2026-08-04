@@ -107,6 +107,28 @@ Two forms of dedupe remain native:
 - technical fingerprint for repeated updates of the same Android notification;
 - semantic fingerprint for the same operation observed from multiple allowed sources.
 
+The semantic fingerprint is a strong-match mechanism. It normalizes merchant
+case, accents, punctuation, and whitespace, but it does not remove words or
+provider prefixes. Automatic suppression still requires the same operation,
+amount, currency, normalized merchant, a different source, and the bounded
+native time window. Missing or materially different merchants are never fused
+automatically.
+
+Possible duplicates remain a review concern rather than a persistence
+constraint. While the candidate editor is open, React compares the selected
+candidate in memory with:
+
+- pending candidates with the same operation, amount, currency, and a posting
+  time within five minutes;
+- existing expense transactions with the same amount and local calendar day.
+
+These weak matches are not persisted, backed up, or added to the canonical
+transaction. Aura shows their source/title and requires an explicit `Create
+anyway` confirmation. Editing the candidate amount or date clears an assessment
+that no longer describes the edited values. A global ledger uniqueness rule is
+rejected because legitimate repeated purchases can share amount, date, and
+merchant.
+
 After acceptance:
 
 - the candidate payload is deleted;

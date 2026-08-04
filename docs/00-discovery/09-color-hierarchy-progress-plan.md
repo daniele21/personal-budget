@@ -53,7 +53,7 @@ Aura uses a calm blue-grey canvas, crisp operational surfaces, and one Deep Ocea
 
 ## Progress Dashboard
 
-Last updated: 2026-07-21
+Last updated: 2026-08-04
 
 | Milestone | Status | Progress note |
 |---|---|---|
@@ -64,6 +64,12 @@ Last updated: 2026-07-21
 | M4. Reports | Done | View options and one focal metric per report implemented |
 | M5. Planning and More | Done | Upcoming summary and privacy-first service area implemented |
 | M6. Regression and documentation | In progress | Automated gates pass; manual viewport/theme QA is blocked because no controllable browser is exposed in this session |
+
+C1 reconciliation: implementation status remains unchanged. The 2026-08-04
+baseline passes 482/482 Vitest tests and the production build; automated
+responsive/theme cases pass, while physical/manual viewport, theme and rendered
+reduced-motion evidence remains assigned to C4. See
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
 
 ## Milestones
 

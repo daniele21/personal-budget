@@ -193,7 +193,7 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
  */
 export async function pushBackup(uid: string, data: BackupPayload): Promise<boolean> {
   try {
-    console.log('[Backup] Starting push for user', uid);
+    console.log('[Backup] Starting encrypted backup push');
 
     // R1: Pre-push validation
     const validation = validateAppData(data);

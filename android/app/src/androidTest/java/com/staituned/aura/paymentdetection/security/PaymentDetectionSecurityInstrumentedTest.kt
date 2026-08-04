@@ -101,11 +101,27 @@ class PaymentDetectionSecurityInstrumentedTest {
             "EUR",
             "NEGOZIO",
         )
+        val punctuationAndAccentVariant = hasher.hashSemantic(
+            "owner-a",
+            "card_payment",
+            1234,
+            "EUR",
+            "NÉGOZIO.",
+        )
+        val differentMerchant = hasher.hashSemantic(
+            "owner-a",
+            "card_payment",
+            1234,
+            "EUR",
+            "Altro negozio",
+        )
 
         assertEquals(technical, repeated)
         assertNotEquals(technical, otherOwner)
         assertFalse(technical.contains("notification-key"))
         assertEquals(merchantCaseVariant, normalizedMerchantCaseVariant)
+        assertEquals(merchantCaseVariant, punctuationAndAccentVariant)
+        assertNotEquals(merchantCaseVariant, differentMerchant)
     }
 
     @Test

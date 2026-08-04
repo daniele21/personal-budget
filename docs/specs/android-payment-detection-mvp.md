@@ -4,14 +4,13 @@
 
 - Product direction: approved
 - Architecture: accepted in ADR 0002 and ADR 0003
-- Implementation: synthetic M4-M8 slices complete; Intesa Sanpaolo Mobile and
-  Google Wallet connectors with fully redacted deterministic corpora are
-  implemented for engineering verification. M1-M3 retain their production,
-  lifecycle, physical,
-  and governance closure gates; M9 engineering hardening and M10 operating
-  preparation are complete.
-- Current gate: synthetic, Intesa, and Google Wallet engineering tests may
-  continue, but general real-source rollout remains blocked by the privacy,
+- Implementation: synthetic M4-M8 slices complete; Intesa Sanpaolo Mobile,
+  Google Wallet, and PayPal connectors with fully redacted deterministic
+  corpora are implemented for engineering verification. M1-M3 retain their
+  production, lifecycle, physical, and governance closure gates; M9 engineering
+  hardening and M10 operating preparation are complete.
+- Current gate: synthetic, Intesa, Google Wallet, and PayPal engineering tests
+  may continue, but general real-source rollout remains blocked by the privacy,
   security, physical-QA, disclosure, and pilot gates.
 - Delivery tracker: [`11-android-payment-detection-progress-plan.md`](../00-discovery/11-android-payment-detection-progress-plan.md)
 
@@ -203,6 +202,24 @@ Match tiers:
 
 Only `exact` may create an Aura notification. `review` remains in the queue.
 
+### Duplicate handling
+
+Aura automatically suppresses only strong duplicates:
+
+- repeated callbacks carrying the same technical notification identity;
+- cross-source candidates with the same operation, amount, currency, merchant
+  after conservative case/accent/punctuation normalization, and a posting time
+  inside the native two-minute window.
+
+Missing merchants, materially different merchant labels, and same-amount
+operations are not merged automatically. During review, Aura calculates a
+non-persisted possible-duplicate assessment against pending candidates within
+five minutes and existing same-day, same-amount expense transactions. The user
+sees the related source or ledger title and must choose `Create anyway` before a
+normal transaction is created. Changing amount or date invalidates an
+assessment based on the original values. No global uniqueness constraint is
+added to the ledger.
+
 Negative examples:
 
 - OTP or verification code;
@@ -236,6 +253,7 @@ Never persisted:
 - balance;
 - card/account identifiers;
 - Firebase token or email.
+- possible-duplicate groups or ledger-match metadata.
 
 The final transaction contains no detection-specific metadata. Its normal UUID is reserved by the native acceptance workflow.
 

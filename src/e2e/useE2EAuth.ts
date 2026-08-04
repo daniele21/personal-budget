@@ -20,6 +20,8 @@ const E2E_AUTH_STATE: AuthRuntimeState = Object.freeze({
   isAdmin: false,
   signInWithGoogle: noOp,
   signOut: noOp,
+  reauthenticateForAccountDeletion: noOp,
+  deleteAuthIdentity: noOp,
 });
 
 /**

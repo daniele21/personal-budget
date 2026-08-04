@@ -1,0 +1,12 @@
+# Synthetic, redacted PayPal templates derived from a user-provided notification screenshot.
+# No row contains a real amount, merchant, time, account detail, or raw notification.
+paypal-standard-comma|EXACT|Il tuo acquisto presso NEGOZIO DI PROVA|Il tuo pagamento di €12,40 EUR è stato completato. Tocca per vedere i dettagli.|1240|NEGOZIO DI PROVA|
+paypal-standard-dot|EXACT|Il tuo acquisto presso SERVIZIO TEST 24|Il tuo pagamento di €7.25 EUR è stato completato. Tocca per aprire PayPal.|725|SERVIZIO TEST 24|
+paypal-collapsed-title|REVIEW|Il tuo acquisto presso...|Il tuo pagamento di €8,76 EUR è stato completato. Tocca per ...|876||
+paypal-missing-title|REVIEW||Il tuo pagamento di €9,90 EUR è stato completato. Tocca per vedere i dettagli.|990||
+paypal-body-variant|REVIEW|Il tuo acquisto presso NEGOZIO DI PROVA|Il tuo pagamento di €4,20 EUR|420||
+paypal-declined|IGNORED|Il tuo acquisto presso NEGOZIO DI PROVA|Il tuo pagamento di €12,40 EUR è stato rifiutato.|||NEGATIVE_SIGNAL
+paypal-cancelled|IGNORED|Il tuo acquisto presso NEGOZIO DI PROVA|Il tuo pagamento di €12,40 EUR è stato annullato.|||NEGATIVE_SIGNAL
+paypal-transfer|IGNORED|Pagamento PayPal|Trasferimento di €12,40 EUR completato.|||NEGATIVE_SIGNAL
+paypal-unsupported-currency|IGNORED|Il tuo acquisto presso NEGOZIO DI PROVA|Il tuo pagamento di $12.40 USD è stato completato.|||UNSUPPORTED_CURRENCY
+paypal-not-a-payment|IGNORED|PayPal|Hai una nuova offerta disponibile|||NEGATIVE_SIGNAL

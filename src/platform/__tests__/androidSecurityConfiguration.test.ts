@@ -151,7 +151,8 @@ describe('Android security configuration', () => {
     expect(catalog).toContain('com.staituned.aura.syntheticnotifications');
     expect(catalog).toContain('com.latuabancaperandroid');
     expect(catalog).toContain('com.google.android.apps.walletnfcrel');
-    expect(catalog.match(/packageName = "/g)).toHaveLength(3);
+    expect(catalog).toContain('com.paypal.android.p2pmobile');
+    expect(catalog.match(/packageName = "/g)).toHaveLength(4);
     expect(listener.indexOf('notification.packageName')).toBeLessThan(
       listener.indexOf('notification.notification'),
     );

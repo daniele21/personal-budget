@@ -2,6 +2,7 @@ package com.staituned.aura.paymentdetection.security
 
 import android.util.Base64
 import java.nio.charset.StandardCharsets
+import java.text.Normalizer
 import java.util.Locale
 import javax.crypto.Mac
 
@@ -30,9 +31,17 @@ internal class CandidateFingerprintHasher(
             operationType,
             amountMinorUnits.toString(),
             currency,
-            merchant.lowercase(Locale.ROOT),
+            normalizeMerchant(merchant),
         ),
     )
+
+    private fun normalizeMerchant(merchant: String): String =
+        Normalizer.normalize(merchant, Normalizer.Form.NFKD)
+            .replace(COMBINING_MARKS, "")
+            .lowercase(Locale.ROOT)
+            .replace(NON_ALPHANUMERIC, " ")
+            .replace(WHITESPACE, " ")
+            .trim()
 
     fun deleteKey() {
         keyManager.deleteCandidateFingerprintKey()
@@ -53,6 +62,9 @@ internal class CandidateFingerprintHasher(
     companion object {
         private const val HMAC_SHA256 = "HmacSHA256"
         private const val TECHNICAL_VERSION = "technical-v1"
-        private const val SEMANTIC_VERSION = "semantic-v1"
+        private const val SEMANTIC_VERSION = "semantic-v2"
+        private val COMBINING_MARKS = Regex("""\p{M}+""")
+        private val NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
+        private val WHITESPACE = Regex("""\s+""")
     }
 }

@@ -25,6 +25,7 @@ internal object BundledPaymentRuleCatalog {
     const val SYNTHETIC_SOURCE_APP_ID = "aura-synthetic-source"
     const val INTESA_SANPAOLO_SOURCE_APP_ID = "intesa-sanpaolo-mobile"
     const val GOOGLE_WALLET_SOURCE_APP_ID = "google-wallet"
+    const val PAYPAL_SOURCE_APP_ID = "paypal"
 
     private const val AMOUNT =
         """\d{1,3}(?:[.,\s]\d{3})*[,.]\d{2}|\d+[,.]\d{2}"""
@@ -109,10 +110,31 @@ internal object BundledPaymentRuleCatalog {
             """€\s*(?:$AMOUNT)\s+with$TOKEN_END""",
     )
 
+    private val paypalRuleSet = PaymentRuleSetDefinition(
+        schemaVersion = CURRENT_SCHEMA_VERSION,
+        ruleVersion = "paypal-purchase-v1",
+        sourceAppId = PAYPAL_SOURCE_APP_ID,
+        negativeRules = negativeRules,
+        exactRules = listOf(
+            ExactPaymentRuleDefinition(
+                id = "paypal-completed-purchase-v1",
+                titlePattern =
+                    """^il tuo acquisto presso\s+(?<merchant>[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{0,119})$""",
+                bodyPattern =
+                    """^il tuo pagamento di\s+€\s*(?<amount>$AMOUNT)\s+EUR\s+""" +
+                        """è stato completato[.](?:\s+tocca per\s+""" +
+                        """[\p{L}\p{N} .,'’\-]{1,120})?[.]?$""",
+            ),
+        ),
+        reviewContextPattern =
+            """$TOKEN_START(?:il tuo acquisto|il tuo pagamento)$TOKEN_END""",
+    )
+
     private val definitions = listOf(
         syntheticRuleSet,
         intesaSanpaoloRuleSet,
         googleWalletRuleSet,
+        paypalRuleSet,
     )
 
     fun findBySourceAppId(sourceAppId: String): PaymentRuleSetDefinition? =

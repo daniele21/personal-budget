@@ -98,7 +98,7 @@ class PaymentCandidateRepositoryInstrumentedTest {
     }
 
     @Test
-    fun semanticDedupeRequiresDifferentSourceSameMerchantAndBoundedWindow() {
+    fun semanticDedupeNormalizesMerchantAndKeepsSourceAndTimeBoundaries() {
         val harness = harness("semantic_dedupe")
         val first = harness.repository.persist(
             candidate(source = "source-wallet"),
@@ -106,7 +106,10 @@ class PaymentCandidateRepositoryInstrumentedTest {
             detectedAt = harness.clock.value,
         )
         val duplicate = harness.repository.persist(
-            candidate(source = "source-bank"),
+            candidate(
+                source = "source-bank",
+                merchant = "NÉGOZIO-DI PROVA.",
+            ),
             "bank-key",
             detectedAt = harness.clock.value + 60_000,
         )

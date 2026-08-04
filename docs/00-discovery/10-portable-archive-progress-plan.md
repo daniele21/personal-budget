@@ -24,7 +24,7 @@ For task lists:
 
 ## Progress Dashboard
 
-Last updated: 2026-07-23
+Last updated: 2026-08-04
 
 | Milestone | Status | Progress note |
 |---|---|---|
@@ -39,6 +39,13 @@ Last updated: 2026-07-23
 | M8. Documentation and release readiness | In progress | Spec, runbook, privacy notes, ADR, testing strategy, changelog, and not-ready release decision recorded; privacy-governance confirmation remains |
 
 Current delivery focus: **M7 real-browser acceptance and M8 governance closure**.
+
+C1 reconciliation: all archive cases in the 2026-08-04 automated baseline pass
+inside the 482/482 regression and cross-browser/PWA runs. The unrelated guided
+tour finding does not change archive behavior. Physical mobile/installed-PWA,
+manual screen-reader, approximately 32 MiB least-capable-device and privacy
+owner gates remain open exactly as recorded below. See
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
 
 ## Approved Decisions
 

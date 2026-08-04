@@ -99,6 +99,29 @@ class PaymentRuleEngineTest {
     }
 
     @Test
+    fun redactedPayPalCorpusMatchesOnlyApprovedCompletedPurchases() {
+        corpus(
+            resourceName = "/paymentdetection/paypal-purchase-v1.fixture",
+            sourceAppId = BundledPaymentRuleCatalog.PAYPAL_SOURCE_APP_ID,
+        ).forEach { fixture ->
+            val result = engine.evaluate(fixture.input())
+
+            assertEquals(fixture.id, fixture.tier, result.tier)
+            when (result) {
+                is PaymentDetectionResult.Candidate -> {
+                    assertEquals(fixture.id, fixture.minorUnits, result.amountMinorUnits)
+                    assertEquals(fixture.id, fixture.merchant, result.merchant)
+                    assertEquals(fixture.id, "EUR", result.currency)
+                    assertEquals(fixture.id, POSTED_AT, result.occurredAtEpochMillis)
+                }
+                is PaymentDetectionResult.Ignored -> {
+                    assertEquals(fixture.id, fixture.ignoredReason, result.reason)
+                }
+            }
+        }
+    }
+
+    @Test
     fun negativeRulesAlwaysWinOverAnExactTemplate() {
         val result = engine.evaluate(
             input(

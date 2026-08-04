@@ -11,4 +11,6 @@ export interface AuthRuntimeState {
   isAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  reauthenticateForAccountDeletion: () => Promise<void>;
+  deleteAuthIdentity: () => Promise<void>;
 }

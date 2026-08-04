@@ -9,8 +9,11 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  assessPaymentDuplicates,
   candidateToReviewForm,
+  EMPTY_PAYMENT_DUPLICATE_ASSESSMENT,
   paymentCandidateToTransaction,
+  type PaymentDuplicateAssessment,
   type PaymentCandidateReviewForm,
 } from '../domain/payment-detection';
 import {
@@ -39,6 +42,7 @@ interface PaymentDetectionContextValue {
   supportedApps: NativeSupportedPaymentApp[];
   candidates: PaymentCandidateReviewDto[];
   selectedCandidate: PaymentCandidateReviewDto | null;
+  selectedCandidateDuplicateAssessment: PaymentDuplicateAssessment;
   selectedCandidateId: string | null;
   busyCandidateId: string | null;
   error: string | null;
@@ -353,6 +357,12 @@ export function PaymentDetectionProvider({
       candidates.find((candidate) => candidate.id === selectedCandidateId) ?? null,
     [candidates, selectedCandidateId],
   );
+  const selectedCandidateDuplicateAssessment = useMemo(
+    () => selectedCandidate
+      ? assessPaymentDuplicates(selectedCandidate, candidates, transactions)
+      : EMPTY_PAYMENT_DUPLICATE_ASSESSMENT,
+    [candidates, selectedCandidate, transactions],
+  );
 
   const value = useMemo<PaymentDetectionContextValue>(() => ({
     availability,
@@ -360,6 +370,7 @@ export function PaymentDetectionProvider({
     supportedApps,
     candidates,
     selectedCandidate,
+    selectedCandidateDuplicateAssessment,
     selectedCandidateId,
     busyCandidateId,
     error,
@@ -378,6 +389,7 @@ export function PaymentDetectionProvider({
     supportedApps,
     candidates,
     selectedCandidate,
+    selectedCandidateDuplicateAssessment,
     selectedCandidateId,
     busyCandidateId,
     error,

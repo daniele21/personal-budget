@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BellRing, ShieldCheck, Trash2, X } from 'lucide-react';
+import { AlertTriangle, BellRing, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   candidateToReviewForm,
@@ -12,6 +12,7 @@ import { useApp } from '../../context/AppContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { usePaymentDetection } from '../../state/PaymentDetectionProvider';
 import { TransactionEditor } from '../transactions/TransactionEditor';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { useToast } from '../Toast';
 
 export function CandidateReview() {
@@ -19,6 +20,7 @@ export function CandidateReview() {
   const { categories, addCategory } = useApp();
   const {
     selectedCandidate,
+    selectedCandidateDuplicateAssessment,
     busyCandidateId,
     selectCandidate,
     confirmCandidate,
@@ -27,6 +29,7 @@ export function CandidateReview() {
   const { toast } = useToast();
   const [form, setForm] = useState<PaymentCandidateReviewForm | null>(null);
   const [errors, setErrors] = useState<PaymentCandidateReviewErrors>({});
+  const [duplicateConfirmationOpen, setDuplicateConfirmationOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const closeReview = () => selectCandidate(null);
@@ -43,10 +46,12 @@ export function CandidateReview() {
     if (!selectedCandidate) {
       setForm(null);
       setErrors({});
+      setDuplicateConfirmationOpen(false);
       return;
     }
     setForm(candidateToReviewForm(selectedCandidate, categories));
     setErrors({});
+    setDuplicateConfirmationOpen(false);
   }, [categories, selectedCandidate]);
 
   const update = <K extends keyof PaymentCandidateReviewForm>(
@@ -57,12 +62,8 @@ export function CandidateReview() {
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
-  const handleConfirm = async () => {
+  const saveCandidate = async () => {
     if (!selectedCandidate || !form) return;
-    const nextErrors = validatePaymentCandidateReview(form);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-
     try {
       await confirmCandidate(selectedCandidate.id, form);
       toast('Transaction saved and payment candidate cleared.', 'success');
@@ -70,6 +71,26 @@ export function CandidateReview() {
     } catch {
       toast('Aura could not finish this payment review.', 'error');
     }
+  };
+
+  const duplicateWarningApplies = Boolean(
+    selectedCandidate &&
+    form &&
+    selectedCandidateDuplicateAssessment.hasPossibleDuplicate &&
+    Math.round(Number(form.amount) * 100) === selectedCandidate.amountMinorUnits &&
+    form.date === candidateToReviewForm(selectedCandidate, categories).date,
+  );
+
+  const handleConfirm = async () => {
+    if (!selectedCandidate || !form) return;
+    const nextErrors = validatePaymentCandidateReview(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+    if (duplicateWarningApplies) {
+      setDuplicateConfirmationOpen(true);
+      return;
+    }
+    await saveCandidate();
   };
 
   if (!selectedCandidate || !form) return null;
@@ -145,17 +166,50 @@ export function CandidateReview() {
           busy={busy}
           stickyBottomClassName="bottom-0"
           context={(
-            <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/8 p-3.5">
-              <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-on-surface">
-                  Check the prefilled details
-                </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
-                  Aura detected these values locally. Saving creates a normal
-                  transaction without notification text, card data, or a
-                  confidence score.
-                </p>
+            <div className="space-y-3">
+              {duplicateWarningApplies && (
+                <div
+                  className="flex items-start gap-3 rounded-2xl border border-tertiary/25 bg-tertiary/8 p-3.5"
+                  role="status"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-tertiary" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-on-surface">
+                      Possible duplicate
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
+                      The same amount may already be represented by another
+                      detected payment or transaction. Aura will not merge it
+                      automatically.
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-on-surface-variant">
+                      {selectedCandidateDuplicateAssessment.relatedCandidates.map((related) => (
+                        <li key={related.id}>
+                          Detected by {related.sourceAppDisplayName}
+                          {related.merchant ? ` · ${related.merchant}` : ''}
+                        </li>
+                      ))}
+                      {selectedCandidateDuplicateAssessment.ledgerTransactions.map((transaction) => (
+                        <li key={transaction.id}>
+                          Existing transaction · {transaction.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/8 p-3.5">
+                <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-on-surface">
+                    Check the prefilled details
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
+                    Aura detected these values locally. Saving creates a normal
+                    transaction without notification text, card data, or a
+                    confidence score.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -185,6 +239,17 @@ export function CandidateReview() {
           )}
         />
       </main>
+      <ConfirmDialog
+        isOpen={duplicateConfirmationOpen}
+        title="Create a possible duplicate?"
+        message="Aura found another detected payment or existing transaction with the same amount and compatible date. Check the details before keeping both."
+        confirmLabel="Create anyway"
+        cancelLabel="Review details"
+        onCancel={() => setDuplicateConfirmationOpen(false)}
+        onConfirm={() => {
+          void saveCandidate();
+        }}
+      />
     </div>
   );
 

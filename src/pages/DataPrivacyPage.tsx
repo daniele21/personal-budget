@@ -354,8 +354,14 @@ export function DataPrivacyPage() {
             onClick={() => setShowResetAllDialog(true)}
             className="w-full min-h-12 px-4 flex items-center justify-center text-tertiary font-headline font-extrabold text-xs border border-dashed border-tertiary/30 rounded-2xl hover:bg-tertiary/5 transition-colors"
           >
-            Delete everything (local data and cloud backup)
+            Delete local data and cloud backup
           </button>
+          <Link
+            to="/account-deletion"
+            className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-tertiary/40 bg-tertiary/5 px-4 text-xs font-headline font-extrabold text-tertiary transition-colors hover:bg-tertiary/10"
+          >
+            Delete Aura account
+          </Link>
         </div>
       </section>
 
@@ -371,9 +377,9 @@ export function DataPrivacyPage() {
 
       <ConfirmDialog
         isOpen={showResetAllDialog}
-        title="Delete all Aura data"
-        message="This permanently deletes all Aura data from this device and the cloud backup. This action cannot be undone."
-        confirmLabel="Delete everything"
+        title="Delete local data and cloud backup"
+        message="This deletes Aura data on this device and all encrypted cloud backup versions, but keeps your sign-in identity. Exported files are not deleted."
+        confirmLabel="Delete managed data"
         variant="danger"
         onConfirm={handleResetAll}
         onCancel={() => setShowResetAllDialog(false)}

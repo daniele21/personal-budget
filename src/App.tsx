@@ -49,6 +49,9 @@ const ReportsPage = lazy(() =>
 const PaymentDetectionPage = lazy(() =>
   import('./pages/PaymentDetectionPage').then(({ PaymentDetectionPage }) => ({ default: PaymentDetectionPage })),
 );
+const AccountDeletionPage = lazy(() =>
+  import('./pages/AccountDeletionPage').then(({ AccountDeletionPage }) => ({ default: AccountDeletionPage })),
+);
 
 function RouteLoading() {
   return (
@@ -113,10 +116,12 @@ export default function App() {
           createTransactionVerified={createTransactionVerified}
         >
           <PlatformRuntimeBridge isLoggedIn={isLoggedIn} />
-          {!isLoggedIn ? (
-            <Login onSignIn={signInWithGoogle} error={authError} />
-          ) : (
-            <Routes>
+          <Routes>
+            <Route path="/account-deletion" element={<Suspense fallback={<RouteLoading />}><AccountDeletionPage /></Suspense>} />
+            {!isLoggedIn ? (
+              <Route path="*" element={<Login onSignIn={signInWithGoogle} error={authError} />} />
+            ) : (
+              <>
               <Route path="/" element={<RoutePage title="Dashboard"><Dashboard /></RoutePage>} />
               <Route path="/transactions" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
               <Route path="/history" element={<RoutePage title="Transactions"><HistoryPage /></RoutePage>} />
@@ -143,8 +148,9 @@ export default function App() {
               {isAdmin && (
                 <Route path="/admin" element={<RoutePage title="Admin"><AdminPage /></RoutePage>} />
               )}
-            </Routes>
-          )}
+              </>
+            )}
+          </Routes>
         </PaymentDetectionProvider>
       </Router>
     </MotionConfig>

@@ -45,7 +45,7 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-07-28
+Ultimo aggiornamento: 2026-08-04
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -60,7 +60,7 @@ Ultimo aggiornamento: 2026-07-28
 | M8. UX React, review e creazione transazione | Completato | Provider separato, setup, backlog, review, acceptance verificata e controlli di cancellazione validati sul Pixel 9 Pro API 36 |
 | M9. Hardening, QA fisica e compliance | Bloccato | Engineering automatico/emulatore completato; release production, device fisici, dependency audit e approvazioni owner restano aperti |
 | M10. Pilot, beta e release progressiva | Bloccato | Runbook e guardrail pronti; attende device fisici, sorgente approvata, signing/Play e privacy/security owner |
-| M11. Chiusura documentale e operativa | Non iniziato | Viaggia con tutti i milestone; chiusura dopo M10 |
+| M11. Chiusura documentale e operativa | In corso | Documenti engineering principali e ADR esistono; approvazioni, regole real-source, release evidence e chiusura post-pilot restano aperte |
 
 Focus corrente: **M9 — hardening, QA fisica e chiusura dei gate privacy/release; le sorgenti reali restano vietate**.
 
@@ -145,8 +145,8 @@ Questi elementi non bloccano M1-M2 né lo spike con sorgente sintetica. Bloccano
 | ID | Elemento | Owner richiesto | Gate | Stato |
 |---|---|---|---|---|
 | B-001 | Verificare controllo namespace e disponibilità Play di `com.staituned.aura` | Product/Release owner | Prima del primo artifact firmato o della registrazione Firebase Android definitiva | Aperto |
-| B-002 | Selezionare e verificare la prima o le prime due app di pagamento | Product owner | Prima di M4 su sorgenti reali | Chiuso: Google Wallet e Intesa Sanpaolo Mobile selezionate; package verificati sui listing ufficiali il 2026-08-03 |
-| B-003 | Approvare fonte, consenso, redazione e retention delle fixture reali | Privacy owner + QA | Prima di acquisire o committare una fixture reale | Chiuso per Intesa e Google Wallet engineering: esempi UI forniti volontariamente dal tester-owner; repository contiene solo template sintetici/redatti senza retention del raw |
+| B-002 | Selezionare e verificare le app di pagamento del pilot engineering | Product owner | Prima di M4 su sorgenti reali | Chiuso: Google Wallet, Intesa Sanpaolo Mobile e PayPal selezionate; package verificati sui listing ufficiali rispettivamente il 2026-08-03 e 2026-08-04 |
+| B-003 | Approvare fonte, consenso, redazione e retention delle fixture reali | Privacy owner + QA | Prima di acquisire o committare una fixture reale | Chiuso per Intesa, Google Wallet e PayPal engineering: esempi UI forniti volontariamente dal tester-owner; repository contiene solo template sintetici/redatti senza retention del raw |
 | B-004 | min/compile/target SDK 36 e matrice Android 16/API 36 | Android owner | Decisione M0 aggiornata in D-113 | Chiuso |
 | B-005 | Attivare Play App Signing, custodire separatamente la upload key e verificare il Play Console account | Release owner | Prima della prima distribuzione interna firmata | Aperto |
 | B-006 | Assegnare privacy owner, validare base giuridica/data inventory ed eseguire screening DPIA | Privacy owner | Prima di M4 su sorgenti reali e prima del pilot | Aperto |
@@ -844,6 +844,9 @@ Task:
 - [x] Implementare upsert per notification key aggiornata.
 - [x] Implementare dedupe semantica entro finestra approvata.
 - [x] Gestire varianti merchant tra wallet e banca senza fondere merchant differenti.
+- [x] Normalizzare case, accenti, punteggiatura e whitespace nel fingerprint forte senza rimuovere parole o prefissi provider.
+- [x] Segnalare in memoria candidati stesso-importo entro cinque minuti e transazioni expense stesso-importo/giorno.
+- [x] Richiedere conferma esplicita `Create anyway` per i match ambigui senza imporre unicità al ledger.
 - [x] Implementare tombstone per accepted/edited/ignored.
 - [x] Implementare stati `pending`, `accepting`, `accepted`, `edited`, `ignored`, `expired`.
 - [x] Implementare acceptance token monouso/idempotente.
@@ -870,6 +873,10 @@ Decisioni operative M6:
   richiede sorgenti differenti e lo stesso merchant normalizzato; senza
   merchant non fonde candidati. La finestra resta modificabile prima delle
   sorgenti reali, sulla base del corpus approvato.
+- I match deboli restano non persistiti e conservativi: la review considera
+  candidati stesso-importo entro cinque minuti e ledger expense
+  stesso-importo/giorno, mostra un avviso e richiede conferma esplicita. Non
+  elimina né accorpa automaticamente operazioni ambigue.
 - Cleanup a ogni scrittura/lista, all'avvio e al resume, più WorkManager
   differibile ogni 24 ore.
 
@@ -1139,31 +1146,34 @@ Exit criteria:
 
 Goal: mantenere documentazione, operations e changelog allineati alla realtà.
 
-Stato: **Non iniziato**
+Stato: **In corso — baseline documentale riconciliata in C1**
 
 Dipendenze: attività cross-cutting; chiusura dopo M10.
 
 Task:
 
-- [ ] Aggiornare project brief.
-- [ ] Aggiornare brainstorm.
-- [ ] Aggiornare solution strategy.
-- [ ] Aggiornare main delivery plan.
-- [ ] Creare e accettare ADR Capacitor.
-- [ ] Creare e accettare ADR acceptance cross-storage.
-- [ ] Creare feature spec user-facing.
-- [ ] Creare Android architecture note.
-- [ ] Creare privacy processing record.
-- [ ] Aggiornare retention e deletion documentation.
-- [ ] Aggiornare Data Safety evidence.
-- [ ] Creare operations/runbook.
-- [ ] Documentare build, signing, release e rollback.
+- [x] Aggiornare project brief.
+- [x] Aggiornare brainstorm.
+- [x] Aggiornare solution strategy.
+- [x] Aggiornare main delivery plan.
+- [x] Creare e accettare ADR Capacitor.
+- [x] Creare e accettare ADR acceptance cross-storage.
+- [x] Creare feature spec user-facing.
+- [x] Creare Android architecture note.
+- [x] Creare privacy processing record engineering; approvazione PrO resta in M9.
+- [x] Aggiornare retention e deletion documentation engineering; approvazione autorevole resta in M9/C6.
+- [x] Aggiornare Data Safety evidence engineering; dichiarazione whole-app finale resta in C6.
+- [x] Creare operations/runbook.
+- [x] Documentare build, signing, release e rollback engineering; Play signing finale resta in C5.
 - [ ] Documentare aggiunta e rimozione di una regola bancaria.
-- [ ] Documentare fixture redaction policy.
-- [ ] Aggiornare testing strategy.
+- [x] Documentare fixture redaction policy engineering; approvazione real-source resta in M9/C6.
+- [x] Aggiornare testing strategy.
 - [ ] Aggiornare `CHANGELOG.md` al rilascio.
 - [ ] Registrare rischi accettati e follow-up.
 - [ ] Registrare evidenza finale lint/test/build/Android QA.
+
+Riconciliazione C1 ed evidenza automatica corrente:
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
 
 Exit criteria:
 
@@ -1473,6 +1483,7 @@ Next: prossima task verificabile
 | 2026-07-28 | M7 | Implementati contratto Capacitor minimizzato, API candidate/settings/acceptance, refresh cold-start/resume, target deep link persistente e notifica Aura privata con Verifica/Ignora | Contract test TypeScript/Kotlin, test spoofing/ID invalidi e 32 instrumentation test verdi su AVD Pixel 9 Pro Android 16/API 36 | Implementare M8 provider/review e transazione canonica; nessuna sorgente reale prima di B-002/B-003/B-006 |
 | 2026-08-03 | Real source pilot | Selezionate Google Wallet e Intesa Sanpaolo Mobile; implementato il connettore Intesa con package visibility finita, template carta fisica/virtuale, negative-rule priority e corpus integralmente sintetico/redatto | `SupportedPaymentAppCatalog`, `intesa-sanpaolo-card-v1.fixture`, unit test Kotlin e security contract React | Eseguire QA fisica Intesa; B-006 e approvazioni release restano aperti |
 | 2026-08-03 | Real source pilot | Implementato il connettore Google Wallet dal formato UI fornito dal tester-owner: esercente nel titolo, importo EUR e carta mascherata nel corpo; corpus integralmente sintetico/redatto e nessuna cattura del nome carta o suffisso | `google-wallet-card-v1.fixture`, unit test Kotlin, selection UI e finite package visibility | Eseguire QA fisica Google Wallet; B-006 e approvazioni release restano aperti |
+| 2026-08-04 | Real source pilot | Implementato il connettore PayPal dal formato notifica fornito dal tester-owner: acquisto completato in EUR, merchant opzionale dal titolo completo, varianti collassate review-only e corpus integralmente sintetico/redatto | `paypal-purchase-v1.fixture`, unit test Kotlin, selection UI e finite package visibility | Eseguire QA fisica PayPal sui campi espansi; B-006 e approvazioni release restano aperti |
 | 2026-07-28 | M8 | Implementati provider, backlog/review e accettazione idempotente nella transazione canonica | 82 file/373 test Vitest, unit/lint/assemble Android, 32 instrumentation e simulazione end-to-end sul Pixel 9 Pro API 36 | Avviare M9 hardening senza abilitare sorgenti reali |
 | 2026-07-28 | M9 | Aggiunti signing release fail-closed, verifier production, aggiornamenti dependency compatibili, fix fixture E2E e draft runbook/QA/Data Safety | 83 file/377 test Vitest, build, Gradle unit/lint, 32 instrumentation Pixel 9 Pro API 36; release correttamente bloccata senza credenziali production | Completare E2E finale, device fisici, audit, signed build e approvazioni owner |
 | 2026-07-28 | M9/M10 | Rafforzati disclosure Play, isolamento rete/log, invalidazione Keystore, errore database e recovery post-reboot; preparato il pilot runbook redatto | 83 file/378 test Vitest, 31 E2E, 34 instrumentation test Pixel 9 Pro API 36 e recovery process/rebind/reboot/revoca verdi; review policy Google ufficiale | Chiudere solo con device fisici, audit/signing production, Play Console e owner privacy/security/release |

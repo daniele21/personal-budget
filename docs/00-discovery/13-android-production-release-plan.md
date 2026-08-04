@@ -24,23 +24,24 @@ notifiche finanziarie reali, una beta con utenti reali o la produzione.
 
 ## Stato Del Programma
 
-Ultimo aggiornamento: 2026-08-03
+Ultimo aggiornamento: 2026-08-04
 
 Decisione corrente: **NO-GO per produzione e per beta real-user**.
 
 La repository dispone di un AAB release firmato, il verificatore di
-configurazione Android passa e la firma dell'artifact e verificabile. L'AAB
-corrente non e pero un release candidate caricabile perche include ancora il
-runtime Gemini client-side, la sorgente sintetica nella package visibility
-production e non soddisfa i gate account deletion, privacy whole-app, QA fisica
-e Play Console.
+configurazione Android passa e la firma dell'artifact e verificabile. C1
+conferma inoltre che runtime, SDK, env e superfici client Gemini sono rimossi e
+che gli asset web/Android non contengono marker del runtime ritirato. L'AAB
+corrente non e ancora un release candidate caricabile perche la sorgente
+sintetica resta nella package visibility production e non sono chiusi account
+deletion, privacy whole-app, QA fisica e Play Console.
 
 ### Dashboard
 
 | Milestone | Stato | Gate principale |
 |---|---|---|
-| P0. Decisioni, owner e account Play | In corso | Decisioni di distribuzione e owner nominativi aperti |
-| P1. Blocker di prodotto, dati e sicurezza | Bloccato | Import deterministico e cancellazione account non completi |
+| P0. Decisioni, owner e account Play | Completato | Decisioni C2 approvate; evidenze Console e backup pre-beta proseguono nei gate successivi |
+| P1. Blocker di prodotto, dati e sicurezza | Bloccato | Runtime Gemini rimosso; acceptance finale import e cancellazione account restano incompleti |
 | P2. Configurazione production e supply chain | In corso | AAB firmato presente; Play App Signing, hardening finale e audit aperti |
 | P3. Feature acceptance whole-app | Bloccato | Dipende da tracker 10, 11 e 12 e dalla matrice fisica |
 | P4. Privacy, compliance e Play declarations | Bloccato | Privacy owner, legal baseline, DPIA e Data Safety aperti |
@@ -51,8 +52,9 @@ e Play Console.
 | P9. Produzione controllata | Bloccato | Dipende dalla beta e dal GO finale |
 | P10. Stabilizzazione e chiusura | Non iniziato | Inizia dopo il primo rollout production |
 
-Focus corrente: **P0 e P1 - chiudere decisioni, rimuovere il runtime Gemini,
-rendere completa la cancellazione account e definire la distribuzione**.
+Focus corrente: **P0 e P1 - chiudere decisioni, completare l'acceptance
+dell'import, rendere completa la cancellazione account e definire la
+distribuzione**.
 
 ## Legenda
 
@@ -103,7 +105,7 @@ nome, data e decisione.
 - Nessuna promessa di conformita legale o certificazione viene pubblicata senza
   approvazione competente.
 
-## Decisioni Che Richiedono Conferma
+## Decisioni Di Release
 
 Queste decisioni bloccano il GO pubblico. Devono essere registrate in questa
 tabella e, quando modificano strategia o architettura, nei documenti/ADR
@@ -111,22 +113,25 @@ applicabili.
 
 | ID | Decisione | Opzioni | Raccomandazione | Owner | Stato |
 |---|---|---|---|---|---|
-| D-REL-001 | Modello di distribuzione | allowlist/closed beta; pubblico self-service; private managed app | Internal e closed beta con allowlist, poi self-service prima della produzione pubblica | PO | Aperta |
-| D-REL-002 | Payment detection nella prima produzione | incluso; beta-only; release core senza listener | Includerlo in produzione solo dopo M9/M10 del tracker 11; nessun uso reale prima | PO/PrO/SO | Aperta |
-| D-REL-003 | Versioni Android supportate | API 36-only; minSdk inferiore con matrice ampliata | API 36-only per pilot; decisione reach basata su Device Catalog prima del pubblico | PO/AO/QO | Aperta |
-| D-REL-004 | Mercati e lingue | Italia; EEA; globale | Italia come primo mercato, con store e supporto in italiano; confermare se l'UI richiede anche localizzazione italiana completa | PO/CO | Aperta |
-| D-REL-005 | Monetizzazione | gratuita; paid download; acquisti/subscription futuri | Gratuita per beta; decidere il modello di lungo periodo prima della prima pubblicazione free | PO | Aperta |
-| D-REL-006 | Account sviluppatore | personale; organizzazione | Verificare classificazione Play per app Finance, identita pubblica e necessita D-U-N-S prima di creare/spostare l'app | PO/RO | Aperta |
-| D-REL-007 | Dominio pubblico | stesso host PWA; sottodominio app; sito separato | Landing/legal pubblica separata dalla shell autenticata, con dominio controllato `staituned.com` | PO/WO/RO | Aperta |
-| D-REL-008 | Supporto operativo | email owner; casella condivisa; form/ticketing | Casella dedicata e monitorata, con backup owner e procedura privacy-safe | SuO/PO | Aperta |
+| D-REL-001 | Modello di distribuzione | allowlist/closed beta; pubblico self-service; private managed app | Internal, poi closed beta allowlisted; pubblico non ancora autorizzato | Daniele Moltisanti (PO) | Approvata 2026-08-04 |
+| D-REL-002 | Payment detection nella prima produzione | incluso; beta-only; release core senza listener | Beta-only; prima produzione core-only senza listener | Daniele Moltisanti (PO/PrO/SO) | Approvata 2026-08-04; ADR 0004 |
+| D-REL-003 | Versioni Android supportate | API 36-only; minSdk inferiore con matrice ampliata | API 36-only per internal/beta; reach pubblica da rivalutare | Daniele Moltisanti (PO/AO/QO) | Approvata 2026-08-04 |
+| D-REL-004 | Mercati e lingue | Italia; Europa; globale | Italia iniziale, inglese, audience 18+; Europa in una fase successiva | Daniele Moltisanti (PO/CO) | Approvata 2026-08-04 |
+| D-REL-005 | Monetizzazione | gratuita; paid download; acquisti/subscription futuri | Gratuita | Daniele Moltisanti (PO) | Approvata 2026-08-04 |
+| D-REL-006 | Account sviluppatore | personale; organizzazione | Personale, nome pubblico Daniele Moltisanti, nessuna societa/P.IVA/D-U-N-S | Daniele Moltisanti (PO/RO) | Approvata; account, verifiche applicabili e package confermati dal proprietario |
+| D-REL-007 | Dominio pubblico | stesso host PWA; sottodominio app; sito separato | `aura.staituned.com`, controllo dominio dichiarato dal PO | Daniele Moltisanti (PO/WO/RO) | Approvata 2026-08-04; DNS/TLS da verificare |
+| D-REL-008 | Supporto operativo | email owner; casella condivisa; form/ticketing | `support@staituned.com`, gestita da Daniele Moltisanti; risposta entro una settimana | Daniele Moltisanti (SuO/PO) | Approvata; rischio single-person accettato per internal, backup obbligatorio pre-beta |
+
+Decision pack e conseguenze:
+[`15-c2-release-decision-pack.md`](./15-c2-release-decision-pack.md).
 
 ## Gate Bloccanti Di Programma
 
 | ID | Gate | Evidenza richiesta | Owner | Stato |
 |---|---|---|---|---|
-| B-REL-001 | Decisioni D-REL-001..008 approvate | Decision log datato | PO | Aperto |
-| B-REL-002 | Owner nominativi assegnati | Tabella ruoli compilata | PO | Aperto |
-| B-REL-003 | Namespace/package Play disponibile e registrato | Screenshot/export Play Console redatto | RO | Aperto |
+| B-REL-001 | Decisioni D-REL-001..008 approvate | Decision log datato | PO | Chiuso 2026-08-04 |
+| B-REL-002 | Owner nominativi assegnati | Tabella ruoli compilata | PO | Chiuso per owner primario; rischio single-person accettato solo per internal |
+| B-REL-003 | Namespace/package Play disponibile e registrato | Screenshot/export Play Console redatto | RO | Confermato dal proprietario; evidenza redatta aperta |
 | B-REL-004 | Play App Signing e upload-key custody attivi | Release record senza segreti | RO/SO | Aperto |
 | B-REL-005 | Import deterministico completo e Gemini rimosso | Exit gate M7 tracker 12 + bundle inspection | WO/SO/QO | Aperto |
 | B-REL-006 | Account deletion completa in-app e via web | Test end-to-end + URL pubblica | WO/PrO/QO | Aperto |
@@ -177,29 +182,35 @@ Dipendenze: nessuna.
 
 ### Checklist
 
-- [ ] `[P0][PO]` Approvare D-REL-001..008 con data e motivazione.
-- [ ] `[P0][PO]` Assegnare PO, AO, WO, QO, SO, PrO, RO, CO e SuO nominativi.
-- [ ] `[P0][RO]` Registrare tipo, owner e data di creazione dell'account Play.
-- [ ] `[P0][RO]` Completare verifica identita, email, telefono, payment profile e
-  device verification applicabile.
-- [ ] `[P0][RO]` Verificare lo stato Android developer verification e la
+- [x] `[P0][PO]` Chiudere D-REL-004 e D-REL-008: Italia iniziale,
+  inglese, audience 18+, supporto entro una settimana e rischio single-person
+  accettato solo per internal; backup obbligatorio pre-beta.
+- [x] `[P0][PO]` Assegnare PO, AO, WO, QO, SO, PrO, RO, CO e SuO nominativi a Daniele Moltisanti; sostituti non assegnati e rischio continuita aperto.
+- [x] `[P0][RO]` Registrare tipo, owner e stato creato dell'account Play,
+  confermati dal proprietario; allegare evidenza redatta al release record C5/C8.
+- [x] `[P0][RO]` Confermare verifica identita, email, telefono, payment profile e
+  device verification applicabile; evidenza redatta resta richiesta in C5/C8.
+- [x] `[P0][RO]` Confermare lo stato Android developer verification e la
   registrazione di `com.staituned.aura`; il requisito Play entra in vigore il
-  2026-09-30 e non va confuso con la sola creazione dell'app in Console.
+  2026-09-30 e non va confuso con la sola creazione dell'app in Console;
+  evidenza redatta resta richiesta in C5/C8.
 - [ ] `[P0][RO]` Verificare se l'account personale richiede closed test con 12
   tester opt-in per 14 giorni prima dell'accesso production.
-- [ ] `[P0][RO]` Verificare disponibilita e registrazione di
-  `com.staituned.aura` prima di caricare artifact non recuperabili con lo stesso
-  package.
-- [ ] `[P0][PO]` Confermare nome pubblico developer/app e coerenza con dominio,
-  privacy policy e account legale.
-- [ ] `[P0][RO]` Confermare controllo e accesso di recovery al dominio
+- [x] `[P0][RO]` Confermare disponibilita e registrazione di
+  `com.staituned.aura`; acquisire evidenza Console prima della promozione.
+- [x] `[P0][PO]` Confermare nome pubblico developer Daniele Moltisanti e dominio
+  `aura.staituned.com`; nome finale app e coerenza con privacy policy restano da
+  verificare prima del listing.
+- [x] `[P0][RO]` Confermare controllo del dominio; accesso di recovery resta da
+  registrare nel release record privato per
   `staituned.com`.
-- [ ] `[P0][PO]` Congelare paesi iniziali, fascia di eta/target audience, lingue
-  e pricing.
-- [ ] `[P0][PO]` Congelare lo scope della prima beta e della prima produzione:
-  core, archive, import e payment detection.
-- [ ] `[P0][SuO]` Definire canale supporto, backup owner, orari/SLA interni e
-  percorso escalation privacy/security.
+- [x] `[P0][PO]` Congelare Italia come paese iniziale, audience 18+, inglese e
+  pricing gratuito; espansione europea soggetta a decisione successiva.
+- [x] `[P0][PO]` Congelare lo scope: internal/closed beta allowlisted con
+  detection beta-only dopo i gate; prima produzione core-only senza listener.
+- [x] `[P0][SuO]` Usare `support@staituned.com`, gestita da Daniele Moltisanti,
+  con risposta entro una settimana; rischio single-person accettato per
+  Internal Testing e backup owner obbligatorio prima della closed beta.
 - [ ] `[P0][RO]` Aprire un release record con versione prevista, owner, scope,
   branch/commit, target date interna e link alle evidenze.
 
@@ -221,44 +232,51 @@ Dipendenze: P0 per access model e scope pubblico.
 
 - [ ] `[P0][WO]` Completare M1-M7 del
   [`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md).
-- [ ] `[P0][WO]` Rimuovere `@google/genai` dal runtime production e dal bundle.
-- [ ] `[P0][WO]` Rimuovere `VITE_GEMINI_API_KEY` da build, CI, docs operative e
+- [x] `[P0][WO]` Rimuovere `@google/genai` dal runtime production e dal bundle.
+- [x] `[P0][WO]` Rimuovere `VITE_GEMINI_API_KEY` da build, CI, docs operative e
   superfici admin.
-- [ ] `[P0][WO]` Rimuovere `geminiConfig` e `geminiUsage` dal percorso applicativo
-  e definire retention/deletion dei record storici esistenti.
-- [ ] `[P0][SO]` Aggiungere una verifica che fallisce se l'AAB contiene il client
+- [x] `[P0][WO]` Rimuovere `geminiConfig` e `geminiUsage` dal percorso
+  applicativo. Retention/deletion dei record Firestore storici resta una task
+  separata C6 e non autorizza cancellazioni remote implicite.
+- [x] `[P0][SO]` Aggiungere una verifica che fallisce se l'AAB contiene il client
   Gemini, endpoint Gemini o marker di chiave AI.
-- [ ] `[P0][QO]` Provare che CSV/XLSX e `.aura` non eseguano richieste Gemini.
+- [x] `[P0][QO]` Provare automaticamente che CSV/XLSX e `.aura` non eseguano
+  richieste Gemini.
 - [ ] `[P0][QO]` Verificare import locale su PWA e WebView Android con file
-  validi, invalidi, grandi e malevoli.
+  validi, invalidi, grandi e malevoli; automazione, 20.000 righe e WebView sono
+  verdi, mentre picker Android e screen reader manuale restano aperti.
 - [ ] `[P1][PrO]` Aggiornare data inventory, privacy e Data Safety rimuovendo il
   flusso AI soltanto dopo l'effettiva rimozione production.
 
 ### P1B. Account E Data Deletion
 
-- [ ] `[P0][PrO]` Definire cosa costituisce l'account Aura e quali dati sono
+- [x] `[P0][PrO]` Definire cosa costituisce l'account Aura e quali dati sono
   associati a Firebase UID/email.
-- [ ] `[P0][WO]` Implementare `Delete Aura account` separato da `Delete local
+- [x] `[P0][WO]` Implementare `Delete Aura account` separato da `Delete local
   data`.
-- [ ] `[P0][WO]` Richiedere reautenticazione recente prima della cancellazione
+- [x] `[P0][WO]` Richiedere reautenticazione recente prima della cancellazione
   Firebase Auth.
 - [ ] `[P0][WO]` Eliminare o rendere anonimi, secondo decisione approvata:
   backup Firestore, dati di usage legacy, allowlist/hash email applicabile e
   configurazioni user-scoped.
-- [ ] `[P0][AO]` Eliminare database, preferenze, tombstone, journal e chiavi
+- [x] `[P0][AO]` Collegare database, preferenze, tombstone, journal e chiavi
   Android native applicabili.
-- [ ] `[P0][WO]` Eliminare dati locali, IndexedDB, attachment e cache gestite.
-- [ ] `[P0][WO]` Rendere il workflow idempotente, recuperabile e fail-closed in
+- [x] `[P0][WO]` Eliminare dati locali e namespace IndexedDB/attachment gestiti;
+  la cache applicativa contiene solo shell statica, non dati account.
+- [x] `[P0][WO]` Rendere il workflow idempotente, retryable e fail-closed in
   caso di errore parziale.
-- [ ] `[P0][WO]` Non mostrare successo se Firebase Auth o una superficie remota
+- [x] `[P0][WO]` Non mostrare successo se Firebase Auth o una superficie remota
   prevista non e stata eliminata.
-- [ ] `[P0][PrO]` Documentare dati eventualmente trattenuti, motivo e durata.
-- [ ] `[P0][WO]` Esporre nell'app un link alla risorsa web di account deletion.
-- [ ] `[P0][SuO]` Preparare un percorso per utenti che non possono accedere o
-  hanno gia disinstallato l'app, con verifica identita proporzionata.
+- [x] `[P0][PrO]` Documentare dati trattenuti/residui; durata allowlist e legacy
+  resta una decisione C6 aperta.
+- [x] `[P0][WO]` Esporre nell'app un link alla risorsa web di account deletion.
+- [ ] `[P0][SuO]` Completare il percorso per utenti che non possono accedere o
+  hanno gia disinstallato l'app: pagina pubblica, sign-in e support handoff sono
+  implementati; intake manuale, verifica identita e retention ticket restano
+  aperti.
 - [ ] `[P0][QO]` Coprire cancellazione online, offline, retry, account switch,
   reauth fallita e doppio tap.
-- [ ] `[P0][QO]` Verificare che copie `.aura` gia esportate restino esplicitamente
+- [x] `[P0][QO]` Verificare nel contratto e nella UI che copie `.aura` gia esportate restino esplicitamente
   fuori dal controllo Aura.
 
 ### P1C. Accesso E Onboarding
@@ -878,6 +896,24 @@ alert Firebase/hosting e owner dei costi. L'introduzione futura di AI, analytics
 remote config o backend usage-based richiede una nuova review FinOps e la
 valutazione di visibilita per feature/provider.
 
+## C1 Evidence Index — 2026-08-04
+
+Baseline canonica:
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
+
+| ID | Owner | Commit/target | Esito | Gate residuo |
+|---|---|---|---|---|
+| EV-C1-001/002 | WO/SO | `8684652`, web + Android assets | 482/482, build e Gemini scan verdi | Nessuno per runtime Gemini |
+| EV-C1-003/004 | QO/WO | `8684652`, Playwright | Full 47/48; rerun guided tour 2/2 | F-C1-001 resta aperto fino a stabilita full-suite |
+| EV-C1-005/006 | AO | `8684652`, Gradle debug | Unit test e lint verdi | Warning Gradle/flatDir in C5 |
+| EV-C1-007 | AO/QO | `8684652`, `aura_api_36` API 36 | 34/34 instrumentation verdi | Device fisici stock/OEM restano C4 |
+
+### Backlog Non Bloccante Separato
+
+Package npm `react-example`, `express` inutilizzato, ottimizzazione chunk e
+migrazione category ID restano follow-up tecnici. Non sono P0 di release salvo
+nuova evidenza di reachability, sicurezza o regressione critica.
+
 ## Artifact E Documenti Da Produrre
 
 - [ ] `docs/specs/android-public-distribution.md`
@@ -970,3 +1006,6 @@ milestone `Completato` senza exit gate ed evidenze.
 | 2026-08-03 | P1 | Registrata la rimozione Gemini come dipendenza approvata | Tracker 12 e target architecture no-AI |
 | 2026-08-03 | P2 | Baseline artifact verificata | AAB firmato presente; release readiness e firma locali passano |
 | 2026-08-03 | P2 | Audit production aggiornato | 6 vulnerabilita npm: 3 high, 2 moderate, 1 low; remediation/risk acceptance aperta |
+| 2026-08-04 | C1/P1 | Baseline e tracker riconciliati | 482/482, build, Gemini scan, Android unit/lint e 34/34 instrumentation verdi; full E2E 47/48 con F-C1-001 intermittente |
+| 2026-08-04 | C2/P0 | Direzione release preliminare approvata | Internal -> closed beta allowlisted; detection beta-only; API 36; gratuita; account personale; `aura.staituned.com`; `support@staituned.com`; mercato e condizioni operative finalizzati nella voce successiva |
+| 2026-08-04 | C2/P0 | C2 completata | Italia iniziale, inglese, 18+, Play/account/package confermati, supporto entro una settimana; rischio single-person accettato solo per internal |

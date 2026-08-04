@@ -29,6 +29,19 @@ const mocks = vi.hoisted(() => ({
   ignoreCandidate: vi.fn(),
   selectCandidate: vi.fn(),
   toast: vi.fn(),
+  duplicateAssessment: {
+    relatedCandidates: [] as Array<{
+      id: string;
+      merchant?: string;
+      sourceAppDisplayName: string;
+    }>,
+    ledgerTransactions: [] as Array<{
+      id: string;
+      title: string;
+      date: string;
+    }>,
+    hasPossibleDuplicate: false,
+  },
 }));
 
 vi.mock('../../../context/AppContext', () => ({
@@ -41,6 +54,7 @@ vi.mock('../../../context/AppContext', () => ({
 vi.mock('../../../state/PaymentDetectionProvider', () => ({
   usePaymentDetection: () => ({
     selectedCandidate: candidate,
+    selectedCandidateDuplicateAssessment: mocks.duplicateAssessment,
     busyCandidateId: null,
     selectCandidate: mocks.selectCandidate,
     confirmCandidate: mocks.confirmCandidate,
@@ -58,6 +72,9 @@ describe('CandidateReview', () => {
     mocks.confirmCandidate.mockResolvedValue({
       id: '123e4567-e89b-42d3-a456-426614174000',
     });
+    mocks.duplicateAssessment.relatedCandidates = [];
+    mocks.duplicateAssessment.ledgerTransactions = [];
+    mocks.duplicateAssessment.hasPossibleDuplicate = false;
   });
 
   it('reuses the canonical transaction editor and saves edited fields', async () => {
@@ -169,5 +186,39 @@ describe('CandidateReview', () => {
     expect(await screen.findByText('Enter a title for this transaction.')).toBeInTheDocument();
     expect(screen.getByText('Select a category.')).toBeInTheDocument();
     expect(mocks.confirmCandidate).not.toHaveBeenCalled();
+  });
+
+  it('requires explicit confirmation before creating a possible duplicate', async () => {
+    mocks.duplicateAssessment.relatedCandidates = [{
+      id: 'ZyXwVuTsRqPoNmLkJiHgFeDc',
+      merchant: 'Local shop',
+      sourceAppDisplayName: 'PayPal',
+    }];
+    mocks.duplicateAssessment.hasPossibleDuplicate = true;
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <CandidateReview />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Possible duplicate')).toBeInTheDocument();
+    expect(screen.getByText(/Detected by PayPal/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', {
+      name: 'Category: not selected. Choose category. Required',
+    }));
+    await user.click(screen.getByRole('option', { name: 'Groceries' }));
+    await user.click(screen.getByRole('button', { name: 'Save transaction' }));
+
+    expect(screen.getByRole('dialog', {
+      name: 'Create a possible duplicate?',
+    })).toBeInTheDocument();
+    expect(mocks.confirmCandidate).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Create anyway' }));
+
+    await vi.waitFor(() => {
+      expect(mocks.confirmCandidate).toHaveBeenCalledOnce();
+    });
   });
 });

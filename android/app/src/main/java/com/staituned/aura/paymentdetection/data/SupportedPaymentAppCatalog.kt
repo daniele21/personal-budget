@@ -39,6 +39,12 @@ internal object SupportedPaymentAppCatalog {
             displayName = "Google Wallet",
             syntheticOnly = false,
         ),
+        SupportedPaymentApp(
+            id = "paypal",
+            packageName = "com.paypal.android.p2pmobile",
+            displayName = "PayPal",
+            syntheticOnly = false,
+        ),
     )
 
     fun findByPackageName(packageName: String): SupportedPaymentApp? =

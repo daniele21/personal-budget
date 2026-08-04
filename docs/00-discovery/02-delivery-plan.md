@@ -200,9 +200,24 @@ Whole-app publication readiness, including product scope, Play Console,
 production configuration, privacy/Data Safety, account deletion, landing/store
 assets, physical QA, beta, rollout and rollback, is governed by
 [`13-android-production-release-plan.md`](./13-android-production-release-plan.md).
+The cross-tracker execution sequence for the eight remaining readiness
+priorities, including tracker reconciliation, decision closure, account
+deletion, consolidated QA, supply chain, privacy/compliance, public surfaces and
+controlled rollout, is maintained in
+[`14-consolidated-production-readiness-plan.md`](./14-consolidated-production-readiness-plan.md).
 The accepted runtime and idempotent acceptance decisions are
 [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and
 [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
+The approved C2 release direction and beta-only payment-detection boundary are
+recorded in
+[`15-c2-release-decision-pack.md`](./15-c2-release-decision-pack.md) and
+[`ADR 0004`](../../adr/0004-aura-payment-detection-beta-only-release.md).
+
+C3 now has an implemented account-deletion boundary and public entrypoint,
+specified in [`account-deletion-v1.md`](../specs/account-deletion-v1.md) and
+[`ADR 0005`](../../adr/0005-aura-account-deletion-orchestration.md). Remaining
+release gates are allowlist/legacy retention, authorized support handling,
+Firebase emulator evidence and physical Android lifecycle evidence.
 
 Current engineering baseline:
 
@@ -354,18 +369,18 @@ The current UX simplification milestones M0-M9 are defined and tracked in [`08-u
 9. Mobile PWA install action: browser install event handling, iOS manual add-to-home-screen guidance, standalone suppression, and later relocation from the header to More.
 10. Verification and documentation sync: typecheck, unit tests, production build, strategy and delivery docs.
 
-## Planned Initiative: Deterministic Transaction Import V1
+## Implemented, Release-Gated Initiative: Deterministic Transaction Import V1
 
-The approved target replaces the current generic Gemini-assisted CSV/XLSX
+The implemented flow replaces the former generic Gemini-assisted CSV/XLSX
 wizard with a local-only import using fixed `date`, `description`, and `amount`
-columns. It adds deterministic validation, review, manual batch category
+columns. It provides deterministic validation, review, manual batch category
 assignment, conservative same-description propagation, duplicate warnings,
 verified persistence, and post-import correction of `Uncategorized` rows.
 
 The initiative preserves the canonical `Transaction` and `AppData` schemas,
-keeps `.aura` and Aura CSV legacy classification separate, and removes the
-runtime Gemini dependency and related client/admin configuration only after the
-local path is complete. No automatic duplicate deletion, persistent
+keeps `.aura` and Aura CSV legacy classification separate. The local path is
+complete and the runtime Gemini dependency and related client/admin
+configuration are removed. No automatic duplicate deletion, persistent
 merchant-category rule, arbitrary column mapping, AI categorization, backend,
 provider or admin visibility is included in V1.
 
@@ -379,8 +394,12 @@ unchanged, and the repeated full regression passes 87 files and 411/411 tests.
 M1-M5 are complete. M5 removes the Google GenAI dependency/runtime, client-key
 configuration and admin surfaces, synchronizes clean Android web assets, and
 adds structural/cache/artifact-retirement gates. The current baseline is
-472/472 Vitest tests plus 2/2 Chromium import E2E. The broader cross-browser,
-mobile, error-injection and accessibility matrix remains in M6.
+482/482 Vitest tests, a production build, a clean Gemini artifact scan, Android
+unit/lint and 34/34 API 36 instrumentation tests. The C1 full Playwright run is
+47/48 because one guided-tour geometry assertion failed intermittently and then
+passed 2/2 in a targeted Chromium rerun. Manual Android picker, screen-reader
+and final release evidence remain in M6-M7. The dated baseline is
+[`c1-baseline-2026-08-04.md`](../07-qa/c1-baseline-2026-08-04.md).
 Milestones M0-M7, dependencies, quality gates,
 privacy/security work, AI retirement, FinOps assessment, rollback and done
 criteria are maintained in

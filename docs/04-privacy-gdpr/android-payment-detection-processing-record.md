@@ -88,6 +88,17 @@ The possibility of incidental third-party data strengthens the requirement to ex
 
 After confirmation, Aura stores a normal transaction with user-reviewed values and a normal UUID. It does not retain bank package, candidate ID, rule, fingerprint, or notification text in the ledger.
 
+### Possible-duplicate review
+
+While the review editor is open, Aura compares the selected candidate in
+memory with the already-minimized pending candidates and the user's local
+canonical transactions. The comparison uses operation type, amount, currency,
+bounded notification time, local calendar date, and existing merchant/title
+values. It produces only transient related-item references for the current UI;
+no duplicate group, confidence value, provider relationship, or ledger
+provenance is persisted, logged, exported, backed up, or sent over the network.
+The user must explicitly confirm before keeping a possible duplicate.
+
 ### Explicitly Excluded
 
 - OTP;
@@ -248,6 +259,28 @@ configuration, or new retention. Physical-device QA must validate additional
 locale and notification-layout variants before expanding the rule. B-006 and
 the existing security, privacy, disclosure, and production gates remain open;
 this engineering record is not legal certification.
+
+### PayPal engineering connector — 2026-08-04
+
+The tester-owner voluntarily supplied one PayPal notification screenshot. It
+was used only to derive a generalized, anchored completed-purchase template.
+The repository contains only synthetic merchant and amount values; the
+screenshot and its raw financial value are not copied into source or test
+fixtures. Package visibility is limited to the explicit official PayPal
+package verified against its Google Play listing.
+
+The connector extracts the EUR amount from the completed-payment body and the
+merchant only when the full purchase title exposes it. Collapsed or missing
+titles remain review-only and do not infer a merchant. Declined, cancelled,
+transfer, promotion, unsupported-currency, and unrelated PayPal notifications
+are rejected by deterministic tests.
+
+This adds no processor relationship with PayPal, network path, analytics,
+telemetry, remote configuration, or new retention. Physical-device QA must
+validate the expanded Android notification fields and additional locale or
+layout variants before expanding the rule. B-006 and the existing security,
+privacy, disclosure, and production gates remain open; this engineering record
+is not legal certification.
 
 Implemented in M9 engineering hardening:
 

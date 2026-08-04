@@ -63,6 +63,8 @@ interface AppState {
   // Compatible Auth actions
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  reauthenticateForAccountDeletion: () => Promise<void>;
+  deleteAuthIdentity: () => Promise<void>;
 
   // Compatible Actions
   addTransaction: (tx: Transaction) => void;
@@ -106,7 +108,17 @@ const LegacyAppContext = createContext<AppState | null>(null);
 // ─── Dialogs and Facade Orchestration ─────────────────────────────────
 
 const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
-  const { user, authLoading, authError, isAdmin, isLoggedIn, signInWithGoogle, signOut } = useAuth();
+  const {
+    user,
+    authLoading,
+    authError,
+    isAdmin,
+    isLoggedIn,
+    signInWithGoogle,
+    signOut,
+    reauthenticateForAccountDeletion,
+    deleteAuthIdentity,
+  } = useAuth();
   const {
     isDarkMode,
     setIsDarkMode,
@@ -263,6 +275,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
 
     signInWithGoogle,
     signOut,
+    reauthenticateForAccountDeletion,
+    deleteAuthIdentity,
 
     addTransaction,
     createTransactionVerified,
@@ -331,6 +345,8 @@ const MainAppWrapper = ({ children }: { children: React.ReactNode }) => {
     setAnalyticsLens,
     signInWithGoogle,
     signOut,
+    reauthenticateForAccountDeletion,
+    deleteAuthIdentity,
     addTransaction,
     createTransactionVerified,
     commitPreparedTransactionImport,

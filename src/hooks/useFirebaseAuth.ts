@@ -11,7 +11,10 @@ import {
   signInWithCredential,
   signInWithPopup,
   signOut as firebaseSignOut,
+  deleteUser,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
@@ -169,5 +172,42 @@ export function useFirebaseAuth(): AuthRuntimeState {
     }
   }, []);
 
-  return { user, loading, error, isAdmin: adminFlag, signInWithGoogle, signOut };
+  const reauthenticateForAccountDeletion = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No authenticated account is available.');
+
+    if (getPlatformCapabilities().platform === 'android') {
+      const result = await NativeGoogleAuth.signIn();
+      if (!result.idToken.trim()) throw new Error('Google reauthentication returned an empty credential.');
+      await reauthenticateWithCredential(
+        currentUser,
+        GoogleAuthProvider.credential(result.idToken),
+      );
+      return;
+    }
+
+    await reauthenticateWithPopup(currentUser, googleProvider);
+  }, []);
+
+  const deleteAuthIdentity = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No authenticated account is available.');
+    await deleteUser(currentUser);
+    if (getPlatformCapabilities().platform === 'android') {
+      await NativeGoogleAuth.signOut().catch(() => undefined);
+    }
+    setUser(null);
+    setAdminFlag(false);
+  }, []);
+
+  return {
+    user,
+    loading,
+    error,
+    isAdmin: adminFlag,
+    signInWithGoogle,
+    signOut,
+    reauthenticateForAccountDeletion,
+    deleteAuthIdentity,
+  };
 }

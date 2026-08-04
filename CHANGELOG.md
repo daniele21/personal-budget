@@ -4,6 +4,22 @@
 
 ### Added
 
+- Added conservative payment duplicate handling: stronger merchant
+  normalization for exact cross-source suppression, transient warnings for
+  same-amount nearby candidates and same-day ledger expenses, and an explicit
+  `Create anyway` gate without adding ledger uniqueness or persisted provenance.
+- Added a PayPal engineering connector using the official finite package
+  visibility entry, an anchored completed-purchase EUR template, review-only
+  handling for collapsed titles, and a synthetic/redacted deterministic corpus.
+  Merchant data is extracted only from a full title and no raw screenshot value
+  is retained.
+- Added the C3 account-deletion boundary: public `/account-deletion` entrypoint,
+  explicit recent Google reauthentication, ordered deletion of encrypted cloud
+  backup, Android payment data, finite browser storage and Firebase Auth, typed
+  fail-closed progress, retry guidance, and engineering/privacy records. The
+  allowlist retention/backend decision and physical/emulator evidence remain
+  pre-beta gates.
+
 - Added the M1 deterministic transaction-import foundation: local incremental
   CSV parsing, bounded XLSX ZIP preflight, typed structural validation, strict
   archive/legacy/V1 classification, and matching CSV/XLSX template builders.
