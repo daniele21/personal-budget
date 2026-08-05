@@ -26,7 +26,7 @@ import {
   type NativePaymentDetectionStatus,
   type NativeSupportedPaymentApp,
   type PaymentCandidateReviewDto,
-} from '../platform/paymentDetection';
+} from '@payment-detection-runtime';
 import { subscribeAppResumed } from '../platform/appRuntimeService';
 import type { Transaction } from '../types';
 

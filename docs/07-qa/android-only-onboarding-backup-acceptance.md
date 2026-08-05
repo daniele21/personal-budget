@@ -13,7 +13,7 @@ NO-GO pending the manual and governance gates below.
 | First-run mobile and axe | Pass | one modal, required budget, persistence, no overflow, no serious/critical axe findings |
 | Contextual tours | Pass | no auto-start, bounded manual tour, complete/dismiss distinction |
 | Backup x5 | Pass, unit/static rules | cap, legacy migration, corruption fallback, exact restore, full indexed deletion |
-| Public portal build | Pass | separate `portal-dist` artifact with landing/privacy/support/deletion routes |
+| Public portal build | Pass | separate `portal-dist` artifact with responsive landing/privacy/support/deletion routes; real Aura screens cover Actual/Net safe-to-spend, budget status, 12-month category trend, month comparison and the local payment-review queue; payment candidates are synthetic and the adapter is local-serve only; desktop/mobile visual QA, no horizontal overflow and zero serious/critical axe findings |
 | Android JVM | Pass | `npm run android:test` |
 | Android lint | Pass | `npm run android:lint` |
 | Android debug bundle | Pass | assemble phase of `npm run android:verify:webview` |

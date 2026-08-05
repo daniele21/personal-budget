@@ -8,6 +8,8 @@
     "dev:e2e": "vite --mode=e2e",
     "build": "vite build",
     "build:portal": "vite build --config vite.portal.config.ts",
+    "capture:landing-screens": "node scripts/capture-landing-app-screenshots.mjs",
+    "preview:portal": "vite preview --config vite.portal.config.ts --host 127.0.0.1 --port 4174 --strictPort",
     "build:android:debug": "node --import tsx scripts/build-android-debug.ts",
     "android:assemble:debug": "npm run android:sync:debug && bash scripts/run-android-gradle.sh assembleDebug",
     "android:bundle:release": "bash scripts/build-android-release.sh build",

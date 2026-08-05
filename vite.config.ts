@@ -5,10 +5,12 @@ import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { resolveAuthRuntime } from './vite.auth-runtime';
 import { createAndroidDebugEnvOverrides } from './vite.android-runtime';
+import { resolvePaymentDetectionRuntime } from './vite.payment-detection-runtime';
 
 export default defineConfig(({ mode, command }) => {
   const isE2EMode = mode === 'e2e';
   const authRuntime = resolveAuthRuntime(mode, command);
+  const paymentDetectionRuntime = resolvePaymentDetectionRuntime(mode, command);
   const environment = loadEnv(mode, process.cwd(), '');
   createAndroidDebugEnvOverrides(mode, environment);
 
@@ -26,6 +28,7 @@ export default defineConfig(({ mode, command }) => {
       dedupe: ['react', 'react-dom'],
       alias: {
         '@auth-runtime': path.resolve(__dirname, authRuntime),
+        '@payment-detection-runtime': path.resolve(__dirname, paymentDetectionRuntime),
         '@': path.resolve(__dirname, '.'),
       },
     },

@@ -19,6 +19,9 @@
       "@auth-runtime": [
         "./src/hooks/useFirebaseAuth.ts"
       ],
+      "@payment-detection-runtime": [
+        "./src/runtime/paymentDetectionRuntime.ts"
+      ],
       "@/*": [
         "./*"
       ]

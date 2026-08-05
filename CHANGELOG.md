@@ -176,6 +176,22 @@
 
 ### Changed
 
+- Rebuilt the public Aura portal as a complete responsive product landing page
+  with a branded hero, Android product preview, clear privacy narrative,
+  dedicated support/privacy surfaces and accessible mobile navigation. Portal
+  builds now load Firebase configuration from the repository root, fail closed
+  when required values are absent and use a dedicated production-like preview
+  command.
+- Added an interactive analytics walkthrough to the public landing using
+  screenshots captured from Aura's real mobile runtime with synthetic demo
+  data. Four concrete Daniele use cases explain `Actual` versus `Net of extras`
+  safe-to-spend, category-budget status, a twelve-month category trend and
+  month-over-month comparison. Desktop uses a bounded screenshot viewport that
+  matches the adjacent story height, with the full capture available on demand.
+- Added a public payment-detection walkthrough backed by the real Aura review
+  queue UI. A serve-only E2E adapter supplies synthetic Intesa Sanpaolo Mobile,
+  Google Wallet and PayPal candidates for privacy-safe screenshots and is
+  explicitly forbidden from E2E production builds.
 - Retired public PWA installation, manifest, service worker and browser
   notification delivery. Startup now performs a scoped best-effort cleanup of
   legacy Aura service-worker registrations and caches.
