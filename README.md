@@ -170,7 +170,7 @@ For the operational baseline, read [privacy notes](docs/04-privacy-gdpr/privacy-
 
 ## How it works
 
-![Aura Finance architecture diagram](docs/assets/aura-architecture.svg)
+![Aura Finance current architecture: product entry points, shared financial domain, local data, optional Firebase boundary, Android payment detection, and privacy invariants](docs/assets/aura-current-architecture.png)
 
 Aura uses one canonical financial domain with platform-specific boundaries around it:
 
