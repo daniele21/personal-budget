@@ -1,371 +1,311 @@
-# Aura Finance
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./public/aura-logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./public/aura-logo-light.png">
+    <img src="./public/aura-logo-light.png" alt="Aura Finance" width="640">
+  </picture>
+</p>
 
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=fff)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=fff)](https://vite.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwindcss&logoColor=fff)](https://tailwindcss.com/)
-[![Firebase](https://img.shields.io/badge/Firebase-auth_%2B_backup-FFCA28?logo=firebase&logoColor=111)](https://firebase.google.com/)
-[![PWA](https://img.shields.io/badge/PWA-mobile--first-5A0FC8)](https://web.dev/explore/progressive-web-apps)
-[![Privacy](https://img.shields.io/badge/privacy-local--first-0F766E)](#privacy-and-security)
+<h1 align="center">Aura Finance</h1>
 
-Aura Finance is a mobile-first Progressive Web App for managing personal budgets, expenses, income, recurring payments, savings goals, and financial reports without giving up control of personal data.
+<p align="center">
+  <strong>Private, Android-first personal finance</strong><br>
+  Understand what you can spend, where your money goes, and what needs attention—without making a cloud backend the owner of your financial history.
+</p>
 
-The project is built around one clear principle: financial data stays in the user's browser first. Cloud storage exists only as an optional encrypted backup, enabled explicitly by the user. Admin access is limited to allowlist management and does not expose personal financial records.
+<p align="center">
+  <a href="#why-this-exists">Why</a> ·
+  <a href="#values-and-opportunities">Value</a> ·
+  <a href="#what-aura-does">Capabilities</a> ·
+  <a href="#mobile-product-walkthrough">Screens</a> ·
+  <a href="#privacy-and-data-lifecycle">Privacy</a> ·
+  <a href="#how-it-works">Architecture</a> ·
+  <a href="#run-it">Run it</a> ·
+  <a href="#evidence-and-maturity">Status</a>
+</p>
 
-## Mission
+<p align="center">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111">
+  <img alt="TypeScript 5.8" src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=fff">
+  <img alt="Capacitor 8" src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=fff">
+  <img alt="Android API 36" src="https://img.shields.io/badge/Android-API%2036-3DDC84?logo=android&logoColor=fff">
+  <img alt="Privacy local-first" src="https://img.shields.io/badge/privacy-local--first-0F766E">
+</p>
 
-Help people quickly understand how much they can spend, where their money is going, and which recurring commitments are coming up, while keeping a concrete privacy-first posture.
+## Why this exists
 
-Aura Finance prioritizes:
+Personal finance software should help a person make everyday decisions without requiring their complete financial history to live in an application backend.
 
-- local data and explicit user control;
-- reliable financial numbers for everyday decisions;
-- a fast, readable mobile-first interface for frequent use;
-- useful reports without sending data to external services;
-- simple, testable, and maintainable architecture.
+Aura Finance is built around a narrower, deliberate promise: record and understand income, expenses, budgets, recurring commitments, and savings goals locally; make backup optional and encrypted; keep every imported or detected transaction under explicit user control.
 
-## Problem It Solves
+The product answers three practical questions:
 
-Many budgeting apps are too complex, require cloud accounts, integrate bank data, or treat privacy as a generic promise. Aura Finance focuses on a more restrained use case: a person wants to record income and expenses, track budgets and recurring payments, read clear reports, and optionally keep an encrypted backup without handing their full financial history to an application backend.
+- **What can I safely spend?** Aura combines the current budget, recorded spending, and remaining days into a direct monthly signal.
+- **Where is my money going?** Local reports expose category totals, trends, period comparisons, and exceptional spending.
+- **What needs review?** Budget alerts, recurring items, imports, and Android payment candidates remain visible until the user decides what belongs in the ledger.
 
-## Core Features
+Aura does not provide financial advice, connect to bank accounts, or use AI to categorize transactions. Its financial calculations and current import workflow are deterministic and local.
 
-- Dashboard with total balance, income, expenses, safe-to-spend, and spending summary.
-- Transaction management with categories, date, payment method, notes, and local attachments.
-- History with search, filters, editing, deletion, and financial trajectory.
-- Category budgets with progress state and in-app alerts.
-- Recurring payments with daily, weekly, monthly, and yearly frequencies.
-- Calendar view for transactions and recurring items.
-- Reports, period comparison, and year-in-review calculated locally.
-- Global search across transactions, recurring items, budgets, goals, and categories.
-- Savings goals and category management with archiving to preserve historical meaning.
-- CSV import/export for data portability.
-- Local notifications and reminders through the browser and service worker.
-- Light/dark theme, installable PWA, and mobile-first design.
-- Google sign-in with Firebase Authentication.
-- Optional encrypted Firestore backup for cross-device restore.
-- Admin panel limited to user allowlist management.
-- First-run flow with a choice between restoring a found backup, using local demo data, or starting from scratch.
+## Values and opportunities
 
-## Functional Preview
+| Value | What it means in Aura | Opportunity it creates |
+| --- | --- | --- |
+| **Local-first ownership** | Transactions, budgets, reports, preferences, and attachments live on the device first | Useful financial software with a smaller default data-exposure surface |
+| **Human-reviewed automation** | Imports and detected payments are proposals until the user confirms them | Faster capture without silent or irreversible ledger changes |
+| **Explainable numbers** | Safe-to-spend, pace, totals, and comparisons come from deterministic domain rules | Everyday decisions that can be traced back to recorded data |
+| **Optional encrypted continuity** | Cloud backup is disabled by default and encrypted client-side when enabled | Restore and cross-device continuity without plaintext financial records in Firestore |
+| **Portable data** | CSV interoperability and the Aura Portable Archive keep exit and recovery paths explicit | User-controlled migration, disaster recovery, and long-term access |
+| **Shared, replaceable boundaries** | The React financial domain is isolated from Android-only capabilities through typed adapters | Native features can evolve without rewriting the canonical ledger or reports |
 
-The following screens show the app's main flow with local demo data: quick financial status, transaction entry, history analysis, reports, budgets, and recurring items.
+## What Aura does
 
-| Dashboard | Spending Breakdown | New Transaction |
-|---|---|---|
-| <img src="screenshots/Screenshot%202026-04-27%20alle%2011.21.27.png" alt="Dashboard with total balance, safe to spend, income, and expenses" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.21.34.png" alt="Dashboard with spending by category chart and category list" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.21.51.png" alt="Add transaction screen with amount, title, and category" width="220"> |
-| Total balance, safe-to-spend, and monthly metrics to understand available money at a glance. | Donut chart and category breakdown to identify the main spending areas. | Mobile-first entry for movement type, amount, title, category, date, and payment method. |
+Aura provides a complete personal-budget workflow:
 
-| History | Monthly Report | Report Detail |
-|---|---|---|
-| <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.05.png" alt="Transaction history sorted by date" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.15.png" alt="Monthly report with income, expenses, net flow, and spending breakdown" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.23.png" alt="Report with budget detail and category spending" width="220"> |
-| Date-sorted transaction list with amounts, categories, and descriptions. | Local report with income, expenses, net flow, and comparison with the previous period. | Category analysis with budget progress and changes from the previous period. |
+1. **Record income and expenses** with categories, dates, payment methods, notes, attachments, and explicit extra/refund treatment.
+2. **Track monthly budgets** with remaining amounts, pace, safe-to-spend, and local alerts.
+3. **Understand cash flow** through monthly, category, comparison, and year-in-review reports.
+4. **Manage recurring commitments** and inspect them alongside transactions in a calendar.
+5. **Plan savings goals** while preserving historical category meaning through archive/restore.
+6. **Import and export deterministically** through transaction CSV/XLSX workflows and the complete `.aura` portable archive.
+7. **Review Android payment candidates** before they become canonical Aura transactions.
+8. **Opt into encrypted backup** through Firebase Authentication and client-side encrypted Firestore storage.
 
-| Calendar | Recurring Items | Budgets |
-|---|---|---|
-| <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.33.png" alt="Monthly calendar with income, expenses, and recurring summary" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.44.png" alt="Recurring items and transactions for the selected day" width="220"> | <img src="screenshots/Screenshot%202026-04-27%20alle%2011.22.50.png" alt="Budgets page with monthly progress and category limits" width="220"> |
-| Monthly view with daily indicators for transactions and recurring items. | Active recurring items, generated transactions, and details for the selected day. | Monthly category limits, spent amount, remaining amount, and overall progress. |
+### Current product surfaces
 
-## Privacy And Security
+- dashboard with safe-to-spend, cash flow, alerts, and recent transactions;
+- transaction history with search, filters, editing, and deletion;
+- budgets, recurring payments, calendar, savings goals, and categories;
+- reports with Actual/Net lenses, category details, comparisons, and spending pace;
+- global search across the local workspace;
+- Android-only payment detection and review behind platform adapters;
+- settings for data portability, encrypted backup, notifications, appearance, and account lifecycle.
 
-Aura Finance follows a local-first model:
+## Mobile product walkthrough
 
-- transactions, budgets, categories, preferences, and reminders are stored locally in the browser;
-- image attachments are stored in IndexedDB;
-- cloud backup is disabled by default;
-- when backup is enabled, the payload is encrypted before being written to Firestore;
-- admins cannot access users' financial records;
-- no AI features are included in the current scope;
-- notifications, search, comparisons, and reports are calculated locally;
-- demo data is generated and stored only in the browser; if a cloud backup exists and the user chooses blank or demo data, local cloud backup is disabled to prevent accidental overwrite.
+These captures turn the feature list into three concrete decisions. They use synthetic demo data rendered by the current Aura mobile UI; no real account, payment, or financial data is shown.
 
-For operational details, see [privacy-notes.md](docs/04-privacy-gdpr/privacy-notes.md), [project-brief.md](product/project-brief.md), and [solution-strategy.md](docs/00-discovery/01-solution-strategy.md).
+### 1. Did one large purchase really change the monthly pattern?
 
-The two designated administrator accounts are defined in
-`src/config/adminAccess.ts` and mirrored by the `isAdmin()` helper in
-`firestore.rules`. Regression tests fail if the two policies diverge.
+<table>
+  <tr>
+    <th>See everything that happened</th>
+    <th>Separate exceptional spending</th>
+  </tr>
+  <tr>
+    <td align="center"><a href="public/landing/aura-home.png"><img src="public/landing/aura-home.png" width="260" alt="Aura Home in Actual view showing the complete month including a synthetic one-off furniture expense"></a></td>
+    <td align="center"><a href="public/landing/aura-home-net.png"><img src="public/landing/aura-home-net.png" width="260" alt="Aura Home in Net view showing recurring spending after separating a synthetic one-off expense"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Actual</strong> keeps the complete cash record visible, including the €1,200 furniture purchase.</td>
+    <td align="center"><strong>Net</strong> separates that marked Extra so the repeatable monthly pattern remains readable.</td>
+  </tr>
+</table>
 
-## Tech Stack
+**Value:** one ledger answers two different questions without deleting or rewriting a transaction: “What happened?” and “What does a normal month look like?”
 
-| Area | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Vite |
-| Styling | Tailwind CSS 4, CSS design tokens |
-| Motion | Motion / Framer Motion API |
-| Charts | Recharts |
-| Local storage | localStorage, IndexedDB through `idb-keyval` |
-| Auth and optional cloud | Firebase Authentication, Firestore |
-| Tests | Vitest, TypeScript typecheck |
-| Deploy | Firebase Hosting |
+### 2. Where should I act before the month gets away from me?
 
-## Repository Architecture
+<table>
+  <tr>
+    <th>Find the category that needs attention</th>
+    <th>Check whether it is a pattern</th>
+  </tr>
+  <tr>
+    <td align="center"><a href="public/landing/aura-budgets.png"><img src="public/landing/aura-budgets.png" width="260" alt="Aura Budgets showing category limits, usage percentages, and an over-budget alert using synthetic data"></a></td>
+    <td align="center"><a href="public/landing/aura-reports-category-groceries.png"><img src="public/landing/aura-reports-category-groceries.png" width="260" alt="Aura Groceries category report showing a twelve-month total, complete-month average, and monthly trend using synthetic data"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Budget status and alerts make the immediate exception visible instead of hiding it in a total.</td>
+    <td align="center">Complete-month averages and category trends distinguish a recurring baseline from a temporary spike.</td>
+  </tr>
+</table>
+
+**Value:** Aura connects an actionable monthly alert to the local history needed to set a realistic target.
+
+### 3. What changed, and what still needs my decision?
+
+<table>
+  <tr>
+    <th>Explain the difference</th>
+    <th>Review before recording</th>
+  </tr>
+  <tr>
+    <td align="center"><a href="public/landing/aura-reports-compare.png"><img src="public/landing/aura-reports-compare.png" width="260" alt="Aura Compare report explaining a synthetic month-over-month spending increase with category detail"></a></td>
+    <td align="center"><a href="public/landing/aura-payment-detection.png"><img src="public/landing/aura-payment-detection.png" width="260" alt="Aura Android payment review queue and on-device detection controls populated with synthetic source fixtures"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Period comparison turns “spending went up” into an amount, percentage, and category-level explanation.</td>
+    <td align="center">Locally detected candidates stay outside the canonical ledger until they are edited, confirmed, or ignored.</td>
+  </tr>
+</table>
+
+**Value:** explainable analysis and human-reviewed automation reduce manual work without taking control away from the user.
+
+> [!NOTE]
+> The payment-review capture uses repository-controlled synthetic source fixtures. It is product/UI evidence, not proof of compatibility with a real banking or payment application. Real payment-app support remains release-gated.
+
+## Privacy and data lifecycle
+
+Local-first is an architectural boundary, not a generic privacy claim. Aura makes each persistence and transfer path explicit.
+
+| Data | Default location | Lifecycle and control |
+| --- | --- | --- |
+| Transactions, budgets, categories, goals, settings | Browser storage inside the bundled application | Persists locally until edited, reset, archived, or deleted by the user |
+| Attachments | IndexedDB | Local-only unless included in an explicitly exported portable archive |
+| Pending Android payment candidates | Private encrypted native Room store | Short-lived, owner-scoped, excluded from backup, and removable without creating a transaction |
+| Aura Portable Archive | User-selected local file | Exported only on request; passphrase protection is selected by default |
+| Optional cloud backup | Firestore | Disabled by default; encrypted client-side before upload and controlled from settings |
+| Authentication identity | Firebase Authentication | Used for allowlist access and optional backup ownership, not admin access to ledger contents |
+
+Default privacy properties:
+
+- financial reports, search, comparisons, and import classification run locally;
+- no AI features or automated financial advice are in the current scope;
+- administrators manage the access allowlist but cannot read users’ financial records;
+- Android payment detection is opt-in, filters selected supported sources locally, and requires review before ledger insertion;
+- pending candidates are excluded from cloud backup, portable archives, and Android system backup;
+- logout, account change, reset, and account deletion trigger dedicated local-data lifecycle handling.
+
+For the operational baseline, read [privacy notes](docs/04-privacy-gdpr/privacy-notes.md), the [payment-detection processing record](docs/04-privacy-gdpr/android-payment-detection-processing-record.md), and the [portable-archive processing record](docs/04-privacy-gdpr/portable-archive-processing-record.md).
+
+## How it works
 
 ![Aura Finance architecture diagram](docs/assets/aura-architecture.svg)
 
-```text
-src/
-  components/        Reusable UI components
-  context/           Application state and client orchestration
-  data/              Storage keys and local data helpers
-  domain/            Pure finance, recurring, category, and search logic
-  hooks/             Application hooks and browser integrations
-  lib/               Firebase, encrypted backup, and shared utilities
-  pages/             Main application routes
-  utils/             Formatters and cross-cutting helpers
+Aura uses one canonical financial domain with platform-specific boundaries around it:
 
-docs/                Discovery, strategy, privacy, and product analysis
-product/             Product brief and intent
-public/              Manifest, service worker, and static assets
-scripts/             Operational scripts, including hosting deploy
+- **React product surface** — pages, shared components, and local orchestration for the bundled application.
+- **Domain layer** — deterministic finance, recurring-payment, reporting, category, search, and import rules.
+- **Local data layer** — browser storage and IndexedDB for the canonical workspace and attachments.
+- **Platform adapters** — typed boundaries isolate Android-only payment detection from web-based tests and the financial domain.
+- **Native Android layer** — Capacitor plugins, Keystore-backed ownership, encrypted candidate storage, notification controls, and review deep links.
+- **Optional Firebase boundary** — authentication, hashed allowlist records, and client-side encrypted backup payloads.
+- **Public web boundary** — landing, privacy, support, and account-deletion surfaces only; the personal-finance app is distributed through Android.
+
+### Repository map
+
+| Area | Responsibility |
+| --- | --- |
+| `src/domain/` | Pure finance, recurring, reporting, search, and import rules |
+| `src/data/` | Local persistence keys and data helpers |
+| `src/context/`, `src/hooks/` | Application state and client-side orchestration |
+| `src/pages/`, `src/components/` | Product routes and reusable UI |
+| `src/platform/` | Typed native/web capability boundaries |
+| `android/` | Capacitor Android shell and native Kotlin plugins |
+| `docs/` | Strategy, architecture, privacy, operations, QA, and release evidence |
+| `product/` | Current product intent and scope |
+
+## Run it
+
+The shared React runtime is available locally for development and browser regression testing. The product distribution target is the bundled Android application.
+
+### Prerequisites
+
+- Node.js 20+
+- npm
+- JDK 21 for Android work
+- Android SDK platform and build tools 36 for the current Android baseline
+- repository-specific Firebase configuration for authenticated or Android debug flows
+
+### Launch the local React runtime
+
+```bash
+git clone https://github.com/daniele21/personal-budget.git
+cd personal-budget
+npm install
+cp .env.example .env
+npm run dev
 ```
 
-Product and architecture decisions are documented in `product/` and `docs/00-discovery/`. Before changing flows, data, privacy, security, or architecture, also read [AGENTS.md](AGENTS.md).
+Vite serves the development runtime at `http://localhost:3000`.
 
-## Run Locally
+### Build the Android debug application
 
-Prerequisite: Node.js installed.
-
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Copy the environment file:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Fill `.env` with the required Firebase values.
-
-4. Start the app:
-
-   ```bash
-   npm run dev
-   ```
-
-The app is served by Vite on port `3000`.
-
-## Android Development
-
-Aura also ships the same React application inside a Capacitor Android shell.
-The PWA remains an independent, supported distribution; payment detection will
-be an Android-only capability behind a platform adapter.
-
-The current Android baseline is Android 16/API 36 only. Local development
-requires JDK 21 and an Android SDK containing platform and build tools 36.
-Android Studio is optional for the command-line workflow.
+Create the ignored `.env.android-debug.local` using the `VITE_ANDROID_FIREBASE_*` values documented in `.env.example`, then run:
 
 ```bash
 npm run android:sync:debug
-npm run android:test
-npm run android:test:instrumentation
-npm run android:lint
 npm run android:assemble:debug
 ```
 
-Create an ignored `.env.android-debug.local` with every
-`VITE_ANDROID_FIREBASE_*` value shown in `.env.example`. The debug build refuses
-to start without this isolated non-production Firebase/OAuth configuration and
-does not inherit the normal web values. The Android OAuth client must match
-`com.staituned.aura.debug` and the debug signing certificate; Credential
-Manager uses the Web client ID generated as an Android resource from
-`google-services.json`. The client ID is not passed through the Capacitor
-bridge.
+The isolated debug application uses `com.staituned.aura.debug` and the `Aura Dev` label. Signing files, `google-services.json`, SDK paths, OAuth credentials, and keystores must remain outside source control.
 
-`android:sync:debug` rebuilds and copies the isolated debug bundle.
-`android:sync` is reserved for the normal production bundle. Both keep
-Capacitor logging and WebView debugging disabled. Use
-`android:sync:diagnostic` only for an explicitly local diagnostic build.
-`android:test` intentionally runs the debug unit-test variant because the local
-`google-services.json` contains only the non-production debug client. Release
-tests and builds require a production client for `com.staituned.aura`.
+For emulator setup, diagnostics, deep links, authentication troubleshooting, notification simulation, and cleanup, use the [Android payment-detection runbook](docs/03-operations/android-payment-detection-runbook.md).
 
-For a local API 36 emulator, the diagnostic WebView check verifies bundled
-assets, BrowserRouter reload, localStorage, IndexedDB, the actual attachment
-store, restart persistence, and debug deep-link delivery:
+## Build and validate
+
+Use the narrowest checks for the area being changed. The repeatable repository gates are:
 
 ```bash
-npm run android:sync:diagnostic
-bash scripts/run-android-gradle.sh assembleDebug
+npm run lint
+npm run test
+npm run build
+npm run android:test
+npm run android:lint
+```
+
+Connected Android verification additionally includes:
+
+```bash
+npm run android:test:instrumentation
 npm run android:verify:webview
 ```
 
-The script writes only temporary probe data into the debug application and
-removes it after verification. `android:test:instrumentation` runs the app-only
-instrumentation target, avoiding generated Capacitor library modules that do
-not contain Aura tests.
+Useful focused commands:
 
-To diagnose the Android Google sign-in flow:
+| Command | Purpose |
+| --- | --- |
+| `npm run test:e2e` | Browser end-to-end regression suite |
+| `npm run android:sync:diagnostic` | Build with explicitly enabled local WebView diagnostics |
+| `npm run android:simulate:wallet-notification` | Exercise the synthetic payment-notification flow on an emulator |
+| `npm run android:verify:listener-recovery` | Verify listener process recreation, reboot, revocation, and cleanup |
+| `npm run verify:gemini-retirement` | Guard the deterministic, non-AI transaction import boundary |
+| `npm run deploy:hosting` | Publish only the public landing/legal/support surfaces |
 
-```bash
-npm run android:sync:diagnostic
-bash scripts/run-android-gradle.sh assembleDebug
-adb logcat -c
-adb logcat -v color AuraGoogleAuth:V Capacitor/Console:V '*:S'
-```
+## Evidence and maturity
 
-Authentication diagnostics identify only the failing stage, a bounded error
-code, the exception class, and sanitized native stack frames. They never log
-the Google ID token, OAuth client ID, email, credential payload, exception
-message, or Firebase user profile. Expected outcomes such as
-`AUTH_NO_CREDENTIAL` are warnings; unexpected provider, parsing, or clear-state
-failures are errors. Native diagnostics are emitted only when Android marks the
-installed application as debuggable, while WebView console forwarding requires
-the explicit diagnostic sync above.
+Aura is an active Android product under controlled release preparation, not a generally available financial service.
 
-The generated debug application uses `com.staituned.aura.debug` and the
-`Aura Dev` label. Signing files, `google-services.json`, local SDK paths, and
-keystores must remain outside source control. The M4 notification listener is
-implemented but allowlists only the repository-controlled synthetic test APK;
-the M5 deterministic parser is implemented only for that synthetic source.
-The M6 candidate repository, M7 minimized bridge/private notification, and M8
-review queue with verified canonical transaction acceptance are implemented.
-The real payment-app catalog and M9 release hardening are not implemented.
-The native Credential Manager bridge is implemented, the local non-production
-OAuth configuration is validated, and a successful manual Google sign-in was
-reported on 2026-07-26.
+Current implemented evidence includes:
 
-M3 installs the security/privacy foundation: a Keystore-backed owner hash,
-recoverable purge for logout/account change/reset/deletion, authenticated
-encryption primitives, exhaustive backup/device-transfer exclusions,
-exact-origin WebView navigation, CSP and release log stripping. It does not read
-real notifications or create payment candidates. M4 adds the system-bound
-listener, owner-scoped settings, OS/opt-in status, a package-before-extras gate,
-and a separate synthetic notification source installed automatically by the
-instrumentation task. M5 adds bounded NFKC normalization, deterministic
-negative/exact/review rules, EUR minor-unit extraction, identifier exclusion,
-and a synthetic positive/negative/ambiguous fixture corpus. M6 adds a private
-Room v1 queue with an AES-GCM encrypted structured payload, owner-scoped HMAC
-fingerprints, technical upsert, conservative cross-source dedupe, bounded
-retention, idempotent acceptance recovery, purge and WorkManager cleanup. No
-raw notification string is persisted or bridged. M7 adds a minimized
-candidate/settings/acceptance bridge, full refresh on cold start/resume, an
-opaque candidate deep link, and a private Aura notification with redacted
-private/public content and immutable Verify/Ignore actions. M8 adds the
-Android-only setup surface, pending backlog, editable review,
-notification-center count, Ignore/delete controls, and idempotent creation of a
-normal Aura transaction only after verified canonical persistence. The
-repeatable safe checks are:
+- canonical local ledger, budgeting, recurring, reporting, search, and savings workflows;
+- deterministic CSV/XLSX transaction import with review and duplicate warnings;
+- local Aura Portable Archive with replace-only recovery and post-persistence verification;
+- optional client-side encrypted Firestore backup;
+- Android Credential Manager authentication bridge;
+- private payment-candidate storage, minimized bridge, review queue, and synthetic end-to-end notification fixtures;
+- browser, unit, Android unit, lint, packaging, WebView, and instrumentation verification paths.
 
-```bash
-npm run test -- src/platform/__tests__/androidSecurityConfiguration.test.ts
-npm run android:test
-npm run android:test:instrumentation
-```
+Current release boundaries:
 
-See
-[`android-payment-detection-security.md`](docs/01-architecture/android-payment-detection-security.md)
-for the threat model, data lifecycle and remaining privacy/DPIA gates.
+- distribution begins with Play Internal Testing and a named closed beta;
+- the initial production candidate is core-only, with payment detection beta-gated;
+- Android 16/API 36 is the current internal/beta baseline;
+- real payment-app support remains blocked on privacy-approved fixtures and package/template evidence;
+- physical-device, accessibility, memory, signing, Play Console, privacy-owner, rollout, and rollback gates remain authoritative;
+- AI recommendations, automated financial advice, open banking, and admin access to ledger data remain out of scope.
 
-To display a Wallet-like notification using only static synthetic data on an
-Android emulator:
+Use these sources for the current truth:
 
-```bash
-npm run android:simulate:wallet-notification
-```
+- [Project brief](product/project-brief.md)
+- [Solution strategy](docs/00-discovery/01-solution-strategy.md)
+- [Production-readiness plan](docs/00-discovery/14-consolidated-production-readiness-plan.md)
+- [Release decision pack](docs/00-discovery/15-c2-release-decision-pack.md)
+- [Android payment-detection specification](docs/specs/android-payment-detection-mvp.md)
+- [Android payment-detection security architecture](docs/01-architecture/android-payment-detection-security.md)
+- [Testing strategy](docs/testing-strategy.md)
 
-The Wallet-like source notification and the redacted Aura proposal remain
-visible for 30 seconds by default. Verify opens Aura directly on the candidate
-review screen; Ignore deletes the candidate without
-opening Aura. The command refuses physical devices, enables the listener only
-for the simulation, and then disables it, clears the synthetic settings, and
-uninstalls the test source. To change the duration or select one emulator when
-multiple are connected:
+## Firebase boundary
 
-```bash
-ANDROID_SERIAL=emulator-5556 AURA_SIMULATION_SECONDS=60 \
-  npm run android:simulate:wallet-notification
-```
-
-If a previous run was forcibly terminated, cleanup is idempotent:
-
-```bash
-ANDROID_SERIAL=emulator-5556 \
-  npm run android:simulate:wallet-notification:cleanup
-```
-
-The M4 process/reboot verification deliberately reboots its target and therefore
-requires an explicit dedicated API 36 emulator:
-
-```bash
-ANDROID_SERIAL=emulator-5556 npm run android:verify:listener-recovery
-```
-
-It refuses physical devices and non-API-36 targets, uses only redacted counters,
-and cleans up listener access and the synthetic source.
-
-## Firebase Setup
-
-In the Firebase project:
-
-1. enable Google sign-in in Authentication;
-2. create a Firestore database;
-3. configure rules from [firestore.rules](firestore.rules);
-4. fill the `VITE_FIREBASE_*` variables in `.env`.
+Firebase is optional for personal financial data continuity, but required for the current authenticated allowlist flow.
 
 Main collections:
 
-- `allowedUsers/{emailHash}`: access allowlist based on hashed email;
-- `backups/{uid}`: optional cloud backup, encrypted client-side.
+- `allowedUsers/{emailHash}` — access allowlist based on a normalized email hash;
+- `backups/{uid}` — optional backup payload encrypted on the client before upload.
 
-## Available Scripts
+The two designated administrator accounts are defined in `src/config/adminAccess.ts` and mirrored by `isAdmin()` in `firestore.rules`. Regression tests fail if the policies diverge. Administrators do not receive access to users’ plaintext financial data.
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start Vite in development |
-| `npm run lint` | Run the TypeScript typecheck |
-| `npm run test` | Run Vitest tests |
-| `npm run test:watch` | Start Vitest in watch mode |
-| `npm run build` | Generate the production build |
-| `npm run build:android:debug` | Build with required isolated Android debug Firebase/OAuth values |
-| `npm run android:sync` | Build and copy the normal production bundle into Android |
-| `npm run android:sync:debug` | Build and copy the isolated Android debug bundle |
-| `npm run android:sync:diagnostic` | Debug sync with WebView/Capacitor diagnostics enabled |
-| `npm run android:assemble:debug` | Sync and assemble the debug APK |
-| `npm run android:test` | Run Android debug unit tests with JDK 21 |
-| `npm run android:test:instrumentation` | Run Aura instrumentation tests on a connected API 36 device |
-| `npm run android:verify:webview` | Verify routing, persisted WebView storage, attachment storage, and deep-link delivery |
-| `npm run android:lint` | Run Android lint |
-| `npm run android:simulate:wallet-notification` | Display a temporary synthetic Wallet-like notification on an emulator |
-| `npm run android:simulate:wallet-notification:cleanup` | Revoke and remove any remaining simulation state |
-| `npm run android:verify:listener-recovery` | Verify listener process recreation, API 36 emulator reboot, and revocation |
-| `npm run android:doctor` | Inspect the Capacitor Android environment |
-| `npm run preview` | Serve the build locally |
-| `npm run firebase:login` | Sign in with the Firebase CLI |
-| `npm run deploy:hosting` | Build and deploy to Firebase Hosting |
+## Responsible use
 
-## Deploy To Firebase Hosting
-
-1. Sign in to Firebase:
-
-   ```bash
-   npm run firebase:login
-   ```
-
-2. Make sure `VITE_FIREBASE_PROJECT_ID` is configured in `.env`, or pass `FIREBASE_PROJECT_ID`.
-
-3. Deploy:
-
-   ```bash
-   npm run deploy:hosting
-   ```
-
-To deploy to a specific project without editing `.env`:
-
-```bash
-FIREBASE_PROJECT_ID=your-project-id npm run deploy:hosting
-```
-
-## Useful Documentation
-
-- [Project brief](product/project-brief.md)
-- [Project analysis](docs/00-discovery/00-project-analysis.md)
-- [Solution strategy](docs/00-discovery/01-solution-strategy.md)
-- [Delivery plan](docs/00-discovery/02-delivery-plan.md)
-- [Privacy/GDPR notes](docs/04-privacy-gdpr/privacy-notes.md)
-
-## Project Status
-
-Aura Finance is an evolving PWA. The current scope includes personal budgeting, local reporting, optional encrypted backup, and access control. AI, automated financial advice, open banking, and admin visibility into users' financial data are explicitly out of scope for now.
+Aura is a budgeting and record-keeping tool, not a bank, accounting system, or source of financial advice. Users remain responsible for reviewing imported, detected, and manually entered transactions and for maintaining appropriate backups of data they need to retain.
