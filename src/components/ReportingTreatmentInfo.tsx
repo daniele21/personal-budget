@@ -33,7 +33,7 @@ export function ReportingTreatmentInfo() {
           <section className="rounded-2xl border border-secondary/20 bg-secondary-container/15 p-4">
             <h4 className="text-sm font-bold text-on-surface">Refund</h4>
             <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
-              Available only for income transactions that repay a previous expense. It stays in Actual and Net, reduces reported expenses and the matching category spend, and is not counted as ordinary income or as new budgetable income.
+              Available only for income transactions that repay a previous expense. It stays in Actual and Net, reduces reported expenses and the matching category spend, and is not counted as ordinary income or as an increase to the monthly budget.
             </p>
           </section>
 

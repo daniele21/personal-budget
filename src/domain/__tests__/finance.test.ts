@@ -7,8 +7,6 @@ import {
   sortByDateDesc,
   sortTransactions,
   calculateTotals,
-  calculateBudgetableCashInflow,
-  calculateBudgetableCashInflowByLens,
   calculateCashInflow,
   calculateCashInflowByLens,
   calculateTotalsByLens,
@@ -20,6 +18,7 @@ import {
   expenseMonthOverMonthChange,
   netMonthOverMonthChange,
   safeToSpend,
+  safeToSpendByLens,
   spendingByCategory,
   getRecurringDue,
   formatMonthLabel,
@@ -336,15 +335,6 @@ describe('calculateTotals', () => {
     expect(calculateCashInflowByLens(transactions, 'normalized')).toBe(100);
   });
 
-  it('excludes reimbursements from the income cap used by safe-to-spend', () => {
-    const transactions = [
-      tx({ amount: 100, type: 'income', category: 'Medical', reportingClass: 'reimbursement' }),
-      tx({ amount: 250, type: 'income', category: 'Bonus', reportingClass: 'extra' }),
-    ];
-
-    expect(calculateBudgetableCashInflow(transactions)).toBe(250);
-    expect(calculateBudgetableCashInflowByLens(transactions, 'normalized')).toBe(0);
-  });
 });
 
 // ─── comparison and annual review ──────────────────────────────────
@@ -501,20 +491,6 @@ describe('safeToSpend', () => {
     expect(result.effectiveLimit).toBe(2000);
   });
 
-  it('limits safe spending by monthly income when income is below budget', () => {
-    const result = safeToSpend(2000, 800, 1200);
-    expect(result.remaining).toBe(400);
-    expect(result.usedPercent).toBe(67);
-    expect(result.effectiveLimit).toBe(1200);
-  });
-
-  it('keeps the monthly budget as the cap when income is above budget', () => {
-    const result = safeToSpend(2000, 800, 3000);
-    expect(result.remaining).toBe(1200);
-    expect(result.usedPercent).toBe(40);
-    expect(result.effectiveLimit).toBe(2000);
-  });
-
   it('clamps remaining to zero when overspent', () => {
     const result = safeToSpend(1000, 1500);
     expect(result.remaining).toBe(0);
@@ -537,17 +513,47 @@ describe('safeToSpend', () => {
   });
 
   it('does not let negative expenses inflate safe spending above the effective limit', () => {
-    const result = safeToSpend(2000, -100, 2000);
+    const result = safeToSpend(2000, -100);
     expect(result.remaining).toBe(2000);
     expect(result.usedPercent).toBe(0);
     expect(result.effectiveLimit).toBe(2000);
   });
 
-  it('falls back to the configured budget when no budgetable income is recorded', () => {
-    const result = safeToSpend(2000, 800, 0);
-    expect(result.remaining).toBe(1200);
-    expect(result.usedPercent).toBe(40);
-    expect(result.effectiveLimit).toBe(2000);
+  it('does not change when ordinary income is added to the monthly ledger', () => {
+    const expensesOnly = [tx({ amount: 800, type: 'expense' })];
+    const withIncome = [
+      ...expensesOnly,
+      tx({ amount: 50, type: 'income', category: 'Salary' }),
+    ];
+
+    expect(safeToSpendByLens(2000, expensesOnly, 'actual')).toEqual({
+      remaining: 1200,
+      usedPercent: 40,
+      effectiveLimit: 2000,
+    });
+    expect(safeToSpendByLens(2000, withIncome, 'actual')).toEqual(
+      safeToSpendByLens(2000, expensesOnly, 'actual'),
+    );
+  });
+
+  it('uses lens-specific net expenses while keeping the configured budget as the limit', () => {
+    const transactions = [
+      tx({ amount: 800, type: 'expense' }),
+      tx({ amount: 300, type: 'expense', reportingClass: 'extra' }),
+      tx({ amount: 100, type: 'income', reportingClass: 'reimbursement' }),
+      tx({ amount: 50, type: 'income', reportingClass: 'extra' }),
+    ];
+
+    expect(safeToSpendByLens(2000, transactions, 'actual')).toEqual({
+      remaining: 1000,
+      usedPercent: 50,
+      effectiveLimit: 2000,
+    });
+    expect(safeToSpendByLens(2000, transactions, 'normalized')).toEqual({
+      remaining: 1300,
+      usedPercent: 35,
+      effectiveLimit: 2000,
+    });
   });
 });
 

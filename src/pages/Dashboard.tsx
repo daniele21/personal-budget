@@ -23,11 +23,10 @@ import { RadialGauge } from '../components/RadialGauge';
 import { CashFlowPreview } from '../components/dashboard/CashFlowPreview';
 import { useBudgetAlerts } from '../hooks/useBudgetAlerts';
 import {
-  calculateBudgetableCashInflowByLens,
   calculateTotalsByLens,
   filterByAnalyticsLens,
   formatMonthLabel,
-  safeToSpend as calculateSafeToSpend,
+  safeToSpendByLens,
 } from '../domain/finance';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { pageTransition } from '../utils/motion';
@@ -73,13 +72,9 @@ export const Dashboard = () => {
     () => calculateTotalsByLens(monthlyTransactions, lens),
     [monthlyTransactions, lens],
   );
-  const safeToSpendIncomeCap = useMemo(
-    () => calculateBudgetableCashInflowByLens(monthlyTransactions, lens),
-    [monthlyTransactions, lens],
-  );
   const safeToSpendData = useMemo(
-    () => calculateSafeToSpend(monthlyBudget, safeToSpendTotals.expenses, safeToSpendIncomeCap),
-    [monthlyBudget, safeToSpendTotals.expenses, safeToSpendIncomeCap],
+    () => safeToSpendByLens(monthlyBudget, monthlyTransactions, lens),
+    [monthlyBudget, monthlyTransactions, lens],
   );
   const { remaining: safeAmount, usedPercent, effectiveLimit } = safeToSpendData;
   const animatedSafeAmount = useAnimatedNumber(safeAmount);
@@ -204,11 +199,11 @@ export const Dashboard = () => {
                     <section className="rounded-2xl border border-primary/15 bg-primary/5 p-3">
                       <p className="font-bold text-on-surface">Formula:</p>
                       <p className="mt-1 font-mono text-xs text-primary font-semibold">
-                        Min(Monthly Budget Target, Actual Income) − Spent Expenses
+                        Monthly Budget − Net Spent Expenses
                       </p>
                     </section>
                     <p className="text-on-surface-variant">
-                      If your actual income in a given month is lower than your set budget target, Aura automatically caps your spending limit at your actual income to protect your cash flow.
+                      Income is shown separately in cash flow and does not change your monthly spending limit. Refunds reduce net spent expenses, while the result never exceeds your configured budget.
                     </p>
                   </div>
                 </InfoPopover>

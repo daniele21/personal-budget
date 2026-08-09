@@ -242,6 +242,9 @@
 
 ### Fixed
 
+- Made Safe to Spend consistently represent the configured monthly budget minus
+  net monthly expenses. Recording a small income no longer replaces the monthly
+  limit or causes a discontinuous zero balance and inflated usage percentage.
 - Anchored Reports period presets and initial custom-range dates to the user's
   selected application month instead of the device's current month.
 - Replaced random IDs for newly materialized recurring transactions with

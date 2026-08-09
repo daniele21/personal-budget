@@ -379,12 +379,8 @@ export const AppDataProvider = ({ children }: { children: React.ReactNode }) => 
   const currentBalance = useMemo(() => openingBalance + allTimeTotals.net, [openingBalance, allTimeTotals.net]);
 
   const safeToSpendData = useMemo(
-    () => Finance.safeToSpend(
-      state.monthlyBudget,
-      monthlyTotals.expenses,
-      Finance.calculateBudgetableCashInflow(monthlyTransactions),
-    ),
-    [state.monthlyBudget, monthlyTotals.expenses, monthlyTransactions]
+    () => Finance.safeToSpendByLens(state.monthlyBudget, monthlyTransactions, 'actual'),
+    [state.monthlyBudget, monthlyTransactions]
   );
 
   const budgetStatuses = useMemo(

@@ -105,6 +105,17 @@ describe('Dashboard safe-to-spend lens', () => {
     expect(screen.getByText('€1,262.04')).toBeInTheDocument();
   });
 
+  it('does not replace the monthly budget with a small recorded income', () => {
+    renderDashboard([
+      transaction({ id: 'expenses', amount: 1746.29, type: 'expense', title: 'Monthly spend' }),
+      transaction({ id: 'gift', amount: 50, type: 'income', category: 'Entertainment', title: 'Birthday gift' }),
+    ], { monthlyBudget: 2800 });
+
+    expect(screen.getByText('€1,053.71')).toBeInTheDocument();
+    expect(screen.getByText(/spent of €2,800\.00/)).toBeInTheDocument();
+    expect(screen.getByText('62% used · On track')).toBeInTheDocument();
+  });
+
   it('presents the period before the primary metric and keeps ordinary expenses neutral', () => {
     renderDashboard([transaction({ amount: 100 })]);
 

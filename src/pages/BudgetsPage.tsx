@@ -8,12 +8,10 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import {
-  calculateBudgetableCashInflowByLens,
   calculateTotals,
-  calculateTotalsByLens,
   filterByAnalyticsLens,
   formatMonthLabel,
-  safeToSpend as calculateSafeToSpend,
+  safeToSpendByLens,
 } from '../domain/finance';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { NumericKeypadModal } from '../components/NumericKeypadModal';
@@ -66,17 +64,9 @@ export const BudgetsPage = () => {
       filterByAnalyticsLens(monthlyTransactions, selectedLens).filter((t) => t.category === category),
     ).expenses;
 
-  const safeToSpendTotals = useMemo(
-    () => calculateTotalsByLens(monthlyTransactions, lens),
-    [monthlyTransactions, lens],
-  );
-  const safeToSpendIncomeCap = useMemo(
-    () => calculateBudgetableCashInflowByLens(monthlyTransactions, lens),
-    [monthlyTransactions, lens],
-  );
   const safeToSpend = useMemo(
-    () => calculateSafeToSpend(monthlyBudget, safeToSpendTotals.expenses, safeToSpendIncomeCap),
-    [monthlyBudget, safeToSpendTotals.expenses, safeToSpendIncomeCap],
+    () => safeToSpendByLens(monthlyBudget, monthlyTransactions, lens),
+    [monthlyBudget, monthlyTransactions, lens],
   );
 
   // ── Budget CRUD ──────────────────────────────────────────────────────

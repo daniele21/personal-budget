@@ -121,16 +121,6 @@ export function calculateCashInflowByLens(transactions: Transaction[], lens: Ana
   return calculateCashInflow(filterByAnalyticsLens(transactions, lens));
 }
 
-export function calculateBudgetableCashInflow(transactions: Transaction[]): number {
-  return filterByType(transactions, 'income')
-    .filter((transaction) => getTransactionReportingClass(transaction) !== 'reimbursement')
-    .reduce((acc, transaction) => acc + transaction.amount, 0);
-}
-
-export function calculateBudgetableCashInflowByLens(transactions: Transaction[], lens: AnalyticsLens): number {
-  return calculateBudgetableCashInflow(filterByAnalyticsLens(transactions, lens));
-}
-
 export interface ExtraImpact {
   income: number;
   expenses: number;
@@ -213,14 +203,21 @@ export interface SafeToSpendStatus {
 export function safeToSpend(
   monthlyBudget: number,
   monthlyExpenses: number,
-  monthlyIncome: number = monthlyBudget,
 ): SafeToSpendStatus {
-  const incomeCap = monthlyIncome > 0 ? monthlyIncome : monthlyBudget;
-  const effectiveLimit = Math.max(0, Math.min(monthlyBudget, incomeCap));
+  const effectiveLimit = Math.max(0, monthlyBudget);
   const expenses = Math.max(0, monthlyExpenses);
   const remaining = Math.max(0, effectiveLimit - expenses);
   const usedPercent = effectiveLimit > 0 ? Math.round((expenses / effectiveLimit) * 100) : 0;
   return { remaining, usedPercent, effectiveLimit };
+}
+
+export function safeToSpendByLens(
+  monthlyBudget: number,
+  monthlyTransactions: Transaction[],
+  lens: PrimaryAnalyticsLens,
+): SafeToSpendStatus {
+  const { expenses } = calculateTotalsByLens(monthlyTransactions, lens);
+  return safeToSpend(monthlyBudget, expenses);
 }
 
 // ─── Spending by Category ───────────────────────────────────────────

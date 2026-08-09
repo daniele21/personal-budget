@@ -47,6 +47,7 @@ describe('BudgetsPage extra reporting', () => {
         monthlyTransactions: [
           transaction({ id: 'regular-food', amount: 100 }),
           transaction({ id: 'extra-food', amount: 200, reportingClass: 'extra', reportingNote: 'Party' }),
+          transaction({ id: 'small-income', amount: 50, type: 'income', category: 'Travel', title: 'Gift' }),
         ],
         analyticsLens,
         setAnalyticsLens,
@@ -81,6 +82,7 @@ describe('BudgetsPage extra reporting', () => {
     expect(screen.getByText('60% used')).toBeInTheDocument();
     expect(screen.getByText('40% remaining')).toBeInTheDocument();
     expect(screen.getByText('Safe to spend')).toBeInTheDocument();
+    expect(screen.getByText('€2,700.00')).toBeInTheDocument();
     expect(screen.getByText('10% of €3,000.00 monthly limit used')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /monthly limit used/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add category budget' })).toBeInTheDocument();

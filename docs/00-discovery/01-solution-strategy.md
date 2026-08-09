@@ -270,19 +270,19 @@ Rationale: the primary shell should prioritize daily budgeting work while keepin
 
 ### Safe To Spend
 
-Chosen: calculate safe-to-spend against the lower value between the configured monthly budget and the current month's income, then subtract current-month expenses.
+Chosen: calculate Safe to Spend as the configured monthly budget minus the selected lens's net current-month expenses, floored at zero.
 
-Rationale: the dashboard should not show spendable room based only on expenses when the monthly net flow cannot support it. The configured budget remains the spending cap, while current income prevents overstating safe cash pressure in low-income or partial-income months.
+Rationale: the configured monthly budget is an explicit planning limit, while recorded income is ledger activity that may be incomplete or entered at any point in the month. Using recorded income as the effective limit created a discontinuity: no recorded income used the full budget, while the first small income transaction replaced that budget with the transaction amount. Ordinary and extra income therefore affect cash-flow reporting but never change the monthly spending limit.
 
-The dashboard lets users switch Safe to Spend between `Actual` and `Net`, matching the category spending lens so one-off income and expenses can either be included in cash-pressure decisions or excluded from normalized planning. Actual remains the default, and the compact control always exposes its active state.
+The dashboard lets users switch Safe to Spend between `Actual` and `Net`, matching the category spending lens so one-off expenses can either be included in the remaining-budget calculation or excluded from normalized planning. Income totals follow the selected reporting lens but do not affect Safe to Spend. Actual remains the default, and the compact control always exposes its active state.
 
-Safe to Spend uses budgetable cash inflow for the effective limit, not reportable income. Reimbursements reduce expenses in the period where they are recorded, but they do not act as the income cap for Safe to Spend because a refund-only month would otherwise shrink the safe limit to the refund amount. If no budgetable income is recorded for the month, the configured monthly budget remains the limit.
+Reimbursements reduce net expenses in the period where they are recorded and can restore remaining budget up to, but never beyond, the configured monthly limit. Safe to Spend is a planning metric rather than an account-balance or liquidity guarantee. A future cash-funded limit would require a separate explicit funding model and must not be inferred from individual income transactions.
 
 ### Reimbursements
 
 Chosen: income transactions can be marked as `reimbursement`; reimbursements are mutually exclusive with `extra`.
 
-Rationale: a reimbursement is a real cash inflow, but it is not income for reporting purposes. It should increase net cash position by reducing expenses in the period where it is recorded instead of inflating income totals or becoming the Safe to Spend income cap. Reimbursements remain category-aware so a medical refund, travel refund, or purchase return can offset the matching expense category when categorized consistently. Expense totals are floored at zero so reimbursements cannot create negative spending or inflate Safe to Spend above the effective budget or income cap.
+Rationale: a reimbursement is a real cash inflow, but it is not income for reporting purposes. It should increase net cash position by reducing expenses in the period where it is recorded instead of inflating income totals or changing the monthly budget. Reimbursements remain category-aware so a medical refund, travel refund, or purchase return can offset the matching expense category when categorized consistently. Expense totals are floored at zero so reimbursements cannot create negative spending or inflate Safe to Spend above the configured monthly budget.
 
 ### Notifications
 
