@@ -89,7 +89,7 @@ export function PortalUseCases() {
   };
 
   return (
-    <section className="bg-[#f6f8fb] py-24 sm:py-32" aria-labelledby="use-cases-title">
+    <section className="bg-surface py-24 sm:py-32" aria-labelledby="use-cases-title">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_27rem] lg:items-stretch lg:gap-16 xl:gap-24">
           <motion.article {...reveal} className="flex min-w-0 flex-col lg:min-h-[56rem] lg:max-w-2xl">
@@ -100,7 +100,7 @@ export function PortalUseCases() {
             </div>
 
             <div className="mb-10 mt-10 overflow-x-auto pb-2 lg:overflow-visible lg:pb-0" role="tablist" aria-label="Choose a concrete Aura use case">
-              <div className="grid min-w-[42rem] grid-cols-4 gap-2 rounded-2xl bg-white p-2 shadow-[0_16px_50px_-40px_rgba(0,52,97,.5)] lg:min-w-0">
+              <div className="portal-shadow-soft grid min-w-[42rem] grid-cols-4 gap-2 rounded-2xl bg-white p-2 lg:min-w-0">
                 {useCaseOrder.map((key) => {
                   const label = key === 'safe' ? 'Safe to spend' : useCases[key].tab;
                   return (
@@ -129,7 +129,7 @@ export function PortalUseCases() {
               </div>
             )}
 
-            <motion.div key={`${selectedCase}-${safeLens}-result`} initial={{ opacity: 0.5, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-7 border-l-4 border-cyan-600 bg-[#eaf7f8] px-5 py-4">
+            <motion.div key={`${selectedCase}-${safeLens}-result`} initial={{ opacity: 0.5, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-7 border-l-4 border-cyan-600 bg-portal-highlight px-5 py-4">
               <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-cyan-800">What Daniele learns</p>
               <p className="mt-2 text-sm font-medium leading-relaxed text-primary [&_strong]:font-extrabold [&_strong]:text-cyan-900">{selected.result}</p>
             </motion.div>
@@ -137,7 +137,7 @@ export function PortalUseCases() {
             <p className="mt-auto pt-8 text-xs leading-relaxed text-on-surface-variant"><strong className="text-primary">Same ledger, different question.</strong> Changing a view never deletes or rewrites a transaction.</p>
           </motion.article>
 
-          <motion.figure {...reveal} className="relative flex w-full max-w-[22rem] justify-self-center flex-col overflow-hidden rounded-[2rem] border border-outline-variant/40 bg-white p-3 shadow-[0_30px_90px_-55px_rgba(0,52,97,.55)] sm:p-4 lg:max-w-[25rem] lg:self-start lg:justify-self-end">
+          <motion.figure {...reveal} className="portal-shadow-frame relative flex w-full max-w-[22rem] justify-self-center flex-col overflow-hidden rounded-[2rem] border border-outline-variant/40 bg-white p-3 sm:p-4 lg:max-w-[25rem] lg:self-start lg:justify-self-end">
             <div className="overflow-hidden rounded-[1.4rem] bg-surface-container-low">
               <motion.img key={selected.src} initial={{ opacity: 0.45 }} animate={{ opacity: 1 }} src={selected.src} alt={selected.alt} className="block h-auto w-full" />
             </div>
@@ -180,7 +180,7 @@ export function PaymentDetectionShowcase() {
           </div>
         </motion.div>
 
-        <motion.figure {...reveal} className="w-full max-w-[28rem] justify-self-center overflow-hidden rounded-[2rem] border border-outline-variant/40 bg-[#f6f8fb] p-3 shadow-[0_30px_90px_-55px_rgba(0,52,97,.55)] sm:p-4 lg:justify-self-end">
+        <motion.figure {...reveal} className="portal-shadow-frame w-full max-w-[28rem] justify-self-center overflow-hidden rounded-[2rem] border border-outline-variant/40 bg-surface p-3 sm:p-4 lg:justify-self-end">
           <div className="max-h-[40rem] overflow-hidden rounded-[1.4rem] bg-surface-container-low">
             <img src="/landing/aura-payment-detection.png" alt="Aura Payments to review showing local suggestions from Intesa Sanpaolo Mobile, Google Wallet and PayPal" className="block h-auto w-full" />
           </div>

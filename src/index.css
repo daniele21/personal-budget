@@ -60,11 +60,17 @@
   --color-inverse-warning: #fbbf24;
   --color-inverse-danger: #ff7b78;
   --color-inverse-accent: #58d5e8;
+  --color-portal-hero: #031b31;
+  --color-portal-highlight: #eaf7f8;
+  --color-portal-on-accent: #03213a;
   --aura-card-border: color-mix(in srgb, var(--color-outline-variant) 58%, transparent);
   --aura-surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.92);
   --aura-card-shadow: var(--aura-surface-highlight), 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 24px -18px rgba(0, 52, 97, 0.22);
   --aura-card-shadow-elevated: var(--aura-surface-highlight), 0 3px 7px rgba(16, 24, 40, 0.06), 0 22px 48px -16px rgba(0, 52, 97, 0.28);
   --aura-control-shadow: var(--aura-surface-highlight), 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 20px -12px rgba(0, 52, 97, 0.20);
+  --aura-portal-shadow-soft: 0 16px 50px -40px rgba(0, 52, 97, 0.5);
+  --aura-portal-shadow-frame: 0 30px 90px -55px rgba(0, 52, 97, 0.55);
+  --aura-portal-shadow-device: 0 40px 100px -35px rgba(0, 0, 0, 0.75);
   --aura-border-neutral-start: color-mix(in srgb, var(--color-primary) 18%, var(--color-outline-variant));
   --aura-border-neutral-end: color-mix(in srgb, var(--color-secondary) 12%, var(--color-outline-variant));
 
@@ -103,11 +109,17 @@
     --color-inverse-warning: #fcd34d;
     --color-inverse-danger: #fda4af;
     --color-inverse-accent: #67e8f9;
+    --color-portal-hero: #031b31;
+    --color-portal-highlight: #0b2f36;
+    --color-portal-on-accent: #03213a;
     --aura-card-border: color-mix(in srgb, var(--color-outline-variant) 72%, transparent);
     --aura-surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.045);
     --aura-card-shadow: var(--aura-surface-highlight), 0 2px 5px rgba(0, 0, 0, 0.34), 0 16px 34px -18px rgba(0, 0, 0, 0.86);
     --aura-card-shadow-elevated: var(--aura-surface-highlight), 0 4px 9px rgba(0, 0, 0, 0.40), 0 26px 54px -20px rgba(0, 0, 0, 0.92);
     --aura-control-shadow: var(--aura-surface-highlight), 0 8px 22px -14px rgba(0, 0, 0, 0.82);
+    --aura-portal-shadow-soft: 0 16px 50px -40px rgba(0, 0, 0, 0.7);
+    --aura-portal-shadow-frame: 0 30px 90px -55px rgba(0, 0, 0, 0.75);
+    --aura-portal-shadow-device: 0 40px 100px -35px rgba(0, 0, 0, 0.85);
   }
 }
 
@@ -152,6 +164,25 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/** Public portal atmosphere and elevation, kept in the shared token layer. */
+.portal-hero-atmosphere {
+  background:
+    radial-gradient(circle at 78% 42%, color-mix(in srgb, var(--color-accent-cyan) 22%, transparent), transparent 30%),
+    radial-gradient(circle at 15% 5%, color-mix(in srgb, var(--color-accent-lime) 10%, transparent), transparent 24%);
+}
+
+.portal-shadow-soft {
+  box-shadow: var(--aura-portal-shadow-soft);
+}
+
+.portal-shadow-frame {
+  box-shadow: var(--aura-portal-shadow-frame);
+}
+
+.portal-shadow-device {
+  box-shadow: var(--aura-portal-shadow-device);
 }
 
 /** Safe area bottom padding for Android/mobile */

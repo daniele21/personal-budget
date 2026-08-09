@@ -49,7 +49,7 @@ function Shell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface text-on-surface">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#031b31]/95 text-white backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-portal-hero/95 text-white backdrop-blur-xl">
         <nav className="mx-auto flex min-h-18 max-w-7xl items-center px-5 sm:px-8" aria-label="Public navigation">
           <Link to="/" onClick={() => setMenuOpen(false)} className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
             <AuraWordmark inverse />
@@ -113,7 +113,7 @@ function AuthenticProductPreview() {
       className="relative mx-auto w-full max-w-[200px]"
     >
       <div className="absolute -inset-8 rounded-full bg-cyan-300/20 blur-3xl" aria-hidden="true" />
-      <div className="relative overflow-hidden rounded-[2.4rem] border border-white/20 bg-[#f6f8fb] p-3 shadow-[0_40px_100px_-35px_rgba(0,0,0,0.75)]">
+      <div className="portal-shadow-device relative overflow-hidden rounded-[2.4rem] border border-white/20 bg-surface p-3">
         <img
           src="/landing/aura-home.png"
           alt="Aura Android home showing August budget, available spending, cash flow and recent transactions"
@@ -130,8 +130,8 @@ function AuthenticProductPreview() {
 function Landing() {
   return (
     <main>
-      <section className="relative isolate min-h-[calc(100svh-4.5rem)] overflow-hidden bg-[#031b31] text-white">
-        <div className="absolute inset-0 opacity-70" aria-hidden="true" style={{ background: 'radial-gradient(circle at 78% 42%, rgba(6,182,212,.22), transparent 30%), radial-gradient(circle at 15% 5%, rgba(132,204,22,.1), transparent 24%)' }} />
+      <section className="relative isolate min-h-[calc(100svh-4.5rem)] overflow-hidden bg-portal-hero text-white">
+        <div className="portal-hero-atmosphere absolute inset-0 opacity-70" aria-hidden="true" />
         <div className="absolute -right-40 top-12 h-[620px] w-[620px] rounded-full border border-cyan-300/10 md:-right-24" aria-hidden="true" />
         <div className="absolute -right-20 top-32 h-[460px] w-[460px] rounded-full border border-amber-300/10" aria-hidden="true" />
         <div className="relative mx-auto grid min-h-[calc(100svh-4.5rem)] max-w-7xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:py-20">
@@ -142,7 +142,7 @@ function Landing() {
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-300 sm:text-xl">Aura turns your budget, recurring commitments and daily spending into one calm, private view.</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="mailto:support@staituned.com?subject=Aura%20Android%20early%20access" className="group inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-6 text-sm font-extrabold text-[#03213a] transition-all hover:-translate-y-0.5 hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+              <a href="mailto:support@staituned.com?subject=Aura%20Android%20early%20access" className="group inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-6 text-sm font-extrabold text-portal-on-accent transition-all hover:-translate-y-0.5 hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 Request early access <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </a>
               <a href="#how-it-works" className="inline-flex min-h-13 items-center justify-center rounded-2xl border border-white/20 px-6 text-sm font-extrabold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">See how Aura works</a>
@@ -182,9 +182,9 @@ function Landing() {
 
       <PaymentDetectionShowcase />
 
-      <section className="bg-[#eaf7f8] py-24 sm:py-32">
+      <section className="bg-portal-highlight py-24 sm:py-32">
         <motion.div {...reveal} className="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-2">
-          <div className="relative overflow-hidden rounded-[2rem] bg-[#003461] p-8 text-white sm:p-12">
+          <div className="relative overflow-hidden rounded-[2rem] bg-primary p-8 text-white sm:p-12">
             <div className="absolute right-[-10%] top-[-20%] h-64 w-64 rounded-full border-[42px] border-cyan-300/15" aria-hidden="true" />
             <LockKeyhole className="h-9 w-9 text-cyan-300" aria-hidden="true" />
             <p className="mt-20 text-sm font-bold text-cyan-200">Privacy is the architecture</p>
@@ -218,7 +218,7 @@ function Landing() {
 
 function PageIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section className="bg-[#031b31] px-5 py-20 text-white sm:px-8 sm:py-24">
+    <section className="bg-portal-hero px-5 py-20 text-white sm:px-8 sm:py-24">
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-4xl">
         <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-cyan-300">{eyebrow}</p>
         <h1 className="mt-4 max-w-3xl font-headline text-4xl font-extrabold tracking-tight sm:text-6xl">{title}</h1>
