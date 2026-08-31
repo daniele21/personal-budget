@@ -10,6 +10,15 @@ import {
   wipeLocalDataThroughUi,
 } from './support/portableArchive';
 
+function parseDisplayedCurrency(value: string): number {
+  const normalized = value.replace(/[^0-9,.-]/g, '').replace(/,/g, '');
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Unable to parse displayed currency value: ${value}`);
+  }
+  return parsed;
+}
+
 test.describe('Aura critical browser journeys', () => {
   test.beforeEach(async ({ page }) => {
     await seedPortableWorkspace(page);
@@ -18,8 +27,10 @@ test.describe('Aura critical browser journeys', () => {
   test('records a current-month expense and updates available-to-spend state', async ({ page }) => {
     await page.goto('/');
     const safeToSpend = page.locator('[data-tour-id="safe-to-spend"]');
+    const availableAmount = safeToSpend.locator('p').first();
     await expect(safeToSpend).toBeVisible();
-    await expect(safeToSpend).toContainText(/2[,.]350/);
+    await expect(availableAmount).toBeVisible();
+    const availableBefore = parseDisplayedCurrency(await availableAmount.innerText());
 
     await page.goto('/add');
     await page.getByRole('button', { name: /Edit amount/ }).click();
@@ -42,7 +53,9 @@ test.describe('Aura critical browser journeys', () => {
     })).toEqual({ amount: 50, type: 'expense' });
 
     await page.goto('/');
-    await expect(safeToSpend).toContainText(/2[,.]300/);
+    await expect(availableAmount).toBeVisible();
+    await expect.poll(async () => parseDisplayedCurrency(await availableAmount.innerText()))
+      .toBeCloseTo(availableBefore - 50, 2);
   });
 
   test('exports, clears, and restores the exact portable workspace', async ({ page }) => {
