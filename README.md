@@ -201,7 +201,7 @@ The shared React runtime is available locally for development and browser regres
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - npm
 - JDK 21 for Android work
 - Android SDK platform and build tools 36 for the current Android baseline
@@ -255,7 +255,8 @@ Useful focused commands:
 
 | Command | Purpose |
 | --- | --- |
-| `npm run test:e2e` | Browser end-to-end regression suite |
+| `npm run test:e2e:preflight` | Bounded Playwright coverage of the critical budget-decision and portable-data journeys |
+| `npm run test:e2e` | Full browser end-to-end regression, quality, performance, cross-browser, and mobile-emulation suite |
 | `npm run android:sync:diagnostic` | Build with explicitly enabled local WebView diagnostics |
 | `npm run android:simulate:wallet-notification` | Exercise the synthetic payment-notification flow on an emulator |
 | `npm run android:verify:listener-recovery` | Verify listener process recreation, reboot, revocation, and cleanup |
