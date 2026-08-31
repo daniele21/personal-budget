@@ -20,6 +20,7 @@ const TEST_FIREBASE_DEFINE = {
 export default defineConfig(({ mode, command }) => {
   const isTestMode = mode === 'test';
   const isE2EMode = mode === 'e2e';
+  const usesSyntheticFirebase = isTestMode || isE2EMode;
   const authRuntime = resolveAuthRuntime(mode, command);
   const paymentDetectionRuntime = resolvePaymentDetectionRuntime(mode, command);
   const environment = loadEnv(mode, process.cwd(), '');
@@ -27,7 +28,7 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     plugins: [react(), tailwindcss()],
-    define: isTestMode ? TEST_FIREBASE_DEFINE : undefined,
+    define: usesSyntheticFirebase ? TEST_FIREBASE_DEFINE : undefined,
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
