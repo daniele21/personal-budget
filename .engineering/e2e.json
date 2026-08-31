@@ -33,10 +33,10 @@
       "id": "playwright-ci",
       "fidelity_class": "representative_virtual",
       "automation": "automated",
-      "platform": "GitHub Actions / Node 22 / Playwright Chromium, WebKit and mobile emulation",
+      "platform": "GitHub Actions / Node 22 / Playwright Chromium preflight; full suite additionally covers WebKit and mobile emulation",
       "artifact_surface": "source-backed Vite E2E runtime",
       "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "known_gaps": ["does not execute the packaged APK", "does not execute Capacitor native bridges", "mobile browser emulation is not Android physical-device evidence"]
+      "known_gaps": ["does not execute the packaged APK", "does not execute Capacitor native bridges", "mobile browser emulation is full-suite evidence, not physical Android evidence"]
     }
   ],
   "critical_journeys": [
