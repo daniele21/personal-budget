@@ -1,0 +1,116 @@
+name: Repository health
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  engineering-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify repository structure
+        run: python3 scripts/verify_repository.py
+      - name: Verify project operating contract
+        run: python3 scripts/verify_operations.py
+      - name: Verify E2E environment contract
+        run: python3 scripts/verify_e2e.py
+      - name: Verify product experience contract
+        run: python3 scripts/verify_product_experience.py
+      - name: Verify documentation lifecycle and budgets
+        run: python3 scripts/verify_docs.py
+      - name: Verify agent context budget
+        run: python3 scripts/verify_agent_context.py
+
+  select-validation-profile:
+    runs-on: ubuntu-latest
+    outputs:
+      profile: ${{ steps.scope.outputs.profile }}
+      reason: ${{ steps.scope.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        name: Select blast-radius profile
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            BASE_REF="origin/${{ github.base_ref }}"
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            BASE_REF="${{ github.event.before }}"
+          else
+            BASE_REF="HEAD^"
+          fi
+          RESULT="$(python3 scripts/select_validation_profile.py --base-ref "$BASE_REF" --head-ref HEAD)"
+          echo "$RESULT"
+          PROFILE="$(printf '%s\n' "$RESULT" | sed -n 's/^profile=//p')"
+          REASON="$(printf '%s\n' "$RESULT" | sed -n 's/^reason=//p')"
+          echo "profile=$PROFILE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+  web-validation:
+    needs: select-validation-profile
+    if: needs.select-validation-profile.outputs.profile != 'lean'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Type and engineering checks
+        run: npm run check
+      - name: Unit and integration tests
+        run: npm run test
+      - name: Production web build
+        run: npm run build
+
+  browser-e2e:
+    needs: select-validation-profile
+    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Playwright engines
+        run: npx playwright install --with-deps chromium webkit
+      - name: Run critical browser journeys
+        run: npm run test:e2e
+      - name: Upload bounded failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  android-automation-gap:
+    needs: select-validation-profile
+    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Declare Android execution gap
+        run: |
+          echo "Android unit/Lint/emulator/WebView automation is intentionally not claimed here yet."
+          echo "The packaged debug surface requires an isolated Firebase/OAuth/Google Services CI fixture."
+          echo "See .engineering/e2e.json and docs/current-state.md."

@@ -13,7 +13,6 @@ test-results/
 .firebase/*
 .agents/*
 .codex/*
-AGENTS.md
 lista_operazioni_03052026.csv
 lista_operazioni_03052026.xlsx
 deploy prod
