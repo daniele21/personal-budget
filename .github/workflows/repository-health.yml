@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: repository-health-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   engineering-baseline:
     runs-on: ubuntu-latest
@@ -62,6 +66,7 @@ jobs:
     needs: select-validation-profile
     if: needs.select-validation-profile.outputs.profile != 'lean'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -81,6 +86,7 @@ jobs:
     needs: select-validation-profile
     if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
