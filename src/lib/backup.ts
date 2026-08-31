@@ -75,9 +75,9 @@ async function encrypt(plaintext: string, key: CryptoKey): Promise<{ ciphertext:
 
 async function decrypt(ciphertext: string, iv: string, key: CryptoKey): Promise<string> {
   const buffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: base64ToArrayBuffer(iv) },
+    { name: 'AES-GCM', iv: base64ToBytes(iv) },
     key,
-    base64ToArrayBuffer(ciphertext),
+    base64ToBytes(ciphertext),
   );
   return new TextDecoder().decode(buffer);
 }
@@ -232,13 +232,13 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
+function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return bytes.buffer;
+  return bytes;
 }
 
 // ─── Public API ─────────────────────────────────────────────────────

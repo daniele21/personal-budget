@@ -7,7 +7,18 @@ import { resolveAuthRuntime } from './vite.auth-runtime';
 import { createAndroidDebugEnvOverrides } from './vite.android-runtime';
 import { resolvePaymentDetectionRuntime } from './vite.payment-detection-runtime';
 
+const TEST_FIREBASE_DEFINE = {
+  'import.meta.env.VITE_FIREBASE_API_KEY': JSON.stringify('aura-test-api-key'),
+  'import.meta.env.VITE_FIREBASE_AUTH_DOMAIN': JSON.stringify('aura-test.local'),
+  'import.meta.env.VITE_FIREBASE_PROJECT_ID': JSON.stringify('aura-test'),
+  'import.meta.env.VITE_FIREBASE_STORAGE_BUCKET': JSON.stringify('aura-test.invalid'),
+  'import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID': JSON.stringify('000000000000'),
+  'import.meta.env.VITE_FIREBASE_APP_ID': JSON.stringify('1:000000000000:web:aura-test'),
+  'import.meta.env.VITE_FIRESTORE_DATABASE_ID': JSON.stringify('budget-db'),
+};
+
 export default defineConfig(({ mode, command }) => {
+  const isTestMode = mode === 'test';
   const isE2EMode = mode === 'e2e';
   const authRuntime = resolveAuthRuntime(mode, command);
   const paymentDetectionRuntime = resolvePaymentDetectionRuntime(mode, command);
@@ -16,6 +27,7 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    define: isTestMode ? TEST_FIREBASE_DEFINE : undefined,
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
