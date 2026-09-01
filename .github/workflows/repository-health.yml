@@ -285,9 +285,9 @@ jobs:
         run: |
           mkdir -p artifacts/android-ci
           cp /tmp/aura-android-emulator.log artifacts/android-ci/emulator.log || true
-          adb logcat -d > artifacts/android-ci/logcat.txt 2>&1 || true
-          adb shell dumpsys activity activities > artifacts/android-ci/activities.txt 2>&1 || true
-          adb shell dumpsys package com.staituned.aura.debug > artifacts/android-ci/package.txt 2>&1 || true
+          timeout 15s adb logcat -d > artifacts/android-ci/logcat.txt 2>&1 || true
+          timeout 15s adb shell dumpsys activity activities > artifacts/android-ci/activities.txt 2>&1 || true
+          timeout 15s adb shell dumpsys package com.staituned.aura.debug > artifacts/android-ci/package.txt 2>&1 || true
       - name: Upload Android emulator evidence
         if: always()
         uses: actions/upload-artifact@v4
