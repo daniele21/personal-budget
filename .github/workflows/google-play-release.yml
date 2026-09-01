@@ -100,8 +100,6 @@ jobs:
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
-          echo "AURA_ANDROID_VERSION_NAME=$version_name" >> "$GITHUB_ENV"
-          echo "AURA_ANDROID_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
@@ -116,6 +114,17 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci
+
+      - name: Materialize exact release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > android/version.properties <<EOF
+          VERSION_CODE=${{ steps.release.outputs.version_code }}
+          VERSION_NAME=${{ steps.release.outputs.version_name }}
+          EOF
+          grep -Fx "VERSION_CODE=${{ steps.release.outputs.version_code }}" android/version.properties
+          grep -Fx "VERSION_NAME=${{ steps.release.outputs.version_name }}" android/version.properties
 
       - name: Materialize protected Android release configuration
         shell: bash
