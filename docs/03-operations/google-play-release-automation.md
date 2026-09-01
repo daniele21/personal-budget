@@ -42,12 +42,9 @@ The trigger file is deliberately under `android/`; therefore the blast-radius se
 
 ## Version identity
 
-The branch suffix is the Android `versionName` for the release build. The workflow derives a monotonically increasing CI `versionCode` as `100000 + Repository health run_number`, keeping CI release identity outside source mutation while preserving the checked-in default version for normal development builds.
+`android/version.properties` remains the canonical Android application-version source for normal development and checked-in builds. The release branch suffix supplies the requested Play `versionName`, while the workflow derives a monotonically increasing CI `versionCode` as `100000 + Repository health run_number`.
 
-`android/app/build.gradle` accepts these CI-only overrides through:
-
-- `AURA_ANDROID_VERSION_NAME`
-- `AURA_ANDROID_VERSION_CODE`
+After the exact release commit has already passed `Repository health`, the release runner writes those two resolved values into its ephemeral checkout's `android/version.properties` before the production build. The repository itself is not mutated, and Gradle continues to read version identity from one source only.
 
 The release artifact includes a manifest and SHA-256 checksum tying the AAB to the product source SHA, release trigger commit, health run, track, version name, and version code.
 
