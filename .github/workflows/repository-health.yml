@@ -110,6 +110,180 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  android-emulator-preflight:
+    needs: select-validation-profile
+    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
+    environment: android-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_ANDROID_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_ANDROID_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_ANDROID_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_ANDROID_FIRESTORE_DATABASE_ID: ${{ vars.VITE_FIRESTORE_DATABASE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Materialize and verify Android CI configuration
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          required=(
+            VITE_ANDROID_FIREBASE_API_KEY
+            VITE_ANDROID_FIREBASE_AUTH_DOMAIN
+            VITE_ANDROID_FIREBASE_PROJECT_ID
+            VITE_ANDROID_FIREBASE_STORAGE_BUCKET
+            VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID
+            VITE_ANDROID_FIREBASE_APP_ID
+            VITE_ANDROID_FIRESTORE_DATABASE_ID
+          )
+          for key in "${required[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing android-ci environment variable: ${key}" >&2
+              exit 1
+            fi
+          done
+          if [[ -z "${GOOGLE_SERVICES_JSON_B64:-}" ]]; then
+            echo "Missing android-ci secret: AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64" >&2
+            exit 1
+          fi
+          mkdir -p android/app/src/debug
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/debug/google-services.json
+          jq -e '
+            any(.client[]?;
+              .client_info.android_client_info.package_name == "com.staituned.aura.debug"
+              and any(.oauth_client[]?; .client_type == 3)
+            )
+          ' android/app/src/debug/google-services.json >/dev/null
+          configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/debug/google-services.json)"
+          if [[ "$configured_project" != "$VITE_ANDROID_FIREBASE_PROJECT_ID" ]]; then
+            echo "google-services.json project (${configured_project}) does not match VITE_FIREBASE_PROJECT_ID (${VITE_ANDROID_FIREBASE_PROJECT_ID})." >&2
+            exit 1
+          fi
+      - name: Native Android unit and lint checks
+        run: bash scripts/run-android-gradle.sh :app:testDebugUnitTest :app:lintDebug
+      - name: Build packaged debug APK
+        run: npm run android:assemble:debug
+      - name: Provision Android API 36 emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          AVDMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "emulator" \
+            "platforms;android-36" \
+            "system-images;android-36;google_apis;x86_64"
+          echo "no" | "$AVDMANAGER" create avd \
+            --force \
+            --name aura-ci-api36 \
+            --package "system-images;android-36;google_apis;x86_64" \
+            --device pixel_6
+          sudo chmod 666 /dev/kvm || true
+          nohup "${ANDROID_HOME}/emulator/emulator" \
+            -avd aura-ci-api36 \
+            -no-window \
+            -noaudio \
+            -no-boot-anim \
+            -gpu swiftshader_indirect \
+            -camera-back none \
+            -camera-front none \
+            > /tmp/aura-android-emulator.log 2>&1 &
+          echo $! > /tmp/aura-android-emulator.pid
+          adb wait-for-device
+          ready=0
+          for _ in $(seq 1 120); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+              ready=1
+              break
+            fi
+            sleep 5
+          done
+          if [[ "$ready" != "1" ]]; then
+            echo "Android API 36 emulator did not finish booting." >&2
+            tail -n 200 /tmp/aura-android-emulator.log || true
+            exit 1
+          fi
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell input keyevent 82 || true
+          adb devices -l
+      - name: Run packaged Android instrumentation and WebView journeys
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/android-ci
+
+          capture_journey() {
+            local name="$1"
+            shift
+            local remote_video="/sdcard/${name}.mp4"
+            local command_status=0
+            adb shell rm -f "$remote_video" || true
+            adb shell screenrecord --time-limit 180 "$remote_video" \
+              >"/tmp/${name}-screenrecord.log" 2>&1 &
+            local recorder_pid=$!
+            set +e
+            "$@"
+            command_status=$?
+            set -e
+            adb exec-out screencap -p > "artifacts/android-ci/${name}.png" || true
+            adb shell pkill -INT screenrecord || true
+            wait "$recorder_pid" || true
+            adb pull "$remote_video" "artifacts/android-ci/${name}.mp4" || true
+            cp "/tmp/${name}-screenrecord.log" "artifacts/android-ci/${name}-screenrecord.log" || true
+            return "$command_status"
+          }
+
+          status=0
+          if ! capture_journey android-instrumentation \
+            bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest; then
+            status=1
+          fi
+          if ! capture_journey android-webview \
+            node scripts/verify-android-webview.mjs; then
+            status=1
+          fi
+          exit "$status"
+      - name: Collect Android diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/android-ci
+          cp /tmp/aura-android-emulator.log artifacts/android-ci/emulator.log || true
+          adb logcat -d > artifacts/android-ci/logcat.txt 2>&1 || true
+          adb shell dumpsys activity activities > artifacts/android-ci/activities.txt 2>&1 || true
+          adb shell dumpsys package com.staituned.aura.debug > artifacts/android-ci/package.txt 2>&1 || true
+      - name: Upload Android emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-api36-evidence-${{ github.sha }}
+          path: |
+            artifacts/android-ci/
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/reports/
+          if-no-files-found: warn
+          retention-days: 7
+
   android-automation-gap:
     needs: select-validation-profile
     if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
@@ -117,6 +291,6 @@ jobs:
     steps:
       - name: Declare Android execution gap
         run: |
-          echo "Android unit/Lint/emulator/WebView automation is intentionally not claimed here yet."
-          echo "The packaged debug surface requires an isolated Firebase/OAuth/Google Services CI fixture."
-          echo "See .engineering/e2e.json and docs/current-state.md."
+          echo "Android emulator automation is now being exercised by android-emulator-preflight."
+          echo "This declaration remains until an exact-head API 36 run is green and .engineering/e2e.json is promoted accordingly."
+          echo "Physical/OEM/TalkBack/payment-source/signing evidence remains real-environment evidence."
