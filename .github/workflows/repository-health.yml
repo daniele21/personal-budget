@@ -206,22 +206,34 @@ jobs:
             -no-window \
             -noaudio \
             -no-boot-anim \
+            -no-snapshot \
             -gpu swiftshader_indirect \
             -camera-back none \
             -camera-front none \
             > /tmp/aura-android-emulator.log 2>&1 &
-          echo $! > /tmp/aura-android-emulator.pid
-          adb wait-for-device
+          emulator_pid=$!
+          echo "$emulator_pid" > /tmp/aura-android-emulator.pid
+          if ! timeout 240s adb wait-for-device; then
+            echo "Android emulator did not become visible to adb within 240 seconds." >&2
+            ps -p "$emulator_pid" -f || true
+            tail -n 200 /tmp/aura-android-emulator.log || true
+            exit 1
+          fi
           ready=0
           for _ in $(seq 1 120); do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              echo "Android emulator exited before completing boot." >&2
+              tail -n 200 /tmp/aura-android-emulator.log || true
+              exit 1
+            fi
             if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
               ready=1
               break
             fi
-            sleep 5
+            sleep 2
           done
           if [[ "$ready" != "1" ]]; then
-            echo "Android API 36 emulator did not finish booting." >&2
+            echo "Android API 36 emulator did not finish booting within 240 seconds after adb connection." >&2
             tail -n 200 /tmp/aura-android-emulator.log || true
             exit 1
           fi
