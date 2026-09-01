@@ -230,6 +230,11 @@ npm run android:assemble:debug
 
 The isolated debug application uses `com.staituned.aura.debug` and the `Aura Dev` label. Signing files, `google-services.json`, SDK paths, OAuth credentials, and keystores must remain outside source control.
 
+The application version is defined in `android/version.properties`. Before a
+new release, update `VERSION_CODE` to a positive integer greater than every
+code previously uploaded to Google Play and set the user-visible
+`VERSION_NAME`. Gradle validates and reads both values from that file.
+
 For emulator setup, diagnostics, deep links, authentication troubleshooting, notification simulation, and cleanup, use the [Android payment-detection runbook](docs/03-operations/android-payment-detection-runbook.md).
 
 ## Build and validate

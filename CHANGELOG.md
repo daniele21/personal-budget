@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added `android/version.properties` as the single Android application-version
+  source, with fail-fast Gradle validation for invalid or missing values.
 - Added a deterministic two-step mobile first-run flow with a required positive
   monthly budget for real setup, starter-category choices, explicit backup
   checking/offline continuation, focus containment and mobile axe coverage.
