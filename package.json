@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=3000 --host=127.0.0.1 --strictPort",
     "dev:e2e": "vite --mode=e2e",
     "build": "vite build",
     "build:portal": "vite build --config vite.portal.config.ts",
@@ -28,18 +28,22 @@
     "android:verify:transaction-import-webview": "npm run android:assemble:debug && AURA_VERIFY_TRANSACTION_IMPORT=true node scripts/verify-android-webview.mjs",
     "android:verify:webview": "npm run android:assemble:debug && node scripts/verify-android-webview.mjs",
     "preview": "vite preview",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist portal-dist playwright-report test-results",
     "deploy:hosting": "bash scripts/deploy-hosting.sh",
     "firebase:login": "firebase login",
     "lint": "tsc --noEmit",
+    "repo:health": "python3 scripts/verify_repository.py && python3 scripts/verify_operations.py && python3 scripts/verify_e2e.py && python3 scripts/verify_product_experience.py && python3 scripts/verify_docs.py && python3 scripts/verify_agent_context.py",
+    "check": "npm run lint && npm run repo:health",
+    "preflight:web": "npm run check && npm run test && npm run build && npm run test:e2e:preflight",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:preflight": "playwright test tests/e2e/critical-journeys.e2e.ts",
     "test:e2e:headed": "playwright test --headed",
     "test:full": "npm run test:regression && npm run test:e2e",
     "verify:gemini-retirement": "npx cap sync android && node scripts/verify-gemini-retirement.mjs",
     "test:watch": "vitest",
     "test:react": "vitest run src/components src/pages",
-    "test:regression": "npm run lint && npm run test && npm run build && npm run verify:gemini-retirement"
+    "test:regression": "npm run check && npm run test && npm run build && npm run verify:gemini-retirement"
   },
   "dependencies": {
     "@capacitor/android": "8.4.2",

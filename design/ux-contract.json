@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "contract_version": "0.5.0",
+  "applicable": true,
+  "design_source_of_truth": {
+    "type": "code-first",
+    "location": "src/pages/, src/components/, src/platform/ with brand-kit/brand-guidelines.md for visual identity"
+  },
+  "experience_context": {
+    "primary_users": ["People managing a personal or household budget who value privacy, clarity and explicit control over financial records"],
+    "primary_jobs": ["Know what is safe to spend", "Record and review financial activity", "Understand spending and cash-flow patterns", "Manage budgets, recurring commitments and savings goals", "Export, restore or back up data without losing ownership"],
+    "primary_surfaces": ["Bundled Android application", "Shared React product UI", "Public landing/legal/support/account-deletion web surfaces"]
+  },
+  "decision_model": {
+    "user_outcome_first": true,
+    "task_model_before_layout": true,
+    "hierarchy_before_visual_polish": true,
+    "states_before_motion": true,
+    "motion_requires_purpose": true,
+    "evidence_before_completion": true
+  },
+  "principles": {
+    "user_task_model_over_internal_architecture": true,
+    "progressive_disclosure": true,
+    "sensible_defaults": true,
+    "clear_primary_action_hierarchy": true,
+    "platform_appropriate": true,
+    "bounded_information_density": true,
+    "actionable_error_recovery": true
+  },
+  "critical_states": ["loading", "empty", "error", "disabled", "success", "warning", "permission-denied", "offline-or-unavailable"],
+  "accessibility": {
+    "target": "WCAG 2.2 AA for shared web surfaces and equivalent Android accessibility semantics for the packaged application",
+    "keyboard_when_applicable": true,
+    "focus_visibility_order": true,
+    "assistive_semantics": true,
+    "text_scaling_when_applicable": true,
+    "no_color_only_critical_meaning": true,
+    "reduced_motion_when_applicable": true
+  },
+  "adaptive_layout": {
+    "applicable": true,
+    "supported_contexts": ["Android phone portrait/landscape where supported", "mobile browser regression", "desktop browser development/regression"]
+  },
+  "design_system": {
+    "component_source": "src/components/ plus the semantic tokens/styles owned by the application code",
+    "brand_tokens": "design/brand-kit.json",
+    "reuse_existing_semantic_component_first": true
+  },
+  "motion": {
+    "purpose_required": true,
+    "supported_purposes": ["feedback", "continuity", "spatial_relationship", "state_transition", "progress", "attention", "hierarchy", "meaningful_completion"],
+    "frequent_interactions_are_restrained": true,
+    "gesture_motion_tracks_input": true,
+    "performance_over_decorative_complexity": true,
+    "reduced_motion": true
+  },
+  "graphics": {
+    "functional_before_decorative": true,
+    "ui_understandable_without_decorative_imagery": true,
+    "supported_roles": ["explanation", "orientation", "onboarding", "empty_state", "status", "meaningful_completion", "data_visualization", "brand"]
+  },
+  "critical_journeys": [
+    {"id": "budget-decision-flow", "name": "Inspect the month, record/review spending and understand the resulting safe-to-spend/budget state", "e2e": "required"},
+    {"id": "portable-data-flow", "name": "Export/import supported user data while preserving deterministic ledger semantics", "e2e": "required"},
+    {"id": "payment-detection-review", "name": "Review an Android payment candidate before it can enter the canonical ledger", "e2e": "required"}
+  ],
+  "reference_views": ["public/landing/aura-home.png and related current landing captures", "brand-kit/brand-kit-visual.png plus reachable loading/empty/error states in production components/tests"],
+  "validation": {
+    "accessibility_automation": "@axe-core/playwright within Playwright coverage where applicable",
+    "visual_regression": "Targeted landing/reference captures and Playwright failure screenshots; no broad permanent screenshot archive",
+    "manual_accessibility": "TalkBack, focus order, text scaling, contrast and reduced-motion checks before promotion when affected",
+    "usability_evidence": "Closed-beta/release-decision evidence for high-risk user workflows when justified"
+  },
+  "evidence": {
+    "bounded_ci_retention": true,
+    "identity_with_source_build_environment": true,
+    "zero_residue_after_ui_e2e": true
+  }
+}

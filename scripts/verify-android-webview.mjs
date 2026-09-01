@@ -110,6 +110,17 @@ function startMainActivity() {
   return runAdb('shell', 'am', 'start', '-W', '-n', appComponent);
 }
 
+async function waitForNativeRuntime(client) {
+  await waitFor(
+    () => client.evaluate(`Boolean(
+      window.Capacitor?.getPlatform?.() === 'android'
+      && window.Capacitor?.Plugins?.NativeAppRuntime
+    )`),
+    'Capacitor Android runtime',
+    80,
+  );
+}
+
 async function verifyTransactionImportBoundary(client) {
   await client.evaluate(`(() => {
     const values = {
@@ -219,6 +230,7 @@ async function main() {
   const coldStart = startMainActivity();
 
   let client = await connectToWebView();
+  await waitForNativeRuntime(client);
   const initial = await client.evaluate(`({
     url: location.href,
     title: document.title,
@@ -278,6 +290,7 @@ async function main() {
   runAdb('shell', 'am', 'force-stop', packageName);
   const restart = startMainActivity();
   client = await connectToWebView();
+  await waitForNativeRuntime(client);
   const persisted = await client.evaluate(`(async () => {
     const indexedDbValue = await new Promise((resolve, reject) => {
       const request = indexedDB.open(${JSON.stringify(databaseName)}, 1);

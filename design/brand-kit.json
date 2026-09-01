@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "contract_version": "0.5.0",
+  "product_name": "Aura Finance",
+  "canonical_guidance": "brand-kit/brand-guidelines.md",
+  "assets": {
+    "logo_primary": "brand-kit/aura-logo-light.png",
+    "logo_compact": "brand-kit/aura-mark-light-square.png",
+    "logo_monochrome": "brand-kit/aura-mark-dark-square.png",
+    "app_icon": "brand-kit/aura-mark-light-square.png",
+    "favicon": "brand-kit/aura-mark-light-square.png"
+  },
+  "tokens": {
+    "colors": {
+      "surface": "#f3faff",
+      "surface_elevated": "#ffffff",
+      "text_primary": "#0c1a24",
+      "text_secondary": "#44515c",
+      "primary": "#003461",
+      "success": "#1b6d24",
+      "warning": "#f59e0b",
+      "error": "#b42318",
+      "border": "#cfdbe5",
+      "focus": "#06b6d4"
+    },
+    "typography": "Manrope for headlines/key metrics; Inter for UI/body according to brand-kit/brand-guidelines.md",
+    "spacing": "Use the canonical application spacing scale/components; avoid ad-hoc raw spacing where an existing semantic owner exists"
+  },
+  "style": {
+    "iconography": "Simple functional iconography consistent with the application; icons reinforce meaning and never replace critical text without accessible labels",
+    "motion": "Restrained, purposeful feedback/continuity/progress motion; no decorative motion that competes with financial decisions",
+    "imagery": "Functional product/data visuals first; brand imagery may support orientation but the UI remains understandable without decoration",
+    "voice_microcopy": "Clear, calm, direct and non-judgmental; explain financial state without promising returns or presenting financial advice"
+  },
+  "motion_tokens": {
+    "durations": {"instant": "0-80ms", "fast": "120-180ms", "standard": "200-280ms", "large": "300-450ms"},
+    "easing": {"enter": "ease-out", "exit": "ease-in", "move": "ease-in-out"},
+    "spring": {"default": "Motion spring with restrained damping and no distracting overshoot", "bounce": "Use only for meaningful completion/attention and never for frequent financial controls"},
+    "reduced_motion_strategy": "Respect prefers-reduced-motion/platform settings by removing non-essential transforms and preserving immediate state/feedback clarity"
+  }
+}

@@ -10,8 +10,8 @@ export interface ArchiveEncryptionContext {
   iv: Uint8Array;
 }
 
-function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+function asBufferSource(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(bytes);
 }
 
 function validatePassphrase(passphrase: string): void {
@@ -39,7 +39,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKe
       name: AURA_ARCHIVE_CRYPTO.kdf,
       hash: AURA_ARCHIVE_CRYPTO.kdfHash,
       iterations: AURA_ARCHIVE_CRYPTO.kdfIterations,
-      salt: asArrayBuffer(salt),
+      salt: asBufferSource(salt),
     },
     keyMaterial,
     { name: AURA_ARCHIVE_CRYPTO.algorithm, length: AURA_ARCHIVE_CRYPTO.keyLengthBits },
@@ -63,12 +63,12 @@ export async function encryptArchivePayload(
   const encrypted = await crypto.subtle.encrypt(
     {
       name: AURA_ARCHIVE_CRYPTO.algorithm,
-      iv: asArrayBuffer(context.iv),
-      additionalData: asArrayBuffer(additionalData),
+      iv: asBufferSource(context.iv),
+      additionalData: asBufferSource(additionalData),
       tagLength: AURA_ARCHIVE_CRYPTO.authenticationTagBits,
     },
     context.key,
-    asArrayBuffer(plaintext),
+    asBufferSource(plaintext),
   );
   return new Uint8Array(encrypted);
 }
@@ -86,12 +86,12 @@ export async function decryptArchivePayload(
     const decrypted = await crypto.subtle.decrypt(
       {
         name: AURA_ARCHIVE_CRYPTO.algorithm,
-        iv: asArrayBuffer(iv),
-        additionalData: asArrayBuffer(additionalData),
+        iv: asBufferSource(iv),
+        additionalData: asBufferSource(additionalData),
         tagLength: AURA_ARCHIVE_CRYPTO.authenticationTagBits,
       },
       key,
-      asArrayBuffer(ciphertext),
+      asBufferSource(ciphertext),
     );
     return new Uint8Array(decrypted);
   } catch {
