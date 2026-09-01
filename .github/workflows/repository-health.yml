@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - "debug-test/**"
       - "play-release/**"
   workflow_dispatch:
 
@@ -262,7 +263,9 @@ jobs:
           capture_journey() {
             local name="$1"
             shift
-            local remote_video="/sdcard/${name}.mp4"
+            local remote_video="/data/local/tmp/${name}.mp4"
+            local local_video="artifacts/android-ci/${name}.mp4"
+            local local_screenshot="artifacts/android-ci/${name}.png"
             local command_status=0
             adb shell rm -f "$remote_video" || true
             adb shell screenrecord --time-limit 180 "$remote_video" \
@@ -272,11 +275,26 @@ jobs:
             "$@"
             command_status=$?
             set -e
-            adb exec-out screencap -p > "artifacts/android-ci/${name}.png" || true
+            adb exec-out screencap -p > "$local_screenshot" || command_status=1
             adb shell pkill -INT screenrecord || true
             wait "$recorder_pid" || true
-            adb pull "$remote_video" "artifacts/android-ci/${name}.mp4" || true
             cp "/tmp/${name}-screenrecord.log" "artifacts/android-ci/${name}-screenrecord.log" || true
+            if ! adb shell test -s "$remote_video"; then
+              echo "Missing video evidence for ${name}." >&2
+              command_status=1
+            elif ! adb pull "$remote_video" "$local_video"; then
+              echo "Failed to pull video evidence for ${name}." >&2
+              command_status=1
+            fi
+            adb shell rm -f "$remote_video" || true
+            if [[ ! -s "$local_screenshot" ]]; then
+              echo "Missing screenshot evidence for ${name}." >&2
+              command_status=1
+            fi
+            if [[ ! -s "$local_video" ]]; then
+              echo "Missing local video evidence for ${name}." >&2
+              command_status=1
+            fi
             return "$command_status"
           }
 
@@ -310,14 +328,3 @@ jobs:
             android/app/build/reports/
           if-no-files-found: warn
           retention-days: 7
-
-  android-automation-gap:
-    needs: select-validation-profile
-    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Declare Android execution gap
-        run: |
-          echo "Android emulator automation is now being exercised by android-emulator-preflight."
-          echo "This declaration remains until an exact-head API 36 run is green and .engineering/e2e.json is promoted accordingly."
-          echo "Physical/OEM/TalkBack/payment-source/signing evidence remains real-environment evidence."
