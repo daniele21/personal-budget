@@ -1,0 +1,214 @@
+name: Google Play release
+
+on:
+  workflow_run:
+    workflows: ["Repository health"]
+    types: [completed]
+    branches:
+      - "play-release/internal/**"
+      - "play-release/production/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: google-play-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    environment: play-console
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIRESTORE_DATABASE_ID: ${{ vars.VITE_FIRESTORE_DATABASE_ID }}
+      AURA_ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.AURA_ANDROID_UPLOAD_STORE_PASSWORD }}
+      AURA_ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.AURA_ANDROID_UPLOAD_KEY_ALIAS }}
+      AURA_ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.AURA_ANDROID_UPLOAD_KEY_PASSWORD }}
+    steps:
+      - name: Check out exact validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - id: release
+        name: Resolve release target and version
+        shell: bash
+        env:
+          RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEALTH_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_BRANCH" in
+            play-release/internal/*)
+              track="internal"
+              version_name="${RELEASE_BRANCH#play-release/internal/}"
+              ;;
+            play-release/production/*)
+              track="production"
+              version_name="${RELEASE_BRANCH#play-release/production/}"
+              ;;
+            *)
+              echo "Unsupported release branch: $RELEASE_BRANCH" >&2
+              exit 1
+              ;;
+          esac
+          version_name="${version_name#v}"
+          if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release branch must end with a semantic version, for example play-release/internal/1.0.9." >&2
+            exit 1
+          fi
+          version_code=$((100000 + HEALTH_RUN_NUMBER))
+          if (( version_code >= 2100000000 )); then
+            echo "Computed Android versionCode exceeds the Play limit." >&2
+            exit 1
+          fi
+          echo "track=$track" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "AURA_ANDROID_VERSION_NAME=$version_name" >> "$GITHUB_ENV"
+          echo "AURA_ANDROID_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+
+      - name: Materialize protected Android release configuration
+        shell: bash
+        env:
+          RELEASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_RELEASE_GOOGLE_SERVICES_JSON_B64 }}
+          DEBUG_GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64 }}
+          UPLOAD_KEYSTORE_B64: ${{ secrets.AURA_ANDROID_UPLOAD_KEYSTORE_B64 }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          required_env=(
+            VITE_FIREBASE_API_KEY
+            VITE_FIREBASE_AUTH_DOMAIN
+            VITE_FIREBASE_PROJECT_ID
+            VITE_FIREBASE_STORAGE_BUCKET
+            VITE_FIREBASE_MESSAGING_SENDER_ID
+            VITE_FIREBASE_APP_ID
+            VITE_FIRESTORE_DATABASE_ID
+            AURA_ANDROID_UPLOAD_STORE_PASSWORD
+            AURA_ANDROID_UPLOAD_KEY_ALIAS
+            AURA_ANDROID_UPLOAD_KEY_PASSWORD
+          )
+          for key in "${required_env[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing play-console environment value: $key" >&2
+              exit 1
+            fi
+          done
+          required_secrets=(
+            RELEASE_GOOGLE_SERVICES_JSON_B64
+            DEBUG_GOOGLE_SERVICES_JSON_B64
+            UPLOAD_KEYSTORE_B64
+            PLAY_SERVICE_ACCOUNT_JSON
+          )
+          for key in "${required_secrets[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing play-console secret backing: $key" >&2
+              exit 1
+            fi
+          done
+
+          mkdir -p android/app/src/release android/app/src/debug
+          printf '%s' "$RELEASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/release/google-services.json
+          printf '%s' "$DEBUG_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/debug/google-services.json
+          upload_store="${RUNNER_TEMP}/aura-upload.jks"
+          printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 --decode > "$upload_store"
+          chmod 600 "$upload_store"
+          echo "AURA_ANDROID_UPLOAD_STORE_FILE=$upload_store" >> "$GITHUB_ENV"
+
+          jq -e '
+            any(.client[]?;
+              .client_info.android_client_info.package_name == "com.staituned.aura"
+              and any(.oauth_client[]?; .client_type == 3)
+            )
+          ' android/app/src/release/google-services.json >/dev/null
+          configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/release/google-services.json)"
+          if [[ "$configured_project" != "$VITE_FIREBASE_PROJECT_ID" ]]; then
+            echo "Release google-services.json does not match VITE_FIREBASE_PROJECT_ID." >&2
+            exit 1
+          fi
+          jq -e '.type == "service_account" and (.client_email | length > 0) and (.private_key | length > 0)' \
+            <<< "$PLAY_SERVICE_ACCOUNT_JSON" >/dev/null
+
+      - name: Build production Android assets
+        run: npm run android:sync
+
+      - name: Verify release readiness
+        run: npm run android:verify:release-readiness
+
+      - name: Build signed release bundle
+        run: bash scripts/run-android-gradle.sh :app:bundleRelease
+
+      - name: Verify signed bundle and record identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="android/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$bundle"
+          jarsigner -verify "$bundle" >/dev/null
+          mkdir -p artifacts/play-release
+          sha256sum "$bundle" > artifacts/play-release/app-release.aab.sha256
+          cat > artifacts/play-release/release-manifest.txt <<EOF
+          source_sha=${{ github.event.workflow_run.head_sha }}
+          health_run=${{ github.event.workflow_run.id }}
+          track=${{ steps.release.outputs.track }}
+          version_name=${{ steps.release.outputs.version_name }}
+          version_code=${{ steps.release.outputs.version_code }}
+          EOF
+
+      - name: Upload signed release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-release-${{ steps.release.outputs.track }}-${{ steps.release.outputs.version_name }}-${{ github.event.workflow_run.head_sha }}
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/mapping/release/mapping.txt
+            artifacts/play-release/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish exact bundle to Google Play
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.staituned.aura
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+          track: ${{ steps.release.outputs.track }}
+          status: completed
+
+      - name: Record publication summary
+        shell: bash
+        run: |
+          {
+            echo "## Google Play publication"
+            echo "- Exact source SHA: \`${{ github.event.workflow_run.head_sha }}\`"
+            echo "- Repository health run: \`${{ github.event.workflow_run.id }}\`"
+            echo "- Track: \`${{ steps.release.outputs.track }}\`"
+            echo "- Version: \`${{ steps.release.outputs.version_name }}\` (code \`${{ steps.release.outputs.version_code }}\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
