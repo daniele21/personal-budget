@@ -130,7 +130,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -175,10 +175,12 @@ jobs:
             echo "google-services.json project (${configured_project}) does not match VITE_FIREBASE_PROJECT_ID (${VITE_ANDROID_FIREBASE_PROJECT_ID})." >&2
             exit 1
           fi
+      - name: Prepare Android debug project from clean checkout
+        run: npm run android:sync:debug
       - name: Native Android unit and lint checks
         run: bash scripts/run-android-gradle.sh :app:testDebugUnitTest :app:lintDebug
       - name: Build packaged debug APK
-        run: npm run android:assemble:debug
+        run: bash scripts/run-android-gradle.sh :app:assembleDebug
       - name: Provision Android API 36 emulator
         shell: bash
         run: |
