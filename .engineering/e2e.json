@@ -37,6 +37,15 @@
       "artifact_surface": "source-backed Vite E2E runtime",
       "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
       "known_gaps": ["does not execute the packaged APK", "does not execute Capacitor native bridges", "mobile browser emulation is full-suite evidence, not physical Android evidence"]
+    },
+    {
+      "id": "android-api36-ci",
+      "fidelity_class": "simulated_or_emulated",
+      "automation": "automated",
+      "platform": "GitHub Actions / Android API 36 Google APIs x86_64 emulator",
+      "artifact_surface": "packaged com.staituned.aura.debug APK installed on a booted emulator with native instrumentation and WebView/Capacitor verification",
+      "target_environment_refs": ["android-api36-device"],
+      "known_gaps": ["not physical OEM hardware", "does not reproduce every third-party payment source application", "TalkBack and physical-device text-scaling confirmation remain separate"]
     }
   ],
   "critical_journeys": [
@@ -64,21 +73,21 @@
       "id": "payment-detection-review",
       "claim": "An Android payment candidate remains outside the canonical ledger until the user reviews and explicitly confirms or ignores it.",
       "target_environment_refs": ["android-api36-device"],
-      "automated_environment_refs": [],
+      "automated_environment_refs": ["android-api36-ci"],
       "minimum_automated_fidelity": "simulated_or_emulated",
-      "residual_gaps": ["notification-listener permission", "real source application behavior", "OEM process lifecycle and reboot recovery"],
+      "residual_gaps": ["real notification-listener permission grant flow", "real source application behavior", "OEM process lifecycle and reboot recovery"],
       "real_environment_confirmation": "required",
-      "automation_gap_reason": "The repository has instrumentation and emulator-oriented verification scripts, but current CI does not yet provision the isolated Android Firebase/OAuth/Google Services configuration needed to run the packaged debug surface safely."
+      "automation_gap_reason": null
     },
     {
       "id": "android-install-launch-recovery",
       "claim": "The built Android debug artifact installs, launches, renders the shared application and recovers across the supported native lifecycle.",
       "target_environment_refs": ["android-api36-device"],
-      "automated_environment_refs": [],
+      "automated_environment_refs": ["android-api36-ci"],
       "minimum_automated_fidelity": "simulated_or_emulated",
       "residual_gaps": ["physical-device/OEM behavior", "TalkBack and device text-scaling confirmation"],
       "real_environment_confirmation": "required",
-      "automation_gap_reason": "Android scripts exist, but a repository-owned CI fixture for the isolated debug Firebase/OAuth/Google Services configuration is still required before emulator automation can be authoritative."
+      "automation_gap_reason": null
     }
   ]
 }
