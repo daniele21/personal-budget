@@ -99,34 +99,41 @@ describe('Planning recurring operations', () => {
   });
 
   it('excludes already elapsed recurring payments from the current-month summary', () => {
-    const today = new Date();
-    const monthStart = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
-    const monthEnd = new Date(Date.UTC(today.getFullYear() + 1, today.getMonth(), 1));
-    const pastPayment = {
-      ...currentRecurring(),
-      id: 'past',
-      name: 'Already paid',
-      amount: 100,
-      startDate: monthStart.toISOString(),
-      endDate: monthEnd.toISOString(),
-      dayOfMonth: today.getDate() - 1,
-    };
-    const futurePayment = {
-      ...currentRecurring(),
-      id: 'future',
-      name: 'Still due',
-      amount: 250,
-      startDate: monthStart.toISOString(),
-      endDate: monthEnd.toISOString(),
-      dayOfMonth: today.getDate() + 1,
-    };
-    arrange([pastPayment, futurePayment]);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15, 12, 0, 0));
 
-    render(<MemoryRouter><CalendarPage /></MemoryRouter>);
+    try {
+      const today = new Date();
+      const monthStart = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
+      const monthEnd = new Date(Date.UTC(today.getFullYear() + 1, today.getMonth(), 1));
+      const pastPayment = {
+        ...currentRecurring(),
+        id: 'past',
+        name: 'Already paid',
+        amount: 100,
+        startDate: monthStart.toISOString(),
+        endDate: monthEnd.toISOString(),
+        dayOfMonth: today.getDate() - 1,
+      };
+      const futurePayment = {
+        ...currentRecurring(),
+        id: 'future',
+        name: 'Still due',
+        amount: 250,
+        startDate: monthStart.toISOString(),
+        endDate: monthEnd.toISOString(),
+        dayOfMonth: today.getDate() + 1,
+      };
+      arrange([pastPayment, futurePayment]);
 
-    expect(screen.getByText('Remaining this month')).toBeInTheDocument();
-    expect(screen.getAllByText('€250.00')).toHaveLength(2);
-    expect(screen.getByText('1 recurring payment')).toBeInTheDocument();
-    expect(screen.getAllByText('Still due')).toHaveLength(2);
+      render(<MemoryRouter><CalendarPage /></MemoryRouter>);
+
+      expect(screen.getByText('Remaining this month')).toBeInTheDocument();
+      expect(screen.getAllByText('€250.00')).toHaveLength(2);
+      expect(screen.getByText('1 recurring payment')).toBeInTheDocument();
+      expect(screen.getAllByText('Still due')).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
