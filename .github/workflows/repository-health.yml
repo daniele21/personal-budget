@@ -117,13 +117,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      VITE_ANDROID_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
-      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
-      VITE_ANDROID_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
-      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
-      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-      VITE_ANDROID_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
-      VITE_ANDROID_FIRESTORE_DATABASE_ID: ${{ vars.VITE_FIRESTORE_DATABASE_ID }}
+      VITE_ANDROID_FIREBASE_API_KEY: ${{ vars.VITE_ANDROID_FIREBASE_API_KEY }}
+      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_ANDROID_FIREBASE_AUTH_DOMAIN }}
+      VITE_ANDROID_FIREBASE_PROJECT_ID: ${{ vars.VITE_ANDROID_FIREBASE_PROJECT_ID }}
+      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_ANDROID_FIREBASE_STORAGE_BUCKET }}
+      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_ANDROID_FIREBASE_APP_ID: ${{ vars.VITE_ANDROID_FIREBASE_APP_ID }}
+      VITE_ANDROID_FIRESTORE_DATABASE_ID: ${{ vars.VITE_ANDROID_FIRESTORE_DATABASE_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -172,7 +172,7 @@ jobs:
           ' android/app/src/debug/google-services.json >/dev/null
           configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/debug/google-services.json)"
           if [[ "$configured_project" != "$VITE_ANDROID_FIREBASE_PROJECT_ID" ]]; then
-            echo "google-services.json project (${configured_project}) does not match VITE_FIREBASE_PROJECT_ID (${VITE_ANDROID_FIREBASE_PROJECT_ID})." >&2
+            echo "google-services.json project (${configured_project}) does not match VITE_ANDROID_FIREBASE_PROJECT_ID (${VITE_ANDROID_FIREBASE_PROJECT_ID})." >&2
             exit 1
           fi
       - name: Prepare Android debug project from clean checkout
