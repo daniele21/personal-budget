@@ -3,7 +3,9 @@ name: Repository health
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - "play-release/**"
   workflow_dispatch:
 
 permissions:
@@ -187,6 +189,10 @@ jobs:
           set -euo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           AVDMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager"
+          AVD_HOME="${RUNNER_TEMP}/android-avd"
+          mkdir -p "$AVD_HOME"
+          export ANDROID_AVD_HOME="$AVD_HOME"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" \
             "platform-tools" \
@@ -200,6 +206,11 @@ jobs:
             --name aura-ci-api36 \
             --package "system-images;android-36;google_apis;x86_64" \
             --device pixel_6
+          if ! "${ANDROID_HOME}/emulator/emulator" -list-avds | grep -Fxq "aura-ci-api36"; then
+            echo "Created AVD is not discoverable from ANDROID_AVD_HOME=$ANDROID_AVD_HOME." >&2
+            find "$ANDROID_AVD_HOME" -maxdepth 2 -type f -print || true
+            exit 1
+          fi
           sudo chmod 666 /dev/kvm || true
           nohup "${ANDROID_HOME}/emulator/emulator" \
             -avd aura-ci-api36 \
