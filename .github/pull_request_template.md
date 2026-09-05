@@ -4,10 +4,11 @@ Describe the user/system outcome and why this change is needed.
 
 ## Scope and ownership
 
+- Delivery stage: `ITERATION | INTEGRATION -> dev | RELEASE -> main`
 - Canonical owner(s):
 - Material boundaries/consumers affected:
 - Validation profile: `LEAN | SCOPED | STRONG | FULL`
-- Profile reason:
+- Risk dimensions / required gates:
 
 ## Documentation impact
 
@@ -28,10 +29,13 @@ List exact-head evidence, not intended commands.
 - [ ] Production/shared build when affected
 - [ ] Critical-journey E2E when affected
 - [ ] Android unit/Lint/build/instrumentation/WebView gates when affected
+- [ ] `FULL_MEDIA` retained for material UI/UX integration journeys
 
 E2E environment/fidelity used:
 
-Residual real-environment evidence (physical device/OEM/TalkBack/signing/external source), if any:
+Residual `REAL_ENVIRONMENT` evidence (physical device/OEM/TalkBack/text scaling/approved real source/signing), if any:
+
+For `INTEGRATION`, mark required residual target evidence `DEFERRED_TO_RELEASE`; do not make it a feature-to-`dev` blocker. For `RELEASE`, every applicable required residual gate must be closed before `RELEASE_READY`.
 
 ## Privacy, security and lifecycle
 

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const fullMedia = process.env.AURA_E2E_FULL_MEDIA === 'true';
+
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.e2e.ts',
@@ -19,8 +21,8 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     serviceWorkers: 'block',
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    screenshot: fullMedia ? 'on' : 'only-on-failure',
+    video: fullMedia ? 'on' : 'retain-on-failure',
   },
   projects: [
     {

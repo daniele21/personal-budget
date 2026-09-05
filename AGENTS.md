@@ -2,7 +2,7 @@
 
 ## Mission and authority
 
-Aura Finance is a private, Android-first personal-finance application. Preserve the project identity and privacy/local-first promises in `README.md`; ordinary engineering truth is owned by the target repository, not by remembered template state.
+Aura Finance is a private, Android-first personal-finance application. Preserve the product identity and privacy/local-first promises in `README.md`; ordinary engineering truth is owned by this repository, not by remembered template state.
 
 For meaningful work, read in this order:
 1. this file and any closer scoped `AGENTS.md`;
@@ -11,7 +11,7 @@ For meaningful work, read in this order:
 4. `design/ux-contract.json` and `design/brand-kit.json` for meaningful UI/UX work;
 5. `docs/README.md`, `docs/current-state.md`, and the owning architecture/feature/ADR source.
 
-The adopted engineering source is `daniele21/repo-template-sw` v0.8.0 with profiles `typescript`, `android`, and `product-ui`, targeting L2 semantics with native project tooling.
+Aura adopts `daniele21/repo-template-sw` **0.9.2** with `typescript`, `android`, and `product-ui` profiles and L2 as the target engineering level.
 
 ## Product invariants
 
@@ -30,37 +30,40 @@ The adopted engineering source is `daniele21/repo-template-sw` v0.8.0 with profi
 - `src/platform/`: typed web/native capability boundaries.
 - `android/`: Capacitor Android shell, Kotlin plugins, native persistence/listener lifecycle.
 - `brand-kit/`: canonical product visual guidelines/assets.
-- `design/`: machine-readable product-experience contract that routes to the canonical UI/brand owners.
+- `design/`: machine-readable product-experience contract.
 - `adr/`: accepted project ADR records.
 - `docs/`: architecture, privacy, operations, QA, specs and current-state routing.
 
-## Change discipline
+## Delivery model
 
-- Find the canonical owner before adding configuration, policy, state, components or adapters.
-- Use `skills/structured-change/SKILL.md` for meaningful behavior/architecture/persistence/security/build/UI changes.
-- For structural or interaction-level UX work, use `skills/design-product-experience/SKILL.md` before implementation. Start from user outcome/task/IA/hierarchy, not visual polish.
-- Keep advanced/diagnostic complexity progressively disclosed and preserve Android/platform conventions, accessibility and reduced-motion behavior.
-- Do not add wrappers only to rename native npm/Playwright/Gradle/Capacitor commands. `.engineering/commands.json` is the routing contract.
-- Resource owners must cover success, failure, timeout, cancellation, interruption and partial initialization. No unbounded process/listener/test residue.
+Aura uses a stable two-branch flow:
 
-## Validation and publication
+- `ITERATION`: feature branch work. Run the cheapest owner-local checks that can falsify the current change. Exact-head/full-diff/docs/preflight and broad E2E are not defaults while the implementation is still moving.
+- `INTEGRATION` (`feature PR -> dev`): prove the affected observable outcome automatically. Exact head/base, full diff, affected durable docs, selected deterministic gates and affected critical E2E are required. `REAL_ENVIRONMENT` evidence is explicit but **does not block entry into `dev`**; it is `DEFERRED_TO_RELEASE`.
+- `RELEASE` (`dev -> main`): FULL validation plus release-critical package/E2E/security evidence and every applicable required physical/target-environment confirmation.
 
-Use the narrowest sufficient validation while iterating, then `skills/preflight-change/SKILL.md` before publication.
+The selector maps **risk dimensions -> required gates -> LEAN/SCOPED/STRONG/FULL summary**. Profiles are shorthand; concrete gates are authoritative. Parallel technical subtasks should converge early around a vertical outcome. Stacked publication is exceptional.
 
-Canonical intents are in `.engineering/commands.json`. In particular:
+## Validation and E2E
+
+Canonical intents are in `.engineering/commands.json`:
 - `npm run check` — type/static checks plus engineering-contract health;
 - `npm run test` — unit/integration tests;
-- `npm run test:e2e` — browser critical-journey regression;
-- Android Gradle/instrumentation/WebView gates remain native and are selected when Android blast radius requires them.
+- `npm run test:e2e:preflight` — bounded browser critical journeys;
+- Android Gradle/instrumentation/WebView gates remain native and are selected when Android/product blast radius requires them.
 
-If the current agent cannot execute a deterministic gate, classify it `REMOTE_AUTOMATED`; do not turn the user into a test runner. Physical/OEM/TalkBack/signing evidence is `REAL_ENVIRONMENT` only when the claim genuinely depends on it. Never present Playwright/browser or emulator evidence as physical-device evidence.
+For `INTEGRATION`, repository automation owns all automatable gates. Browser critical journeys run with success media; Android API 36 emulator journeys exercise the packaged debug APK and retain screenshots + continuous video. Material UI/UX journeys use `FULL_MEDIA`.
+
+Physical/OEM/TalkBack/text-scaling/approved real payment-source evidence is `REAL_ENVIRONMENT`. It may be used early for diagnosis, but it is not the normal feature-to-`dev` blocker. When `.engineering/e2e.json` marks it `required`, it must be closed before `dev -> main` / release readiness.
+
+If the current agent cannot execute a deterministic gate, classify it `REMOTE_AUTOMATED`; never turn the user into the test runner merely because the agent lacks the toolchain. Never present Playwright/browser or emulator evidence as physical-device evidence.
+
+## Evidence reuse and failure discipline
+
+Reuse trusted equivalent evidence before triggering expensive work. Before merge, evidence is exact-head. After a content-preserving merge into `dev`, reuse is allowed only when source tree, validated target/base, required gates/profile and material E2E claim remain equivalent. Direct pushes without equivalent evidence validate normally.
+
+Classify failures as change regression, baseline, environment, flaky, base drift or assumption before editing. Fix the owning invariant; do not weaken tests or lower a profile to obtain green CI.
 
 ## Documentation lifecycle
 
-Code and durable documentation ship together. `docs/README.md` owns documentation routing.
-
-Treat README identity and README usage independently:
-- preserve still-valid mission, positioning and product explanation;
-- update prerequisites, setup, commands, configuration and usage whenever behavior changes.
-
-Keep current workstreams in `docs/workstreams/` only when persistent coordination is justified. Completed workstreams are transferred into code/tests/canonical docs and deleted by default. Do not maintain implementation diaries in durable docs.
+Durable documentation must be current when moving to `INTEGRATION`, not after every private edit. `docs/README.md` owns routing. Treat README identity and README usage independently. `docs/current-state.md` owns integrated/blocked/next truth rather than implementation diaries. Completed workstreams are transferred into canonical owners and deleted by default.

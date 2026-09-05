@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "contract_version": "0.1.0",
+  "contract_version": "0.2.1",
   "applicability": {
     "status": "required",
-    "reason": "Aura has material complete user journeys across a shared React UI and an Android Capacitor/native boundary that lower-level tests alone cannot fully prove."
+    "reason": "Aura has material browser and packaged Android user journeys across React, Capacitor, native persistence and notification boundaries that lower-level tests alone cannot fully prove."
   },
   "principles": {
     "final_environment_should_confirm_not_discover": true,
@@ -11,7 +11,35 @@
     "lowest_sufficient_test_level": true,
     "critical_journeys_only": true,
     "built_artifact_when_material": true,
-    "residual_fidelity_gaps_explicit": true
+    "residual_fidelity_gaps_explicit": true,
+    "ui_evidence_risk_based": true
+  },
+  "stage_policy": {
+    "integration": {
+      "automated_e2e_before_shared_integration": true,
+      "real_environment_blocking": false,
+      "real_environment_deferred_to_release": true,
+      "material_ui_journey_minimum_evidence_mode": "full_media",
+      "incidental_ui_may_use_assertions": true
+    },
+    "release": {
+      "full_validation_required": true,
+      "release_critical_e2e_required": true,
+      "required_real_environment_blocking": true
+    }
+  },
+  "ui_evidence": {
+    "modes": ["assertions", "screenshots", "full_media"],
+    "default_mode": "screenshots",
+    "assertions_allowed_when_ui_incidental": true,
+    "full_media_triggers": [
+      "material_ui_integration_outcome",
+      "motion_or_animation",
+      "timing_or_progression",
+      "navigation_or_transition_sequence",
+      "lifecycle_visibility",
+      "release_acceptance"
+    ]
   },
   "fidelity_order": ["host_or_fake", "simulated_or_emulated", "representative_virtual", "representative_physical", "target_environment"],
   "target_environments": [
@@ -25,7 +53,7 @@
       "id": "android-api36-device",
       "platform": "Android",
       "description": "Packaged Aura application on the supported Android API 36 device surface.",
-      "material_dimensions": ["API level", "bundled WebView", "Capacitor/native bridge", "permissions and notification listener", "process lifecycle and restart", "OEM behavior", "accessibility"]
+      "material_dimensions": ["API level", "bundled WebView", "Capacitor/native bridge", "permissions and notification listener", "process lifecycle and restart", "OEM behavior", "accessibility", "real payment-source behavior"]
     }
   ],
   "execution_environments": [
@@ -34,54 +62,71 @@
       "fidelity_class": "representative_virtual",
       "automation": "automated",
       "platform": "GitHub Actions / Node 22 / Playwright Chromium preflight; full suite additionally covers WebKit and mobile emulation",
-      "artifact_surface": "source-backed Vite E2E runtime",
+      "artifact_surface": "source-backed Vite E2E runtime with bounded success/failure media for critical journeys",
       "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "known_gaps": ["does not execute the packaged APK", "does not execute Capacitor native bridges", "mobile browser emulation is full-suite evidence, not physical Android evidence"]
+      "known_gaps": ["does not execute the packaged APK", "does not execute Capacitor native bridges", "mobile browser emulation is not physical Android evidence"]
     },
     {
       "id": "android-api36-ci",
       "fidelity_class": "simulated_or_emulated",
       "automation": "automated",
       "platform": "GitHub Actions / Android API 36 Google APIs x86_64 emulator",
-      "artifact_surface": "packaged com.staituned.aura.debug APK installed on a booted emulator with native instrumentation and WebView/Capacitor verification",
+      "artifact_surface": "packaged com.staituned.aura.debug APK installed on a booted emulator with native instrumentation, WebView/Capacitor verification, screenshots and continuous journey video",
       "target_environment_refs": ["android-api36-device"],
       "known_gaps": ["not physical OEM hardware", "does not reproduce every third-party payment source application", "TalkBack and physical-device text-scaling confirmation remain separate"]
+    },
+    {
+      "id": "physical-android-device",
+      "fidelity_class": "representative_physical",
+      "automation": "real_environment",
+      "platform": "supported physical Android API 36 device",
+      "artifact_surface": "release-candidate Aura APK exercised with physical permission, lifecycle, accessibility and approved payment-source evidence",
+      "target_environment_refs": ["android-api36-device"],
+      "known_gaps": ["one representative device does not establish every supported OEM/device combination"]
     }
   ],
   "critical_journeys": [
     {
       "id": "budget-decision-flow",
       "claim": "A user can inspect the month, record/review spending, and obtain the resulting budget/safe-to-spend state coherently.",
+      "ui_surface": true,
+      "minimum_ui_evidence_mode": "full_media",
       "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "automated_environment_refs": ["playwright-ci"],
+      "automated_environment_refs": ["playwright-ci", "android-api36-ci"],
       "minimum_automated_fidelity": "representative_virtual",
-      "residual_gaps": ["packaged Android WebView and device-specific lifecycle/accessibility behavior"],
+      "residual_gaps": ["physical Android WebView, OEM lifecycle and accessibility behavior"],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     },
     {
       "id": "portable-data-flow",
       "claim": "A user can export/import the supported portable financial-data surface without silently changing canonical ledger semantics.",
+      "ui_surface": true,
+      "minimum_ui_evidence_mode": "full_media",
       "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "automated_environment_refs": ["playwright-ci"],
+      "automated_environment_refs": ["playwright-ci", "android-api36-ci"],
       "minimum_automated_fidelity": "representative_virtual",
-      "residual_gaps": ["Android file-picker/storage-provider integration for the packaged application"],
+      "residual_gaps": ["physical Android file-picker/storage-provider integration when that surface changes"],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     },
     {
       "id": "payment-detection-review",
       "claim": "An Android payment candidate remains outside the canonical ledger until the user reviews and explicitly confirms or ignores it.",
+      "ui_surface": true,
+      "minimum_ui_evidence_mode": "full_media",
       "target_environment_refs": ["android-api36-device"],
       "automated_environment_refs": ["android-api36-ci"],
       "minimum_automated_fidelity": "simulated_or_emulated",
-      "residual_gaps": ["real notification-listener permission grant flow", "real source application behavior", "OEM process lifecycle and reboot recovery"],
+      "residual_gaps": ["real notification-listener permission grant flow", "approved real source application behavior", "OEM process lifecycle and reboot recovery"],
       "real_environment_confirmation": "required",
       "automation_gap_reason": null
     },
     {
       "id": "android-install-launch-recovery",
-      "claim": "The built Android debug artifact installs, launches, renders the shared application and recovers across the supported native lifecycle.",
+      "claim": "The built Android debug/release-candidate artifact installs, launches, renders the shared application and recovers across the supported native lifecycle.",
+      "ui_surface": true,
+      "minimum_ui_evidence_mode": "full_media",
       "target_environment_refs": ["android-api36-device"],
       "automated_environment_refs": ["android-api36-ci"],
       "minimum_automated_fidelity": "simulated_or_emulated",

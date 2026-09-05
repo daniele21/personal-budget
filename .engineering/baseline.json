@@ -2,7 +2,8 @@
   "schema_version": 1,
   "standard": {
     "source": "daniele21/repo-template-sw",
-    "version": "0.8.0"
+    "version": "0.9.2",
+    "revision": "8aa95d10254846e7d63f4bd5c60d61b18d21060c"
   },
   "target_level": "L2",
   "profiles": ["typescript", "android", "product-ui"],
@@ -11,13 +12,23 @@
     "structured-change": {"source_version": "0.6.0", "customized": true},
     "design-product-experience": {"source_version": "0.5.0", "customized": true},
     "validate-change": {"source_version": "0.8.0", "customized": true},
-    "preflight-change": {"source_version": "0.8.0", "customized": true},
-    "remote-preflight": {"source_version": "0.2.0", "customized": true},
+    "preflight-change": {"source_version": "0.9.2", "customized": true},
+    "remote-preflight": {"source_version": "0.9.1", "customized": true},
     "finalize-workstream": {"source_version": "0.1.0", "customized": true},
     "review-reference-quality": {"source_version": "0.4.0", "customized": true}
   },
   "documentation": {
     "completed_workstreams": "delete-by-default",
     "historical_archive": "exception-only"
+  },
+  "adoption": {
+    "development_velocity_0_9_2": {
+      "shared_integration_branch": "dev",
+      "stable_release_branch": "main",
+      "automated_integration_before_dev": true,
+      "real_environment_integration_blocking": false,
+      "real_environment_release_gate": true,
+      "material_ui_integration_full_media": true
+    }
   }
 }
