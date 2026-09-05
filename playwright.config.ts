@@ -1,11 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const fullMedia = process.env.AURA_E2E_FULL_MEDIA === 'true';
+
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.e2e.ts',
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,
+  globalTimeout: process.env.CI ? 20 * 60_000 : undefined,
+  maxFailures: process.env.CI ? 3 : undefined,
   expect: { timeout: 15_000 },
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
@@ -17,8 +21,8 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     serviceWorkers: 'block',
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    screenshot: fullMedia ? 'on' : 'only-on-failure',
+    video: fullMedia ? 'on' : 'retain-on-failure',
   },
   projects: [
     {

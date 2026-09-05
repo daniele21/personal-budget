@@ -1,0 +1,356 @@
+name: Repository health
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches:
+      - dev
+      - main
+      - "debug-test/**"
+      - "play-release/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-health-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engineering-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify repository structure
+        run: python3 scripts/verify_repository.py
+      - name: Verify project operating contract
+        run: python3 scripts/verify_operations.py
+      - name: Verify E2E environment contract
+        run: python3 scripts/verify_e2e.py
+      - name: Verify integration/release environment policy
+        run: python3 scripts/verify_stage_environment_policy.py
+      - name: Verify product experience contract
+        run: python3 scripts/verify_product_experience.py
+      - name: Verify documentation lifecycle and budgets
+        run: python3 scripts/verify_docs.py
+      - name: Verify agent context budget
+        run: python3 scripts/verify_agent_context.py
+
+  select-validation-profile:
+    runs-on: ubuntu-latest
+    outputs:
+      stage: ${{ steps.scope.outputs.stage }}
+      profile: ${{ steps.scope.outputs.profile }}
+      reason: ${{ steps.scope.outputs.reason }}
+      risk_dimensions: ${{ steps.scope.outputs.risk_dimensions }}
+      required_gates: ${{ steps.scope.outputs.required_gates }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - id: scope
+        name: Select stage, risk and required gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            BASE_REF="origin/${{ github.base_ref }}"
+            if [[ "${{ github.base_ref }}" == "main" ]]; then
+              STAGE="release"
+            else
+              STAGE="integration"
+            fi
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            BASE_REF="${{ github.event.before }}"
+            case "${{ github.ref_name }}" in
+              main|play-release/*) STAGE="release" ;;
+              *) STAGE="integration" ;;
+            esac
+          else
+            BASE_REF="HEAD^"
+            if [[ "${{ github.ref_name }}" == "main" ]]; then
+              STAGE="release"
+            else
+              STAGE="integration"
+            fi
+          fi
+          RESULT="$(python3 scripts/select_validation_profile.py --base-ref "$BASE_REF" --head-ref HEAD --stage "$STAGE")"
+          echo "$RESULT"
+          for key in stage profile reason risk_dimensions required_gates; do
+            value="$(printf '%s\n' "$RESULT" | sed -n "s/^${key}=//p")"
+            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+          done
+
+  web-validation:
+    needs: select-validation-profile
+    if: needs.select-validation-profile.outputs.profile != 'lean'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Type and engineering checks
+        run: npm run check
+      - name: Unit and integration tests
+        run: npm run test
+      - name: Production web build
+        run: npm run build
+
+  browser-e2e:
+    needs: select-validation-profile
+    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      AURA_E2E_FULL_MEDIA: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Playwright engine
+        run: npx playwright install --with-deps chromium
+      - name: Run critical browser journeys with full media
+        run: npm run test:e2e:preflight
+      - name: Upload bounded browser journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-critical-evidence-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  android-emulator-preflight:
+    needs: select-validation-profile
+    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
+    environment: android-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_ANDROID_FIREBASE_API_KEY: ${{ vars.VITE_ANDROID_FIREBASE_API_KEY }}
+      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_ANDROID_FIREBASE_AUTH_DOMAIN }}
+      VITE_ANDROID_FIREBASE_PROJECT_ID: ${{ vars.VITE_ANDROID_FIREBASE_PROJECT_ID }}
+      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_ANDROID_FIREBASE_STORAGE_BUCKET }}
+      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_ANDROID_FIREBASE_APP_ID: ${{ vars.VITE_ANDROID_FIREBASE_APP_ID }}
+      VITE_ANDROID_FIRESTORE_DATABASE_ID: ${{ vars.VITE_ANDROID_FIRESTORE_DATABASE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Materialize and verify Android CI configuration
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          required=(
+            VITE_ANDROID_FIREBASE_API_KEY
+            VITE_ANDROID_FIREBASE_AUTH_DOMAIN
+            VITE_ANDROID_FIREBASE_PROJECT_ID
+            VITE_ANDROID_FIREBASE_STORAGE_BUCKET
+            VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID
+            VITE_ANDROID_FIREBASE_APP_ID
+            VITE_ANDROID_FIRESTORE_DATABASE_ID
+          )
+          for key in "${required[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing android-ci environment variable: ${key}" >&2
+              exit 1
+            fi
+          done
+          if [[ -z "${GOOGLE_SERVICES_JSON_B64:-}" ]]; then
+            echo "Missing android-ci secret: AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64" >&2
+            exit 1
+          fi
+          mkdir -p android/app/src/debug
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/debug/google-services.json
+          jq -e '
+            any(.client[]?;
+              .client_info.android_client_info.package_name == "com.staituned.aura.debug"
+              and any(.oauth_client[]?; .client_type == 3)
+            )
+          ' android/app/src/debug/google-services.json >/dev/null
+          configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/debug/google-services.json)"
+          if [[ "$configured_project" != "$VITE_ANDROID_FIREBASE_PROJECT_ID" ]]; then
+            echo "google-services.json project (${configured_project}) does not match VITE_ANDROID_FIREBASE_PROJECT_ID (${VITE_ANDROID_FIREBASE_PROJECT_ID})." >&2
+            exit 1
+          fi
+      - name: Prepare Android debug project from clean checkout
+        run: npm run android:sync:debug
+      - name: Native Android unit and lint checks
+        run: bash scripts/run-android-gradle.sh :app:testDebugUnitTest :app:lintDebug
+      - name: Build packaged debug APK
+        run: bash scripts/run-android-gradle.sh :app:assembleDebug
+      - name: Provision Android API 36 emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          AVDMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager"
+          AVD_HOME="${RUNNER_TEMP}/android-avd"
+          mkdir -p "$AVD_HOME"
+          export ANDROID_AVD_HOME="$AVD_HOME"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "emulator" \
+            "platforms;android-36" \
+            "system-images;android-36;google_apis;x86_64"
+          echo "${ANDROID_HOME}/platform-tools" >> "$GITHUB_PATH"
+          export PATH="${ANDROID_HOME}/platform-tools:${PATH}"
+          echo "no" | "$AVDMANAGER" create avd \
+            --force \
+            --name aura-ci-api36 \
+            --package "system-images;android-36;google_apis;x86_64" \
+            --device pixel_6
+          if ! "${ANDROID_HOME}/emulator/emulator" -list-avds | grep -Fxq "aura-ci-api36"; then
+            echo "Created AVD is not discoverable from ANDROID_AVD_HOME=$ANDROID_AVD_HOME." >&2
+            find "$ANDROID_AVD_HOME" -maxdepth 2 -type f -print || true
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm || true
+          nohup "${ANDROID_HOME}/emulator/emulator" \
+            -avd aura-ci-api36 \
+            -no-window \
+            -noaudio \
+            -no-boot-anim \
+            -no-snapshot \
+            -gpu swiftshader_indirect \
+            -camera-back none \
+            -camera-front none \
+            > /tmp/aura-android-emulator.log 2>&1 &
+          emulator_pid=$!
+          echo "$emulator_pid" > /tmp/aura-android-emulator.pid
+          if ! timeout 240s adb wait-for-device; then
+            echo "Android emulator did not become visible to adb within 240 seconds." >&2
+            ps -p "$emulator_pid" -f || true
+            tail -n 200 /tmp/aura-android-emulator.log || true
+            exit 1
+          fi
+          ready=0
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              echo "Android emulator exited before completing boot." >&2
+              tail -n 200 /tmp/aura-android-emulator.log || true
+              exit 1
+            fi
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != "1" ]]; then
+            echo "Android API 36 emulator did not finish booting within 240 seconds after adb connection." >&2
+            tail -n 200 /tmp/aura-android-emulator.log || true
+            exit 1
+          fi
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell input keyevent 82 || true
+          adb devices -l
+      - name: Run packaged Android instrumentation and WebView journeys
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/android-ci
+
+          capture_journey() {
+            local name="$1"
+            shift
+            local remote_video="/data/local/tmp/${name}.mp4"
+            local local_video="artifacts/android-ci/${name}.mp4"
+            local local_screenshot="artifacts/android-ci/${name}.png"
+            local command_status=0
+            adb shell rm -f "$remote_video" || true
+            adb shell screenrecord --time-limit 180 "$remote_video" >"/tmp/${name}-screenrecord.log" 2>&1 &
+            local recorder_pid=$!
+            set +e
+            "$@"
+            command_status=$?
+            set -e
+            adb exec-out screencap -p > "$local_screenshot" || command_status=1
+            adb shell pkill -INT screenrecord || true
+            wait "$recorder_pid" || true
+            cp "/tmp/${name}-screenrecord.log" "artifacts/android-ci/${name}-screenrecord.log" || true
+            if ! adb shell test -s "$remote_video"; then
+              echo "Missing video evidence for ${name}." >&2
+              command_status=1
+            elif ! adb pull "$remote_video" "$local_video"; then
+              echo "Failed to pull video evidence for ${name}." >&2
+              command_status=1
+            fi
+            adb shell rm -f "$remote_video" || true
+            if [[ ! -s "$local_screenshot" || ! -s "$local_video" ]]; then
+              echo "Incomplete local media evidence for ${name}." >&2
+              command_status=1
+            fi
+            return "$command_status"
+          }
+
+          status=0
+          if ! capture_journey android-instrumentation bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest; then
+            status=1
+          fi
+          if ! capture_journey android-webview node scripts/verify-android-webview.mjs; then
+            status=1
+          fi
+          exit "$status"
+      - name: Collect Android diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/android-ci
+          cp /tmp/aura-android-emulator.log artifacts/android-ci/emulator.log || true
+          timeout 15s adb logcat -d > artifacts/android-ci/logcat.txt 2>&1 || true
+          timeout 15s adb shell dumpsys activity activities > artifacts/android-ci/activities.txt 2>&1 || true
+          timeout 15s adb shell dumpsys package com.staituned.aura.debug > artifacts/android-ci/package.txt 2>&1 || true
+      - name: Upload Android emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-api36-evidence-${{ github.sha }}
+          path: |
+            artifacts/android-ci/
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/reports/
+          if-no-files-found: warn
+          retention-days: 7
