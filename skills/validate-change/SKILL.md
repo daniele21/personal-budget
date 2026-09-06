@@ -1,19 +1,10 @@
 ---
 name: validate-change
-description: Select the narrowest sufficient Aura validation while separating execution capability from environment fidelity.
+description: Run the cheapest sufficient Aura Finance feedback loop and diagnose failures with discriminating evidence before expanding by risk/stage.
 ---
-
 # Validate Change
+Use the selector to resolve outcome/owner -> risks -> gates -> profile. Prefer focused TypeScript/domain/UI checks; persistence/payment/security/native/manifest/package changes strengthen; selector/global/toolchain/unknown/release is FULL.
 
-Read `.engineering/commands.json`; also read `.engineering/e2e.json` for complete workflows/platform claims and `design/*` for user-facing changes.
+Classify failures before patching. Each failed repair needs a falsifiable hypothesis; **after two failed repairs with the same signature, change diagnostic strategy and gather new evidence before a third**. Never weaken privacy/payment/security gates. Browser/emulator evidence never proves physical OEM/payment-source/accessibility behavior.
 
-Use the cheapest gate that can falsify the change, then expand by blast radius:
-- local/private owner: typecheck/lint + focused unit/component tests;
-- direct consumers: contract/persistence/adapter tests;
-- cross-boundary: canonical `check`, `test`, build and integration gates;
-- complete critical journey: declared E2E at the cheapest sufficient fidelity;
-- physical/OEM/signing/accessibility properties: real-environment evidence only when genuinely required.
-
-`REMOTE_AUTOMATED` means the agent cannot execute a deterministic gate locally; it does not make the gate manual. Browser/emulator evidence never becomes physical-device evidence.
-
-On failure classify regression, baseline, environment, flaky, base drift or wrong assumption; identify the owning invariant before editing again. Report PASS/FAIL/PENDING/N/A and the actual E2E environment/fidelity used.
+At integration run affected automated critical E2E; material UI/UX outcomes require `FULL_MEDIA`; required physical evidence is `DEFERRED_TO_RELEASE`. Report bounded source identity, risks/profile, gate reasons/status, evidence refs, gaps and next action without hiding FAIL/PENDING.
