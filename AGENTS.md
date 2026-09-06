@@ -1,69 +1,52 @@
-# Aura Finance agent guide
+# Aura Finance — Coding Agent Guide
 
-## Mission and authority
+Aura Finance is a private, Android-first personal-finance application. Preserve the product identity and privacy/local-first promises in `README.md`; ordinary engineering truth is owned by this repository.
 
-Aura Finance is a private, Android-first personal-finance application. Preserve the product identity and privacy/local-first promises in `README.md`; ordinary engineering truth is owned by this repository, not by remembered template state.
+## Durable invariants
 
-For meaningful work, read in this order:
-1. this file and any closer scoped `AGENTS.md`;
-2. `.engineering/baseline.json` and `.engineering/commands.json`;
-3. `.engineering/e2e.json` when a complete workflow or environment claim is affected;
-4. `design/ux-contract.json` and `design/brand-kit.json` for meaningful UI/UX work;
-5. `docs/README.md`, `docs/current-state.md`, and the owning architecture/feature/ADR source.
+- Ledger, budgets, reports, search and deterministic import logic remain local-first and canonically owned.
+- No silent cloud fallback, AI financial advice/categorization, bank-account connectivity or admin plaintext access without an explicit product/security decision.
+- Android payment detection creates review candidates; only explicit user confirmation creates canonical transactions.
+- Optional cloud backup is opt-in and client-side encrypted; pending payment candidates stay outside backup/export unless a durable contract changes.
+- Production and isolated Android debug Firebase/OAuth identities remain separate. Never commit credentials, keystores, signing material, `google-services.json` or local env files.
 
-Aura adopts `daniele21/repo-template-sw` **0.9.2** with `typescript`, `android`, and `product-ui` profiles and L2 as the target engineering level.
+## Ownership
 
-## Product invariants
+| Change | Owner | Inspect / prove |
+| --- | --- | --- |
+| Finance/import/search rules | `src/domain/` | deterministic domain tests |
+| Local persistence | `src/data/` | migration/recovery tests |
+| App orchestration | `src/context/`, `src/hooks/` | state/integration tests |
+| Product UI | `src/pages/`, `src/components/` | browser/Android journeys |
+| Native/web capability | `src/platform/`, `android/` | plugin/lifecycle/instrumentation tests |
+| Product experience | `design/`, `brand-kit/` | UX/accessibility evidence |
+| Durable decisions | `adr/`, `docs/` | owning docs/contracts |
 
-- The canonical financial ledger, budgets, reports, search and deterministic import logic remain local-first.
-- Do not introduce silent cloud fallback, AI financial advice, AI transaction categorization, bank-account connectivity, or admin access to plaintext financial history without an explicit product/security decision.
-- Android payment detection produces review candidates; candidates do not become canonical transactions without explicit user confirmation.
-- Optional cloud backup remains client-side encrypted and opt-in; pending payment candidates remain outside backup/export surfaces unless a durable contract explicitly changes.
-- Keep production and isolated Android debug Firebase/OAuth identities separate. Never commit credentials, keystores, signing material, `google-services.json`, or local environment files.
+Follow applicable scoped `AGENTS.md`; extend one canonical owner before adding state/policy and inspect material consumers when a shared boundary changes.
 
-## Ownership map
+## Read by task
 
-- `src/domain/`: deterministic finance/reporting/import/search rules.
-- `src/data/`: local persistence contracts and helpers.
-- `src/context/`, `src/hooks/`: application orchestration/state.
-- `src/pages/`, `src/components/`: shared product UI.
-- `src/platform/`: typed web/native capability boundaries.
-- `android/`: Capacitor Android shell, Kotlin plugins, native persistence/listener lifecycle.
-- `brand-kit/`: canonical product visual guidelines/assets.
-- `design/`: machine-readable product-experience contract.
-- `adr/`: accepted project ADR records.
-- `docs/`: architecture, privacy, operations, QA, specs and current-state routing.
+| Task | Read now |
+| --- | --- |
+| Pure docs/copy | affected source/links; `docs/README.md` only if ownership unclear |
+| Behavior/bug/contract | `skills/structured-change/SKILL.md`, `skills/validate-change/SKILL.md`, relevant commands |
+| Material UI | above + `skills/design-product-experience/SKILL.md`, relevant `design/*`/brand owners |
+| Integration/release | `skills/preflight-change/SKILL.md`, commands, affected `.engineering/e2e.json` |
+| Missing deterministic remote gate | `skills/remote-preflight/SKILL.md` |
+| Persistent multi-session work | `skills/plan-workstream/SKILL.md` + active plan; finalize with `skills/finalize-workstream/SKILL.md` |
 
-## Delivery model
+## Delivery and evidence
 
-Aura uses a stable two-branch flow:
+- **ITERATION**: cheapest owner-local checks; no exact-head/full-diff/docs/publication ceremony per edit.
+- **INTEGRATION** (`feature PR -> dev`): exact candidate/base, complete diff, affected durable docs, required automated gates and affected critical E2E. Material UI/UX integration journeys require `FULL_MEDIA`. Physical/OEM/TalkBack/text-scaling/approved real payment-source evidence is `DEFERRED_TO_RELEASE`.
+- **RELEASE** (`dev -> main`): `FULL` plus release-critical package/E2E/security and every applicable required physical/target-environment confirmation.
 
-- `ITERATION`: feature branch work. Run the cheapest owner-local checks that can falsify the current change. Exact-head/full-diff/docs/preflight and broad E2E are not defaults while the implementation is still moving.
-- `INTEGRATION` (`feature PR -> dev`): prove the affected observable outcome automatically. Exact head/base, full diff, affected durable docs, selected deterministic gates and affected critical E2E are required. `REAL_ENVIRONMENT` evidence is explicit but **does not block entry into `dev`**; it is `DEFERRED_TO_RELEASE`.
-- `RELEASE` (`dev -> main`): FULL validation plus release-critical package/E2E/security evidence and every applicable required physical/target-environment confirmation.
+The selector resolves risks -> concrete gates -> profile; profiles are shorthand. Repository automation owns automatable browser/Android gates. Never turn the user into the Gradle/test runner because the current agent lacks tooling, and never present browser/emulator evidence as physical-device proof.
 
-The selector maps **risk dimensions -> required gates -> LEAN/SCOPED/STRONG/FULL summary**. Profiles are shorthand; concrete gates are authoritative. Parallel technical subtasks should converge early around a vertical outcome. Stacked publication is exceptional.
+## Context, diagnosis and completion
 
-## Validation and E2E
+`.engineering/documentation-policy.json` owns bounded context routes. Use `python3 scripts/verify_agent_context.py --route bug --format json`, optionally with `--path`/`--workstream`; routes estimate reading cost, not validation scope.
 
-Canonical intents are in `.engineering/commands.json`:
-- `npm run check` — type/static checks plus engineering-contract health;
-- `npm run test` — unit/integration tests;
-- `npm run test:e2e:preflight` — bounded browser critical journeys;
-- Android Gradle/instrumentation/WebView gates remain native and are selected when Android/product blast radius requires them.
+For meaningful work state observable outcome, owner, invariants and proof. Classify failures before patching. Each failed repair needs a falsifiable hypothesis; after two failed repairs with the same signature, change diagnostic strategy and gather new discriminating evidence before a third. On resume refresh head/tree/base; checkpoint evidence is a pointer, not current-source proof.
 
-For `INTEGRATION`, repository automation owns all automatable gates. Browser critical journeys run with success media; Android API 36 emulator journeys exercise the packaged debug APK and retain screenshots + continuous video. Material UI/UX journeys use `FULL_MEDIA`.
-
-Physical/OEM/TalkBack/text-scaling/approved real payment-source evidence is `REAL_ENVIRONMENT`. It may be used early for diagnosis, but it is not the normal feature-to-`dev` blocker. When `.engineering/e2e.json` marks it `required`, it must be closed before `dev -> main` / release readiness.
-
-If the current agent cannot execute a deterministic gate, classify it `REMOTE_AUTOMATED`; never turn the user into the test runner merely because the agent lacks the toolchain. Never present Playwright/browser or emulator evidence as physical-device evidence.
-
-## Evidence reuse and failure discipline
-
-Reuse trusted equivalent evidence before triggering expensive work. Before merge, evidence is exact-head. After a content-preserving merge into `dev`, reuse is allowed only when source tree, validated target/base, required gates/profile and material E2E claim remain equivalent. Direct pushes without equivalent evidence validate normally.
-
-Classify failures as change regression, baseline, environment, flaky, base drift or assumption before editing. Fix the owning invariant; do not weaken tests or lower a profile to obtain green CI.
-
-## Documentation lifecycle
-
-Durable documentation must be current when moving to `INTEGRATION`, not after every private edit. `docs/README.md` owns routing. Treat README identity and README usage independently. `docs/current-state.md` owns integrated/blocked/next truth rather than implementation diaries. Completed workstreams are transferred into canonical owners and deleted by default.
+Before integration update affected canonical docs. Transfer durable truth and deferred release obligations before deleting completed plans. Never weaken privacy/security/payment/persistence invariants or suppress legitimate failed/pending gates to obtain PASS.
