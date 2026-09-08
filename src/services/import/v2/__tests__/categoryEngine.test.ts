@@ -189,6 +189,39 @@ describe('resolveImportV2Categories', () => {
     expect(result.harnex).toEqual({ status: 'completed', completedBatches: 2, totalBatches: 2 });
   });
 
+  it('processes fit batches even when another group exceeds the advertised budget', async () => {
+    const client = fakeClient();
+    client.probe.mockResolvedValue({
+      status: 'available',
+      maxInputCharacters: 1_900,
+      maxJsonSchemaCharacters: 4_096,
+    });
+    const input = prepared([
+      row('row-1', `Oversized merchant ${'x'.repeat(2_000)}`),
+      row('row-2', 'Small merchant'),
+    ]);
+
+    const result = await resolveImportV2Categories(input, [], ['Other'], { client });
+
+    expect(client.generate).toHaveBeenCalledOnce();
+    const request = client.generate.mock.calls[0]![0];
+    expect(request.input).toContain('group-2');
+    expect(request.input).not.toContain('group-1');
+    expect(result.suggestions).toEqual([{
+      groupId: 'group-2',
+      rowIds: ['row-2'],
+      category: 'Other',
+      source: 'harnex',
+    }]);
+    expect(result.unresolvedRowIds).toEqual(['row-1']);
+    expect(result.harnex).toMatchObject({
+      status: 'partial-failure',
+      completedBatches: 1,
+      totalBatches: 1,
+      failure: { code: 'INVALID_REQUEST' },
+    });
+  });
+
   it('fails a malformed batch closed when Harnex returns an unknown category ID', async () => {
     const client = fakeClient();
     client.generate.mockResolvedValue(completed([{ id: 'group-1', categoryId: 'category-unknown' }]));
