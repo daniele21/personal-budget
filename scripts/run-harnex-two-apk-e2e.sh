@@ -11,6 +11,11 @@ AURA_TEST_PACKAGE="com.staituned.aura.debug.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 TEST_CLASS="com.staituned.aura.harnex.AuraHarnexTwoApkInstrumentedTest"
 
+if [[ -n "${AURA_HARNEX_EVIDENCE_FILE:-}" ]]; then
+  mkdir -p "$(dirname "$AURA_HARNEX_EVIDENCE_FILE")"
+  exec > >(tee "$AURA_HARNEX_EVIDENCE_FILE") 2>&1
+fi
+
 if [[ -z "$HOST_APK" || ! -f "$HOST_APK" ]]; then
   echo "Usage: $0 <harnex-emulator-e2e.apk> [aura-debug.apk] [aura-debug-androidTest.apk]" >&2
   exit 2
