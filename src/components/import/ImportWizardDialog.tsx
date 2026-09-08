@@ -2,7 +2,8 @@ import React, { useCallback, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { AlertTriangle, ArrowLeft, Loader2, ShieldCheck, X } from 'lucide-react';
 import type { ImportIssue, ImportSummary as ImportReviewSummary, PreparedTransactionImport } from '../../domain/import';
-import { readTransactionImportFile, prepareTransactionImport } from '../../services/import';
+import type { SpreadsheetProfile } from '../../domain/import/v2';
+import { executeImportV2Mapping, readTransactionImportFile, prepareTransactionImport } from '../../services/import';
 import type { Transaction } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -13,12 +14,16 @@ import { useToast } from '../Toast';
 import { FileUploadStep } from './FileUploadStep';
 import { ImportSummary } from './ImportSummary';
 import { ReviewStep } from './ReviewStep';
+import { ImportV2MappingEditor } from './v2/ImportV2MappingEditor';
+import { createImportV2MappingChoices } from './v2/importV2MappingOptions';
+import { EMPTY_IMPORT_V2_MAPPING, type ImportV2MappingDraft } from './v2/importV2TaskState';
 
-type WizardStep = 'upload' | 'validating' | 'review' | 'confirm' | 'summary';
+type WizardStep = 'upload' | 'validating' | 'mapping' | 'review' | 'confirm' | 'summary';
+type DisplayWizardStep = Exclude<WizardStep, 'mapping'>;
 
-const STEPS: Array<{ key: WizardStep; label: string }> = [
+const STEPS: Array<{ key: DisplayWizardStep; label: string }> = [
   { key: 'upload', label: 'Upload' },
-  { key: 'validating', label: 'Validate' },
+  { key: 'validating', label: 'Understand file' },
   { key: 'review', label: 'Categorize' },
   { key: 'confirm', label: 'Review and import' },
   { key: 'summary', label: 'Done' },
@@ -79,6 +84,26 @@ function parseAuraExportRows(rawRows: string[][]): Transaction[] {
   });
 }
 
+function v2FailureMessage(error: unknown): string {
+  const code = error instanceof Error ? error.message : '';
+  switch (code) {
+    case 'mixed_header_mapping':
+      return 'Choose date, amount, and description columns from the same table.';
+    case 'unknown_candidate_id':
+    case 'incomplete_mapping':
+    case 'duplicate_description_column':
+      return 'The selected mapping is no longer valid. Review the columns and try again.';
+    case 'unsupported_type_mapping':
+      return 'This transaction-type mapping is not supported yet. Use the amount rule to determine income and expenses.';
+    case 'unsupported_currency':
+      return 'This import currently supports EUR transactions only.';
+    case 'sheet_mapping_mismatch':
+      return 'The selected worksheet no longer matches the profiled file. Choose the file again.';
+    default:
+      return error instanceof Error ? error.message : 'The selected columns could not be checked safely.';
+  }
+}
+
 export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: ImportWizardDialogProps) {
   const {
     categories,
@@ -90,10 +115,15 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   } = useApp();
   const { toast } = useToast();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const operationRevisionRef = useRef(0);
   const [step, setStep] = useState<WizardStep>('upload');
   const [prepared, setPrepared] = useState<PreparedTransactionImport | null>(null);
   const [validationIssues, setValidationIssues] = useState<ImportIssue[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [v2File, setV2File] = useState<File | null>(null);
+  const [v2Profile, setV2Profile] = useState<SpreadsheetProfile | null>(null);
+  const [v2Mapping, setV2Mapping] = useState<ImportV2MappingDraft>(EMPTY_IMPORT_V2_MAPPING);
+  const [v2MappingIssues, setV2MappingIssues] = useState<string[]>([]);
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([]);
   const [completedSummary, setCompletedSummary] = useState<ImportReviewSummary>(emptySummary(0));
   const [duplicatesKept, setDuplicatesKept] = useState(0);
@@ -101,10 +131,15 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const [isCommitting, setIsCommitting] = useState(false);
 
   const reset = useCallback(() => {
+    operationRevisionRef.current += 1;
     setStep('upload');
     setPrepared(null);
     setValidationIssues([]);
     setErrorMessage(null);
+    setV2File(null);
+    setV2Profile(null);
+    setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+    setV2MappingIssues([]);
     setImportedTransactions([]);
     setCompletedSummary(emptySummary(0));
     setDuplicatesKept(0);
@@ -124,11 +159,14 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   useFocusTrap(dialogRef, isOpen, requestClose);
 
   const handleFileSelected = useCallback(async (file: File) => {
+    const operationRevision = ++operationRevisionRef.current;
     setStep('validating');
     setValidationIssues([]);
     setErrorMessage(null);
+    setV2MappingIssues([]);
     try {
       const result = await readTransactionImportFile(file);
+      if (operationRevision !== operationRevisionRef.current) return;
       if (result.kind === 'aura-archive') {
         setErrorMessage('Complete Aura archive detected. Use Import Aura archive in Data & Privacy.');
         setStep('upload');
@@ -143,6 +181,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         const legacyTransactions = parseAuraExportRows(result.rawRows);
         if (legacyTransactions.length === 0) throw new Error('The Aura transaction CSV does not contain valid rows.');
         const commitResult = await commitExistingTransactionImport(legacyTransactions);
+        if (operationRevision !== operationRevisionRef.current) return;
         setImportedTransactions(commitResult.importedTransactions);
         setCompletedSummary(emptySummary(legacyTransactions.length));
         setStep('summary');
@@ -160,12 +199,27 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         });
         return;
       }
+      if (result.kind === 'mapping-required') {
+        const choices = createImportV2MappingChoices(result.profile);
+        if (choices.dateOptions.length === 0 || choices.amountOptions.length === 0 || choices.descriptionOptions.length === 0) {
+          setErrorMessage('Aura could not find a safe date, amount, and description mapping for this file.');
+          setStep('upload');
+          return;
+        }
+        setV2File(file);
+        setV2Profile(result.profile);
+        setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+        setV2MappingIssues(['Choose the columns that match the transaction table, then confirm the mapping.']);
+        setStep('mapping');
+        return;
+      }
       if (result.validation.hasBlockingIssues) {
         setValidationIssues(result.validation.issues);
         setStep('upload');
         return;
       }
       const nextPrepared = await prepareTransactionImport(result.validation, transactions);
+      if (operationRevision !== operationRevisionRef.current) return;
       if (nextPrepared.rows.length === 0) throw new Error('The file does not contain valid transaction rows.');
       setPrepared(nextPrepared);
       setStep('review');
@@ -175,11 +229,45 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       setStep('upload');
       toast(message, 'error');
     }
-  }, [commitExistingTransactionImport, prepareTransactionImport, toast, transactions, undoTransactionImport]);
+  }, [commitExistingTransactionImport, toast, transactions, undoTransactionImport]);
+
+  const handleConfirmV2Mapping = useCallback(async () => {
+    if (!v2File || !v2Profile || !v2Mapping.dateCandidateId || !v2Mapping.amountCandidateId) return;
+    const operationRevision = ++operationRevisionRef.current;
+    setStep('validating');
+    setV2MappingIssues([]);
+    setErrorMessage(null);
+    try {
+      const validation = await executeImportV2Mapping(v2File, v2Profile, {
+        dateCandidateId: v2Mapping.dateCandidateId,
+        amountCandidateId: v2Mapping.amountCandidateId,
+        descriptionColumnIds: v2Mapping.descriptionColumnIds,
+        typeColumnId: v2Mapping.typeColumnId,
+      });
+      if (operationRevision !== operationRevisionRef.current) return;
+      if (validation.hasBlockingIssues) {
+        setV2MappingIssues([
+          'One or more selected transaction rows contain a date, amount, formula, or merged cell that Aura cannot import safely.',
+          'Adjust the mapping or correct the source file before continuing.',
+        ]);
+        setStep('mapping');
+        return;
+      }
+      const nextPrepared = await prepareTransactionImport(validation, transactions);
+      if (operationRevision !== operationRevisionRef.current) return;
+      if (nextPrepared.rows.length === 0) throw new Error('The selected mapping does not produce valid transaction rows.');
+      setPrepared(nextPrepared);
+      setStep('review');
+    } catch (error) {
+      setV2MappingIssues([v2FailureMessage(error)]);
+      setStep('mapping');
+    }
+  }, [transactions, v2File, v2Mapping, v2Profile]);
 
   const handleBack = () => {
     if (step === 'confirm') setStep('review');
     else if (step === 'review') setDiscardAction('upload');
+    else if (step === 'mapping') reset();
   };
 
   const handleImport = async () => {
@@ -217,8 +305,10 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     }
   };
 
-  const currentStepIndex = STEPS.findIndex((item) => item.key === step);
-  const canGoBack = step === 'review' || step === 'confirm';
+  const displayStep: DisplayWizardStep = step === 'mapping' ? 'validating' : step;
+  const currentStepIndex = STEPS.findIndex((item) => item.key === displayStep);
+  const canGoBack = step === 'mapping' || step === 'review' || step === 'confirm';
+  const v2Choices = v2Profile ? createImportV2MappingChoices(v2Profile) : null;
   if (!isOpen) return null;
 
   return (
@@ -313,6 +403,25 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
                     Checking structure, dates, amounts, formulas, and file limits on this device.
                   </p>
                 </div>
+              </motion.div>
+            )}
+
+            {step === 'mapping' && v2Choices && (
+              <motion.div key="mapping" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
+                <ImportV2MappingEditor
+                  resolution="ambiguous"
+                  value={v2Mapping}
+                  dateOptions={v2Choices.dateOptions}
+                  amountOptions={v2Choices.amountOptions}
+                  descriptionOptions={v2Choices.descriptionOptions}
+                  issues={v2MappingIssues}
+                  onChange={(next) => {
+                    setV2Mapping(next);
+                    setV2MappingIssues([]);
+                  }}
+                  onConfirm={handleConfirmV2Mapping}
+                  onCancel={reset}
+                />
               </motion.div>
             )}
 

@@ -1,4 +1,5 @@
 import { readLocalSpreadsheetFile } from '../../data/import/spreadsheetFileReader';
+import { readSpreadsheetProfile } from '../../data/import/spreadsheetProfileReader';
 import {
   validateStructuredImport,
   type ImportIssue,
@@ -6,11 +7,13 @@ import {
   type RawStructuredImportRow,
   type StructuredImportValidationResult,
 } from '../../domain/import';
+import type { SpreadsheetProfile } from '../../domain/import/v2';
 import { isAuraPortableArchive } from '../archive/archiveReader';
 
 export type TransactionImportFileReadResult =
   | { kind: 'aura-archive' }
   | { kind: 'aura-legacy-csv'; rawRows: string[][] }
+  | { kind: 'mapping-required'; profile: SpreadsheetProfile }
   | { kind: 'structured'; sheetName: string; validation: StructuredImportValidationResult }
   | { kind: 'rejected'; issues: ImportIssue[] };
 
@@ -36,6 +39,20 @@ function cellText(cell: RawImportCell): string {
   return String(cell);
 }
 
+const V2_PROFILE_TRIGGER_CODES = new Set<ImportIssue['code']>([
+  'header_missing',
+  'header_column_count',
+  'header_duplicate',
+  'header_unknown',
+  'header_order',
+]);
+
+function shouldProfileImportV2(validation: StructuredImportValidationResult): boolean {
+  return validation.issues.some((issue) =>
+    issue.severity === 'error' && V2_PROFILE_TRIGGER_CODES.has(issue.code),
+  );
+}
+
 function legacyRows(rows: RawStructuredImportRow[]): string[][] | null {
   const stringRows = rows.map((row) => row.cells.map(cellText));
   const header = stringRows.find((row) => {
@@ -47,7 +64,8 @@ function legacyRows(rows: RawStructuredImportRow[]): string[][] | null {
 
 /**
  * Classifies archive, legacy Aura CSV and deterministic V1 content in that
- * order. No persistence, network or provider operation is reachable here.
+ * order. Only a V1-blocked supported spreadsheet can continue into the local
+ * V2 profiler; no persistence, network or provider operation is reachable here.
  */
 export async function readTransactionImportFile(
   file: File,
@@ -62,16 +80,23 @@ export async function readTransactionImportFile(
     if (auraLegacyRows) return { kind: 'aura-legacy-csv', rawRows: auraLegacyRows };
   }
 
+  const validation = validateStructuredImport({
+    sourceKind: local.sourceKind,
+    rows: local.spreadsheet.rows,
+    csvDelimiter: local.spreadsheet.csvDelimiter,
+    initialIssues: local.spreadsheet.issues,
+    today: options.today,
+  });
+  if (!validation.hasBlockingIssues || !shouldProfileImportV2(validation)) {
+    return { kind: 'structured', sheetName: local.spreadsheet.sheetName, validation };
+  }
+
+  const profiled = await readSpreadsheetProfile(file);
+  if (profiled.kind === 'profiled') return { kind: 'mapping-required', profile: profiled.profile };
+
   return {
     kind: 'structured',
     sheetName: local.spreadsheet.sheetName,
-    validation: validateStructuredImport({
-      sourceKind: local.sourceKind,
-      rows: local.spreadsheet.rows,
-      csvDelimiter: local.spreadsheet.csvDelimiter,
-      initialIssues: local.spreadsheet.issues,
-      today: options.today,
-    }),
+    validation,
   };
 }
-
