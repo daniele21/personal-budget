@@ -19,6 +19,10 @@ if (!(auraVersionCodeValue ==~ /[1-9]\d*/) || auraVersionNameValue == null || au
 def auraVersionCode = auraVersionCodeValue.toInteger()
 def auraVersionName = auraVersionNameValue.trim()
 
+def harnexConsumerSdkVersion = "0.1.0-alpha.11"
+def harnexReleaseHostPackage = "io.github.daniele21.localllm.phonetest"
+def harnexDebugHostPackage = "io.github.daniele21.localllm.phonetest.debug"
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
@@ -55,6 +59,8 @@ android {
         versionCode auraVersionCode
         versionName auraVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [harnexHostPackage: harnexReleaseHostPackage]
+        buildConfigField "String", "HARNEX_HOST_PACKAGE", "\"${harnexReleaseHostPackage}\""
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -79,15 +85,22 @@ android {
             resValue "string", "title_activity_main", "Aura Dev"
             resValue "string", "package_name", "com.staituned.aura.debug"
             resValue "string", "custom_url_scheme", "com.staituned.aura.debug"
+            manifestPlaceholders = [harnexHostPackage: harnexDebugHostPackage]
+            buildConfigField "String", "HARNEX_HOST_PACKAGE", "\"${harnexDebugHostPackage}\""
         }
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            manifestPlaceholders = [harnexHostPackage: harnexReleaseHostPackage]
+            buildConfigField "String", "HARNEX_HOST_PACKAGE", "\"${harnexReleaseHostPackage}\""
             if (auraReleaseSigningConfigured) {
                 signingConfig signingConfigs.release
             }
         }
+    }
+    buildFeatures {
+        buildConfig true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
@@ -117,6 +130,7 @@ dependencies {
     implementation "androidx.room:room-runtime:$roomVersion"
     implementation "androidx.work:work-runtime:$workManagerVersion"
     implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
+    implementation "io.github.daniele21.localllm:consumer-android:$harnexConsumerSdkVersion"
     implementation project(':capacitor-android')
     kapt "androidx.room:room-compiler:$roomVersion"
     testImplementation "junit:junit:$junitVersion"
