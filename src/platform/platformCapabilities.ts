@@ -9,20 +9,23 @@ export interface PlatformCapabilities {
   serviceWorkerSupported: boolean;
   browserNotificationsSupported: boolean;
   paymentDetectionSupported: boolean;
+  harnexSupported: boolean;
 }
 
 export function resolvePlatformCapabilities(
   platform: AppRuntimePlatform,
 ): PlatformCapabilities {
   const isNative = platform !== 'web';
+  const isAndroid = platform === 'android';
 
   return {
     platform,
     isNative,
-    isAndroid: platform === 'android',
+    isAndroid,
     serviceWorkerSupported: false,
     browserNotificationsSupported: false,
-    paymentDetectionSupported: platform === 'android',
+    paymentDetectionSupported: isAndroid,
+    harnexSupported: isAndroid,
   };
 }
 

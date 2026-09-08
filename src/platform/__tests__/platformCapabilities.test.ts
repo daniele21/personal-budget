@@ -10,10 +10,11 @@ describe('resolvePlatformCapabilities', () => {
       serviceWorkerSupported: false,
       browserNotificationsSupported: false,
       paymentDetectionSupported: false,
+      harnexSupported: false,
     });
   });
 
-  it('does not initialize PWA behavior in the Android runtime', () => {
+  it('enables Android-only native finance capabilities in the Android runtime', () => {
     expect(resolvePlatformCapabilities('android')).toEqual({
       platform: 'android',
       isNative: true,
@@ -21,15 +22,17 @@ describe('resolvePlatformCapabilities', () => {
       serviceWorkerSupported: false,
       browserNotificationsSupported: false,
       paymentDetectionSupported: true,
+      harnexSupported: true,
     });
   });
 
-  it('does not imply payment detection support on an unsupported native platform', () => {
+  it('does not imply Android-only capabilities on an unsupported native platform', () => {
     const capabilities = resolvePlatformCapabilities('ios');
 
     expect(capabilities.isNative).toBe(true);
     expect(capabilities.isAndroid).toBe(false);
     expect(capabilities.paymentDetectionSupported).toBe(false);
+    expect(capabilities.harnexSupported).toBe(false);
   });
 
   it('fails closed for an unknown runtime', () => {
@@ -38,5 +41,6 @@ describe('resolvePlatformCapabilities', () => {
     expect(capabilities.isNative).toBe(true);
     expect(capabilities.serviceWorkerSupported).toBe(false);
     expect(capabilities.paymentDetectionSupported).toBe(false);
+    expect(capabilities.harnexSupported).toBe(false);
   });
 });
