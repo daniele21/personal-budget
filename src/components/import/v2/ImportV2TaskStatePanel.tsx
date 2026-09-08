@@ -181,14 +181,17 @@ export function ImportV2TaskStatePanel({ state, onAction }: ImportV2TaskStatePan
   }
 
   if (state.kind === 'cancelled') {
+    const requiresTransactionCheckRetry = state.step === 'check-transactions';
     return (
       <section className="space-y-4" aria-labelledby="import-v2-state-title">
         <div className="flex items-start gap-3 rounded-2xl bg-surface-container-low p-4">
           <PauseCircle className="mt-0.5 h-5 w-5 shrink-0 text-on-surface-variant" aria-hidden="true" />
           <div>
-            <h3 id="import-v2-state-title" className="font-headline text-lg font-bold text-on-surface">Optional work stopped</h3>
+            <h3 id="import-v2-state-title" className="font-headline text-lg font-bold text-on-surface">Work stopped</h3>
             <p className="mt-1 text-sm leading-relaxed text-on-surface-variant">
-              Nothing has been committed. Continue manually or retry the stopped step.
+              {requiresTransactionCheckRetry
+                ? 'Nothing has been committed. Retry the transaction checks before continuing to Review.'
+                : 'Nothing has been committed. Continue manually or retry the stopped step.'}
             </p>
           </div>
         </div>

@@ -114,7 +114,7 @@ export function getImportV2TaskActions(state: ImportV2TaskState): readonly Impor
     case 'classification-progress':
       return ['cancel'];
     case 'cancelled':
-      return ['continue-manually', 'retry'];
+      return state.step === 'check-transactions' ? ['retry'] : ['continue-manually', 'retry'];
     case 'idle':
     case 'review':
     case 'success':

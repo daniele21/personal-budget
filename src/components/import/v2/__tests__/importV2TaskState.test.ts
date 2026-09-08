@@ -111,6 +111,19 @@ describe('Import V2 task state contract', () => {
     expect(transitionImportV2Task(cancelled, { type: 'continue-manually' })).toEqual({ kind: 'review', step: 'review' });
   });
 
+  it('requires retry when deterministic transaction checks are cancelled', () => {
+    const checking: ImportV2TaskState = { kind: 'checking-transactions', step: 'check-transactions' };
+    const cancelled = transitionImportV2Task(checking, { type: 'cancel' });
+
+    expect(cancelled).toEqual({ kind: 'cancelled', step: 'check-transactions' });
+    expect(getImportV2TaskActions(cancelled)).toEqual(['retry']);
+    expect(transitionImportV2Task(cancelled, { type: 'continue-manually' })).toBe(cancelled);
+    expect(transitionImportV2Task(cancelled, { type: 'retry' })).toEqual({
+      kind: 'checking-transactions',
+      step: 'check-transactions',
+    });
+  });
+
   it('moves directly to review when there is nothing to categorize', () => {
     const checked: ImportV2TaskState = { kind: 'checking-transactions', step: 'check-transactions' };
     expect(transitionImportV2Task(checked, { type: 'transactions-checked', totalToCategorize: 0 })).toEqual({

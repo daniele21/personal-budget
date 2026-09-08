@@ -123,4 +123,19 @@ describe('Import V2 isolated UX components', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Continue manually' })).toBeEnabled();
   });
+
+  it('requires retry after deterministic transaction checks are cancelled', () => {
+    const onAction = vi.fn();
+    render(
+      <ImportV2TaskStatePanel
+        state={{ kind: 'cancelled', step: 'check-transactions' }}
+        onAction={onAction}
+      />,
+    );
+
+    expect(screen.getByText(/retry the transaction checks before continuing to Review/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue manually' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onAction).toHaveBeenCalledWith('retry');
+  });
 });
