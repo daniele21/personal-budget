@@ -1,0 +1,32 @@
+{
+  "multi-sheet": {
+    "worksheets": [
+      {"name":"Cover","rows":[["Synthetic statement"],["Not transaction data"]]},
+      {"name":"Transactions","rows":[["Date","Description","Amount"],["2026-09-01","Synthetic Grocery",-42.7],["2026-09-02","Synthetic Salary",2500]]}
+    ]
+  },
+  "title-rows": {
+    "worksheets": [
+      {"name":"Movements","rows":[["Synthetic account export"],["September 2026"],["Booking Date","Details","Amount"],["2026-09-01","Synthetic Transit",-15.5],["2026-09-02","Synthetic Payroll",2100]]}
+    ]
+  },
+  "debit-credit": {
+    "worksheets": [
+      {"name":"Movimenti","rows":[["Data","Causale","Addebiti","Accrediti"],["01/09/2026","Synthetic Grocery",42.7,null],["02/09/2026","Synthetic Salary",null,2500],["03/09/2026","Synthetic Streaming",12.99,null]]}
+    ]
+  },
+  "formula-required-cell": {
+    "worksheets": [
+      {"name":"Transactions","rows":[["Date","Description","Amount"],["2026-09-01","Synthetic Grocery",-42.7]],"formulaCells":[{"cell":"C2","formula":"40+2.7","result":42.7}]}
+    ]
+  },
+  "merged-required-cell": {
+    "worksheets": [
+      {"name":"Transactions","rows":[["Date","Description","Amount"],["2026-09-01","Synthetic Grocery",-42.7]],"mergedRanges":["A2:B2"]}
+    ]
+  },
+  "resource-overflow": {
+    "worksheets": [{"name":"Transactions","rows":[["Date","Description","Amount"],["2026-09-01","Synthetic",-1]]}],
+    "containerMutation":"declared-uncompressed-size-over-limit"
+  }
+}
