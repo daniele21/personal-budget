@@ -57,8 +57,20 @@ describe('spreadsheetFileReader CSV', () => {
     expect(result.validation.hasBlockingIssues).toBe(false);
   });
 
+  it('routes non-canonical but profileable headers to explicit V2 mapping', async () => {
+    const result = await readSpreadsheetImportFile(csvFixture('invalid-header.csv'), { today: TODAY });
+    expect(result.kind).toBe('mapping-required');
+    if (result.kind !== 'mapping-required') return;
+
+    const header = result.profile.sheets[0]?.headerCandidates.find(({ rowNumber }) => rowNumber === 1);
+    expect(header).toBeDefined();
+    expect(header?.columns.map(({ header: label }) => label)).toEqual(['description', 'date', 'value']);
+    expect(header?.dateCandidates.length).toBeGreaterThan(0);
+    expect(header?.amountCandidates.length).toBeGreaterThan(0);
+    expect(header?.descriptionCandidateColumnIds.length).toBeGreaterThan(0);
+  });
+
   it.each([
-    ['invalid-header.csv', ['header_unknown', 'header_order']],
     ['invalid-rows.csv', ['date_invalid', 'description_required', 'amount_zero', 'amount_precision', 'row_column_count']],
     ['mixed-decimals.csv', ['mixed_decimal_format']],
   ])('returns the expected issue codes for %s', async (fixture, expectedCodes) => {
