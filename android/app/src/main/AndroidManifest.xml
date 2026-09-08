@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <queries>
+        <package android:name="${harnexHostPackage}" />
         <package android:name="com.staituned.aura.syntheticnotifications" />
         <package android:name="com.latuabancaperandroid" />
         <package android:name="com.google.android.apps.walletnfcrel" />
