@@ -3,7 +3,7 @@
   "contract_version": "0.2.1",
   "applicability": {
     "status": "required",
-    "reason": "Aura has material browser and packaged Android user journeys across React, Capacitor, native persistence and notification boundaries that lower-level tests alone cannot fully prove."
+    "reason": "Aura has material browser and packaged Android user journeys across React, Capacitor, native persistence, notification and optional Harnex cross-app boundaries that lower-level tests alone cannot fully prove."
   },
   "principles": {
     "final_environment_should_confirm_not_discover": true,
@@ -53,7 +53,7 @@
       "id": "android-api36-device",
       "platform": "Android",
       "description": "Packaged Aura application on the supported Android API 36 device surface.",
-      "material_dimensions": ["API level", "bundled WebView", "Capacitor/native bridge", "permissions and notification listener", "process lifecycle and restart", "OEM behavior", "accessibility", "real payment-source behavior"]
+      "material_dimensions": ["API level", "bundled WebView", "Capacitor/native bridge", "permissions and notification listener", "process lifecycle and restart", "optional Harnex Binder host boundary", "OEM behavior", "accessibility", "real payment-source behavior"]
     }
   ],
   "execution_environments": [
@@ -71,9 +71,9 @@
       "fidelity_class": "simulated_or_emulated",
       "automation": "automated",
       "platform": "GitHub Actions / Android API 36 Google APIs x86_64 emulator",
-      "artifact_surface": "packaged com.staituned.aura.debug APK installed on a booted emulator with native instrumentation, WebView/Capacitor verification, screenshots and continuous journey video",
+      "artifact_surface": "packaged com.staituned.aura.debug APK installed on a booted emulator with native instrumentation, WebView/Capacitor verification, exact-source Harnex emulatorE2e host integration, screenshots and continuous journey video",
       "target_environment_refs": ["android-api36-device"],
-      "known_gaps": ["not physical OEM hardware", "does not reproduce every third-party payment source application", "TalkBack and physical-device text-scaling confirmation remain separate"]
+      "known_gaps": ["not physical OEM hardware", "Harnex emulatorE2e replaces production GGUF/native inference with a deterministic backend", "does not reproduce every third-party payment source application", "TalkBack and physical-device text-scaling confirmation remain separate"]
     },
     {
       "id": "physical-android-device",
@@ -132,6 +132,18 @@
       "minimum_automated_fidelity": "simulated_or_emulated",
       "residual_gaps": ["physical-device/OEM behavior", "TalkBack and device text-scaling confirmation"],
       "real_environment_confirmation": "required",
+      "automation_gap_reason": null
+    },
+    {
+      "id": "harnex-assisted-import-runtime",
+      "claim": "The packaged Aura debug APK fails closed when Harnex is absent or unauthorized and, after explicit authorization, exercises assigned schema/category Consumer use cases through the real Harnex APK, Binder control plane, cancellation and reconnect lifecycle without bypassing Aura's manual fallback model.",
+      "ui_surface": false,
+      "minimum_ui_evidence_mode": "assertions",
+      "target_environment_refs": ["android-api36-device"],
+      "automated_environment_refs": ["android-api36-ci"],
+      "minimum_automated_fidelity": "simulated_or_emulated",
+      "residual_gaps": ["physical ARM64/JNI/GGUF execution", "production model quality/latency", "memory and thermal behavior", "production signer topology and OEM lifecycle"],
+      "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     }
   ]

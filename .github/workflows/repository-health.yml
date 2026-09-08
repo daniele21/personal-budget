@@ -144,8 +144,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  android-emulator-preflight:
+  harnex-emulator-host:
     needs: select-validation-profile
+    if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
+    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@d60c0ff9560d6eed225e4fd6e02e746f18625935
+    with:
+      harness_ref: d60c0ff9560d6eed225e4fd6e02e746f18625935
+      release_identity_topology: false
+
+  android-emulator-preflight:
+    needs: [select-validation-profile, harnex-emulator-host]
     if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
     environment: android-ci
     runs-on: ubuntu-latest
@@ -173,6 +181,22 @@ jobs:
           cache: gradle
       - name: Install locked dependencies
         run: npm ci
+      - name: Download exact Harnex emulator host
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-runtime-emulator-host
+          path: artifacts/harnex-e2e
+      - name: Verify Harnex E2E source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_ref="d60c0ff9560d6eed225e4fd6e02e746f18625935"
+          test "$(cat artifacts/harnex-e2e/source-revision.txt)" = "$expected_ref"
+          test "$(cat artifacts/harnex-e2e/host-package.txt)" = "io.github.daniele21.localllm.phonetest.debug"
+          test -s artifacts/harnex-e2e/harness-emulator-e2e.apk
+          mkdir -p artifacts/android-ci
+          cp artifacts/harnex-e2e/source-revision.txt artifacts/android-ci/harnex-source-revision.txt
+          sha256sum artifacts/harnex-e2e/harness-emulator-e2e.apk > artifacts/android-ci/harnex-host-sha256.txt
       - name: Materialize and verify Android CI configuration
         shell: bash
         env:
@@ -328,6 +352,11 @@ jobs:
 
           status=0
           if ! capture_journey android-instrumentation bash scripts/run-android-gradle.sh :app:connectedDebugAndroidTest; then
+            status=1
+          fi
+          if ! capture_journey android-harnex-two-apk env \
+            AURA_HARNEX_EVIDENCE_FILE=artifacts/android-ci/harnex-two-apk.txt \
+            bash scripts/run-harnex-two-apk-e2e.sh artifacts/harnex-e2e/harness-emulator-e2e.apk; then
             status=1
           fi
           if ! capture_journey android-webview node scripts/verify-android-webview.mjs; then
