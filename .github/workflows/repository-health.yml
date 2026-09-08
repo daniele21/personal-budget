@@ -147,9 +147,9 @@ jobs:
   harnex-emulator-host:
     needs: select-validation-profile
     if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
-    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@9b0dff615f63caf1b1f074fe2fb6eadfa297233d
+    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@d60c0ff9560d6eed225e4fd6e02e746f18625935
     with:
-      harness_ref: 9b0dff615f63caf1b1f074fe2fb6eadfa297233d
+      harness_ref: d60c0ff9560d6eed225e4fd6e02e746f18625935
       release_identity_topology: false
 
   android-emulator-preflight:
@@ -190,7 +190,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_ref="9b0dff615f63caf1b1f074fe2fb6eadfa297233d"
+          expected_ref="d60c0ff9560d6eed225e4fd6e02e746f18625935"
           test "$(cat artifacts/harnex-e2e/source-revision.txt)" = "$expected_ref"
           test "$(cat artifacts/harnex-e2e/host-package.txt)" = "io.github.daniele21.localllm.phonetest.debug"
           test -s artifacts/harnex-e2e/harness-emulator-e2e.apk
