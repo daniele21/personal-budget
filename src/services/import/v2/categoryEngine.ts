@@ -343,15 +343,16 @@ export async function resolveImportV2Categories(
       } else {
         const packed = packBatches(categories, local.unresolved, capability);
         totalBatches = packed.batches.length;
-        let failureOutcome: HarnexFailure | undefined = packed.unfitGroupIds.size > 0
+        const capabilityFailure = packed.unfitGroupIds.size > 0
           ? failure('INVALID_REQUEST', 'Some category groups exceed advertised Harnex capability limits.')
           : undefined;
+        let failureOutcome: HarnexFailure | undefined;
 
         const categoryById = new Map(categories.map((category) => [category.id, category.label]));
         const groupById = new Map(local.unresolved.map((group) => [group.id, group]));
         for (const batch of packed.batches) {
-          if (failureOutcome || options.signal?.aborted) {
-            if (options.signal?.aborted) failureOutcome = cancelledFailure();
+          if (options.signal?.aborted) {
+            failureOutcome = cancelledFailure();
             break;
           }
           const generated = await client.generate({
@@ -387,6 +388,7 @@ export async function resolveImportV2Categories(
           completedBatches += 1;
         }
 
+        failureOutcome ??= capabilityFailure;
         if (failureOutcome) {
           terminal = {
             status: failureOutcome.code === 'CANCELLED' ? 'cancelled' : 'partial-failure',
