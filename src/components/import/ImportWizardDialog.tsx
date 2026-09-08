@@ -224,6 +224,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       setPrepared(nextPrepared);
       setStep('review');
     } catch (error) {
+      if (operationRevision !== operationRevisionRef.current) return;
       const message = error instanceof Error ? error.message : 'The file could not be validated.';
       setErrorMessage(message);
       setStep('upload');
@@ -259,6 +260,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       setPrepared(nextPrepared);
       setStep('review');
     } catch (error) {
+      if (operationRevision !== operationRevisionRef.current) return;
       setV2MappingIssues([v2FailureMessage(error)]);
       setStep('mapping');
     }
