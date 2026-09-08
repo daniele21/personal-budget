@@ -38,12 +38,11 @@ Material changes to data fields, model authority, cloud/network behavior, persis
 
 ## Source checkpoint
 
-- Aura after W5: `dev@0177622e8194e0622b080b9db5d038566d5143e1`, tree `d065689ba94fe7d86d8596269af6b9e3a3c5631a`.
+- Aura after W6/G1: `dev@00a1f83bc7b428e8eee5774bab697f299c46f2b5`.
 - Harnex after W3: `dev@fbe2a901e64c0cf5e3c329338d7b024c70bb15ba`, tree `8f34a8176542ac6090695d411e5e0364f782f119`.
-- Integrated: Aura PRs #9 (W1), #10 (W2), #11 (W4), #12 (W5); Harnex PR #560 (W3). Dispatch issues are closed `completed`.
-- W6/G1 is Aura PR #15: profiler + W5 mapping -> deterministic extraction -> canonical Prepare/Review/duplicate/fingerprint/verified commit, with Harnex absent.
-- PR #15 selector `auto` resolved STRONG: repository health, web validation, browser FULL_MEDIA and Android emulator. Refresh exact head/base before readiness or merge claims.
-- W9 remains independent; do not mix it into W6 commits. Any material edit invalidates earlier exact-head evidence.
+- Integrated: Aura PRs #9 (W1), #10 (W2), #11 (W4), #12 (W5), #15 (W6); Harnex PR #560 (W3). Their dispatch issues are closed `completed`.
+- W6 final candidate `86e2ee1e5a1619fc19e4188f75a8fec66c0f9b2d` passed selector-owned STRONG repository-health run #73 (`34227096345`) against fresh base `0177622e8194e0622b080b9db5d038566d5143e1`, including web validation, browser FULL_MEDIA and packaged Android API 36 emulator evidence.
+- W9 remains independent. Refresh exact heads/bases before readiness, convergence or release claims; material edits invalidate affected evidence.
 
 ## Material risks
 
@@ -68,9 +67,9 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 | W3 Harnex host capability | DONE | W0 | Harnex use-case/control-plane owners | Aura debug/release identities and two stateless JSON_SCHEMA use cases are integrated; unauthorized/disabled/unready fail closed. |
 | W4 Aura Consumer bridge | DONE | W0 | Android Harnex + `src/platform/harnex*`; no parser/wizard | Published SDK connect/discover/activate/prepare/generate/cancel/cleanup is integrated behind Aura's typed Capacitor boundary. |
 | W5 UX task/state contract | DONE | W0 | `design/` + isolated import-v2 components; no central wizard | Understand-file, editable mapping, unavailable/unready, progress, ambiguity, partial failure, retry/manual recovery, cancellation and accessibility semantics are implemented and independently testable. |
-| W6 Manual vertical slice (G1) | ACTIVE | W1,W2,W5 | convergence owner, minimal central wiring | PR #15: unknown fixture -> manual mapping -> deterministic extraction -> existing review/duplicate/verified commit with Harnex absent; V1 fast path unchanged; exact-head STRONG evidence pending. |
-| W7 Schema inference | BLOCKED | W2,W3,W4,W6 | schema intelligence adapters/tests | Harnex returns only candidate IDs; goldens reproduced; ambiguous/unsupported/invalid -> review/manual. |
-| W8 Category engine | BLOCKED | W3,W4,W6 | category grouping/batch services/tests | Local history first; remaining groups sequential/payload-bounded; only supplied category IDs accepted; partial/failure remains reviewable. |
+| W6 Manual vertical slice (G1) | DONE | W1,W2,W5 | convergence owner, minimal central wiring | Unknown fixture -> manual mapping -> deterministic extraction -> existing review/duplicate/verified commit with Harnex absent; V1 fast path unchanged; exact-head STRONG evidence integrated via PR #15. |
+| W7 Schema inference | READY | W2,W3,W4,W6 | schema intelligence adapters/tests | Harnex returns only candidate IDs; goldens reproduced; ambiguous/unsupported/invalid -> review/manual. |
+| W8 Category engine | READY | W3,W4,W6 | category grouping/batch services/tests | Local history first; remaining groups sequential/payload-bounded; only supplied category IDs accepted; partial/failure remains reviewable. |
 | W9 Cross-app/eval lane | READY | W3,W4 | canonical emulator/eval owners | Two-APK automation: host absent, pending/authorized, disabled/unready, schema/category success, cancel, reconnect; model-quality eval separate from deterministic CI. |
 | W10 Integrated UX (G2) | BLOCKED | W7,W8,W9 | convergence owner, central import UI/services | Packaged Android: local discovery -> Harnex mapping -> deterministic extraction -> categories -> review -> verified commit; manual fallback first-class. |
 | W11 Hardening/docs | BLOCKED | W10 | canonical privacy/security/spec/testing/current-state owners | Data flow, logging, auth, unavailable/offline, accessibility, limits, rollback and V1 compatibility current/tested. |
@@ -79,7 +78,7 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 ## Parallel dispatch / ownership
 
-W6/G1 and W9 are independent active/ready lanes. PR #15 owns only minimal Aura convergence; Harnex remains absent. W9 owns deterministic two-APK evidence and separate model evaluation. After W6 integrates, run W7 and W8 in parallel. W10 waits for W7/W8/W9.
+W7 schema inference, W8 category engine and W9 cross-app/evaluation are now independent READY lanes and should proceed in parallel. W7 owns bounded schema-intelligence adapters/tests; W8 owns local-history-first grouping/batching/category validation; W9 owns deterministic two-APK evidence plus separately governed real-model evaluation. W10 waits for all three.
 
 Do not create a second wizard or duplicate Review/commit ownership. Shared central wizard/review/commit, build/E2E and durable architecture/privacy owners remain convergence-owned unless a lane proves a narrow prerequisite.
 
@@ -95,14 +94,15 @@ Do not create a second wizard or duplicate Review/commit ownership. Shared centr
 
 ## Executable now
 
-- W6/G1 integration preflight on Aura PR #15.
+- W7 schema inference.
+- W8 category engine.
 - W9 cross-app deterministic integration and separate model-quality evaluation.
 
-After PR #15 integrates, dispatch W7 Schema inference and W8 Category engine in parallel.
+Run these lanes independently and in parallel. W10 remains blocked until W7/W8/W9 are integrated.
 
 ## Resume checkpoint
 
-Aura `dev@0177622e8194e0622b080b9db5d038566d5143e1`; Harnex `dev@fbe2a901e64c0cf5e3c329338d7b024c70bb15ba`; W0-W5 integrated; W6 ACTIVE on Aura PR #15; W9 READY; W7/W8 blocked on W6; W10-W13 downstream-blocked. Next: exact-head STRONG preflight for PR #15 and independent W9 progress.
+Aura `dev@00a1f83bc7b428e8eee5774bab697f299c46f2b5`; Harnex `dev@fbe2a901e64c0cf5e3c329338d7b024c70bb15ba`; W0-W6 integrated; W7/W8/W9 READY independently; W10-W13 downstream-blocked. Next discriminating actions: implement W7 and W8 on separate Aura branches from this checkpoint while advancing W9 without mixing ownership.
 
 Record failed hypotheses with evidence pointers, deferred REAL_ENVIRONMENT obligations and the next discriminating action. Old successful runs are not evidence for a newer material head.
 
