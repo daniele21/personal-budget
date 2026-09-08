@@ -113,6 +113,12 @@ function preparedImport(): PreparedTransactionImport {
   };
 }
 
+function chooseCompleteMapping(): void {
+  fireEvent.change(screen.getByLabelText('Transaction date'), { target: { value: dateCandidate.id } });
+  fireEvent.change(screen.getByLabelText('Amount'), { target: { value: amountCandidate.id } });
+  fireEvent.click(screen.getByRole('checkbox', { name: /Details/ }));
+}
+
 describe('ImportWizardDialog Import V2 manual flow', () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) mock.mockReset();
@@ -130,9 +136,7 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
     const confirm = screen.getByRole('button', { name: 'Confirm mapping' });
     expect(confirm).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText('Transaction date'), { target: { value: dateCandidate.id } });
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: amountCandidate.id } });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Details/ }));
+    chooseCompleteMapping();
     expect(confirm).toBeEnabled();
     fireEvent.click(confirm);
 
@@ -160,9 +164,7 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
     render(<ImportWizardDialog isOpen onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
     await screen.findByText('Check the columns Aura should use');
-    fireEvent.change(screen.getByLabelText('Transaction date'), { target: { value: dateCandidate.id } });
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: amountCandidate.id } });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Details/ }));
+    chooseCompleteMapping();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Validating locally');
 
@@ -171,6 +173,28 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
     resolveExecution?.(validation);
 
     await waitFor(() => expect(mocks.prepareTransactionImport).not.toHaveBeenCalled());
+    expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
+  });
+
+  it('ignores a stale extraction failure after the session is closed', async () => {
+    let rejectExecution: ((reason: Error) => void) | undefined;
+    mocks.executeImportV2Mapping.mockReturnValue(new Promise((_, reject) => {
+      rejectExecution = reject;
+    }));
+    const onClose = vi.fn();
+    render(<ImportWizardDialog isOpen onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
+    await screen.findByText('Check the columns Aura should use');
+    chooseCompleteMapping();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
+    await screen.findByRole('status');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close import wizard' }).at(-1)!);
+    rejectExecution?.(new Error('sheet_mapping_mismatch'));
+
+    expect(await screen.findByRole('button', { name: 'Choose unknown file' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Check the columns Aura should use')).not.toBeInTheDocument());
+    expect(mocks.prepareTransactionImport).not.toHaveBeenCalled();
     expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
   });
 
