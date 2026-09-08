@@ -91,21 +91,20 @@ function resolvedAnswer(prefix = 'visible'): string {
 }
 
 function fakeClient(answer = resolvedAnswer()) {
-  return {
-    connect: vi.fn(async () => ({ status: 'connected' as const })),
-    probe: vi.fn(async () => ({
-      status: 'available' as const,
-      maxInputCharacters: 12_000,
-      maxJsonSchemaCharacters: 4_096,
-    })),
-    generate: vi.fn(async () => ({
-      status: 'completed' as const,
-      answer,
-      metrics: { totalMs: 5 },
-    })),
-    cancel: vi.fn(async () => ({ cancelled: true })),
-    disconnect: vi.fn(async () => ({ status: 'disconnected' as const })),
-  } satisfies HarnexClient;
+  const connect = vi.fn<HarnexClient['connect']>(async () => ({ status: 'connected' }));
+  const probe = vi.fn<HarnexClient['probe']>(async () => ({
+    status: 'available',
+    maxInputCharacters: 12_000,
+    maxJsonSchemaCharacters: 4_096,
+  }));
+  const generate = vi.fn<HarnexClient['generate']>(async () => ({
+    status: 'completed',
+    answer,
+    metrics: { totalMs: 5 },
+  }));
+  const cancel = vi.fn<HarnexClient['cancel']>(async () => ({ cancelled: true }));
+  const disconnect = vi.fn<HarnexClient['disconnect']>(async () => ({ status: 'disconnected' }));
+  return { connect, probe, generate, cancel, disconnect } satisfies HarnexClient;
 }
 
 describe('inferImportV2SchemaWithHarnex', () => {
@@ -136,11 +135,10 @@ describe('inferImportV2SchemaWithHarnex', () => {
       ambiguities: ['invalid-selection'],
     });
 
-    const request = client.generate.mock.calls[0]?.[0];
-    expect(request).toBeDefined();
-    expect(request?.input).not.toContain('hidden-sheet');
-    expect(request?.input).not.toContain('SECRET-HIDDEN-SAMPLE');
-    expect(request?.jsonSchema).not.toContain('hidden-date');
+    const request = client.generate.mock.calls[0]![0];
+    expect(request.input).not.toContain('hidden-sheet');
+    expect(request.input).not.toContain('SECRET-HIDDEN-SAMPLE');
+    expect(request.jsonSchema).not.toContain('hidden-date');
   });
 
   it('fails closed for duplicate or unknown candidate selections', async () => {
