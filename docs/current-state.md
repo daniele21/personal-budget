@@ -12,8 +12,12 @@ Aura Finance is an active Android-first personal-finance product in controlled r
 - Repository-owned Android API 36 remote preflight using isolated debug Firebase/OAuth configuration: clean debug sync/build, Android unit/Lint, packaged APK, booted emulator, native instrumentation, process-restart/persistence/deep-link WebView verification, diagnostics, screenshots and continuous video evidence.
 - Browser critical journeys can retain success screenshots/video when selected as material UI/UX integration evidence.
 - `debug-test/**` remains a repository-owned diagnostic channel for exact source revisions without a developer workstation.
-- `repo-template-sw` **0.9.2** is the engineering baseline with `typescript + android + product-ui` profiles and L2 as the target engineering level.
+- `repo-template-sw` **0.10.0** is the engineering baseline with `typescript + android + product-ui` profiles and L2 as the target engineering level.
 - `dev` is the shared integration branch; `main` is the stable/release branch.
+
+## Active coordinated work
+
+- [Harnex-assisted Transaction Import V2](workstreams/harnex-assisted-transaction-import-v2.md) coordinates the cross-repository plan for arbitrary CSV/XLSX schema understanding, deterministic extraction, local Harnex category assistance, manual fallback and associated Android/quality evidence. The active workstream is planning/coordination truth only; implemented behavior remains defined by code, tests and durable feature/ADR/privacy owners.
 
 ## Delivery semantics
 
