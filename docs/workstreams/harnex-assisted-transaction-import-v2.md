@@ -9,10 +9,20 @@ Let an Aura Android user import a reasonably structured CSV/XLSX bank export wit
 ## Boundary and non-goals
 
 - Aura owns workflow, spreadsheet discovery, financial semantics, review, duplicates and ledger commit; Harnex owns caller authorization, use-case/model/runtime policy, Binder execution and lifecycle.
-- Harnex is optional Android capability. Web/PWA and unavailable-Harnex Android use manual mapping; no cloud fallback.
+- Harnex is optional Android capability. Unavailable-Harnex Android/browser harnesses use manual mapping; no cloud fallback.
 - Out of scope initially: PDF/OCR, `.xls`/`.xlsm`, arbitrary parsing expressions, FX/multi-currency normalization, bank connectivity and financial advice.
 - Never send a complete workbook/ledger to Harnex, persist source/Harnex content metadata, add AI/import metadata to `Transaction`, create categories silently or let Aura select Harnex models.
 - Preserve the canonical V1 `date,description,amount` fast path.
+
+## Frozen contract owners
+
+W0 is frozen in:
+
+- feature contract: [`../specs/harnex-assisted-transaction-import-v2.md`](../specs/harnex-assisted-transaction-import-v2.md);
+- trust/ownership decision: [`../../adr/0008-aura-harnex-assisted-import.md`](../../adr/0008-aura-harnex-assisted-import.md);
+- privacy/data flow: [`../04-privacy-gdpr/harnex-assisted-import-processing-record.md`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md).
+
+Material changes to data fields, model authority, cloud/network behavior, persistence or category/ledger semantics must update the owning contract before implementation.
 
 ## Invariants / frozen direction
 
@@ -20,7 +30,7 @@ Let an Aura Android user import a reasonably structured CSV/XLSX bank export wit
 - AI selects only Aura-generated candidate IDs. Unknown/missing/duplicate IDs fail closed to ambiguity/manual review.
 - Confirmed mapping -> deterministic Aura extraction of date, description, signed amount and type. Unsafe silent mapping is a release blocker.
 - Initial amount strategies: `signed-negative-expense`, `signed-positive-expense`, `debit-credit`, `amount-direction`; description may join bounded selected columns.
-- Schema output is `resolved | ambiguous | unsupported`; correctness does not depend on an LLM self-confidence score.
+- Schema output is `resolved | ambiguous | unsupported`; correctness does not depend on LLM self-confidence.
 - Category inference may return only supplied ephemeral category IDs or unresolved. Resolve conservative normalized-description + type matches from unambiguous local history first.
 - Harnex use cases are local, stateless, JSON-schema constrained, content-free in ordinary logs, cancellable and cleanup-safe. Initial IDs: `aura-transaction-schema-inference`, `aura-transaction-category-classification`.
 - Category batching is sequential and packed by advertised input budget, not a permanent row-count constant.
@@ -28,9 +38,9 @@ Let an Aura Android user import a reasonably structured CSV/XLSX bank export wit
 
 ## Source checkpoint
 
-- Aura: `dev@48caa14a08cb15b7b6723da7a78139f50aa4eb46`, tree `709743faf62955a2a3b5ad43acd1501545eee286`.
-- Harnex: `dev@0106ca889319023c436257a2b25bf216617e9062`, tree `419688188e8c03e37fd328bdc9670dfb990bf479`.
-- Refresh both before cross-repo convergence/validation/readiness claims.
+- Aura planning base: `dev@48caa14a08cb15b7b6723da7a78139f50aa4eb46`, tree `709743faf62955a2a3b5ad43acd1501545eee286`.
+- Harnex reference: `dev@0106ca889319023c436257a2b25bf216617e9062`, tree `419688188e8c03e37fd328bdc9670dfb990bf479`.
+- Refresh branch/head/tree/base before each lane starts and before cross-repo convergence/validation/readiness claims.
 - V1 release obligations remain authoritative; early V2 lanes avoid current wizard/review/commit owners until G1.
 
 ## Material risks
@@ -50,12 +60,12 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 | ID | State | Depends | Owns/writes | Acceptance |
 | --- | --- | --- | --- | --- |
-| W0 Contract/privacy freeze | ACTIVE | — | owning specs/ADR/privacy + this plan | Schema/category contracts, data minimization, fallback, use-case semantics and non-goals are explicit; V1/local-first conflicts resolved. |
-| W1 Multi-source corpus | BLOCKED | W0 | `tests/fixtures/import-v2/**`, corpus tests | >=18 synthetic shapes: canonical, debit/credit, signed, amount+direction, split description, ambiguous date/amount, title rows, multi-sheet, weak headers, EU decimals, unsupported currency, malformed/security/resource cases. |
-| W2 Generic discovery/profiler | BLOCKED | W0 | new V2 domain/data profiler code + tests; no wizard | Bounded sheet/header/column profiles and Aura date/amount candidates without network/Harnex; existing safety tests stay green. |
-| W3 Harnex host capability | BLOCKED | W0 | Harnex use-case/control-plane owners | Aura debug/release identities explicitly authorized for two stateless JSON_SCHEMA use cases; unavailable/unauthorized/disabled/unready are typed. |
-| W4 Aura Consumer bridge | BLOCKED | W0 | new Android Harnex + `src/platform/harnex*`; no parser/wizard | Published SDK connect/discover/activate/prepare/generate/cancel/cleanup behind typed Capacitor boundary; web reports unavailable. |
-| W5 UX task/state contract | BLOCKED | W0 | `design/` + isolated import-v2 components; no central wizard | Understand-file, mapping review, unavailable/unauthorized/unready, progress, ambiguity, partial failure, retry/manual recovery, responsive/accessibility states covered. |
+| W0 Contract/privacy freeze | DONE | — | spec + ADR 0008 + processing record | Schema/category contracts, minimization, fallback, use-case semantics and local-first decision frozen. |
+| W1 Multi-source corpus | READY | W0 | `tests/fixtures/import-v2/**`, corpus tests | >=18 synthetic shapes: canonical, debit/credit, signed, amount+direction, split description, ambiguous date/amount, title rows, multi-sheet, weak headers, EU decimals, unsupported currency, malformed/security/resource cases. |
+| W2 Generic discovery/profiler | READY | W0 | new V2 domain/data profiler code + tests; no wizard | Bounded sheet/header/column profiles and Aura date/amount candidates without network/Harnex; existing safety tests stay green. |
+| W3 Harnex host capability | READY | W0 | Harnex use-case/control-plane owners | Aura debug/release identities explicitly authorized for two stateless JSON_SCHEMA use cases; unavailable/unauthorized/disabled/unready are typed. |
+| W4 Aura Consumer bridge | READY | W0 | new Android Harnex + `src/platform/harnex*`; no parser/wizard | Published SDK connect/discover/activate/prepare/generate/cancel/cleanup behind typed Capacitor boundary; browser harness reports unavailable. |
+| W5 UX task/state contract | READY | W0 | `design/` + isolated import-v2 components; no central wizard | Understand-file, mapping review, unavailable/unauthorized/unready, progress, ambiguity, partial failure, retry/manual recovery, responsive/accessibility states covered. |
 | W6 Manual vertical slice (G1) | BLOCKED | W1,W2,W5 | convergence owner, minimal central wiring | Unknown fixture -> manual mapping -> deterministic extraction -> existing review/duplicate/verified commit with Harnex absent; V1 fast path unchanged. |
 | W7 Schema inference | BLOCKED | W2,W3,W4,W6 | schema intelligence adapters/tests | Harnex returns only candidate IDs; goldens reproduced; ambiguous/unsupported/invalid -> review/manual. |
 | W8 Category engine | BLOCKED | W3,W4,W6 | category grouping/batch services/tests | Local history first; remaining groups sequential/payload-bounded; only supplied category IDs accepted; partial/failure remains reviewable. |
@@ -67,7 +77,7 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 ## Parallel dispatch / ownership
 
-After W0 dispatch W1-W5 concurrently and merge independently valuable non-conflicting outcomes to each repo's `dev` after their own gates; avoid a stacked public PR tower.
+W1-W5 are now independently executable. Merge independently valuable non-conflicting outcomes to each repository's `dev` after their own gates; avoid a stacked public PR tower.
 
 - A/W1: fixture corpus only.
 - B/W2: new V2 domain/data discovery only.
@@ -87,7 +97,13 @@ After W0 dispatch W1-W5 concurrently and merge independently valuable non-confli
 
 ## Executable now
 
-- W0 only. Prepare W1-W5 task boundaries during W0, but do not let parallel lanes invent unresolved semantics.
+- W1 Multi-source corpus.
+- W2 Generic discovery/profiler.
+- W3 Harnex host capability.
+- W4 Aura Consumer bridge.
+- W5 UX task/state contract.
+
+These lanes may run concurrently within their write boundaries. G1 waits for W1/W2/W5; Harnex integration waits for W3/W4 plus G1 as expressed above.
 
 ## Resume checkpoint
 
