@@ -95,7 +95,13 @@ export interface DuplicateMatch {
   count: number;
 }
 
-export type ImportCategorySource = 'uncategorized' | 'manual' | 'batch' | 'same-description';
+export type ImportCategorySource =
+  | 'uncategorized'
+  | 'manual'
+  | 'batch'
+  | 'same-description'
+  | 'local-history'
+  | 'harnex';
 
 export interface PreparedImportRow {
   rowId: string;
