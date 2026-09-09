@@ -30,6 +30,10 @@ if ! command -v adb >/dev/null 2>&1; then
   echo "adb is required for two-APK evidence." >&2
   exit 2
 fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required for the packaged Harnex-assisted WebView journey." >&2
+  exit 2
+fi
 
 run_test() {
   local method="$1"
@@ -60,5 +64,10 @@ adb shell am start -W -n \
 
 printf 'AURA_HARNEX_TWO_APK scenario=packaged_lifecycle aura_package=%s host_package=%s\n' "$AURA_PACKAGE" "$HOST_PACKAGE"
 run_test packagedAuraExercisesAuthorizedHarnexLifecycle
+
+# The lifecycle test leaves the real Host installed, authorized, assigned and model-ready.
+# Exercise the packaged Aura WebView through that exact Binder/control-plane state before cleanup.
+printf 'AURA_HARNEX_TWO_APK scenario=packaged_import_ui aura_package=%s host_package=%s\n' "$AURA_PACKAGE" "$HOST_PACKAGE"
+node scripts/verify-harnex-import-webview.mjs
 
 printf 'AURA_HARNEX_TWO_APK result=PASS\n'
