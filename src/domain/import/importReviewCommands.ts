@@ -10,6 +10,12 @@ import type {
 
 export type CategoryApplicationScope = 'row' | 'selected' | 'same-description';
 
+export interface ImportCategorySuggestionApplication {
+  rowIds: readonly string[];
+  category: string;
+  source: Extract<ImportCategorySource, 'local-history' | 'harnex'>;
+}
+
 function rebuildPrepared(
   prepared: PreparedTransactionImport,
   rows: PreparedImportRow[],
@@ -102,6 +108,42 @@ export function applyImportCategory(
       ? { ...row, category: options.category, categorySource: source }
       : row
   ));
+}
+
+export function applyImportCategorySuggestions(
+  prepared: PreparedTransactionImport,
+  suggestions: readonly ImportCategorySuggestionApplication[],
+  activeCategories: readonly string[],
+): PreparedTransactionImport {
+  if (suggestions.length === 0) return prepared;
+  const active = new Set(activeCategories);
+  const existingRows = new Set(prepared.rows.map((row) => row.rowId));
+  const suggestionByRowId = new Map<string, ImportCategorySuggestionApplication>();
+
+  for (const suggestion of suggestions) {
+    if (!active.has(suggestion.category) || suggestion.category === 'Uncategorized') {
+      throw new Error('import_category_not_active');
+    }
+    for (const rowId of suggestion.rowIds) {
+      if (!existingRows.has(rowId)) throw new Error('import_row_not_found');
+      if (suggestionByRowId.has(rowId)) throw new Error('import_category_suggestion_conflict');
+      suggestionByRowId.set(rowId, suggestion);
+    }
+  }
+
+  let changed = false;
+  const rows = prepared.rows.map((row) => {
+    const suggestion = suggestionByRowId.get(row.rowId);
+    if (!suggestion) return row;
+    if (row.category === suggestion.category && row.categorySource === suggestion.source) return row;
+    changed = true;
+    return {
+      ...row,
+      category: suggestion.category,
+      categorySource: suggestion.source,
+    };
+  });
+  return changed ? rebuildPrepared(prepared, rows) : prepared;
 }
 
 export function setImportRowsIncluded(
