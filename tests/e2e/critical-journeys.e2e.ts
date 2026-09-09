@@ -58,6 +58,47 @@ test.describe('Aura critical browser journeys', () => {
       .toBeCloseTo(availableBefore - 50, 2);
   });
 
+  test('imports an unknown CSV through the first-class manual Harnex fallback', async ({ page }) => {
+    await page.goto('/history?import=1');
+    const wizard = page.getByRole('dialog', { name: 'Import transactions' });
+    await wizard.getByLabel('Choose transaction file').setInputFiles({
+      name: 'unknown-bank.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from([
+        'Booking Date,Details,Amount',
+        '2026-09-01,Critical fallback grocery,-42.00',
+        '2026-09-02,Critical fallback salary,2200.00',
+      ].join('\n')),
+    });
+    await wizard.getByRole('button', { name: 'Validate file' }).click();
+
+    await expect(wizard.getByText('Continue without assistance')).toBeVisible();
+    await wizard.getByRole('button', { name: 'Continue manually' }).click();
+    await expect(wizard.getByText('Check the columns Aura should use')).toBeVisible();
+    await wizard.getByLabel('Transaction date').selectOption({ index: 1 });
+    await wizard.getByLabel('Amount').selectOption({ index: 1 });
+    await wizard.getByRole('checkbox', { name: /Details/ }).check();
+    await wizard.getByRole('button', { name: 'Confirm mapping' }).click();
+
+    await expect(wizard.getByText('Continue without assistance')).toBeVisible();
+    await wizard.getByRole('button', { name: 'Continue manually' }).click();
+    await expect(wizard.getByText('Categorize and review')).toBeVisible();
+    await wizard.getByRole('button', { name: 'Review 2 transactions' }).click();
+    await wizard.getByRole('button', { name: 'Import with 2 Uncategorized' }).click();
+    await expect(wizard.getByText('Import complete')).toBeVisible();
+
+    await expect.poll(() => page.evaluate(() => {
+      const transactions = JSON.parse(localStorage.getItem('aura_transactions') ?? '[]');
+      return transactions
+        .filter((transaction: { title?: string }) => transaction.title?.startsWith('Critical fallback'))
+        .map((transaction: { title: string; type: string }) => ({ title: transaction.title, type: transaction.type }))
+        .sort((a: { title: string }, b: { title: string }) => a.title.localeCompare(b.title));
+    })).toEqual([
+      { title: 'Critical fallback grocery', type: 'expense' },
+      { title: 'Critical fallback salary', type: 'income' },
+    ]);
+  });
+
   test('exports, clears, and restores the exact portable workspace', async ({ page }) => {
     const before = await readCanonicalWorkspace(page);
     const archive = await exportEncryptedArchive(page);

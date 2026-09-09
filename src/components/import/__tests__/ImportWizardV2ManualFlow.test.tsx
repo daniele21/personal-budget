@@ -11,8 +11,10 @@ import { profileSpreadsheet } from '../../../domain/import/v2';
 
 const mocks = vi.hoisted(() => ({
   readTransactionImportFile: vi.fn(),
+  inferImportV2SchemaWithHarnex: vi.fn(),
   executeImportV2Mapping: vi.fn(),
   prepareTransactionImport: vi.fn(),
+  resolveImportV2Categories: vi.fn(),
   commitPreparedTransactionImport: vi.fn(),
   commitExistingTransactionImport: vi.fn(),
   undoTransactionImport: vi.fn(),
@@ -21,8 +23,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../services/import', () => ({
   readTransactionImportFile: mocks.readTransactionImportFile,
+  inferImportV2SchemaWithHarnex: mocks.inferImportV2SchemaWithHarnex,
   executeImportV2Mapping: mocks.executeImportV2Mapping,
   prepareTransactionImport: mocks.prepareTransactionImport,
+  resolveImportV2Categories: mocks.resolveImportV2Categories,
 }));
 
 vi.mock('../../../context/AppContext', () => ({
@@ -119,19 +123,45 @@ function chooseCompleteMapping(): void {
   fireEvent.click(screen.getByRole('checkbox', { name: /Details/ }));
 }
 
+async function enterManualMapping(): Promise<void> {
+  fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
+  expect(await screen.findByText('Continue without assistance')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Continue manually' }));
+  await screen.findByText('Check the columns Aura should use');
+}
+
+async function continueCategoryFallback(): Promise<void> {
+  expect(await screen.findByText('Continue without assistance')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Continue manually' }));
+  await screen.findByText('Categorize and review');
+}
+
 describe('ImportWizardDialog Import V2 manual flow', () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.readTransactionImportFile.mockResolvedValue({ kind: 'mapping-required', profile });
+    mocks.inferImportV2SchemaWithHarnex.mockResolvedValue({
+      status: 'assistance-unavailable',
+      failure: { code: 'PLATFORM_UNSUPPORTED', message: 'Android only.' },
+    });
     mocks.executeImportV2Mapping.mockResolvedValue(validation);
     mocks.prepareTransactionImport.mockResolvedValue(preparedImport());
+    mocks.resolveImportV2Categories.mockResolvedValue({
+      suggestions: [],
+      unresolvedRowIds: ['row-0', 'row-1'],
+      harnex: {
+        status: 'unavailable',
+        completedBatches: 0,
+        totalBatches: 0,
+        failure: { code: 'PLATFORM_UNSUPPORTED', message: 'Android only.' },
+      },
+    });
   });
 
-  it('requires explicit mapping confirmation before entering the existing Review path', async () => {
+  it('keeps manual mapping first-class and requires explicit confirmation before Review', async () => {
     render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
+    await enterManualMapping();
 
-    expect(await screen.findByText('Check the columns Aura should use')).toBeInTheDocument();
     expect(mocks.executeImportV2Mapping).not.toHaveBeenCalled();
     const confirm = screen.getByRole('button', { name: 'Confirm mapping' });
     expect(confirm).toBeDisabled();
@@ -150,7 +180,7 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
         typeColumnId: null,
       },
     ));
-    expect(await screen.findByText('Categorize and review')).toBeInTheDocument();
+    await continueCategoryFallback();
     expect(mocks.prepareTransactionImport).toHaveBeenCalledWith(validation, []);
     expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
   });
@@ -162,11 +192,10 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
     }));
     const onClose = vi.fn();
     render(<ImportWizardDialog isOpen onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
-    await screen.findByText('Check the columns Aura should use');
+    await enterManualMapping();
     chooseCompleteMapping();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Validating locally');
+    expect(await screen.findByRole('status')).toHaveTextContent('Checking mapped transactions');
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Close import wizard' }).at(-1)!);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -183,8 +212,7 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
     }));
     const onClose = vi.fn();
     render(<ImportWizardDialog isOpen onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
-    await screen.findByText('Check the columns Aura should use');
+    await enterManualMapping();
     chooseCompleteMapping();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
     await screen.findByRole('status');
@@ -200,8 +228,7 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
 
   it('can cancel manual mapping without creating a partial commit', async () => {
     render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Choose unknown file' }));
-    await screen.findByText('Check the columns Aura should use');
+    await enterManualMapping();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(await screen.findByRole('button', { name: 'Choose unknown file' })).toBeInTheDocument();
