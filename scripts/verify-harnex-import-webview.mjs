@@ -179,8 +179,13 @@ async function main() {
 
     const mapping = await client.evaluate(`(() => {
       const dialog = document.querySelector('[role="dialog"]');
-      const date = dialog?.querySelector('select[aria-label="Transaction date"]');
-      const amount = dialog?.querySelector('select[aria-label="Amount"]');
+      const controlByLabel = (text) => {
+        const label = Array.from(dialog?.querySelectorAll('label') ?? [])
+          .find((candidate) => candidate.textContent.trim() === text);
+        return label?.htmlFor ? document.getElementById(label.htmlFor) : null;
+      };
+      const date = controlByLabel('Transaction date');
+      const amount = controlByLabel('Amount');
       const description = Array.from(dialog?.querySelectorAll('input[type="checkbox"]') ?? [])
         .find((candidate) => candidate.checked);
       return {
