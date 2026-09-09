@@ -61,4 +61,9 @@ adb shell am start -W -n \
 printf 'AURA_HARNEX_TWO_APK scenario=packaged_lifecycle aura_package=%s host_package=%s\n' "$AURA_PACKAGE" "$HOST_PACKAGE"
 run_test packagedAuraExercisesAuthorizedHarnexLifecycle
 
+# Keep the authorized Host alive and prove the packaged WebView crosses the real Capacitor/Consumer/Binder boundary
+# before converging back into Aura's existing Review and verified transaction commit path.
+printf 'AURA_HARNEX_TWO_APK scenario=packaged_webview_import aura_package=%s host_package=%s\n' "$AURA_PACKAGE" "$HOST_PACKAGE"
+node scripts/verify-android-harnex-import.mjs
+
 printf 'AURA_HARNEX_TWO_APK result=PASS\n'
