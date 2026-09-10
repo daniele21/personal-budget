@@ -24,6 +24,7 @@ import io.github.daniele21.localllm.contracts.ConsumerReasoningCapability
 import io.github.daniele21.localllm.contracts.ConsumerSelectionRequest
 import io.github.daniele21.localllm.contracts.ConsumerSessionResult
 import io.github.daniele21.localllm.contracts.EffectiveConsumerReasoningMode
+import io.github.daniele21.localllm.contracts.InferencePresetRef
 import io.github.daniele21.localllm.contracts.RequestId
 import io.github.daniele21.localllm.contracts.SessionId
 import io.github.daniele21.localllm.contracts.SessionKind
@@ -56,15 +57,26 @@ internal class AuraHarnexSessionRunner(
         client.connect(CONNECTION_TIMEOUT_MS)
     }
 
-    fun probe(useCase: AuraHarnexUseCase): AuraHarnexCapabilityOutcome = when (val discovery = discover(useCase)) {
-        is DiscoveryOutcome.Available -> AuraHarnexCapabilityOutcome.Available(
-            AuraHarnexCapability(
-                maxInputCharacters = discovery.capabilities.limits.maxInputCharacters,
-                maxJsonSchemaCharacters = discovery.capabilities.limits.maxJsonSchemaCharacters,
-            ),
-        )
+    fun probe(useCase: AuraHarnexUseCase): AuraHarnexCapabilityOutcome {
+        if (closed.get()) return unavailableCapability(AuraHarnexFailureCode.RUNTIME_FAILURE)
+        if (!running.compareAndSet(false, true)) return unavailableCapability(AuraHarnexFailureCode.BUSY)
+        cancelRequested.set(false)
 
-        is DiscoveryOutcome.Failed -> AuraHarnexCapabilityOutcome.Unavailable(discovery.failure)
+        val outcome = try {
+            executeProbe(useCase)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            unavailableCapability(AuraHarnexFailureCode.CANCELLED)
+        } catch (_: Throwable) {
+            unavailableCapability(AuraHarnexFailureCode.RUNTIME_FAILURE)
+        }
+        val cleanupFailure = cleanupResources()
+        running.set(false)
+        return if (cleanupFailure != null) {
+            AuraHarnexCapabilityOutcome.Unavailable(cleanupFailure)
+        } else {
+            outcome
+        }
     }
 
     fun generate(
@@ -118,6 +130,28 @@ internal class AuraHarnexSessionRunner(
         runCatching { client.close() }
     }
 
+    private fun executeProbe(useCase: AuraHarnexUseCase): AuraHarnexCapabilityOutcome {
+        val discovery = when (val result = discoverControlPlane(useCase)) {
+            is ControlPlaneDiscoveryOutcome.Available -> result
+            is ControlPlaneDiscoveryOutcome.Failed -> return AuraHarnexCapabilityOutcome.Unavailable(result.failure)
+        }
+        if (cancelRequested.get()) return unavailableCapability(AuraHarnexFailureCode.CANCELLED)
+
+        activate(discovery)?.let { return AuraHarnexCapabilityOutcome.Unavailable(it) }
+        if (cancelRequested.get()) return unavailableCapability(AuraHarnexFailureCode.CANCELLED)
+
+        val capabilities = when (val result = discoverCapabilities(useCase)) {
+            is CapabilityDiscoveryOutcome.Available -> result.capabilities
+            is CapabilityDiscoveryOutcome.Failed -> return AuraHarnexCapabilityOutcome.Unavailable(result.failure)
+        }
+        return AuraHarnexCapabilityOutcome.Available(
+            AuraHarnexCapability(
+                maxInputCharacters = capabilities.limits.maxInputCharacters,
+                maxJsonSchemaCharacters = capabilities.limits.maxJsonSchemaCharacters,
+            ),
+        )
+    }
+
     private fun executeGeneration(
         useCase: AuraHarnexUseCase,
         input: String,
@@ -126,43 +160,25 @@ internal class AuraHarnexSessionRunner(
         if (input.isBlank() || jsonSchema.isBlank() || '\u0000' in input || '\u0000' in jsonSchema) {
             return failed(AuraHarnexFailureCode.INVALID_REQUEST)
         }
-        val discovery = when (val result = discover(useCase)) {
-            is DiscoveryOutcome.Available -> result
-            is DiscoveryOutcome.Failed -> return AuraHarnexGenerationOutcome.Failed(result.failure)
-        }
-        if (
-            input.length > discovery.capabilities.limits.maxInputCharacters ||
-            jsonSchema.length > discovery.capabilities.limits.maxJsonSchemaCharacters
-        ) {
-            return failed(AuraHarnexFailureCode.INVALID_REQUEST)
+        val discovery = when (val result = discoverControlPlane(useCase)) {
+            is ControlPlaneDiscoveryOutcome.Available -> result
+            is ControlPlaneDiscoveryOutcome.Failed -> return AuraHarnexGenerationOutcome.Failed(result.failure)
         }
         cancellationFailure()?.let { return it }
 
-        val published = when (val result = client.publishedPresets(useCase.useCaseId)) {
-            is ConsumerPublishedPresetsResult.Available -> result
-            is ConsumerPublishedPresetsResult.Rejected -> return failed(mapControlPlaneFailure(result.failure.code))
-        }
-        if (published.bindingRevision != discovery.assignment.bindingRevision) {
-            return failed(AuraHarnexFailureCode.CAPABILITY_CHANGED)
-        }
-        val defaultPresets = published.presets.filter { it.isDefault }
-        if (defaultPresets.size != 1) return failed(AuraHarnexFailureCode.USE_CASE_UNAVAILABLE)
-        val defaultPreset = defaultPresets.single().preset
+        activate(discovery)?.let { return AuraHarnexGenerationOutcome.Failed(it) }
+        cancellationFailure()?.let { return it }
 
-        val activation = when (
-            val result = client.activate(
-                ConsumerActivationRequest(
-                    useCaseId = useCase.useCaseId,
-                    useCaseRevision = discovery.assignment.useCaseRevision,
-                    bindingRevision = discovery.assignment.bindingRevision,
-                    preset = defaultPreset,
-                ),
-            )
-        ) {
-            is ConsumerActivationResult.Activated -> result.activation
-            is ConsumerActivationResult.Rejected -> return failed(mapControlPlaneFailure(result.failure.code))
+        val capabilities = when (val result = discoverCapabilities(useCase)) {
+            is CapabilityDiscoveryOutcome.Available -> result.capabilities
+            is CapabilityDiscoveryOutcome.Failed -> return AuraHarnexGenerationOutcome.Failed(result.failure)
         }
-        activeActivation = activation.activationId
+        if (
+            input.length > capabilities.limits.maxInputCharacters ||
+            jsonSchema.length > capabilities.limits.maxJsonSchemaCharacters
+        ) {
+            return failed(AuraHarnexFailureCode.INVALID_REQUEST)
+        }
         cancellationFailure()?.let { return it }
 
         val prepared = when (
@@ -170,8 +186,8 @@ internal class AuraHarnexSessionRunner(
                 ConsumerPrepareRequest(
                     useCaseId = useCase.useCaseId,
                     selection = ConsumerSelectionRequest(
-                        capabilityRevision = discovery.capabilities.capabilityRevision,
-                        preset = defaultPreset,
+                        capabilityRevision = capabilities.capabilityRevision,
+                        preset = discovery.defaultPreset,
                     ),
                 ),
             )
@@ -181,8 +197,8 @@ internal class AuraHarnexSessionRunner(
         }
         if (
             prepared.useCaseId != useCase.useCaseId ||
-            prepared.capabilityRevision != discovery.capabilities.capabilityRevision ||
-            prepared.preset != defaultPreset ||
+            prepared.capabilityRevision != capabilities.capabilityRevision ||
+            prepared.preset != discovery.defaultPreset ||
             prepared.reasoningMode != EffectiveConsumerReasoningMode.DISABLED ||
             prepared.outputConstraint != ConsumerOutputConstraintKind.JSON_SCHEMA ||
             prepared.sessionKind != SessionKind.STATELESS
@@ -205,32 +221,76 @@ internal class AuraHarnexSessionRunner(
         )
     }
 
-    private fun discover(useCase: AuraHarnexUseCase): DiscoveryOutcome {
-        if (closed.get()) return DiscoveryOutcome.Failed(auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE))
+    private fun discoverControlPlane(useCase: AuraHarnexUseCase): ControlPlaneDiscoveryOutcome {
+        if (closed.get()) {
+            return ControlPlaneDiscoveryOutcome.Failed(auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE))
+        }
         when (val connection = client.connect(CONNECTION_TIMEOUT_MS)) {
             AuraHarnexConnectionOutcome.Connected -> Unit
-            is AuraHarnexConnectionOutcome.Unavailable -> return DiscoveryOutcome.Failed(connection.failure)
+            is AuraHarnexConnectionOutcome.Unavailable -> return ControlPlaneDiscoveryOutcome.Failed(connection.failure)
         }
         val assignment = when (val result = client.assignedUseCases()) {
             is ConsumerAssignedUseCasesResult.Available -> {
                 val matches = result.assignments.filter { it.useCaseId == useCase.useCaseId }
                 when (matches.size) {
-                    0 -> return DiscoveryOutcome.Failed(auraHarnexFailure(AuraHarnexFailureCode.USE_CASE_NOT_ASSIGNED))
+                    0 -> return ControlPlaneDiscoveryOutcome.Failed(
+                        auraHarnexFailure(AuraHarnexFailureCode.USE_CASE_NOT_ASSIGNED),
+                    )
                     1 -> matches.single()
-                    else -> return DiscoveryOutcome.Failed(auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE))
+                    else -> return ControlPlaneDiscoveryOutcome.Failed(
+                        auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE),
+                    )
                 }
             }
 
             is ConsumerAssignedUseCasesResult.Rejected ->
-                return DiscoveryOutcome.Failed(auraHarnexFailure(mapControlPlaneFailure(result.failure.code)))
+                return ControlPlaneDiscoveryOutcome.Failed(auraHarnexFailure(mapControlPlaneFailure(result.failure.code)))
         }
+        val published = when (val result = client.publishedPresets(useCase.useCaseId)) {
+            is ConsumerPublishedPresetsResult.Available -> result
+            is ConsumerPublishedPresetsResult.Rejected ->
+                return ControlPlaneDiscoveryOutcome.Failed(auraHarnexFailure(mapControlPlaneFailure(result.failure.code)))
+        }
+        if (published.bindingRevision != assignment.bindingRevision) {
+            return ControlPlaneDiscoveryOutcome.Failed(auraHarnexFailure(AuraHarnexFailureCode.CAPABILITY_CHANGED))
+        }
+        val defaultPresets = published.presets.filter { it.isDefault }
+        if (defaultPresets.size != 1) {
+            return ControlPlaneDiscoveryOutcome.Failed(auraHarnexFailure(AuraHarnexFailureCode.USE_CASE_UNAVAILABLE))
+        }
+        return ControlPlaneDiscoveryOutcome.Available(
+            assignment = assignment,
+            defaultPreset = defaultPresets.single().preset,
+        )
+    }
+
+    private fun activate(discovery: ControlPlaneDiscoveryOutcome.Available): AuraHarnexFailure? {
+        val result = client.activate(
+            ConsumerActivationRequest(
+                useCaseId = discovery.assignment.useCaseId,
+                useCaseRevision = discovery.assignment.useCaseRevision,
+                bindingRevision = discovery.assignment.bindingRevision,
+                preset = discovery.defaultPreset,
+            ),
+        )
+        return when (result) {
+            is ConsumerActivationResult.Activated -> {
+                activeActivation = result.activation.activationId
+                null
+            }
+
+            is ConsumerActivationResult.Rejected -> auraHarnexFailure(mapControlPlaneFailure(result.failure.code))
+        }
+    }
+
+    private fun discoverCapabilities(useCase: AuraHarnexUseCase): CapabilityDiscoveryOutcome {
         val capabilities = when (val result = client.capabilities(useCase.useCaseId)) {
             is ConsumerCapabilityResult.Available -> result.capabilities
             is ConsumerCapabilityResult.Rejected ->
-                return DiscoveryOutcome.Failed(auraHarnexFailure(mapCapabilityFailure(result.code)))
+                return CapabilityDiscoveryOutcome.Failed(auraHarnexFailure(mapCapabilityFailure(result.code)))
         }
-        validateCapabilities(useCase, capabilities)?.let { return DiscoveryOutcome.Failed(it) }
-        return DiscoveryOutcome.Available(assignment, capabilities)
+        validateCapabilities(useCase, capabilities)?.let { return CapabilityDiscoveryOutcome.Failed(it) }
+        return CapabilityDiscoveryOutcome.Available(capabilities)
     }
 
     private fun awaitGeneration(
@@ -299,30 +359,36 @@ internal class AuraHarnexSessionRunner(
 
     private fun cleanupResources(): AuraHarnexFailure? {
         activeHandle = null
-        var failed = false
+        var cleanupFailed = false
         activeSession?.let { sessionId ->
-            if (runCatching { client.closeSession(sessionId) }.isFailure) failed = true
+            if (runCatching { client.closeSession(sessionId) }.isFailure) cleanupFailed = true
         }
         activeSession = null
         activeActivation?.let { activationId ->
             val result = runCatching { client.deactivate(activationId) }.getOrNull()
-            if (result !is ConsumerDeactivationResult.Released) failed = true
+            if (result !is ConsumerDeactivationResult.Released) cleanupFailed = true
         }
         activeActivation = null
-        return if (failed) auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE) else null
+        return if (cleanupFailed) auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE) else null
     }
 
     private fun cancellationFailure(): AuraHarnexGenerationOutcome.Failed? =
         if (cancelRequested.get()) failed(AuraHarnexFailureCode.CANCELLED) else null
 }
 
-private sealed interface DiscoveryOutcome {
+private sealed interface ControlPlaneDiscoveryOutcome {
     data class Available(
         val assignment: ConsumerAssignedUseCase,
-        val capabilities: UseCaseCapabilities,
-    ) : DiscoveryOutcome
+        val defaultPreset: InferencePresetRef,
+    ) : ControlPlaneDiscoveryOutcome
 
-    data class Failed(val failure: AuraHarnexFailure) : DiscoveryOutcome
+    data class Failed(val failure: AuraHarnexFailure) : ControlPlaneDiscoveryOutcome
+}
+
+private sealed interface CapabilityDiscoveryOutcome {
+    data class Available(val capabilities: UseCaseCapabilities) : CapabilityDiscoveryOutcome
+
+    data class Failed(val failure: AuraHarnexFailure) : CapabilityDiscoveryOutcome
 }
 
 private fun validateCapabilities(
@@ -408,5 +474,8 @@ private fun failed(code: AuraHarnexFailureCode) = AuraHarnexGenerationOutcome.Fa
 
 private fun unavailableConnection(code: AuraHarnexFailureCode) =
     AuraHarnexConnectionOutcome.Unavailable(auraHarnexFailure(code))
+
+private fun unavailableCapability(code: AuraHarnexFailureCode) =
+    AuraHarnexCapabilityOutcome.Unavailable(auraHarnexFailure(code))
 
 private const val CONNECTION_TIMEOUT_MS = 10_000L
