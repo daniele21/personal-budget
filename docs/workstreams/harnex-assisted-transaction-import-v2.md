@@ -37,13 +37,15 @@ Material changes to data fields, model authority, network behavior, persistence 
 ## Source checkpoint
 
 - Aura W10 base: `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`.
-- Current Harnex repair candidate: `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`, PR #565; previous fixture: `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
+- Current Harnex repair candidate: `8288aa20a222c1287c933f909d5963555629721c`, PR #567; superseded candidate: `fae66fc0c495f184944c3ffc905eeb0dbc595f2c` from #565; previous fixture: `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
 - Integrated Aura: #9 W1, #10 W2, #11 W4, #12 W5, #15 W6, #19 W7, #20 W8, #21 W9 implementation; Harnex #560 W3.
 - Aura run #85 (`34276168216`) is **not** valid W9 lifecycle evidence: Harnex hit Room main-thread access and Aura's shell runner masked AndroidJUnitRunner failure as PASS. Its independent web/build evidence is unaffected.
-- Harnex repair: emulator shell control runs off main thread and the phone-test manifest declares Aura release/debug package visibility. Harnex selector-owned integration/STRONG preflight #4379 is green on exact `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`.
-- Aura run #101 (`34453622256`) truthfully passed host-absent and Binder connect but failed the first schema capability probe. Root cause: Aura queried runtime capabilities before activating the Host-owned preset while Harnex's external-consumer profile resolution is activation-aware.
-- Aura repair: discover assignment/default published preset -> activate -> query/validate capabilities and budgets -> prepare/session/generate, with probe/generate deactivation guaranteed and cleanup failure fail-closed. Packaged G2 now reuses the already installed Aura APK instead of package-replacing it after Harnex authorization.
-- The E2E contract now declares `harnex-assisted-import-user-flow` as material Android UI evidence requiring `full_media`.
+- Harnex #565 repaired emulator shell threading and Aura package visibility; Aura also made AndroidJUnitRunner terminal success mandatory.
+- Aura run #101 (`34453622256`) truthfully passed host-absent and Binder connect but failed the first schema capability probe. Root cause: Aura queried runtime capabilities before activating the Host-owned preset while Harnex's external-consumer profile resolution was activation-aware.
+- Aura repair: discover assignment/default published preset -> activate -> query/validate capabilities and budgets -> prepare/session/generate, with probe/generate deactivation guaranteed and cleanup failure fail-closed. Packaged G2 reuses the already installed Aura APK instead of package-replacing it after Harnex authorization.
+- Aura exact-head run #106 (`34466333324`) passed repository/baseline, E2E contract, type/engineering, unit/integration, production web build and browser `FULL_MEDIA`; Android host build, native unit/lint, packaged APK, emulator boot and base instrumentation also succeeded. The two-APK journey then failed before the Aura lifecycle when `DISABLE_AURA_SCHEMA` returned `A default binding must be enabled`.
+- Harnex PR #567 repairs that fixture invariant by clearing `isDefault` when the emulator-only Aura binding is disabled and restoring the canonical schema binding as default on re-enable only when no competing current default exists. Its exact candidate `8288aa20a222c1287c933f909d5963555629721c` passed selector-owned integration/STRONG Validate #4393 (`34474877868`).
+- The E2E contract declares `harnex-assisted-import-user-flow` as material Android UI evidence requiring `full_media`.
 - W10 branch: `feat/import-v2-integrated-ux-w10`. Material edits invalidate older exact-head evidence.
 
 ## Material risks
@@ -100,13 +102,13 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 ## Executable now
 
-1. Run Aura selector-owned exact-head automation against Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`.
+1. Run Aura selector-owned exact-head automation against Harnex `8288aa20a222c1287c933f909d5963555629721c`.
 2. Require W9 lifecycle assertions and the subsequent packaged G2 UI verifier to pass in the same Android journey; accept G2 only with captured `FULL_MEDIA`.
 3. Start W11 only after W10 G2 is green.
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 DONE; W9 ACTIVE with activation-aware Aura lifecycle against Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`; W10 implementation present but BLOCKED on truthful W9 + packaged G2 evidence; W11-W13 downstream. Next discriminating action: selector-owned exact-head Aura cross-app/UI automation.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 DONE; W9 ACTIVE with activation-aware Aura lifecycle against Harnex `8288aa20a222c1287c933f909d5963555629721c`; W10 implementation present but BLOCKED on truthful W9 + packaged G2 evidence; W11-W13 downstream. Next discriminating action: selector-owned exact-head Aura cross-app/UI automation against the validated Harnex candidate.
 
 Record failed hypotheses/evidence and deferred `REAL_ENVIRONMENT` obligations. Never reuse success from an older material HEAD.
 
