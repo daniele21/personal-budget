@@ -39,7 +39,7 @@ Material changes to data fields, model authority, cloud/network behavior, persis
 ## Source checkpoint
 
 - Aura integration base for W10: `dev@4d816359470a0bff2d2397b567faa117ec1e4c89` (PR #21 integrated).
-- Harnex repair candidate used by current Aura CI is `85f1959308b02fae6d38cc540a30e78f10846725` on Harnex PR #565; the previous fixture was `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
+- Harnex repair candidate used by current Aura CI is `4ddfc170653e7c2564842d822bcb1016956884bc` on Harnex PR #565; the previous fixture was `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
 - Integrated Aura lanes: PR #9 (W1), #10 (W2), #11 (W4), #12 (W5), #15 (W6), #19 (W7), #20 (W8), #21 (W9 implementation); Harnex PR #560 (W3).
 - `dev@4d816359470a0bff2d2397b567faa117ec1e4c89` passed Repository health run #85 (`34276168216`) for its web/build/browser jobs, but its two-APK lifecycle evidence is invalid: Harnex crashed on a Room main-thread access and Aura's shell orchestrator accepted the AndroidJUnitRunner failure as PASS. Do not reuse that run as W9 cross-app success evidence.
 - W9 repair moves the Harnex emulator shell bridge off the main thread and makes Aura parse AndroidJUnitRunner terminal output fail-closed. W9 returns to DONE only after exact candidate two-APK evidence passes without masked failures.
@@ -107,7 +107,7 @@ Current W10 implementation preserves the existing central wizard/review/commit o
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 integrated; W9 ACTIVE on evidence repair using Harnex candidate `85f1959308b02fae6d38cc540a30e78f10846725`; W10 implementation exists but is BLOCKED on W9 truthful cross-app evidence; W11-W13 downstream-blocked. Next discriminating action: run selector-owned exact-head automation against the repaired Harnex fixture and fail-closed Aura runner, then resume W10 G2 only if W9 passes.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 integrated; W9 ACTIVE on evidence repair using Harnex candidate `4ddfc170653e7c2564842d822bcb1016956884bc`; W10 implementation exists but is BLOCKED on W9 truthful cross-app evidence; W11-W13 downstream-blocked. Next discriminating action: run selector-owned exact-head automation against the repaired Harnex fixture and fail-closed Aura runner, then resume W10 G2 only if W9 passes.
 
 Record failed hypotheses with evidence pointers, deferred REAL_ENVIRONMENT obligations and the next discriminating action. Old successful runs are not evidence for a newer material head.
 
