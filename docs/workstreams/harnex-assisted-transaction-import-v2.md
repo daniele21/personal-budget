@@ -37,10 +37,10 @@ Material changes to data fields, model authority, network behavior, persistence 
 ## Source checkpoint
 
 - Aura W10 base: `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`.
-- Current Harnex repair candidate: `4ddfc170653e7c2564842d822bcb1016956884bc`, PR #565; previous fixture: `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
+- Current Harnex repair candidate: `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`, PR #565; previous fixture: `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
 - Integrated Aura: #9 W1, #10 W2, #11 W4, #12 W5, #15 W6, #19 W7, #20 W8, #21 W9 implementation; Harnex #560 W3.
 - Aura run #85 (`34276168216`) is **not** valid W9 lifecycle evidence: Harnex hit Room main-thread access and Aura's shell runner masked AndroidJUnitRunner failure as PASS. Its independent web/build evidence is unaffected.
-- Repair: Harnex moves the emulator shell command handler off main thread; Aura parses instrumentation terminal output fail-closed. Re-prove W9 before resuming W10 validation.
+- Repair: Harnex moves the emulator shell command handler off main thread and declares Aura release/debug packages for Android package visibility; Aura parses instrumentation terminal output fail-closed. Harnex STRONG preflight #4379 is green on the exact candidate. Re-prove W9 cross-app behavior before resuming W10 validation.
 - W10 branch: `feat/import-v2-integrated-ux-w10`. Material edits invalidate older exact-head evidence.
 
 ## Material risks
@@ -69,7 +69,7 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 | W6 Manual vertical slice G1 | DONE | W1,W2,W5 | Unknown source -> manual mapping -> deterministic extraction -> existing review/commit. |
 | W7 Schema inference | DONE | W2,W3,W4,W6 | #19 bounded candidate selection; invalid output fails closed. |
 | W8 Category engine | DONE | W3,W4,W6 | #20 history-first, bounded sequential batches, supplied-ID validation. |
-| W9 Cross-app/eval lane | ACTIVE | W3,W4 | Repair false-positive evidence, then re-prove absent/auth/schema/category/cancel/reconnect on exact candidates. |
+| W9 Cross-app/eval lane | ACTIVE | W3,W4 | Re-prove absent/auth/schema/category/cancel/reconnect against repaired exact Harnex candidate. |
 | W10 Integrated UX G2 | BLOCKED | W7,W8,W9 | Implementation exists; after W9, prove packaged discovery -> assistance -> deterministic extraction -> categories -> review -> verified commit. |
 | W11 Hardening/docs | BLOCKED | W10 | Privacy/security/offline/accessibility/limits/rollback/V1 current and tested. |
 | W12 Integration preflight G3 | BLOCKED | W11 | Fresh exact heads; selector-owned deterministic gates green; material UI FULL_MEDIA. |
@@ -95,14 +95,13 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 ## Executable now
 
-1. Validate Harnex PR #565 exact candidate and Aura fail-closed runner through repository-owned automation.
-2. If W9 passes truthfully, resume W10 packaged G2 on the same exact candidates.
-3. Recover browser `FULL_MEDIA`; the current Playwright dependency-install hash mismatch is an environment/toolchain blocker, not substitute evidence.
-4. Start W11 only after W10 G2 is green.
+1. Run Aura selector-owned exact-head automation against Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`.
+2. If W9 passes truthfully, accept the packaged G2 result from the same exact candidate only when central UI `FULL_MEDIA` is green.
+3. Start W11 only after W10 G2 is green.
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 DONE; W9 ACTIVE on evidence repair with Harnex `4ddfc170653e7c2564842d822bcb1016956884bc`; W10 implementation present but BLOCKED on truthful W9 evidence; W11-W13 downstream. Next discriminating action: exact-head cross-app automation.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 DONE; W9 ACTIVE on cross-app repro with Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`; W10 implementation present but BLOCKED on truthful W9 evidence; W11-W13 downstream. Next discriminating action: exact-head Aura cross-app automation.
 
 Record failed hypotheses/evidence and deferred `REAL_ENVIRONMENT` obligations. Never reuse success from an older material HEAD.
 
