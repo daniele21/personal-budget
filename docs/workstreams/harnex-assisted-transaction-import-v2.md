@@ -39,10 +39,11 @@ Material changes to data fields, model authority, cloud/network behavior, persis
 ## Source checkpoint
 
 - Aura integration base for W10: `dev@4d816359470a0bff2d2397b567faa117ec1e4c89` (PR #21 integrated).
-- Harnex deterministic emulator fixture used by Aura CI is pinned to `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
-- Integrated Aura lanes: PR #9 (W1), #10 (W2), #11 (W4), #12 (W5), #15 (W6), #19 (W7), #20 (W8), #21 (W9); Harnex PR #560 (W3).
-- `dev@4d816359470a0bff2d2397b567faa117ec1e4c89` passed Repository health run #85 (`34276168216`), including web validation, browser FULL_MEDIA, exact Harnex host/SDK build and packaged Android API 36 two-APK/WebView evidence.
-- W10 implementation branch: `feat/import-v2-integrated-ux-w10`, based exactly on that `dev` checkpoint. Exact-head evidence must be refreshed after every material W10 edit.
+- Harnex repair candidate used by current Aura CI is `85f1959308b02fae6d38cc540a30e78f10846725` on Harnex PR #565; the previous fixture was `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
+- Integrated Aura lanes: PR #9 (W1), #10 (W2), #11 (W4), #12 (W5), #15 (W6), #19 (W7), #20 (W8), #21 (W9 implementation); Harnex PR #560 (W3).
+- `dev@4d816359470a0bff2d2397b567faa117ec1e4c89` passed Repository health run #85 (`34276168216`) for its web/build/browser jobs, but its two-APK lifecycle evidence is invalid: Harnex crashed on a Room main-thread access and Aura's shell orchestrator accepted the AndroidJUnitRunner failure as PASS. Do not reuse that run as W9 cross-app success evidence.
+- W9 repair moves the Harnex emulator shell bridge off the main thread and makes Aura parse AndroidJUnitRunner terminal output fail-closed. W9 returns to DONE only after exact candidate two-APK evidence passes without masked failures.
+- W10 implementation branch: `feat/import-v2-integrated-ux-w10`, based on the `dev` checkpoint above. Exact-head evidence must be refreshed after every material W10 edit.
 
 ## Material risks
 
@@ -70,8 +71,8 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 | W6 Manual vertical slice (G1) | DONE | W1,W2,W5 | convergence owner, minimal central wiring | Unknown fixture -> manual mapping -> deterministic extraction -> existing review/duplicate/verified commit with Harnex absent; V1 fast path unchanged. |
 | W7 Schema inference | DONE | W2,W3,W4,W6 | schema intelligence adapters/tests | PR #19 integrated bounded Harnex candidate selection; ambiguous/unsupported/invalid fail closed. |
 | W8 Category engine | DONE | W3,W4,W6 | category grouping/batch services/tests | PR #20 integrated local-history-first grouping, bounded sequential Harnex batches and supplied-ID validation with review-safe partial failure. |
-| W9 Cross-app/eval lane | DONE | W3,W4 | canonical emulator/eval owners | PR #21 integrated deterministic two-APK host absent/authorization/schema/category/cancel/reconnect evidence; real-model quality remains separate. |
-| W10 Integrated UX (G2) | ACTIVE | W7,W8,W9 | convergence owner, central import UI/services | Wire assisted mapping/category suggestions into the existing wizard and verified commit path, keep manual fallback first-class, then prove exact-head material UX plus packaged Android integration. |
+| W9 Cross-app/eval lane | ACTIVE | W3,W4 | canonical emulator/eval owners | Repair false-positive two-APK evidence: Harnex emulator control must not access Room on the main thread and Aura must reject failed AndroidJUnitRunner output; then re-prove host absent/authorization/schema/category/cancel/reconnect on exact candidates. |
+| W10 Integrated UX (G2) | BLOCKED | W7,W8,W9 | convergence owner, central import UI/services | Implementation is present; validation resumes after W9 repair, then prove packaged Android local discovery -> Harnex mapping -> deterministic extraction -> categories -> review -> verified commit with manual fallback first-class. |
 | W11 Hardening/docs | BLOCKED | W10 | canonical privacy/security/spec/testing/current-state owners | Data flow, logging, auth, unavailable/offline, accessibility, limits, rollback and V1 compatibility current/tested. |
 | W12 Integration preflight (G3) | BLOCKED | W11 | validation/evidence; owner fixes only | Refresh exact heads/bases; selector `auto`; required deterministic gates exact-head green; material UI has FULL_MEDIA. |
 | W13 Release qualification | BLOCKED | W12 | release/QA evidence | Exact compatible Aura/Harnex candidates close required physical local-model/resource/accessibility/authorization evidence. |
@@ -91,7 +92,7 @@ Current W10 implementation preserves the existing central wizard/review/commit o
 ## Convergence and validation
 
 - G1/W6 proves arbitrary-format import works manually before AI enters the main journey.
-- W9 proves the real Aura APK and real Harnex APK/Host/Consumer boundary deterministically on emulator; host absence, pending/authorized policy, disabled/unready projection, schema/category structured calls, cancellation and reconnect are part of the automated contract.
+- W9 proves the real Aura APK and real Harnex APK/Host/Consumer boundary deterministically on emulator; host absence, pending/authorized policy, disabled/unready projection, schema/category structured calls, cancellation and reconnect are part of the automated contract. A PASS marker is valid only when the selected AndroidJUnitRunner test itself has a successful terminal status.
 - Real-model schema/category quality is separate evaluation evidence. It must not make normal CI flaky and does not substitute for deterministic two-APK lifecycle evidence.
 - G2/W10 requires the central user flow plus representative virtual Android evidence. Material UI evidence is `FULL_MEDIA`; lower-level two-APK assertions alone are not sufficient to call W10 done.
 - G3/W12 requires exact source identity, current docs, full diff review and selector-owned automated evidence. Missing local Android tooling is `REMOTE_AUTOMATED`, never user-run work.
@@ -99,13 +100,14 @@ Current W10 implementation preserves the existing central wizard/review/commit o
 
 ## Executable now
 
-- Complete W10 implementation and exact-head remote preflight on `feat/import-v2-integrated-ux-w10`.
-- If required automated evidence exposes a gap, fix the owning W10 implementation/automation rather than weakening the claim.
+- Complete W9 evidence repair with Harnex PR #565 plus Aura fail-closed instrumentation parsing, and validate exact candidate identity through repository-owned automation.
+- After W9 is truthful again, resume W10 G2 packaged UI validation on the same exact Aura/Harnex candidates.
+- Browser `FULL_MEDIA` remains required for W10; an external Playwright dependency-install failure is an environment/toolchain blocker, not substitute evidence.
 - W11 begins only after W10 G2 evidence is green and the workstream checkpoint is updated.
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W9 integrated; W10 ACTIVE on `feat/import-v2-integrated-ux-w10`; W11-W13 downstream-blocked. Current W10 changes wire schema assistance, deterministic extraction, category assistance, recovery/manual fallback and the existing Review/verified-commit path, with focused unit/component and browser E2E coverage. Next discriminating action: run selector-owned exact-head PR preflight and close any implementation/evidence failures before marking W10 DONE.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 integrated; W9 ACTIVE on evidence repair using Harnex candidate `85f1959308b02fae6d38cc540a30e78f10846725`; W10 implementation exists but is BLOCKED on W9 truthful cross-app evidence; W11-W13 downstream-blocked. Next discriminating action: run selector-owned exact-head automation against the repaired Harnex fixture and fail-closed Aura runner, then resume W10 G2 only if W9 passes.
 
 Record failed hypotheses with evidence pointers, deferred REAL_ENVIRONMENT obligations and the next discriminating action. Old successful runs are not evidence for a newer material head.
 
