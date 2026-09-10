@@ -66,6 +66,23 @@ class AuraHarnexSessionRunnerTest {
     }
 
     @Test
+    fun `probe activates before capability discovery and releases activation`() {
+        val fake = FakeAuraHarnexConsumerClient()
+        val runner = AuraHarnexSessionRunner(fake)
+
+        val result = runner.probe(USE_CASE)
+
+        result as AuraHarnexCapabilityOutcome.Available
+        assertEquals(12_000, result.capability.maxInputCharacters)
+        assertEquals(4_096, result.capability.maxJsonSchemaCharacters)
+        assertEquals(
+            listOf("connect", "assigned", "published", "activate", "capabilities", "deactivate"),
+            fake.lifecycleCalls,
+        )
+        assertEquals(listOf(ACTIVATION_ID), fake.deactivatedActivations)
+    }
+
+    @Test
     fun `host absent projects typed unavailable state without creating runtime resources`() {
         val fake = FakeAuraHarnexConsumerClient().apply {
             connectionOutcome = AuraHarnexConnectionOutcome.Unavailable(
@@ -84,7 +101,7 @@ class AuraHarnexSessionRunnerTest {
     }
 
     @Test
-    fun `model unavailable fails before activation`() {
+    fun `model unavailable after activation deactivates before failing`() {
         val fake = FakeAuraHarnexConsumerClient().apply {
             capabilities = capabilities(readiness = UseCaseReadiness.UNAVAILABLE_MODEL)
         }
@@ -94,7 +111,29 @@ class AuraHarnexSessionRunnerTest {
 
         result as AuraHarnexGenerationOutcome.Failed
         assertEquals(AuraHarnexFailureCode.MODEL_UNAVAILABLE, result.failure.code)
-        assertEquals(0, fake.activationCount)
+        assertEquals(1, fake.activationCount)
+        assertEquals(listOf(ACTIVATION_ID), fake.deactivatedActivations)
+        assertTrue(fake.closedSessions.isEmpty())
+    }
+
+    @Test
+    fun `probe cleanup failure cannot be surfaced as available capability`() {
+        val fake = FakeAuraHarnexConsumerClient().apply {
+            deactivationResult = ConsumerDeactivationResult.Rejected(
+                ConsumerControlPlaneFailure(
+                    ConsumerControlPlaneErrorCode.RUNTIME_FAILURE,
+                    "cleanup failed",
+                ),
+            )
+        }
+        val runner = AuraHarnexSessionRunner(fake)
+
+        val result = runner.probe(USE_CASE)
+
+        result as AuraHarnexCapabilityOutcome.Unavailable
+        assertEquals(AuraHarnexFailureCode.RUNTIME_FAILURE, result.failure.code)
+        assertEquals(1, fake.activationCount)
+        assertEquals(listOf(ACTIVATION_ID), fake.deactivatedActivations)
     }
 
     @Test
@@ -184,29 +223,37 @@ class AuraHarnexSessionRunnerTest {
         val generationStarted = CountDownLatch(1)
         val closedSessions = mutableListOf<SessionId>()
         val deactivatedActivations = mutableListOf<ConsumerActivationId>()
+        val lifecycleCalls = mutableListOf<String>()
         var activationCount = 0
         var cancelCount = 0
         var closed = false
 
-        override fun connect(timeoutMs: Long): AuraHarnexConnectionOutcome = connectionOutcome
+        override fun connect(timeoutMs: Long): AuraHarnexConnectionOutcome {
+            lifecycleCalls += "connect"
+            return connectionOutcome
+        }
 
         override fun disconnect(): AuraHarnexFailure? = null
 
-        override fun assignedUseCases(): ConsumerAssignedUseCasesResult = ConsumerAssignedUseCasesResult.Available(
-            listOf(
-                ConsumerAssignedUseCase(
-                    useCaseId = USE_CASE.useCaseId,
-                    useCaseRevision = 1,
-                    bindingRevision = 1,
-                    displayName = "Aura schema inference",
-                    description = "Schema selection",
-                    isDefault = true,
+        override fun assignedUseCases(): ConsumerAssignedUseCasesResult {
+            lifecycleCalls += "assigned"
+            return ConsumerAssignedUseCasesResult.Available(
+                listOf(
+                    ConsumerAssignedUseCase(
+                        useCaseId = USE_CASE.useCaseId,
+                        useCaseRevision = 1,
+                        bindingRevision = 1,
+                        displayName = "Aura schema inference",
+                        description = "Schema selection",
+                        isDefault = true,
+                    ),
                 ),
-            ),
-        )
+            )
+        }
 
-        override fun publishedPresets(useCaseId: UseCaseId): ConsumerPublishedPresetsResult =
-            ConsumerPublishedPresetsResult.Available(
+        override fun publishedPresets(useCaseId: UseCaseId): ConsumerPublishedPresetsResult {
+            lifecycleCalls += "published"
+            return ConsumerPublishedPresetsResult.Available(
                 useCaseId = useCaseId,
                 bindingRevision = 1,
                 presets = listOf(
@@ -218,11 +265,15 @@ class AuraHarnexSessionRunnerTest {
                     ),
                 ),
             )
+        }
 
-        override fun capabilities(useCaseId: UseCaseId): ConsumerCapabilityResult =
-            ConsumerCapabilityResult.Available(capabilities)
+        override fun capabilities(useCaseId: UseCaseId): ConsumerCapabilityResult {
+            lifecycleCalls += "capabilities"
+            return ConsumerCapabilityResult.Available(capabilities)
+        }
 
         override fun activate(request: ConsumerActivationRequest): ConsumerActivationResult {
+            lifecycleCalls += "activate"
             activationCount += 1
             return ConsumerActivationResult.Activated(
                 ConsumerActivation(
@@ -296,6 +347,7 @@ class AuraHarnexSessionRunnerTest {
         }
 
         override fun deactivate(activationId: ConsumerActivationId): ConsumerDeactivationResult {
+            lifecycleCalls += "deactivate"
             deactivatedActivations += activationId
             return deactivationResult
         }
@@ -320,7 +372,7 @@ class AuraHarnexSessionRunnerTest {
             sessionKind = SessionKind.STATELESS,
         )
         const val CAPABILITY_REVISION = "aura-transaction-import-v1"
-        const val INPUT = "{\"columns\":[]}" 
+        const val INPUT = "{\"columns\":[]}"
         const val SCHEMA = "{\"type\":\"object\"}"
 
         fun capabilities(readiness: UseCaseReadiness = UseCaseReadiness.READY) = UseCaseCapabilities(
