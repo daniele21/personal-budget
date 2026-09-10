@@ -40,7 +40,10 @@ Material changes to data fields, model authority, network behavior, persistence 
 - Current Harnex repair candidate: `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`, PR #565; previous fixture: `d60c0ff9560d6eed225e4fd6e02e746f18625935`.
 - Integrated Aura: #9 W1, #10 W2, #11 W4, #12 W5, #15 W6, #19 W7, #20 W8, #21 W9 implementation; Harnex #560 W3.
 - Aura run #85 (`34276168216`) is **not** valid W9 lifecycle evidence: Harnex hit Room main-thread access and Aura's shell runner masked AndroidJUnitRunner failure as PASS. Its independent web/build evidence is unaffected.
-- Repair: Harnex moves the emulator shell command handler off main thread and declares Aura release/debug packages for Android package visibility; Aura parses instrumentation terminal output fail-closed. Harnex STRONG preflight #4379 is green on the exact candidate. Re-prove W9 cross-app behavior before resuming W10 validation.
+- Harnex repair: emulator shell control runs off main thread and the phone-test manifest declares Aura release/debug package visibility. Harnex selector-owned integration/STRONG preflight #4379 is green on exact `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`.
+- Aura run #101 (`34453622256`) truthfully passed host-absent and Binder connect but failed the first schema capability probe. Root cause: Aura queried runtime capabilities before activating the Host-owned preset while Harnex's external-consumer profile resolution is activation-aware.
+- Aura repair: discover assignment/default published preset -> activate -> query/validate capabilities and budgets -> prepare/session/generate, with probe/generate deactivation guaranteed and cleanup failure fail-closed. Packaged G2 now reuses the already installed Aura APK instead of package-replacing it after Harnex authorization.
+- The E2E contract now declares `harnex-assisted-import-user-flow` as material Android UI evidence requiring `full_media`.
 - W10 branch: `feat/import-v2-integrated-ux-w10`. Material edits invalidate older exact-head evidence.
 
 ## Material risks
@@ -69,8 +72,8 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 | W6 Manual vertical slice G1 | DONE | W1,W2,W5 | Unknown source -> manual mapping -> deterministic extraction -> existing review/commit. |
 | W7 Schema inference | DONE | W2,W3,W4,W6 | #19 bounded candidate selection; invalid output fails closed. |
 | W8 Category engine | DONE | W3,W4,W6 | #20 history-first, bounded sequential batches, supplied-ID validation. |
-| W9 Cross-app/eval lane | ACTIVE | W3,W4 | Re-prove absent/auth/schema/category/cancel/reconnect against repaired exact Harnex candidate. |
-| W10 Integrated UX G2 | BLOCKED | W7,W8,W9 | Implementation exists; after W9, prove packaged discovery -> assistance -> deterministic extraction -> categories -> review -> verified commit. |
+| W9 Cross-app/eval lane | ACTIVE | W3,W4 | Re-prove absent/auth/schema/category/cancel/reconnect against repaired exact Harnex candidate and activation-aware Aura lifecycle. |
+| W10 Integrated UX G2 | BLOCKED | W7,W8,W9 | Implementation exists; after W9, prove packaged discovery -> assistance -> deterministic extraction -> categories -> review -> verified commit with `full_media`. |
 | W11 Hardening/docs | BLOCKED | W10 | Privacy/security/offline/accessibility/limits/rollback/V1 current and tested. |
 | W12 Integration preflight G3 | BLOCKED | W11 | Fresh exact heads; selector-owned deterministic gates green; material UI FULL_MEDIA. |
 | W13 Release qualification | BLOCKED | W12 | Physical local-model/resource/accessibility/authorization evidence. |
@@ -84,6 +87,8 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 - Partial/cancelled category work preserves safe completed suggestions and leaves unresolved rows reviewable.
 - No suggestion provenance enters canonical `Transaction`; Review/verified commit remains unchanged.
 - Browser/Harnex-absent and V1 paths remain first-class regressions.
+- Android Consumer lifecycle follows Host ownership: assignment/default preset discovery -> activation -> capability/limit validation -> prepare/session/generate -> guaranteed close/deactivation.
+- Packaged G2 runs after W9 in the same authorized Host state without reinstalling Aura and is captured as material `full_media` evidence.
 
 ## Validation
 
@@ -96,12 +101,12 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 ## Executable now
 
 1. Run Aura selector-owned exact-head automation against Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`.
-2. If W9 passes truthfully, accept the packaged G2 result from the same exact candidate only when central UI `FULL_MEDIA` is green.
+2. Require W9 lifecycle assertions and the subsequent packaged G2 UI verifier to pass in the same Android journey; accept G2 only with captured `FULL_MEDIA`.
 3. Start W11 only after W10 G2 is green.
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 DONE; W9 ACTIVE on cross-app repro with Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`; W10 implementation present but BLOCKED on truthful W9 evidence; W11-W13 downstream. Next discriminating action: exact-head Aura cross-app automation.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W8 DONE; W9 ACTIVE with activation-aware Aura lifecycle against Harnex `fae66fc0c495f184944c3ffc905eeb0dbc595f2c`; W10 implementation present but BLOCKED on truthful W9 + packaged G2 evidence; W11-W13 downstream. Next discriminating action: selector-owned exact-head Aura cross-app/UI automation.
 
 Record failed hypotheses/evidence and deferred `REAL_ENVIRONMENT` obligations. Never reuse success from an older material HEAD.
 
