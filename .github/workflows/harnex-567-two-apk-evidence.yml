@@ -10,9 +10,9 @@ permissions:
 
 jobs:
   harnex-emulator-host:
-    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@20a580e8333233ecd2975a7ca1223eba454799bd
+    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@7f6c77a62e6ff912f1fc790d55d7fe564a60e3a8
     with:
-      harness_ref: 20a580e8333233ecd2975a7ca1223eba454799bd
+      harness_ref: 7f6c77a62e6ff912f1fc790d55d7fe564a60e3a8
       release_identity_topology: false
 
   aura-two-apk:
@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_ref="20a580e8333233ecd2975a7ca1223eba454799bd"
+          expected_ref="7f6c77a62e6ff912f1fc790d55d7fe564a60e3a8"
           test "$(cat artifacts/harnex-e2e/source-revision.txt)" = "$expected_ref"
           test "$(cat artifacts/harnex-e2e/host-package.txt)" = "io.github.daniele21.localllm.phonetest.debug"
           test -s artifacts/harnex-e2e/harness-emulator-e2e.apk
