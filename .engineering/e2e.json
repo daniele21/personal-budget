@@ -145,6 +145,18 @@
       "residual_gaps": ["physical ARM64/JNI/GGUF execution", "production model quality/latency", "memory and thermal behavior", "production signer topology and OEM lifecycle"],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
+    },
+    {
+      "id": "harnex-assisted-import-user-flow",
+      "claim": "A user can import an arbitrary-header transaction CSV in the packaged Aura Android UI, receive Harnex schema and category assistance through the real Host/Consumer boundary, explicitly confirm the mapping, review deterministic Aura extraction, and commit only through Aura's verified ledger path.",
+      "ui_surface": true,
+      "minimum_ui_evidence_mode": "full_media",
+      "target_environment_refs": ["android-api36-device"],
+      "automated_environment_refs": ["android-api36-ci"],
+      "minimum_automated_fidelity": "simulated_or_emulated",
+      "residual_gaps": ["physical ARM64/JNI/GGUF execution and production-model quality", "memory and thermal behavior", "production signer topology and OEM lifecycle", "representative TalkBack and device text-scaling confirmation"],
+      "real_environment_confirmation": "conditional",
+      "automation_gap_reason": null
     }
   ]
 }
