@@ -4,7 +4,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 const packageName = 'com.staituned.aura.debug';
 const activityName = 'com.staituned.aura.MainActivity';
 const appComponent = `${packageName}/${activityName}`;
-const debugApk = 'android/app/build/outputs/apk/debug/app-debug.apk';
 const devtoolsPort = 9224;
 const androidSdk =
   process.env.ANDROID_HOME ||
@@ -88,8 +87,13 @@ async function main() {
   if (!devices.split('\n').slice(1).some((line) => line.endsWith('\tdevice'))) {
     throw new Error('No ready Android emulator or device is connected.');
   }
+  if (!runAdb('shell', 'pm', 'path', packageName)) {
+    throw new Error('The packaged Aura debug APK is not installed.');
+  }
 
-  runAdb('install', '-r', debugApk);
+  // The two-APK runner installs Aura before Harnex authorization. Do not replace the
+  // package here: package replacement can trigger Host reconciliation and would make
+  // the integrated evidence depend on authorization timing rather than the user flow.
   runAdb('shell', 'am', 'force-stop', packageName);
   runAdb('shell', 'am', 'start', '-W', '-n', appComponent);
 
