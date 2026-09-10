@@ -37,9 +37,25 @@ fi
 
 run_test() {
   local method="$1"
-  adb shell am instrument -w -r \
+  local output=""
+  local adb_status=0
+
+  output="$(adb shell am instrument -w -r \
     -e class "${TEST_CLASS}#${method}" \
-    "${AURA_TEST_PACKAGE}/${RUNNER}"
+    "${AURA_TEST_PACKAGE}/${RUNNER}" 2>&1)" || adb_status=$?
+  printf '%s\n' "$output"
+
+  if [[ "$adb_status" -ne 0 ]]; then
+    echo "Instrumentation command failed for ${method} with adb status ${adb_status}." >&2
+    return 1
+  fi
+  if grep -Fq 'FAILURES!!!' <<<"$output" || \
+    grep -Eq 'INSTRUMENTATION_STATUS_CODE: -[0-9]+' <<<"$output" || \
+    ! grep -Fq 'INSTRUMENTATION_STATUS_CODE: 0' <<<"$output" || \
+    ! grep -Fq 'OK (1 test)' <<<"$output"; then
+    echo "Instrumentation did not report one successful terminal test for ${method}." >&2
+    return 1
+  fi
 }
 
 cleanup_host() {
