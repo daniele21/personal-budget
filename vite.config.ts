@@ -4,7 +4,11 @@ import path from 'path';
 import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { resolveAuthRuntime } from './vite.auth-runtime';
-import { createAndroidDebugEnvOverrides } from './vite.android-runtime';
+import {
+  addAndroidCiFirebaseCspOrigins,
+  createAndroidDebugEnvOverrides,
+  isAndroidCiFirebaseEmulatorBuild,
+} from './vite.android-runtime';
 import { resolvePaymentDetectionRuntime } from './vite.payment-detection-runtime';
 
 const TEST_FIREBASE_DEFINE = {
@@ -25,9 +29,19 @@ export default defineConfig(({ mode, command }) => {
   const paymentDetectionRuntime = resolvePaymentDetectionRuntime(mode, command);
   const environment = loadEnv(mode, process.cwd(), '');
   createAndroidDebugEnvOverrides(mode, environment);
+  const usesAndroidCiFirebaseEmulators = isAndroidCiFirebaseEmulatorBuild(mode);
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(usesAndroidCiFirebaseEmulators
+        ? [{
+            name: 'android-ci-firebase-csp',
+            transformIndexHtml: addAndroidCiFirebaseCspOrigins,
+          }]
+        : []),
+    ],
     define: usesSyntheticFirebase ? TEST_FIREBASE_DEFINE : undefined,
     test: {
       environment: 'jsdom',
