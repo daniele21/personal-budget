@@ -60,14 +60,23 @@ public class AuraRuntimeInstrumentedTest {
     }
 
     @Test
-    public void runtimeDisablesCleartextAndExportsNoBackgroundComponents()
+    public void runtimeRestrictsCleartextToAndroidEmulatorHostAndExportsNoBackgroundComponents()
         throws Exception {
         Context appContext =
             InstrumentationRegistry.getInstrumentation().getTargetContext();
+        NetworkSecurityPolicy networkSecurityPolicy = NetworkSecurityPolicy.getInstance();
 
         assertFalse(
-            "Cleartext traffic must remain disabled.",
-            NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted()
+            "Cleartext traffic must remain disabled by default.",
+            networkSecurityPolicy.isCleartextTrafficPermitted()
+        );
+        assertTrue(
+            "Android debug CI must permit cleartext only to the emulator host bridge.",
+            networkSecurityPolicy.isCleartextTrafficPermitted("10.0.2.2")
+        );
+        assertFalse(
+            "Android debug CI must not permit cleartext to arbitrary hosts.",
+            networkSecurityPolicy.isCleartextTrafficPermitted("example.com")
         );
 
         PackageInfo packageInfo = appContext.getPackageManager().getPackageInfo(
