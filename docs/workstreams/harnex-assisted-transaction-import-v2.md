@@ -1,10 +1,14 @@
 # Harnex-assisted Transaction Import V2
 
-Status: ACTIVE
+Status: ACTIVE — W0-W12 integrated; W13 release qualification in progress.
 
 ## Goal and boundary
 
 Import reasonably structured CSV/XLSX bank exports without fixed column names/order. Aura owns file discovery, executable schema candidates, deterministic extraction, review, duplicates and ledger commit. Harnex optionally assists schema/category selection through its authorized on-device Android Consumer boundary and owns model/runtime policy and lifecycle.
+
+Durable product and privacy truth is owned by the V2 spec, ADR 0008, privacy processing record and testing strategy. This file is the active execution/resume plan only.
+
+Key invariants remain unchanged:
 
 - Harnex failure never blocks manual import and never falls back to cloud AI.
 - Existing Aura CSV/XLSX encoding, ZIP/formula/resource/row bounds remain authoritative.
@@ -15,26 +19,14 @@ Import reasonably structured CSV/XLSX bank exports without fixed column names/or
 
 Contract owners: [`V2 spec`](../specs/harnex-assisted-transaction-import-v2.md), [`ADR 0008`](../../adr/0008-aura-harnex-assisted-import.md), [`privacy record`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md).
 
-## Key implementation invariants
+## Current integrated checkpoint
 
-- Schema output is `resolved | ambiguous | unsupported`; model confidence is never correctness authority.
-- Initial amount strategies are Aura-owned: `signed-negative-expense`, `signed-positive-expense`, `debit-credit`, `amount-direction`.
-- Category resolution uses conservative local history first, then only supplied ephemeral active-category IDs; batches are sequential and bounded by the advertised Harnex input limit.
-- Harnex use cases `aura-transaction-schema-inference` and `aura-transaction-category-classification` are local, stateless, JSON-schema constrained, cancellable and cleanup-safe.
-- Android lifecycle order is assignment/default preset discovery -> activation -> capability/limit validation -> prepare/session/generate -> guaranteed close/deactivation.
-- Packaged CI uses the real Firebase Web SDK against process-local Auth/Firestore emulators with a synthetic `.invalid` identity. The browser E2E auth bypass is never packaged.
-- Android debug cleartext remains denied by default; only the explicit CI emulator lane can reach the local Firebase endpoints at `10.0.2.2`.
-
-## Source checkpoint
-
-- Aura base: `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; branch: `feat/import-v2-integrated-ux-w10`.
-- Harnex exact candidate: `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`, PR #567; Validate #4427 passed integration/STRONG. Harnex uses exact `(modelDigest, modelProfileId)` residency/protection so Aura schema/category profiles sharing one artifact can transition safely.
-- W9: Aura Repository health #111 proved host-absent fail-closed and the authorized two-APK lifecycle including assignment/readiness, schema/category profile switch, cancellation cleanup and reconnect/restart.
-- W10: exact Aura `944c818da900588b68e5318f88aa0aa166780d6d`, Repository health #134 (`34681900077`), passed selector FULL, engineering baseline, web, browser `FULL_MEDIA`, exact Harnex host and Android API 36 preflight. Android evidence contains host-absent and lifecycle `OK (1 test)`, packaged G2 `status: PASS`, ledger unchanged before Review, two reviewed/committed `Food` expenses with clean metadata, successful following WebView journey and non-empty required media.
-- Runs #129/#133 had reached G2 PASS before the AVD became offline during post-G2 media/WebView collection. After the repeated signature the harness changed strategy: completed Gradle/Kotlin daemons are released before Harnex G2 and ADB/emulator/memory/cgroup checkpoints are recorded. #134 stayed `device/alive`; the defect was CI resource lifecycle, not Aura/Harnex product semantics.
-- W12: exact Aura `ab217eabddb13a77338dc51dfbc16132f11aea36`, Repository health #137 (`34685386940`), selected FULL and passed engineering baseline, web, browser `FULL_MEDIA`, exact Harnex host and Android API 36 preflight on the successful same-SHA rerun. The first Android attempt reached packaged G2 `result=PASS` and then lost the AVD during post-G2 media/WebView collection; diagnostics showed no memory-pressure signature. Re-running the Android job on the same exact SHA completed host-absent and packaged lifecycle `OK (1 test)`, packaged G2 `status: PASS`, `ledgerBeforeConfirm=0`, `ledgerRows=0`, two committed `Food` expenses, `allExpenses=true`, `metadataClean=true`, following WebView verification and all required non-empty `FULL_MEDIA`. The synthetic Firebase Auth password is masked in subsequent GitHub Actions environments rather than logged in clear text. Android evidence artifact: `10295782012`.
-- `.engineering/e2e.json` classifies `harnex-assisted-import-user-flow` as material Android UI requiring `full_media`.
-- Any material edit invalidates older exact-head evidence.
+- Aura `dev`: `bea24e5eeb067c2e5e98822d26a2637a202d4944` (merge of PR #24).
+- Harnex `dev`: `34ffa7905c7deb14909ac3331bfd7179e9d30106` (merge of PR #567).
+- Exact Harnex implementation consumed by the integrated Aura workflow remains `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`.
+- Aura post-merge Repository health #139 (`34692614019`) passed engineering baseline, web validation, browser critical journeys with `FULL_MEDIA`, exact Harnex host/Consumer SDK build and Android API 36 packaged instrumentation/WebView preflight.
+- Harnex post-merge `Validate #4430` passed integration/STRONG; distributable Android packaging and Play Internal publication also passed on the merged Harnex `dev` commit.
+- Deterministic automated integration evidence is therefore complete. W13 must not re-label emulator evidence as physical-device evidence.
 
 ## Execution DAG
 
@@ -42,57 +34,224 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 | ID | State | Acceptance |
 | --- | --- | --- |
-| W0 Contract/privacy freeze | DONE | Spec, ADR and privacy contract frozen. |
-| W1 Multi-source corpus | DONE | Synthetic supported/ambiguous/rejected inputs. |
-| W2 Generic profiler | DONE | Bounded local profile and executable candidates. |
-| W3 Harnex host capability | DONE | Aura identities/use cases; unavailable states fail closed. |
-| W4 Aura Consumer bridge | DONE | Typed Capacitor boundary and Consumer lifecycle. |
-| W5 UX task/state contract | DONE | Mapping, progress, recovery, cancellation, accessibility. |
-| W6 Manual vertical slice G1 | DONE | Generic source -> manual mapping -> deterministic extraction -> review/commit. |
-| W7 Schema inference | DONE | Bounded candidate selection; invalid output fails closed. |
-| W8 Category engine | DONE | History-first, sequential bounded batches, supplied-ID validation. |
-| W9 Cross-app/eval lane | DONE | #111 exact Harnex lifecycle evidence. |
-| W10 Integrated UX G2 | DONE | #134 exact FULL packaged assistance -> deterministic extraction -> Review -> verified commit with `FULL_MEDIA`. |
-| W11 Hardening/docs | DONE | Privacy/security/offline/accessibility/limits/rollback/V1 contracts reconciled with implementation and tests. |
-| W12 Integration preflight G3 | DONE | #137 exact post-W11 FULL deterministic gates and material UI evidence green on the successful same-SHA rerun. |
-| W13 Release qualification | ACTIVE | Physical/model/accessibility/authorization/privacy-governance evidence. |
+| W0-W12 Implementation/integration | DONE | Product contracts, implementation, deterministic tests, cross-app Android automation and exact-head/full-media integration evidence are green and merged to `dev`. |
+| W13.1 Production identity/authorization | READY | Realistic release-signed Aura/Harnex identity proves fail-closed unauthorized behavior and explicit authorized use-case execution without signer/package widening. |
+| W13.2 Physical authentication | READY | Physical Google/Credential Manager sign-in and session lifecycle work without CI Firebase-emulator identities or packaged auth bypasses. |
+| W13.3 Real GGUF quality | READY | Representative ARM64/JNI/GGUF schema/category behavior is measured against declared goldens; unsafe silent schema mapping rate is 0. |
+| W13.4 Performance/resource envelope | READY | Physical measurements establish an accepted release envelope with no crash/ANR/OOM/process-loss/resource-leak regressions across representative repeated import/cancel/restart scenarios. |
+| W13.5 Accessibility | READY | Representative TalkBack and text-scaling walkthrough proves the full task/recovery flow remains understandable and operable without color-only meaning. |
+| W13.6 Privacy/legal/AI governance | READY | Privacy/product owner records the required classification, transparency/lawful-basis, RoPA/data-inventory and DPIA/AI-governance decisions and approves the implemented minimization/logging boundary. |
+| W13 Release qualification | ACTIVE | W13.1-W13.6 DONE, release evidence references captured, no unresolved release blocker. |
 
-## W11 closure
+W13.6 can proceed immediately in parallel. W13.3-W13.5 may proceed in parallel once a representative physical build/device configuration is available. W13.1 should settle the release signing/authorization topology before evidence is treated as representative of production.
 
-- V1 is documented as the implemented deterministic fast path; V2 is a separate extension, not an AI/network fallback inside V1.
-- V2 spec, privacy processing record/notes, discovery/current-state and testing strategy now describe the implemented local Harnex boundary rather than the retired Gemini workflow or a pending runtime.
-- Existing tests cover resource limits, verified commit/read-back/rollback, manual/unavailable/invalid/ambiguous/cancelled recovery, Harnex lifecycle, and accessible task-state semantics. No compensating runtime patch was required.
-- Privacy/legal owner work remains separate: lawful basis/transparency, RoPA/data inventory, DPIA/AI-governance screening and formal approval are release obligations, not claims established by automated engineering evidence.
+## W13 evidence identity
 
-## W12 closure
+Every physical/model evidence record must capture enough identity to reproduce the claim without exposing credentials or financial content:
 
-- Base remained `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; the validated implementation head was `ab217eabddb13a77338dc51dfbc16132f11aea36` with exact Harnex `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`.
-- Selector FULL, engineering baseline, web validation, browser critical journeys with `FULL_MEDIA`, exact Harnex rebuild/publish and Android API 36 deterministic gates passed.
-- The successful Android artifact proves host-absent fail-closed, authorized packaged lifecycle, arbitrary-header schema assistance, explicit mapping confirmation, deterministic extraction before commit, constrained category suggestions, clean canonical ledger metadata and the following WebView journey.
-- Required Android videos are non-empty for instrumentation, Harnex two-APK and WebView; required screenshots are non-empty 1080x2400 PNGs.
-- The first #137 Android attempt is retained as classified flaky remote infrastructure evidence: G2 passed before the emulator process exited. The same exact SHA passed on a fresh runner/AVD, so no product patch or evidence weakening was used to manufacture green status.
-- Final diff review found only Import V2/Harnex, Android CI/evidence and directly related documentation files; no unrelated/generated/debug artifacts were introduced.
+- Aura source revision and build identity/version/channel;
+- Harnex source revision and build identity/version/channel;
+- Aura/Harnex package identities and signer fingerprints or stable non-secret signer identifiers needed to prove authorization topology;
+- physical device manufacturer/model, Android version/API, ABI and relevant memory class;
+- Harnex model artifact digest, model profile ID/preset and relevant inference configuration identity;
+- scenario/corpus identifier and execution date;
+- result plus bounded timings/resource observations;
+- evidence pointer (report, screenshot/video or approved governance record).
 
-## Risks and release evidence
+Do not record passwords, OAuth/Firebase tokens, keystores, private signing material, raw bank files, account identifiers, transaction descriptions/amounts/categories or prompt/output content in W13 reports. Synthetic/approved fixtures should be used for repeatable evidence where possible.
 
-| Risk | Evidence/mitigation |
-| --- | --- |
-| Silent wrong schema | Editable review; invalid/ambiguous response fails closed; unsafe-silent rate target 0. |
-| Weak local-model semantics | Real-model qualification remains separate from deterministic CI. |
-| Lifecycle/resource leak | Cancel/cleanup/reconnect two-APK automation plus ADB/memory health checkpoints. |
-| V1 regression | V1 fast path remains isolated and regression-tested. |
-| Cross-repo/auth drift | Exact Harnex source identity; real packaged Firebase-emulator auth; no deployable auth bypass. |
+## W13.1 Production identity and Harnex authorization
 
-Deterministic automated integration evidence is complete through W12. The tracker-only W12 closure commit is non-executable; repository-owned validation still determines any required exact-head recheck before a merge-readiness claim.
+### Objective
 
-W13 remains `REAL_ENVIRONMENT`: physical Google/Credential Manager sign-in; representative ARM64/JNI/GGUF model quality/performance; thermal/memory/OEM behavior; Play/production signer authorization topology; representative TalkBack/text scaling; and applicable privacy/legal governance approval. Emulator success does not satisfy these.
+Prove that the caller-identity boundary works with the signing/package topology that will actually be released, rather than only debug/emulator identities.
 
-## Executable now
+### Scenarios
 
-1. Run the repository selector on the tracker-only W12 closure head and execute any required exact-head automated gates; do not silently reuse #137 if the selector requires more.
-2. Update Aura PR #24 and Harnex PR #567 with the settled exact candidate/evidence and preserve the classified #137 first-attempt AVD flake in the record.
-3. Keep W13 release evidence explicitly separate from automated merge readiness. Do not weaken exact Harnex pin, packaged auth isolation, bounded CI cleartext exception or `FULL_MEDIA` requirements.
+1. Install representative Harnex and Aura builds without pre-authorizing Aura.
+2. Confirm Aura discovers assistance as unavailable/unauthorized and preserves manual import; no generation or hidden ledger mutation occurs.
+3. Authorize the exact Aura release identity for both `aura-transaction-schema-inference` and `aura-transaction-category-classification`.
+4. Run schema then category assistance and confirm the runtime resolves the authorized exact package/signer identity.
+5. Restart Aura and Harnex and repeat capability/prepare/generation.
+6. Exercise a relevant update/reinstall path if the planned distribution/signing topology can change package installation state.
+7. Confirm a mismatched/unapproved signer or package cannot inherit authorization.
+
+### Pass
+
+- unauthorized/mismatched identity fails closed and manual fallback remains usable;
+- exact approved release identity can execute both use cases;
+- authorization does not widen across debug/release or unrelated package/signer identities;
+- restart/update behavior matches the intended persisted authorization contract;
+- no cloud fallback or content logging appears.
+
+Executor: `REAL_ENVIRONMENT` — physical device plus production-representative signing/Play topology.
+
+## W13.2 Physical Google/Credential Manager authentication
+
+### Objective
+
+Prove Aura's normal packaged authentication path on a physical device using real Google Play Services/Credential Manager behavior.
+
+### Scenarios
+
+- clean first sign-in;
+- app process death/restart with an existing session;
+- explicit sign-out then sign-in;
+- denied/cancelled credential selection with recoverable UI;
+- offline/reconnect behavior where applicable;
+- relevant upgrade/reinstall behavior for the intended release channel.
+
+### Pass
+
+- successful sign-in reaches the normal authenticated Aura state;
+- cancel/failure is truthful and recoverable;
+- session restore/logout behavior matches product expectations;
+- no Android-CI Firebase emulator identity/configuration is present in the release build;
+- no credentials/tokens are exposed in logs/evidence.
+
+Executor: `REAL_ENVIRONMENT` — physical device/account authority.
+
+## W13.3 Representative ARM64/JNI/GGUF model quality
+
+### Objective
+
+Qualify actual on-device model behavior, which deterministic CI intentionally does not claim.
+
+### Corpus
+
+Use synthetic or approved non-sensitive files covering at least:
+
+- canonical V1 file to confirm the deterministic fast path remains isolated;
+- arbitrary but supported English and localized headers;
+- metadata rows before the table;
+- debit/credit and signed-amount strategies;
+- multiple description columns;
+- intentionally ambiguous schema cases that must request manual resolution;
+- unsupported/malformed cases that must fail closed;
+- multiple distinct user category taxonomies for category classification.
+
+### Metrics and pass
+
+Schema qualification records correct, manual/ambiguous and unsafe-silent outcomes. Required safety metric:
+
+`unsafe silent mapping rate = 0`
+
+A hard/unsupported file may require user correction; a wrong automatic financial mapping is a release blocker. Category evaluation must report outcomes across multiple taxonomies and must not accept category IDs outside the supplied set. Category quality may inform model/preset selection, but it never bypasses Review.
+
+Executor: `REAL_ENVIRONMENT` — representative ARM64 device and actual GGUF model bytes.
+
+## W13.4 Performance, memory, thermal and OEM envelope
+
+### Objective
+
+Establish a measured release envelope instead of inventing unvalidated latency/RAM thresholds.
+
+### Required observations
+
+For representative schema inference, category batches, cancellation and repeated imports record:
+
+- first-run and warm-run elapsed time;
+- Aura/Harnex process memory/RSS observations where available;
+- model load/residency behavior and cleanup after cancel/close;
+- crash, ANR, OOM, process death or transport loss;
+- device thermal/throttling observations available from platform tooling;
+- behavior after multiple consecutive imports and app/host restart.
+
+A primary physical ARM64 reference device is required. Before a broad Android general-release claim, add a materially different OEM/SoC/device class so the tracked `OEM behavior` obligation is not represented by one hardware family only.
+
+### Pass
+
+- no crash/ANR/OOM/unexpected process loss or persistent resource leak in the release scenarios;
+- cancellation/cleanup returns the system to a usable state;
+- repeated imports/restarts remain functionally correct;
+- measured latency/memory/thermal results are reviewed and an explicit supported release envelope is accepted. If observations show an unacceptable envelope, fix the owning cause or narrow the release claim explicitly; do not invent a threshold after seeing failures merely to obtain PASS.
+
+Executor: `REAL_ENVIRONMENT`.
+
+## W13.5 TalkBack and text-scaling accessibility
+
+### Objective
+
+Validate the user task, not internal model mechanics, under representative accessibility settings.
+
+### Walkthrough
+
+Exercise `Upload -> Understand file -> Check transactions -> Categorize -> Review -> Done` plus unauthorized/unavailable, ambiguous mapping, partial category failure and cancellation/recovery states.
+
+Check:
+
+- TalkBack focus order and actionable labels;
+- progress/state announcements where needed;
+- mapping controls and recovery actions are operable;
+- Review exposes enough information to make the commit decision;
+- text scaling does not hide/truncate required actions or financial meaning;
+- states are not communicated only by color;
+- cancellation and manual fallback remain discoverable.
+
+### Pass
+
+No critical task or recovery path is blocked or materially ambiguous with representative TalkBack/text scaling. Any issue affecting financial review/commit correctness is release-blocking.
+
+Executor: `REAL_ENVIRONMENT` — physical accessibility services and human usability judgement.
+
+## W13.6 Privacy, legal and AI-governance approval
+
+### Objective
+
+Close the governance actions already recorded in `harnex-assisted-import-processing-record.md`; engineering CI is not authority for these decisions.
+
+### Required owner decisions
+
+- controller/processor/internal-system classification for local Harnex processing;
+- lawful basis and user-facing transparency wording;
+- RoPA/data-inventory representation of the Aura -> local Harnex boundary;
+- DPIA and applicable AI-governance screening outcome;
+- approval of the minimized fields supplied to schema/category inference;
+- confirmation that Harnex prompt/output persistence or content logging is not enabled for Aura use cases;
+- approval of unavailable/authorization/manual-fallback disclosure.
+
+### Pass
+
+The authoritative privacy/product owner records an approval or a documented non-applicability decision for every required item. Open legal/governance questions remain release blockers; engineering must not self-certify them.
+
+Executor: `REAL_ENVIRONMENT` / human authority.
+
+## Failure handling
+
+For every W13 failure classify before changing code/configuration:
+
+- current product regression;
+- signing/authorization configuration defect;
+- model/preset quality limitation;
+- device/OEM/resource limitation;
+- external account/service/environment failure;
+- accessibility/product-design defect;
+- governance/requirement gap.
+
+Identify the canonical owner and preserve the failing evidence. Deterministic defects discovered by W13 should receive normal repository-owned automated regression coverage where possible before the fix is considered complete. A real-environment failure is not fixed by weakening the scenario or replacing it with emulator evidence.
+
+## Release closure
+
+W13 can be marked DONE only when:
+
+1. W13.1-W13.6 are DONE with evidence pointers;
+2. no material code/configuration change has invalidated the applicable evidence;
+3. the release candidate is refreshed against current `dev` and the repository RELEASE selector is run;
+4. required deterministic RELEASE gates are FULL and green on the exact release candidate;
+5. required real-environment evidence applies to that release identity/configuration;
+6. durable spec/privacy/testing/design owners contain any truth learned during qualification.
+
+Promotion `dev -> main` is a separate explicit release action after these conditions. Do not promote solely because W13 engineering notes exist.
+
+## Immediate next actions
+
+1. Settle and record the intended Aura/Harnex release package + signing + Play distribution topology for W13.1.
+2. Identify the first physical ARM64 reference device and the representative Harnex GGUF model/profile for W13.2-W13.4.
+3. Prepare the synthetic/approved real-model qualification corpus and result sheet without financial-content logging.
+4. Start the privacy-owner checklist in W13.6 in parallel.
+5. Execute W13.1/W13.2 first; then run W13.3-W13.5 in parallel on the settled representative configuration.
+6. Update this tracker with evidence references and state transitions only; keep detailed durable conclusions in their canonical owners.
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W12 DONE; exact Harnex `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc` STRONG-validated; W12 closed by FULL #137 on exact implementation head `ab217eabddb13a77338dc51dfbc16132f11aea36`; W13 release qualification ACTIVE and remains `REAL_ENVIRONMENT`. Final settled truth must remain in spec/ADR/privacy/testing/current-state owners with every deferred release obligation preserved.
+Aura integrated source is `dev@bea24e5eeb067c2e5e98822d26a2637a202d4944`; Harnex integrated source is `dev@34ffa7905c7deb14909ac3331bfd7179e9d30106`. W0-W12 are DONE and deterministic post-merge automation is green. W13 is ACTIVE with six real-environment gates READY. No W13 gate is currently claimed complete. Next discriminating action is W13.1: establish the production-representative package/signer/Play authorization topology and run unauthorized -> authorized -> restart/mismatch evidence on a physical device.
