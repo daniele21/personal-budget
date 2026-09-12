@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="com.staituned.aura.permission.POST_SYNTHETIC_TEST_NOTIFICATION" />
 
-    <application>
+    <application android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".SyntheticPaymentDetectionSetupActivity"
             android:excludeFromRecents="true"
