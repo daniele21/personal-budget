@@ -11,11 +11,11 @@ if (!email || !password) {
   throw new Error('Synthetic Android CI Firebase auth identity is not configured.');
 }
 
-async function waitFor(url, label, attempts = 480) {
+async function waitFor(url, label, requestInit = undefined, attempts = 480) {
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, requestInit);
       if (response.ok) return;
       lastError = new Error(`${label} returned HTTP ${response.status}.`);
     } catch (error) {
@@ -54,8 +54,9 @@ await waitFor(
   'Firebase Auth emulator',
 );
 await waitFor(
-  `${firestoreBaseUrl}/v1/projects/${projectId}/databases/${databaseId}/documents?pageSize=1`,
+  `${firestoreBaseUrl}/emulator/v1/projects/${projectId}/databases/${databaseId}/documents`,
   'Firestore emulator',
+  { method: 'DELETE' },
 );
 
 const adminToken = await createAuthUser(
