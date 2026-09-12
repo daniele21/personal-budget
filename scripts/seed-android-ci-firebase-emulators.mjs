@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 const projectId = 'demo-aura-android-ci';
 const databaseId = 'budget-db';
@@ -26,6 +26,29 @@ async function waitFor(url, label, attempts = 480) {
   throw new Error(`${label} did not become ready.${lastError ? ` ${lastError.message}` : ''}`);
 }
 
+async function createAuthUser(userEmail, userPassword, label) {
+  const response = await fetch(
+    `${authBaseUrl}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: userEmail,
+        password: userPassword,
+        returnSecureToken: true,
+      }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Unable to seed ${label} in Firebase Auth emulator: HTTP ${response.status}.`);
+  }
+  const payload = await response.json();
+  if (!payload.idToken) {
+    throw new Error(`Firebase Auth emulator did not return an ID token for ${label}.`);
+  }
+  return payload.idToken;
+}
+
 await waitFor(
   `${authBaseUrl}/emulator/v1/projects/${projectId}/config`,
   'Firebase Auth emulator',
@@ -35,20 +58,12 @@ await waitFor(
   'Firestore emulator',
 );
 
-const authResponse = await fetch(
-  `${authBaseUrl}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
-  {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password, returnSecureToken: true }),
-  },
+const adminToken = await createAuthUser(
+  'staituned.owner@gmail.com',
+  randomBytes(24).toString('hex'),
+  'local CI administrator',
 );
-if (!authResponse.ok) {
-  const body = await authResponse.text();
-  if (!body.includes('EMAIL_EXISTS')) {
-    throw new Error(`Unable to seed Firebase Auth emulator: HTTP ${authResponse.status}.`);
-  }
-}
+await createAuthUser(email, password, 'synthetic Android CI user');
 
 const emailHash = createHash('sha256')
   .update(email.toLowerCase())
@@ -57,7 +72,10 @@ const allowlistResponse = await fetch(
   `${firestoreBaseUrl}/v1/projects/${projectId}/databases/${databaseId}/documents/allowedUsers/${emailHash}`,
   {
     method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      authorization: `Bearer ${adminToken}`,
+      'content-type': 'application/json',
+    },
     body: JSON.stringify({
       fields: {
         maskedEmail: { stringValue: 'an***@aura.invalid' },
