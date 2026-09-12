@@ -14,6 +14,10 @@ const ANDROID_CI_FIRESTORE_DATABASE_ID = 'budget-db';
 const ANDROID_CI_FIREBASE_API_KEY = 'fake-api-key';
 const ANDROID_CI_FIREBASE_APP_ID = '1:000000000000:web:aura-android-ci';
 const ANDROID_CI_FIREBASE_MESSAGING_SENDER_ID = '000000000000';
+const ANDROID_CI_FIREBASE_CSP_ORIGINS = [
+  'http://10.0.2.2:9099',
+  'http://10.0.2.2:8080',
+] as const;
 
 export type AndroidDebugEnvironment = Record<
   (typeof REQUIRED_ANDROID_DEBUG_ENV_KEYS)[number],
@@ -24,6 +28,25 @@ export type AndroidDebugEnvironment = Record<
   AURA_ANDROID_CI_AUTH_EMAIL?: string;
   AURA_ANDROID_CI_AUTH_PASSWORD?: string;
 };
+
+export function isAndroidCiFirebaseEmulatorBuild(
+  mode: string,
+  environment: Record<string, string | undefined> = process.env,
+): boolean {
+  return mode === ANDROID_DEBUG_MODE
+    && environment.AURA_ANDROID_CI_FIREBASE_EMULATORS === 'true';
+}
+
+export function addAndroidCiFirebaseCspOrigins(html: string): string {
+  const marker = "connect-src 'self'";
+  if (!html.includes(marker)) {
+    throw new Error('Android CI Firebase CSP transform could not find connect-src.');
+  }
+  return html.replace(
+    marker,
+    `${marker} ${ANDROID_CI_FIREBASE_CSP_ORIGINS.join(' ')}`,
+  );
+}
 
 export function createAndroidDebugEnvOverrides(
   mode: string,
