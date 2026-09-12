@@ -2,110 +2,97 @@
 
 Status: ACTIVE
 
-## Goal
+## Goal and boundary
 
-Let an Aura Android user import a reasonably structured CSV/XLSX bank export without renaming/reordering columns: Aura discovers structure locally, Harnex assists with schema/category selection on-device, ambiguous results remain reviewable, and only the existing verified Aura commit path writes transactions.
+Import reasonably structured CSV/XLSX bank exports without fixed column names/order. Aura owns file discovery, executable schema candidates, deterministic extraction, review, duplicates and ledger commit. Harnex optionally assists schema/category selection through its authorized on-device Android Consumer boundary and owns model/runtime policy and lifecycle.
 
-## Boundary and non-goals
+- Harnex failure never blocks manual import and never falls back to cloud AI.
+- Existing Aura CSV/XLSX encoding, ZIP/formula/resource/row bounds remain authoritative.
+- Harnex may select only Aura-generated schema/category IDs; unknown/invalid/duplicate IDs fail closed.
+- Preserve the deterministic V1 `date,description,amount` fast path.
+- Never send a complete workbook/ledger to Harnex or persist Harnex/source/provider/model provenance in `Transaction`.
+- Review and verified transaction-only commit/read-back/rollback remain the only canonical write path.
 
-- Aura owns workflow, spreadsheet discovery, financial semantics, review, duplicates and ledger commit; Harnex owns caller authorization, use-case/model/runtime policy, Binder execution and lifecycle.
-- Harnex is optional Android capability. Unavailable-Harnex Android/browser harnesses use manual mapping; no cloud fallback.
-- Out of scope initially: PDF/OCR, `.xls`/`.xlsm`, arbitrary parsing expressions, FX/multi-currency normalization, bank connectivity and financial advice.
-- Never send a complete workbook/ledger to Harnex, persist source/Harnex content metadata, add AI/import metadata to `Transaction`, create categories silently or let Aura select Harnex models.
-- Preserve the canonical V1 `date,description,amount` fast path.
+Contract owners: [`V2 spec`](../specs/harnex-assisted-transaction-import-v2.md), [`ADR 0008`](../../adr/0008-aura-harnex-assisted-import.md), [`privacy record`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md).
 
-## Frozen contract owners
+## Key implementation invariants
 
-W0 is frozen in:
-
-- feature contract: [`../specs/harnex-assisted-transaction-import-v2.md`](../specs/harnex-assisted-transaction-import-v2.md);
-- trust/ownership decision: [`../../adr/0008-aura-harnex-assisted-import.md`](../../adr/0008-aura-harnex-assisted-import.md);
-- privacy/data flow: [`../04-privacy-gdpr/harnex-assisted-import-processing-record.md`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md).
-
-Material changes to data fields, model authority, cloud/network behavior, persistence or category/ledger semantics must update the owning contract before implementation.
-
-## Invariants / frozen direction
-
-- Existing CSV/XLSX encoding, resource, ZIP, formula and row/file limits remain local and unchanged unless their owner changes explicitly.
-- AI selects only Aura-generated candidate IDs. Unknown/missing/duplicate IDs fail closed to ambiguity/manual review.
-- Confirmed mapping -> deterministic Aura extraction of date, description, signed amount and type. Unsafe silent mapping is a release blocker.
-- Initial amount strategies: `signed-negative-expense`, `signed-positive-expense`, `debit-credit`, `amount-direction`; description may join bounded selected columns.
-- Schema output is `resolved | ambiguous | unsupported`; correctness does not depend on LLM self-confidence.
-- Category inference may return only supplied ephemeral category IDs or unresolved. Resolve conservative normalized-description + type matches from unambiguous local history first.
-- Harnex use cases are local, stateless, JSON-schema constrained, content-free in ordinary logs, cancellable and cleanup-safe. Initial IDs: `aura-transaction-schema-inference`, `aura-transaction-category-classification`.
-- Category batching is sequential and packed by advertised input budget, not a permanent row-count constant.
-- Harnex failure never blocks manual import. Existing verified commit, ledger fingerprint, duplicate warning and undo semantics stay canonical.
+- Schema output is `resolved | ambiguous | unsupported`; model confidence is never correctness authority.
+- Initial amount strategies are Aura-owned: `signed-negative-expense`, `signed-positive-expense`, `debit-credit`, `amount-direction`.
+- Category resolution uses conservative local history first, then only supplied ephemeral active-category IDs; batches are sequential and bounded by the advertised Harnex input limit.
+- Harnex use cases `aura-transaction-schema-inference` and `aura-transaction-category-classification` are local, stateless, JSON-schema constrained, cancellable and cleanup-safe.
+- Android lifecycle order is assignment/default preset discovery -> activation -> capability/limit validation -> prepare/session/generate -> guaranteed close/deactivation.
+- Packaged CI uses the real Firebase Web SDK against process-local Auth/Firestore emulators with a synthetic `.invalid` identity. The browser E2E auth bypass is never packaged.
+- Android debug cleartext remains denied by default; only the explicit CI emulator lane can reach the local Firebase endpoints at `10.0.2.2`.
 
 ## Source checkpoint
 
-- Aura after W6/G1: `dev@00a1f83bc7b428e8eee5774bab697f299c46f2b5`.
-- Harnex after W3: `dev@fbe2a901e64c0cf5e3c329338d7b024c70bb15ba`, tree `8f34a8176542ac6090695d411e5e0364f782f119`.
-- Integrated: Aura PRs #9 (W1), #10 (W2), #11 (W4), #12 (W5), #15 (W6); Harnex PR #560 (W3). Their dispatch issues are closed `completed`.
-- W6 final candidate `86e2ee1e5a1619fc19e4188f75a8fec66c0f9b2d` passed selector-owned STRONG repository-health run #73 (`34227096345`) against fresh base `0177622e8194e0622b080b9db5d038566d5143e1`, including web validation, browser FULL_MEDIA and packaged Android API 36 emulator evidence.
-- W9 remains independent. Refresh exact heads/bases before readiness, convergence or release claims; material edits invalidate affected evidence.
-
-## Material risks
-
-| Risk | Level | Discriminating evidence |
-| --- | --- | --- |
-| Silent wrong schema | HIGH | Multi-source goldens; ambiguous cases require review; qualification unsafe-silent-mapping rate = 0. |
-| Local model weak on date/amount semantics | HIGH | Real Harnex evaluation before automatic mapping reaches main wizard; narrow supported strategies if it fails. |
-| Category suggestions ignore user taxonomy | MEDIUM | Same descriptions evaluated against multiple category sets; unknown IDs rejected locally. |
-| Native/Harnex lifecycle leaks work/resources | HIGH | Cancel/close/background/reconnect tests across Capacitor + Consumer SDK. |
-| Cross-repo API/policy drift | MEDIUM | Published Consumer SDK only; compatible version + Harnex direct-consumer/publication evidence. |
-| V2 destabilizes V1 closure | MEDIUM | Isolated lane ownership; central import owners reserved for convergence. |
+- Aura base: `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; branch: `feat/import-v2-integrated-ux-w10`.
+- Harnex exact candidate: `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`, PR #567; Validate #4427 passed integration/STRONG. Harnex uses exact `(modelDigest, modelProfileId)` residency/protection so Aura schema/category profiles sharing one artifact can transition safely.
+- W9: Aura Repository health #111 proved host-absent fail-closed and the authorized two-APK lifecycle including assignment/readiness, schema/category profile switch, cancellation cleanup and reconnect/restart.
+- W10: exact Aura `944c818da900588b68e5318f88aa0aa166780d6d`, Repository health #134 (`34681900077`), passed selector FULL, engineering baseline, web, browser `FULL_MEDIA`, exact Harnex host and Android API 36 preflight. Android evidence contains host-absent and lifecycle `OK (1 test)`, packaged G2 `status: PASS`, ledger unchanged before Review, two reviewed/committed `Food` expenses with clean metadata, successful following WebView journey and non-empty required media.
+- Runs #129/#133 had reached G2 PASS before the AVD became offline during post-G2 media/WebView collection. After the repeated signature the harness changed strategy: completed Gradle/Kotlin daemons are released before Harnex G2 and ADB/emulator/memory/cgroup checkpoints are recorded. #134 stayed `device/alive`; the defect was CI resource lifecycle, not Aura/Harnex product semantics.
+- W12: exact Aura `ab217eabddb13a77338dc51dfbc16132f11aea36`, Repository health #137 (`34685386940`), selected FULL and passed engineering baseline, web, browser `FULL_MEDIA`, exact Harnex host and Android API 36 preflight on the successful same-SHA rerun. The first Android attempt reached packaged G2 `result=PASS` and then lost the AVD during post-G2 media/WebView collection; diagnostics showed no memory-pressure signature. Re-running the Android job on the same exact SHA completed host-absent and packaged lifecycle `OK (1 test)`, packaged G2 `status: PASS`, `ledgerBeforeConfirm=0`, `ledgerRows=0`, two committed `Food` expenses, `allExpenses=true`, `metadataClean=true`, following WebView verification and all required non-empty `FULL_MEDIA`. The synthetic Firebase Auth password is masked in subsequent GitHub Actions environments rather than logged in clear text. Android evidence artifact: `10295782012`.
+- `.engineering/e2e.json` classifies `harnex-assisted-import-user-flow` as material Android UI requiring `full_media`.
+- Any material edit invalidates older exact-head evidence.
 
 ## Execution DAG
 
 States: `READY | ACTIVE | BLOCKED | DONE`.
 
-| ID | State | Depends | Owns/writes | Acceptance |
-| --- | --- | --- | --- | --- |
-| W0 Contract/privacy freeze | DONE | — | spec + ADR 0008 + processing record | Schema/category contracts, minimization, fallback, use-case semantics and local-first decision frozen. |
-| W1 Multi-source corpus | DONE | W0 | `tests/fixtures/import-v2/**`, corpus tests | 21 synthetic source shapes define supported, ambiguous and rejected structures without model calls. |
-| W2 Generic discovery/profiler | DONE | W0 | V2 domain/data profiler code + tests; no wizard | Bounded sheet/header/column profiles and Aura-owned executable date/amount candidates are integrated without network/Harnex. |
-| W3 Harnex host capability | DONE | W0 | Harnex use-case/control-plane owners | Aura debug/release identities and two stateless JSON_SCHEMA use cases are integrated; unauthorized/disabled/unready fail closed. |
-| W4 Aura Consumer bridge | DONE | W0 | Android Harnex + `src/platform/harnex*`; no parser/wizard | Published SDK connect/discover/activate/prepare/generate/cancel/cleanup is integrated behind Aura's typed Capacitor boundary. |
-| W5 UX task/state contract | DONE | W0 | `design/` + isolated import-v2 components; no central wizard | Understand-file, editable mapping, unavailable/unready, progress, ambiguity, partial failure, retry/manual recovery, cancellation and accessibility semantics are implemented and independently testable. |
-| W6 Manual vertical slice (G1) | DONE | W1,W2,W5 | convergence owner, minimal central wiring | Unknown fixture -> manual mapping -> deterministic extraction -> existing review/duplicate/verified commit with Harnex absent; V1 fast path unchanged; exact-head STRONG evidence integrated via PR #15. |
-| W7 Schema inference | READY | W2,W3,W4,W6 | schema intelligence adapters/tests | Harnex returns only candidate IDs; goldens reproduced; ambiguous/unsupported/invalid -> review/manual. |
-| W8 Category engine | READY | W3,W4,W6 | category grouping/batch services/tests | Local history first; remaining groups sequential/payload-bounded; only supplied category IDs accepted; partial/failure remains reviewable. |
-| W9 Cross-app/eval lane | READY | W3,W4 | canonical emulator/eval owners | Two-APK automation: host absent, pending/authorized, disabled/unready, schema/category success, cancel, reconnect; model-quality eval separate from deterministic CI. |
-| W10 Integrated UX (G2) | BLOCKED | W7,W8,W9 | convergence owner, central import UI/services | Packaged Android: local discovery -> Harnex mapping -> deterministic extraction -> categories -> review -> verified commit; manual fallback first-class. |
-| W11 Hardening/docs | BLOCKED | W10 | canonical privacy/security/spec/testing/current-state owners | Data flow, logging, auth, unavailable/offline, accessibility, limits, rollback and V1 compatibility current/tested. |
-| W12 Integration preflight (G3) | BLOCKED | W11 | validation/evidence; owner fixes only | Refresh exact heads/bases; selector `auto` in each repo; required deterministic gates exact-head green; material UI has FULL_MEDIA. |
-| W13 Release qualification | BLOCKED | W12 | release/QA evidence | Exact compatible Aura/Harnex candidates close required physical local-model/resource/accessibility/authorization evidence. |
+| ID | State | Acceptance |
+| --- | --- | --- |
+| W0 Contract/privacy freeze | DONE | Spec, ADR and privacy contract frozen. |
+| W1 Multi-source corpus | DONE | Synthetic supported/ambiguous/rejected inputs. |
+| W2 Generic profiler | DONE | Bounded local profile and executable candidates. |
+| W3 Harnex host capability | DONE | Aura identities/use cases; unavailable states fail closed. |
+| W4 Aura Consumer bridge | DONE | Typed Capacitor boundary and Consumer lifecycle. |
+| W5 UX task/state contract | DONE | Mapping, progress, recovery, cancellation, accessibility. |
+| W6 Manual vertical slice G1 | DONE | Generic source -> manual mapping -> deterministic extraction -> review/commit. |
+| W7 Schema inference | DONE | Bounded candidate selection; invalid output fails closed. |
+| W8 Category engine | DONE | History-first, sequential bounded batches, supplied-ID validation. |
+| W9 Cross-app/eval lane | DONE | #111 exact Harnex lifecycle evidence. |
+| W10 Integrated UX G2 | DONE | #134 exact FULL packaged assistance -> deterministic extraction -> Review -> verified commit with `FULL_MEDIA`. |
+| W11 Hardening/docs | DONE | Privacy/security/offline/accessibility/limits/rollback/V1 contracts reconciled with implementation and tests. |
+| W12 Integration preflight G3 | DONE | #137 exact post-W11 FULL deterministic gates and material UI evidence green on the successful same-SHA rerun. |
+| W13 Release qualification | ACTIVE | Physical/model/accessibility/authorization/privacy-governance evidence. |
 
-## Parallel dispatch / ownership
+## W11 closure
 
-W7 schema inference, W8 category engine and W9 cross-app/evaluation are now independent READY lanes and should proceed in parallel. W7 owns bounded schema-intelligence adapters/tests; W8 owns local-history-first grouping/batching/category validation; W9 owns deterministic two-APK evidence plus separately governed real-model evaluation. W10 waits for all three.
+- V1 is documented as the implemented deterministic fast path; V2 is a separate extension, not an AI/network fallback inside V1.
+- V2 spec, privacy processing record/notes, discovery/current-state and testing strategy now describe the implemented local Harnex boundary rather than the retired Gemini workflow or a pending runtime.
+- Existing tests cover resource limits, verified commit/read-back/rollback, manual/unavailable/invalid/ambiguous/cancelled recovery, Harnex lifecycle, and accessible task-state semantics. No compensating runtime patch was required.
+- Privacy/legal owner work remains separate: lawful basis/transparency, RoPA/data inventory, DPIA/AI-governance screening and formal approval are release obligations, not claims established by automated engineering evidence.
 
-Do not create a second wizard or duplicate Review/commit ownership. Shared central wizard/review/commit, build/E2E and durable architecture/privacy owners remain convergence-owned unless a lane proves a narrow prerequisite.
+## W12 closure
 
-## Convergence and validation
+- Base remained `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; the validated implementation head was `ab217eabddb13a77338dc51dfbc16132f11aea36` with exact Harnex `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`.
+- Selector FULL, engineering baseline, web validation, browser critical journeys with `FULL_MEDIA`, exact Harnex rebuild/publish and Android API 36 deterministic gates passed.
+- The successful Android artifact proves host-absent fail-closed, authorized packaged lifecycle, arbitrary-header schema assistance, explicit mapping confirmation, deterministic extraction before commit, constrained category suggestions, clean canonical ledger metadata and the following WebView journey.
+- Required Android videos are non-empty for instrumentation, Harnex two-APK and WebView; required screenshots are non-empty 1080x2400 PNGs.
+- The first #137 Android attempt is retained as classified flaky remote infrastructure evidence: G2 passed before the emulator process exited. The same exact SHA passed on a fresh runner/AVD, so no product patch or evidence weakening was used to manufacture green status.
+- Final diff review found only Import V2/Harnex, Android CI/evidence and directly related documentation files; no unrelated/generated/debug artifacts were introduced.
 
-- G1/W6 proves arbitrary-format import works manually before AI enters the main journey.
-- W9 proves the real Aura APK and real Harnex APK/Host/Consumer boundary deterministically on emulator; host absence, pending/authorized policy, disabled/unready projection, schema/category structured calls, cancellation and reconnect are part of the automated contract.
-- Real-model schema/category quality is separate evaluation evidence. It must not make normal CI flaky and does not substitute for deterministic two-APK lifecycle evidence.
-- G2/W10 proves packaged Aura -> Capacitor -> published Harnex SDK -> Binder -> JSON_SCHEMA -> deterministic Aura extraction/classification -> review/commit on representative virtual Android.
-- G3/W12 requires exact source identity, current docs, full diff review and selector-owned automated evidence. Missing local Android tooling is `REMOTE_AUTOMATED`, never user-run work.
-- Pure contract/fixture/domain work expects LEAN/SCOPED; resource/security/native/Consumer/cross-app boundaries expect STRONG; selector/global/toolchain/release is FULL. Selector remains authoritative.
-- Physical ARM64/JNI/GGUF model execution, memory/thermal/OEM behavior, Play signer topology and representative TalkBack/text scaling are `REAL_ENVIRONMENT` only when the release claim requires them.
+## Risks and release evidence
+
+| Risk | Evidence/mitigation |
+| --- | --- |
+| Silent wrong schema | Editable review; invalid/ambiguous response fails closed; unsafe-silent rate target 0. |
+| Weak local-model semantics | Real-model qualification remains separate from deterministic CI. |
+| Lifecycle/resource leak | Cancel/cleanup/reconnect two-APK automation plus ADB/memory health checkpoints. |
+| V1 regression | V1 fast path remains isolated and regression-tested. |
+| Cross-repo/auth drift | Exact Harnex source identity; real packaged Firebase-emulator auth; no deployable auth bypass. |
+
+Deterministic automated integration evidence is complete through W12. The tracker-only W12 closure commit is non-executable; repository-owned validation still determines any required exact-head recheck before a merge-readiness claim.
+
+W13 remains `REAL_ENVIRONMENT`: physical Google/Credential Manager sign-in; representative ARM64/JNI/GGUF model quality/performance; thermal/memory/OEM behavior; Play/production signer authorization topology; representative TalkBack/text scaling; and applicable privacy/legal governance approval. Emulator success does not satisfy these.
 
 ## Executable now
 
-- W7 schema inference.
-- W8 category engine.
-- W9 cross-app deterministic integration and separate model-quality evaluation.
-
-Run these lanes independently and in parallel. W10 remains blocked until W7/W8/W9 are integrated.
+1. Run the repository selector on the tracker-only W12 closure head and execute any required exact-head automated gates; do not silently reuse #137 if the selector requires more.
+2. Update Aura PR #24 and Harnex PR #567 with the settled exact candidate/evidence and preserve the classified #137 first-attempt AVD flake in the record.
+3. Keep W13 release evidence explicitly separate from automated merge readiness. Do not weaken exact Harnex pin, packaged auth isolation, bounded CI cleartext exception or `FULL_MEDIA` requirements.
 
 ## Resume checkpoint
 
-Aura `dev@00a1f83bc7b428e8eee5774bab697f299c46f2b5`; Harnex `dev@fbe2a901e64c0cf5e3c329338d7b024c70bb15ba`; W0-W6 integrated; W7/W8/W9 READY independently; W10-W13 downstream-blocked. Next discriminating actions: implement W7 and W8 on separate Aura branches from this checkpoint while advancing W9 without mixing ownership.
-
-Record failed hypotheses with evidence pointers, deferred REAL_ENVIRONMENT obligations and the next discriminating action. Old successful runs are not evidence for a newer material head.
-
-## Durable destinations
-
-Before deleting this completed plan, transfer settled truth to owning `docs/specs/`, ADR/index, architecture, privacy/security, testing/E2E, `docs/current-state.md`, and executable code/tests as applicable.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W12 DONE; exact Harnex `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc` STRONG-validated; W12 closed by FULL #137 on exact implementation head `ab217eabddb13a77338dc51dfbc16132f11aea36`; W13 release qualification ACTIVE and remains `REAL_ENVIRONMENT`. Final settled truth must remain in spec/ADR/privacy/testing/current-state owners with every deferred release obligation preserved.

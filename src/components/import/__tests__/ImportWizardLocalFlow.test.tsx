@@ -175,7 +175,7 @@ describe('ImportWizardDialog local flow', () => {
     render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Choose synthetic file' }));
     mocks.prepareTransactionImport.mockResolvedValue(preparedImport());
-    expect(await screen.findByRole('status')).toHaveTextContent('Validating locally');
+    expect(await screen.findByRole('status')).toHaveTextContent('Understanding the file locally');
     resolveRead?.({ kind: 'structured', sheetName: 'CSV', validation });
     await screen.findByText('Categorize and review');
   });

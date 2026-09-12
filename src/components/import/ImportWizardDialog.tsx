@@ -1,9 +1,23 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { AlertTriangle, ArrowLeft, Loader2, ShieldCheck, X } from 'lucide-react';
-import type { ImportIssue, ImportSummary as ImportReviewSummary, PreparedTransactionImport } from '../../domain/import';
+import {
+  applyImportCategorySuggestions,
+  groupPreparedRowsByDescription,
+  type ImportIssue,
+  type ImportSummary as ImportReviewSummary,
+  type PreparedTransactionImport,
+} from '../../domain/import';
 import type { SpreadsheetProfile } from '../../domain/import/v2';
-import { executeImportV2Mapping, readTransactionImportFile, prepareTransactionImport } from '../../services/import';
+import {
+  executeImportV2Mapping,
+  inferImportV2SchemaWithHarnex,
+  prepareTransactionImport,
+  readTransactionImportFile,
+  resolveImportV2Categories,
+} from '../../services/import';
+import type { HarnexFailure } from '../../platform/harnex';
+import { getPlatformCapabilities } from '../../platform/platformCapabilities';
 import type { Transaction } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -15,17 +29,34 @@ import { FileUploadStep } from './FileUploadStep';
 import { ImportSummary } from './ImportSummary';
 import { ReviewStep } from './ReviewStep';
 import { ImportV2MappingEditor } from './v2/ImportV2MappingEditor';
+import { ImportV2TaskStatePanel } from './v2/ImportV2TaskStatePanel';
 import { createImportV2MappingChoices } from './v2/importV2MappingOptions';
-import { EMPTY_IMPORT_V2_MAPPING, type ImportV2MappingDraft } from './v2/importV2TaskState';
+import {
+  EMPTY_IMPORT_V2_MAPPING,
+  type ImportV2AssistanceFailureReason,
+  type ImportV2MappingDraft,
+  type ImportV2TaskAction,
+  type ImportV2TaskState,
+} from './v2/importV2TaskState';
 
-type WizardStep = 'upload' | 'validating' | 'mapping' | 'review' | 'confirm' | 'summary';
-type DisplayWizardStep = Exclude<WizardStep, 'mapping'>;
+type WizardStep =
+  | 'upload'
+  | 'validating'
+  | 'assistance'
+  | 'mapping'
+  | 'checking'
+  | 'categorizing'
+  | 'review'
+  | 'confirm'
+  | 'summary';
+type DisplayWizardStep = 'upload' | 'understand-file' | 'check-transactions' | 'categorize' | 'review' | 'summary';
 
 const STEPS: Array<{ key: DisplayWizardStep; label: string }> = [
   { key: 'upload', label: 'Upload' },
-  { key: 'validating', label: 'Understand file' },
-  { key: 'review', label: 'Categorize' },
-  { key: 'confirm', label: 'Review and import' },
+  { key: 'understand-file', label: 'Understand file' },
+  { key: 'check-transactions', label: 'Check transactions' },
+  { key: 'categorize', label: 'Categorize' },
+  { key: 'review', label: 'Review' },
   { key: 'summary', label: 'Done' },
 ];
 
@@ -104,6 +135,31 @@ function v2FailureMessage(error: unknown): string {
   }
 }
 
+function assistanceFailureReason(failure: HarnexFailure): ImportV2AssistanceFailureReason {
+  switch (failure.code) {
+    case 'HOST_NOT_INSTALLED':
+      return 'host-missing';
+    case 'UNAUTHORIZED':
+      return 'unauthorized';
+    case 'USE_CASE_NOT_ASSIGNED':
+    case 'USE_CASE_UNAVAILABLE':
+    case 'INCOMPATIBLE':
+    case 'CAPABILITY_CHANGED':
+      return 'use-case-unready';
+    case 'MODEL_UNAVAILABLE':
+    case 'BUSY':
+      return 'model-unready';
+    default:
+      return 'harnex-unavailable';
+  }
+}
+
+function manualMappingIssue(kind: 'ambiguous' | 'unsupported' | 'unavailable'): string {
+  if (kind === 'ambiguous') return 'Optional on-device assistance could not safely choose one mapping. Check the columns before continuing.';
+  if (kind === 'unsupported') return 'Optional on-device assistance could not identify a safe mapping for this file. Choose the columns manually.';
+  return 'Choose the columns Aura should use before continuing.';
+}
+
 export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: ImportWizardDialogProps) {
   const {
     categories,
@@ -116,6 +172,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const { toast } = useToast();
   const dialogRef = useRef<HTMLDivElement>(null);
   const operationRevisionRef = useRef(0);
+  const v2AbortControllerRef = useRef<AbortController | null>(null);
   const [step, setStep] = useState<WizardStep>('upload');
   const [prepared, setPrepared] = useState<PreparedTransactionImport | null>(null);
   const [validationIssues, setValidationIssues] = useState<ImportIssue[]>([]);
@@ -123,7 +180,9 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const [v2File, setV2File] = useState<File | null>(null);
   const [v2Profile, setV2Profile] = useState<SpreadsheetProfile | null>(null);
   const [v2Mapping, setV2Mapping] = useState<ImportV2MappingDraft>(EMPTY_IMPORT_V2_MAPPING);
+  const [v2MappingResolution, setV2MappingResolution] = useState<'resolved' | 'ambiguous'>('ambiguous');
   const [v2MappingIssues, setV2MappingIssues] = useState<string[]>([]);
+  const [v2AssistanceState, setV2AssistanceState] = useState<ImportV2TaskState | null>(null);
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([]);
   const [completedSummary, setCompletedSummary] = useState<ImportReviewSummary>(emptySummary(0));
   const [duplicatesKept, setDuplicatesKept] = useState(0);
@@ -132,6 +191,8 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
 
   const reset = useCallback(() => {
     operationRevisionRef.current += 1;
+    v2AbortControllerRef.current?.abort();
+    v2AbortControllerRef.current = null;
     setStep('upload');
     setPrepared(null);
     setValidationIssues([]);
@@ -139,7 +200,9 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     setV2File(null);
     setV2Profile(null);
     setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+    setV2MappingResolution('ambiguous');
     setV2MappingIssues([]);
+    setV2AssistanceState(null);
     setImportedTransactions([]);
     setCompletedSummary(emptySummary(0));
     setDuplicatesKept(0);
@@ -158,12 +221,162 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
 
   useFocusTrap(dialogRef, isOpen, requestClose);
 
+  const runSchemaAssistance = useCallback(async (
+    file: File,
+    profile: SpreadsheetProfile,
+    operationRevision: number,
+  ) => {
+    setV2File(file);
+    setV2Profile(profile);
+    if (!getPlatformCapabilities().harnexSupported) {
+      setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+      setV2MappingResolution('ambiguous');
+      setV2MappingIssues([manualMappingIssue('unavailable')]);
+      setStep('mapping');
+      return;
+    }
+
+    const controller = new AbortController();
+    v2AbortControllerRef.current?.abort();
+    v2AbortControllerRef.current = controller;
+    setV2AssistanceState({ kind: 'local-analysis', step: 'understand-file' });
+    setStep('assistance');
+    try {
+      const outcome = await inferImportV2SchemaWithHarnex(profile, { signal: controller.signal });
+      if (operationRevision !== operationRevisionRef.current) return;
+      if (outcome.status === 'resolved') {
+        setV2Mapping(outcome.suggestion.selection);
+        setV2MappingResolution('resolved');
+        setV2MappingIssues([]);
+        setV2AssistanceState(null);
+        setStep('mapping');
+        return;
+      }
+      if (outcome.status === 'ambiguous' || outcome.status === 'unsupported') {
+        setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+        setV2MappingResolution('ambiguous');
+        setV2MappingIssues([manualMappingIssue(outcome.status)]);
+        setV2AssistanceState(null);
+        setStep('mapping');
+        return;
+      }
+      if (outcome.failure.code === 'PLATFORM_UNSUPPORTED') {
+        setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+        setV2MappingResolution('ambiguous');
+        setV2MappingIssues([manualMappingIssue('unavailable')]);
+        setV2AssistanceState(null);
+        setStep('mapping');
+        return;
+      }
+      if (outcome.failure.code === 'CANCELLED') {
+        setV2AssistanceState({ kind: 'cancelled', step: 'understand-file' });
+        setStep('assistance');
+        return;
+      }
+      setV2AssistanceState({
+        kind: 'assistance-unavailable',
+        step: 'understand-file',
+        reason: assistanceFailureReason(outcome.failure),
+      });
+      setStep('assistance');
+    } catch {
+      if (operationRevision !== operationRevisionRef.current) return;
+      setV2AssistanceState({ kind: 'assistance-unavailable', step: 'understand-file', reason: 'harnex-unavailable' });
+      setStep('assistance');
+    } finally {
+      if (v2AbortControllerRef.current === controller) v2AbortControllerRef.current = null;
+    }
+  }, []);
+
+  const runCategoryAssistance = useCallback(async (
+    preparedInput: PreparedTransactionImport,
+    operationRevision: number,
+  ) => {
+    setPrepared(preparedInput);
+    if (!getPlatformCapabilities().harnexSupported) {
+      setV2AssistanceState(null);
+      setStep('review');
+      return;
+    }
+
+    const totalGroups = groupPreparedRowsByDescription(preparedInput.rows).length;
+    const controller = new AbortController();
+    v2AbortControllerRef.current?.abort();
+    v2AbortControllerRef.current = controller;
+    setV2AssistanceState({
+      kind: 'classification-progress',
+      step: 'categorize',
+      completed: 0,
+      total: totalGroups,
+    });
+    setStep('categorizing');
+
+    try {
+      const resolution = await resolveImportV2Categories(
+        preparedInput,
+        transactions,
+        categories,
+        { signal: controller.signal },
+      );
+      if (operationRevision !== operationRevisionRef.current) return;
+      const suggestedPrepared = applyImportCategorySuggestions(
+        preparedInput,
+        resolution.suggestions,
+        categories,
+      );
+      setPrepared(suggestedPrepared);
+
+      if (resolution.harnex.status === 'not-needed' || resolution.harnex.status === 'completed') {
+        setV2AssistanceState(null);
+        setStep('review');
+        return;
+      }
+      if (resolution.harnex.status === 'cancelled') {
+        setV2AssistanceState({ kind: 'cancelled', step: 'categorize' });
+        setStep('assistance');
+        return;
+      }
+      if (resolution.harnex.status === 'unavailable') {
+        if (resolution.harnex.failure.code === 'PLATFORM_UNSUPPORTED') {
+          setV2AssistanceState(null);
+          setStep('review');
+          return;
+        }
+        setV2AssistanceState({
+          kind: 'assistance-unavailable',
+          step: 'categorize',
+          reason: assistanceFailureReason(resolution.harnex.failure),
+        });
+        setStep('assistance');
+        return;
+      }
+
+      const completedGroups = resolution.suggestions.length;
+      setV2AssistanceState({
+        kind: 'classification-partial-failure',
+        step: 'categorize',
+        completed: completedGroups,
+        failed: Math.max(0, totalGroups - completedGroups),
+        total: totalGroups,
+      });
+      setStep('assistance');
+    } catch {
+      if (operationRevision !== operationRevisionRef.current) return;
+      setPrepared(preparedInput);
+      setV2AssistanceState({ kind: 'assistance-unavailable', step: 'categorize', reason: 'harnex-unavailable' });
+      setStep('assistance');
+    } finally {
+      if (v2AbortControllerRef.current === controller) v2AbortControllerRef.current = null;
+    }
+  }, [categories, transactions]);
+
   const handleFileSelected = useCallback(async (file: File) => {
     const operationRevision = ++operationRevisionRef.current;
     setStep('validating');
     setValidationIssues([]);
     setErrorMessage(null);
     setV2MappingIssues([]);
+    setV2AssistanceState(null);
     try {
       const result = await readTransactionImportFile(file);
       if (operationRevision !== operationRevisionRef.current) return;
@@ -206,11 +419,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
           setStep('upload');
           return;
         }
-        setV2File(file);
-        setV2Profile(result.profile);
-        setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
-        setV2MappingIssues(['Choose the columns that match the transaction table, then confirm the mapping.']);
-        setStep('mapping');
+        await runSchemaAssistance(file, result.profile, operationRevision);
         return;
       }
       if (result.validation.hasBlockingIssues) {
@@ -230,12 +439,12 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       setStep('upload');
       toast(message, 'error');
     }
-  }, [commitExistingTransactionImport, toast, transactions, undoTransactionImport]);
+  }, [commitExistingTransactionImport, runSchemaAssistance, toast, transactions, undoTransactionImport]);
 
   const handleConfirmV2Mapping = useCallback(async () => {
     if (!v2File || !v2Profile || !v2Mapping.dateCandidateId || !v2Mapping.amountCandidateId) return;
     const operationRevision = ++operationRevisionRef.current;
-    setStep('validating');
+    setStep('checking');
     setV2MappingIssues([]);
     setErrorMessage(null);
     try {
@@ -251,20 +460,58 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
           'One or more selected transaction rows contain a date, amount, formula, or merged cell that Aura cannot import safely.',
           'Adjust the mapping or correct the source file before continuing.',
         ]);
+        setV2MappingResolution('ambiguous');
         setStep('mapping');
         return;
       }
       const nextPrepared = await prepareTransactionImport(validation, transactions);
       if (operationRevision !== operationRevisionRef.current) return;
       if (nextPrepared.rows.length === 0) throw new Error('The selected mapping does not produce valid transaction rows.');
-      setPrepared(nextPrepared);
-      setStep('review');
+      await runCategoryAssistance(nextPrepared, operationRevision);
     } catch (error) {
       if (operationRevision !== operationRevisionRef.current) return;
       setV2MappingIssues([v2FailureMessage(error)]);
+      setV2MappingResolution('ambiguous');
       setStep('mapping');
     }
-  }, [transactions, v2File, v2Mapping, v2Profile]);
+  }, [runCategoryAssistance, transactions, v2File, v2Mapping, v2Profile]);
+
+  const handleV2TaskAction = useCallback((action: ImportV2TaskAction) => {
+    const state = v2AssistanceState;
+    if (!state) return;
+
+    if (action === 'cancel') {
+      operationRevisionRef.current += 1;
+      v2AbortControllerRef.current?.abort();
+      v2AbortControllerRef.current = null;
+      setV2AssistanceState({ kind: 'cancelled', step: state.step });
+      setStep('assistance');
+      return;
+    }
+
+    if (action === 'continue-manually') {
+      setV2AssistanceState(null);
+      if (state.step === 'understand-file') {
+        setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+        setV2MappingResolution('ambiguous');
+        setV2MappingIssues([manualMappingIssue('unavailable')]);
+        setStep('mapping');
+      } else if (state.step === 'categorize') {
+        setStep('review');
+      }
+      return;
+    }
+
+    if (action === 'retry') {
+      const operationRevision = ++operationRevisionRef.current;
+      setV2AssistanceState(null);
+      if (state.step === 'understand-file' && v2File && v2Profile) {
+        void runSchemaAssistance(v2File, v2Profile, operationRevision);
+      } else if (state.step === 'categorize' && prepared) {
+        void runCategoryAssistance(prepared, operationRevision);
+      }
+    }
+  }, [prepared, runCategoryAssistance, runSchemaAssistance, v2AssistanceState, v2File, v2Profile]);
 
   const handleBack = () => {
     if (step === 'confirm') setStep('review');
@@ -307,7 +554,17 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     }
   };
 
-  const displayStep: DisplayWizardStep = step === 'mapping' ? 'validating' : step;
+  const displayStep: DisplayWizardStep = step === 'upload'
+    ? 'upload'
+    : step === 'validating' || step === 'mapping' || (step === 'assistance' && v2AssistanceState?.step === 'understand-file')
+      ? 'understand-file'
+      : step === 'checking'
+        ? 'check-transactions'
+        : step === 'categorizing' || step === 'review' || (step === 'assistance' && v2AssistanceState?.step === 'categorize')
+          ? 'categorize'
+          : step === 'confirm'
+            ? 'review'
+            : 'summary';
   const currentStepIndex = STEPS.findIndex((item) => item.key === displayStep);
   const canGoBack = step === 'mapping' || step === 'review' || step === 'confirm';
   const v2Choices = v2Profile ? createImportV2MappingChoices(v2Profile) : null;
@@ -398,9 +655,9 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
                 role="status"
                 aria-live="polite"
               >
-                <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+                <Loader2 className="h-10 w-10 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
                 <div>
-                  <h3 className="font-headline text-lg font-bold text-on-surface">Validating locally</h3>
+                  <h3 className="font-headline text-lg font-bold text-on-surface">Understanding the file locally</h3>
                   <p className="mt-1 max-w-xs text-sm text-on-surface-variant">
                     Checking structure, dates, amounts, formulas, and file limits on this device.
                   </p>
@@ -408,10 +665,16 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
               </motion.div>
             )}
 
+            {(step === 'assistance' || step === 'categorizing') && v2AssistanceState && (
+              <motion.div key={`${step}-${v2AssistanceState.kind}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <ImportV2TaskStatePanel state={v2AssistanceState} onAction={handleV2TaskAction} />
+              </motion.div>
+            )}
+
             {step === 'mapping' && v2Choices && (
               <motion.div key="mapping" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
                 <ImportV2MappingEditor
-                  resolution="ambiguous"
+                  resolution={v2MappingResolution}
                   value={v2Mapping}
                   dateOptions={v2Choices.dateOptions}
                   amountOptions={v2Choices.amountOptions}
@@ -424,6 +687,26 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
                   onConfirm={handleConfirmV2Mapping}
                   onCancel={reset}
                 />
+              </motion.div>
+            )}
+
+            {step === 'checking' && (
+              <motion.div
+                key="checking"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex min-h-80 flex-col items-center justify-center space-y-5 text-center"
+                role="status"
+                aria-live="polite"
+              >
+                <Loader2 className="h-10 w-10 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+                <div>
+                  <h3 className="font-headline text-lg font-bold text-on-surface">Checking mapped transactions</h3>
+                  <p className="mt-1 max-w-xs text-sm text-on-surface-variant">
+                    Aura is applying the confirmed mapping and validating each transaction locally before categorization.
+                  </p>
+                </div>
               </motion.div>
             )}
 

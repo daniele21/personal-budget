@@ -2,7 +2,7 @@
 
 ## Status
 
-Engineering contract draft, 2026-09-08. This is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification. Runtime implementation is pending.
+Engineering processing record, updated 2026-09-12 for the implemented W10 boundary. Deterministic integration evidence is complete, but this is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
 
 The privacy/legal owner must reconcile this record with the organization’s authoritative data inventory, role/lawful-basis register and DPIA process before general release.
 
@@ -21,7 +21,7 @@ Aura may process locally:
 - user-defined active category labels;
 - local ledger descriptions/categories used for exact conservative history matching.
 
-The initial Harnex boundary is minimized.
+The Harnex boundary is minimized.
 
 Schema inference may receive only opaque candidate/sheet/column IDs, bounded structural statistics/type hints, relevant labels and bounded representative sample cells. It must not receive the complete workbook, filename/path, Firebase UID/email/token, account/IBAN/card identifier, cloud backup or complete ledger.
 
@@ -57,7 +57,7 @@ No silent cloud fallback is allowed. Adding remote inference or content upload r
 
 ## Retention and logging
 
-| Data | Planned retention |
+| Data | Retention contract |
 |---|---|
 | Source file/profile/mapping/review | Aura import session memory only |
 | Harnex request content | operation/session only; Consumer contract does not authorize prompt persistence |
@@ -83,6 +83,10 @@ Aura must not intentionally log filenames, sample cells, transaction description
 Harnex produces advisory schema/category suggestions. Aura does not permit a model to perform an irreversible or canonical financial action autonomously. Ambiguous schema interpretation requires user resolution, category suggestions remain reviewable, and only the user-confirmed Aura commit writes transactions.
 
 The privacy owner must determine whether/how this advisory automation is described under applicable transparency/automated-decision governance; engineering does not claim a legal exemption.
+
+## Engineering evidence boundary
+
+Automated integration evidence verifies the implemented engineering boundary: host-absent/unauthorized/unready conditions fail closed, schema/category operations are bounded and lifecycle-cleaned, the packaged Android flow keeps the ledger unchanged before Review, only supplied category IDs are accepted, committed transactions carry no Harnex/import provenance, and no cloud inference fallback is present. This evidence does not substitute for the privacy-owner governance actions below.
 
 ## DPIA and governance screening
 

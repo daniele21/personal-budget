@@ -219,7 +219,7 @@ Detailed tradeoffs and residual confirmations are in
 
 ## Problem
 
-The existing CSV export is suitable for analysis and interoperability, but it cannot reconstruct Aura after local data loss. It exports transactions and budgets as separate downloads, while import restores only transactions and otherwise routes generic spreadsheet data through the AI-assisted bank-statement workflow.
+The existing CSV export is suitable for analysis and interoperability, but it cannot reconstruct Aura after local data loss. It exports transactions and budgets as separate downloads, while transaction import restores transaction records only and is not a complete workspace-recovery path.
 
 A recovery artifact must instead preserve the complete user workspace, remain usable without cloud backup, and be read entirely on the device before any existing data is changed.
 
@@ -231,7 +231,7 @@ A recovery artifact must instead preserve the complete user workspace, remain us
 - Exclude authentication/session data, Firebase identity data, caches, navigation state, notification history, and the cloud-backup enablement flag.
 - Offer passphrase protection by default, with an explicit warned option to export without encryption.
 - Use replace-only restore in V1; do not implement merge.
-- Detect and process `.aura` archives before the spreadsheet/AI import path.
+- Detect and process `.aura` archives before spreadsheet transaction-import paths.
 - Validate, migrate, normalize, stage, safety-copy, commit, and verify before declaring success.
 - Add a restore journal because localStorage and IndexedDB cannot participate in one atomic transaction.
 - Preserve legacy Aura transaction CSV import and generic bank-statement import.
@@ -274,46 +274,33 @@ These choices must be resolved in milestone M0, but they do not change the appro
 
 Discovery is considered converged because scope, recovery semantics, privacy boundary, encryption posture, AI isolation, and V1 non-scope are approved. Implementation may begin only after the M0 technical contract and test fixtures in the progress plan are complete.
 
-## Approved Planned Initiative: Deterministic Transaction Import V1
+## Approved Initiative: Deterministic Transaction Import V1 + Harnex-assisted V2
 
-Delivery status: **M1-M5 implemented; M6 hardening is next from a green
-472/472 regression baseline and 2/2 import E2E** on 2026-08-03.
+Delivery status: **V1 M1-M6 implemented with the Gemini runtime retired; Harnex-assisted V2 is implemented through integrated packaged G2 and is in hardening/integration preflight.**
 
 ### Problem
 
-The generic CSV/XLSX wizard currently depends on Gemini for column detection
-and categorization. This exposes a provider path for financial descriptions and
-amounts, fails late when the API key is absent, and conflicts with the approved
-no-AI strategy. Manual categorization also lacks a complete workflow for
-applying one category to equivalent rows.
+The legacy generic CSV/XLSX wizard depended on Gemini for column detection and categorization. That exposed a remote provider path for financial descriptions and amounts, failed late when configuration was absent, and conflicted with Aura's local-first import direction. V1 replaced that path with a strict deterministic local schema. The remaining product gap was compatibility with reasonably structured bank exports whose columns do not use Aura's fixed names/order.
 
 ### Approved Direction
 
-- Replace the generic Gemini workflow with deterministic local parsing.
-- Require the fixed columns `date`, `description`, and `amount` in CSV or XLSX.
-- Use the amount sign to derive income or expense.
-- Default uncategorized rows to `Uncategorized` and allow import after a clear
-  warning when some remain unresolved.
-- Support manual batch categorization and conservative propagation to rows with
-  the same normalized description and transaction type.
-- Keep category matching separate from duplicate detection.
-- Detect possible duplicates using date, signed amount, and normalized
-  description; warn but never auto-delete.
-- Do not persist merchant-category rules until categories have stable IDs and a
-  separate lifecycle decision.
-- Do not add import batch or source metadata to the canonical `Transaction`.
-- Preserve `.aura` classification and Aura CSV legacy compatibility before the
-  new structured import path.
-- Gemini runtime/config/admin surfaces were removed after the local replacement
-  was verified. Historical Firestore data was not deleted; its rule retirement
-  remains a separately owned migration.
+- Keep the strict V1 `date,description,amount` path deterministic, local and first-class.
+- Parse and validate CSV/XLSX locally with fixed security/resource bounds.
+- Keep manual categorization, duplicate warnings, verified commit/read-back/rollback and transaction-only canonical persistence.
+- Keep `.aura` classification and Aura legacy CSV compatibility ahead of generic spreadsheet profiling.
+- Keep Gemini runtime/config/admin surfaces retired; historical Firestore data remains governed by its separate retirement record.
+- Extend V1 with a separate V2 path for reasonably structured arbitrary/localized headers.
+- Aura owns generic spreadsheet discovery, executable date/amount/header candidates and deterministic extraction.
+- Optional Android assistance uses explicitly authorized on-device Harnex schema/category use cases with JSON-schema/ID validation; there is no cloud fallback.
+- Harnex suggestions remain advisory and session-only. Manual mapping/review remains usable when Harnex is absent, unauthorized, unready, cancelled or returns invalid/ambiguous output.
+- Existing Review and verified commit remain the only canonical ledger write; no Harnex/import provenance is persisted in `Transaction`.
 
 ### Alternatives Considered
 
 #### Keep Gemini Disabled Only By Missing API Key
 
-Rejected. The UI remains reachable, fails after the user has prepared a file,
-and can be re-enabled accidentally by configuration.
+Rejected. The UI remained reachable, failed after the user had prepared a file,
+and could be re-enabled accidentally by configuration.
 
 #### Accept Only Description And Amount
 
@@ -322,8 +309,7 @@ unreliable.
 
 #### Add Arbitrary Column Mapping In V1
 
-Deferred. It improves bank-export compatibility but adds a second complex
-workflow before the strict local path is proven.
+Deferred from V1 to avoid destabilizing the strict replacement path. It is now delivered as the separate Harnex-assisted/manual V2 contract so the V1 fast path remains unchanged and deterministic.
 
 #### Persist Merchant-Category Rules Immediately
 
@@ -335,11 +321,10 @@ restore semantics are not durable enough for a permanent rule store.
 Rejected. Identical same-day charges can both be legitimate; the user retains
 the final decision.
 
+#### Restore A Remote AI Provider For Arbitrary Exports
+
+Rejected. V2 keeps parsing/extraction in Aura and confines optional model assistance to the authorized local Harnex application boundary; unavailable assistance falls back to manual mapping rather than network inference.
+
 ### Convergence Gate
 
-The product direction, file contract, resource limits, commit/read-back
-protocol, typed error model, fixture corpus and cross-cutting reviews are
-complete. The recorded baseline has two pre-existing failures outside the
-import path; both root causes were corrected before M0 closed, and the repeated
-full regression passes 411/411. The living source of truth is
-[`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md).
+The V1 product direction, file contract, resource limits, commit/read-back protocol, typed error model, fixture corpus and cross-cutting reviews are implemented and regression-protected. The V2 schema/category boundary, privacy/ADR ownership and integrated packaged Android G2 are also implemented. The active delivery source of truth for V2 hardening, exact-head integration preflight and deferred release evidence is [`../workstreams/harnex-assisted-transaction-import-v2.md`](../workstreams/harnex-assisted-transaction-import-v2.md); V1 milestone history remains in [`12-deterministic-transaction-import-progress-plan.md`](./12-deterministic-transaction-import-progress-plan.md).

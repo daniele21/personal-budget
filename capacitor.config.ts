@@ -2,6 +2,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const webContentsDebuggingEnabled =
   process.env.CAPACITOR_WEB_CONTENTS_DEBUG === 'true';
+const androidCiFirebaseEmulators =
+  process.env.AURA_ANDROID_CI_FIREBASE_EMULATORS === 'true';
 
 const config: CapacitorConfig = {
   appId: 'com.staituned.aura',
@@ -12,7 +14,7 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
   android: {
-    allowMixedContent: false,
+    allowMixedContent: androidCiFirebaseEmulators,
     webContentsDebuggingEnabled,
     loggingBehavior: webContentsDebuggingEnabled ? 'debug' : 'none',
   },

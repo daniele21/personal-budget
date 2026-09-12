@@ -147,9 +147,9 @@ jobs:
   harnex-emulator-host:
     needs: select-validation-profile
     if: contains(fromJSON('["strong", "full"]'), needs.select-validation-profile.outputs.profile)
-    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@d60c0ff9560d6eed225e4fd6e02e746f18625935
+    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@9074cf8d7dd5b90f5e49f6b3fc41622512faccbc
     with:
-      harness_ref: d60c0ff9560d6eed225e4fd6e02e746f18625935
+      harness_ref: 9074cf8d7dd5b90f5e49f6b3fc41622512faccbc
       release_identity_topology: false
 
   android-emulator-preflight:
@@ -190,7 +190,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_ref="d60c0ff9560d6eed225e4fd6e02e746f18625935"
+          expected_ref="9074cf8d7dd5b90f5e49f6b3fc41622512faccbc"
           test "$(cat artifacts/harnex-e2e/source-revision.txt)" = "$expected_ref"
           test "$(cat artifacts/harnex-e2e/host-package.txt)" = "io.github.daniele21.localllm.phonetest.debug"
           test -s artifacts/harnex-e2e/harness-emulator-e2e.apk
@@ -235,6 +235,15 @@ jobs:
             echo "google-services.json project (${configured_project}) does not match VITE_ANDROID_FIREBASE_PROJECT_ID (${VITE_ANDROID_FIREBASE_PROJECT_ID})." >&2
             exit 1
           fi
+      - name: Configure isolated Android CI Firebase identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::${password}"
+          echo 'AURA_ANDROID_CI_FIREBASE_EMULATORS=true' >> "$GITHUB_ENV"
+          echo 'AURA_ANDROID_CI_AUTH_EMAIL=android-e2e@aura.invalid' >> "$GITHUB_ENV"
+          printf 'AURA_ANDROID_CI_AUTH_PASSWORD=%s\n' "$password" >> "$GITHUB_ENV"
       - name: Prepare Android debug project from clean checkout
         run: npm run android:sync:debug
       - name: Native Android unit and lint checks
@@ -311,6 +320,17 @@ jobs:
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82 || true
           adb devices -l
+      - name: Start isolated Firebase Auth and Firestore emulators
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup setsid npx --yes firebase-tools@15.30.0 emulators:start \
+            --only auth,firestore \
+            --project demo-aura-android-ci \
+            --config firebase.json \
+            > /tmp/aura-firebase-emulators.log 2>&1 &
+          echo "$!" > /tmp/aura-firebase-emulators.pid
+          node scripts/seed-android-ci-firebase-emulators.mjs
       - name: Run packaged Android instrumentation and WebView journeys
         shell: bash
         run: |
@@ -369,9 +389,18 @@ jobs:
         run: |
           mkdir -p artifacts/android-ci
           cp /tmp/aura-android-emulator.log artifacts/android-ci/emulator.log || true
+          cp /tmp/aura-firebase-emulators.log artifacts/android-ci/firebase-emulators.log || true
           timeout 15s adb logcat -d > artifacts/android-ci/logcat.txt 2>&1 || true
           timeout 15s adb shell dumpsys activity activities > artifacts/android-ci/activities.txt 2>&1 || true
           timeout 15s adb shell dumpsys package com.staituned.aura.debug > artifacts/android-ci/package.txt 2>&1 || true
+      - name: Stop isolated Firebase emulators
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f /tmp/aura-firebase-emulators.pid ]]; then
+            emulator_pid="$(cat /tmp/aura-firebase-emulators.pid)"
+            kill -- "-${emulator_pid}" 2>/dev/null || true
+          fi
       - name: Upload Android emulator evidence
         if: always()
         uses: actions/upload-artifact@v4

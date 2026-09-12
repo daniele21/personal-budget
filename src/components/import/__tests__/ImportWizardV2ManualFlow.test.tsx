@@ -166,7 +166,7 @@ describe('ImportWizardDialog Import V2 manual flow', () => {
     await screen.findByText('Check the columns Aura should use');
     chooseCompleteMapping();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Validating locally');
+    expect(await screen.findByRole('status')).toHaveTextContent('Checking mapped transactions');
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Close import wizard' }).at(-1)!);
     expect(onClose).toHaveBeenCalledTimes(1);

@@ -1,6 +1,6 @@
 # Harnex-assisted Transaction Import V2
 
-Status: **Approved implementation contract; W0 frozen on 2026-09-08. Runtime implementation pending.**
+Status: **Implemented through W10 and integration-validated on Android; W0 contract frozen on 2026-09-08. Release qualification remains separate.**
 
 Active delivery tracker: [`../workstreams/harnex-assisted-transaction-import-v2.md`](../workstreams/harnex-assisted-transaction-import-v2.md).
 
