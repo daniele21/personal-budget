@@ -16,7 +16,11 @@ const isolatedEnvironment = {
 
 describe('createAndroidDebugEnvOverrides', () => {
   it('does not alter normal web builds', () => {
-    expect(createAndroidDebugEnvOverrides('production', {})).toEqual({});
+    expect(createAndroidDebugEnvOverrides('production', {
+      AURA_ANDROID_CI_FIREBASE_EMULATORS: 'true',
+      AURA_ANDROID_CI_AUTH_EMAIL: 'android-e2e@aura.invalid',
+      AURA_ANDROID_CI_AUTH_PASSWORD: 'synthetic-password',
+    })).toEqual({});
   });
 
   it('refuses an Android debug build without isolated credentials', () => {
@@ -31,6 +35,40 @@ describe('createAndroidDebugEnvOverrides', () => {
     );
 
     expect(overrides).toMatchObject({ VITE_FIREBASE_PROJECT_ID: 'aura-debug' });
+    expect(overrides).not.toHaveProperty('VITE_AURA_ANDROID_CI_FIREBASE_EMULATORS');
     expect(Object.keys(overrides)).not.toContain('VITE_GEMINI_API_KEY');
+  });
+
+  it('uses a demo Firebase project only for the explicit Android CI emulator lane', () => {
+    const overrides = createAndroidDebugEnvOverrides(
+      ANDROID_DEBUG_MODE,
+      {
+        ...isolatedEnvironment,
+        AURA_ANDROID_CI_FIREBASE_EMULATORS: 'true',
+        AURA_ANDROID_CI_AUTH_EMAIL: 'android-e2e@aura.invalid',
+        AURA_ANDROID_CI_AUTH_PASSWORD: 'synthetic-password',
+      },
+    );
+
+    expect(overrides).toMatchObject({
+      VITE_FIREBASE_API_KEY: 'fake-api-key',
+      VITE_FIREBASE_PROJECT_ID: 'demo-aura-android-ci',
+      VITE_FIRESTORE_DATABASE_ID: 'budget-db',
+      VITE_AURA_ANDROID_CI_FIREBASE_EMULATORS: 'true',
+      VITE_AURA_ANDROID_CI_AUTH_EMAIL: 'android-e2e@aura.invalid',
+      VITE_AURA_ANDROID_CI_AUTH_PASSWORD: 'synthetic-password',
+    });
+    expect(overrides.VITE_FIREBASE_PROJECT_ID)
+      .not.toBe(isolatedEnvironment.VITE_ANDROID_FIREBASE_PROJECT_ID);
+  });
+
+  it('fails closed when the CI emulator lane lacks its synthetic auth identity', () => {
+    expect(() => createAndroidDebugEnvOverrides(
+      ANDROID_DEBUG_MODE,
+      {
+        ...isolatedEnvironment,
+        AURA_ANDROID_CI_FIREBASE_EMULATORS: 'true',
+      },
+    )).toThrow(/synthetic auth identity/i);
   });
 });
