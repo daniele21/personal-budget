@@ -239,9 +239,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::${password}"
           echo 'AURA_ANDROID_CI_FIREBASE_EMULATORS=true' >> "$GITHUB_ENV"
           echo 'AURA_ANDROID_CI_AUTH_EMAIL=android-e2e@aura.invalid' >> "$GITHUB_ENV"
-          printf 'AURA_ANDROID_CI_AUTH_PASSWORD=%s\n' "$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          printf 'AURA_ANDROID_CI_AUTH_PASSWORD=%s\n' "$password" >> "$GITHUB_ENV"
       - name: Prepare Android debug project from clean checkout
         run: npm run android:sync:debug
       - name: Native Android unit and lint checks
