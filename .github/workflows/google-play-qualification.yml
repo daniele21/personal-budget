@@ -1,0 +1,287 @@
+name: Google Play W13 qualification
+
+on:
+  push:
+    branches:
+      - "play-release/qualification/internal/**"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: google-play-w13-qualification-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    environment: play-console
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIRESTORE_DATABASE_ID: ${{ vars.VITE_FIRESTORE_DATABASE_ID }}
+      AURA_ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.AURA_ANDROID_UPLOAD_STORE_PASSWORD }}
+      AURA_ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.AURA_ANDROID_UPLOAD_KEY_ALIAS }}
+      AURA_ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.AURA_ANDROID_UPLOAD_KEY_PASSWORD }}
+
+    steps:
+      - name: Check out exact qualification candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: qualification
+        name: Verify exact current-dev qualification source
+        shell: bash
+        env:
+          QUALIFICATION_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          trigger="android/release-trigger.properties"
+          prefix="play-release/qualification/internal/"
+
+          if [[ "$QUALIFICATION_BRANCH" != "$prefix"* ]]; then
+            echo "Unsupported W13 qualification branch: $QUALIFICATION_BRANCH" >&2
+            exit 1
+          fi
+          if [[ ! -s "$trigger" ]]; then
+            echo "Missing $trigger. A qualification branch alone must never publish to Google Play." >&2
+            exit 1
+          fi
+
+          version_name="${QUALIFICATION_BRANCH#${prefix}}"
+          version_name="${version_name#v}"
+          if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Qualification branch must end with a semantic version." >&2
+            exit 1
+          fi
+
+          trigger_track="$(sed -n 's/^track=//p' "$trigger" | tail -n 1)"
+          trigger_version="$(sed -n 's/^version=//p' "$trigger" | tail -n 1)"
+          source_sha="$(sed -n 's/^source_sha=//p' "$trigger" | tail -n 1)"
+          qualification="$(sed -n 's/^qualification=//p' "$trigger" | tail -n 1)"
+
+          if [[ "$trigger_track" != "internal" || "$trigger_version" != "$version_name" || "$qualification" != "true" ]]; then
+            echo "W13 qualification trigger must match internal track/version and qualification=true." >&2
+            exit 1
+          fi
+          if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Qualification source_sha must be a full Git commit SHA." >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$source_sha" HEAD; then
+            echo "Qualification source_sha is not an ancestor of the candidate." >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin dev:refs/remotes/origin/dev
+          current_dev_sha="$(git rev-parse refs/remotes/origin/dev)"
+          if [[ "$source_sha" != "$current_dev_sha" ]]; then
+            echo "Qualification source_sha must equal current dev: $current_dev_sha" >&2
+            exit 1
+          fi
+
+          mapfile -t qualification_delta < <(git diff --name-only "$source_sha" HEAD)
+          if (( ${#qualification_delta[@]} != 1 )) || [[ "${qualification_delta[0]:-}" != "$trigger" ]]; then
+            echo "Qualification branch may differ from source_sha only by $trigger." >&2
+            printf 'Unexpected qualification delta: %s\n' "${qualification_delta[*]:-<empty>}" >&2
+            exit 1
+          fi
+
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+
+      - id: health
+        name: Require successful FULL Repository health for exact candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_sha="$(git rev-parse HEAD)"
+          for attempt in $(seq 1 180); do
+            response="$(gh api -X GET \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/repository-health.yml/runs" \
+              -f head_sha="$candidate_sha" \
+              -f event=push \
+              -f per_page=20)"
+            state="$(printf '%s' "$response" | python3 -c 'import json,sys; runs=json.load(sys.stdin).get("workflow_runs", []); r=runs[0] if runs else {}; print("{}|{}|{}|{}".format(r.get("id", "-"), r.get("run_number", "-"), r.get("status", "-"), r.get("conclusion", "-")))')"
+            IFS='|' read -r run_id run_number status conclusion <<< "$state"
+            if [[ "$run_id" == "-" ]]; then
+              sleep 10
+              continue
+            fi
+            if [[ "$status" == "completed" ]]; then
+              if [[ "$conclusion" != "success" ]]; then
+                echo "Repository health $run_id completed with conclusion: $conclusion" >&2
+                exit 1
+              fi
+              version_code=$((100000 + run_number))
+              if (( version_code >= 2100000000 )); then
+                echo "Computed Android versionCode exceeds the Play limit." >&2
+                exit 1
+              fi
+              echo "Repository health $run_id passed for exact candidate $candidate_sha"
+              echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+              echo "run_number=$run_number" >> "$GITHUB_OUTPUT"
+              echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "No completed Repository health run found for exact candidate within the qualification gate window." >&2
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Materialize exact qualification version
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > android/version.properties <<EOF
+          VERSION_CODE=${{ steps.health.outputs.version_code }}
+          VERSION_NAME=${{ steps.qualification.outputs.version_name }}
+          EOF
+          grep -Fx "VERSION_CODE=${{ steps.health.outputs.version_code }}" android/version.properties
+          grep -Fx "VERSION_NAME=${{ steps.qualification.outputs.version_name }}" android/version.properties
+
+      - name: Materialize protected Android release configuration
+        shell: bash
+        env:
+          RELEASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_RELEASE_GOOGLE_SERVICES_JSON_B64 }}
+          DEBUG_GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64 }}
+          UPLOAD_KEYSTORE_B64: ${{ secrets.AURA_ANDROID_UPLOAD_KEYSTORE_B64 }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          required_env=(
+            VITE_FIREBASE_API_KEY
+            VITE_FIREBASE_AUTH_DOMAIN
+            VITE_FIREBASE_PROJECT_ID
+            VITE_FIREBASE_STORAGE_BUCKET
+            VITE_FIREBASE_MESSAGING_SENDER_ID
+            VITE_FIREBASE_APP_ID
+            VITE_FIRESTORE_DATABASE_ID
+            AURA_ANDROID_UPLOAD_STORE_PASSWORD
+            AURA_ANDROID_UPLOAD_KEY_ALIAS
+            AURA_ANDROID_UPLOAD_KEY_PASSWORD
+          )
+          for key in "${required_env[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing play-console environment value: $key" >&2
+              exit 1
+            fi
+          done
+          required_secrets=(
+            RELEASE_GOOGLE_SERVICES_JSON_B64
+            DEBUG_GOOGLE_SERVICES_JSON_B64
+            UPLOAD_KEYSTORE_B64
+            PLAY_SERVICE_ACCOUNT_JSON
+          )
+          for key in "${required_secrets[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing play-console secret backing: $key" >&2
+              exit 1
+            fi
+          done
+
+          mkdir -p android/app/src/release android/app/src/debug
+          printf '%s' "$RELEASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/release/google-services.json
+          printf '%s' "$DEBUG_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/debug/google-services.json
+          upload_store="${RUNNER_TEMP}/aura-upload.jks"
+          printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 --decode > "$upload_store"
+          chmod 600 "$upload_store"
+          echo "AURA_ANDROID_UPLOAD_STORE_FILE=$upload_store" >> "$GITHUB_ENV"
+
+          jq -e '
+            any(.client[]?;
+              .client_info.android_client_info.package_name == "com.staituned.aura"
+              and any(.oauth_client[]?; .client_type == 3)
+            )
+          ' android/app/src/release/google-services.json >/dev/null
+          configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/release/google-services.json)"
+          if [[ "$configured_project" != "$VITE_FIREBASE_PROJECT_ID" ]]; then
+            echo "Release google-services.json does not match VITE_FIREBASE_PROJECT_ID." >&2
+            exit 1
+          fi
+          jq -e '.type == "service_account" and (.client_email | length > 0) and (.private_key | length > 0)' \
+            <<< "$PLAY_SERVICE_ACCOUNT_JSON" >/dev/null
+
+      - name: Build production Android assets
+        run: npm run android:sync
+
+      - name: Verify release readiness
+        run: npm run android:verify:release-readiness
+
+      - name: Build signed release bundle
+        run: bash scripts/run-android-gradle.sh :app:bundleRelease
+
+      - name: Verify signed bundle and record qualification identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="android/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$bundle"
+          jarsigner -verify "$bundle" >/dev/null
+          mkdir -p artifacts/play-qualification
+          sha256sum "$bundle" > artifacts/play-qualification/app-release.aab.sha256
+          cat > artifacts/play-qualification/qualification-manifest.txt <<EOF
+          qualification=true
+          source_sha=${{ steps.qualification.outputs.source_sha }}
+          qualification_commit=${{ github.sha }}
+          health_run=${{ steps.health.outputs.run_id }}
+          track=internal
+          version_name=${{ steps.qualification.outputs.version_name }}
+          version_code=${{ steps.health.outputs.version_code }}
+          EOF
+
+      - name: Upload signed qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-w13-qualification-${{ steps.qualification.outputs.version_name }}-${{ github.sha }}
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/mapping/release/mapping.txt
+            artifacts/play-qualification/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish exact candidate to Google Play Internal Testing
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.staituned.aura
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+          track: internal
+          status: completed
+
+      - name: Record qualification publication summary
+        shell: bash
+        run: |
+          {
+            echo "## Google Play W13 qualification"
+            echo "- Product source SHA: \`${{ steps.qualification.outputs.source_sha }}\`"
+            echo "- Qualification commit: \`${{ github.sha }}\`"
+            echo "- Repository health run: \`${{ steps.health.outputs.run_id }}\`"
+            echo "- Track: \`internal\`"
+            echo "- Version: \`${{ steps.qualification.outputs.version_name }}\` (code \`${{ steps.health.outputs.version_code }}\`)"
+          } >> "$GITHUB_STEP_SUMMARY"

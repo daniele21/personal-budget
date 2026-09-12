@@ -337,6 +337,59 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/android-ci
 
+          adb_is_ready() {
+            local state=""
+            local boot_completed=""
+            state="$(timeout 5s adb get-state 2>/dev/null || true)"
+            if [[ "$state" != "device" ]]; then
+              return 1
+            fi
+            boot_completed="$(timeout 5s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            [[ "$boot_completed" == "1" ]]
+          }
+
+          recover_adb_transport() {
+            local phase="$1"
+            local emulator_pid=""
+
+            if adb_is_ready; then
+              return 0
+            fi
+            if [[ ! -s /tmp/aura-android-emulator.pid ]]; then
+              echo "Cannot recover ADB transport during ${phase}: emulator PID is unavailable." >&2
+              return 1
+            fi
+            emulator_pid="$(cat /tmp/aura-android-emulator.pid)"
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              echo "Cannot recover ADB transport during ${phase}: emulator process exited." >&2
+              return 1
+            fi
+
+            echo "ADB transport unavailable during ${phase} while emulator process is alive; attempting bounded recovery." >&2
+            timeout 5s adb reconnect offline >/dev/null 2>&1 || true
+            for _ in $(seq 1 10); do
+              if adb_is_ready; then
+                echo "ADB transport recovered during ${phase} after reconnect." >&2
+                return 0
+              fi
+              sleep 1
+            done
+
+            timeout 5s adb kill-server >/dev/null 2>&1 || true
+            timeout 5s adb start-server >/dev/null 2>&1 || true
+            for _ in $(seq 1 30); do
+              if adb_is_ready; then
+                echo "ADB transport recovered during ${phase} after server restart." >&2
+                return 0
+              fi
+              sleep 1
+            done
+
+            echo "Unable to recover ADB transport during ${phase}; preserving fail-closed media validation." >&2
+            adb devices -l || true
+            return 1
+          }
+
           capture_journey() {
             local name="$1"
             shift
@@ -344,6 +397,13 @@ jobs:
             local local_video="artifacts/android-ci/${name}.mp4"
             local local_screenshot="artifacts/android-ci/${name}.png"
             local command_status=0
+            local transport_ready=1
+
+            if ! recover_adb_transport "before-${name}"; then
+              echo "Cannot start ${name}: Android transport is unavailable." >&2
+              return 1
+            fi
+
             adb shell rm -f "$remote_video" || true
             adb shell screenrecord --time-limit 180 "$remote_video" >"/tmp/${name}-screenrecord.log" 2>&1 &
             local recorder_pid=$!
@@ -351,18 +411,30 @@ jobs:
             "$@"
             command_status=$?
             set -e
-            adb exec-out screencap -p > "$local_screenshot" || command_status=1
-            adb shell pkill -INT screenrecord || true
-            wait "$recorder_pid" || true
-            cp "/tmp/${name}-screenrecord.log" "artifacts/android-ci/${name}-screenrecord.log" || true
-            if ! adb shell test -s "$remote_video"; then
-              echo "Missing video evidence for ${name}." >&2
-              command_status=1
-            elif ! adb pull "$remote_video" "$local_video"; then
-              echo "Failed to pull video evidence for ${name}." >&2
+
+            if ! recover_adb_transport "after-${name}"; then
+              transport_ready=0
               command_status=1
             fi
-            adb shell rm -f "$remote_video" || true
+            if [[ "$transport_ready" == "1" ]]; then
+              adb exec-out screencap -p > "$local_screenshot" || command_status=1
+              adb shell pkill -INT screenrecord || true
+            else
+              kill "$recorder_pid" 2>/dev/null || true
+            fi
+            wait "$recorder_pid" || true
+            cp "/tmp/${name}-screenrecord.log" "artifacts/android-ci/${name}-screenrecord.log" || true
+
+            if [[ "$transport_ready" == "1" ]]; then
+              if ! adb shell test -s "$remote_video"; then
+                echo "Missing video evidence for ${name}." >&2
+                command_status=1
+              elif ! adb pull "$remote_video" "$local_video"; then
+                echo "Failed to pull video evidence for ${name}." >&2
+                command_status=1
+              fi
+              adb shell rm -f "$remote_video" || true
+            fi
             if [[ ! -s "$local_screenshot" || ! -s "$local_video" ]]; then
               echo "Incomplete local media evidence for ${name}." >&2
               command_status=1
