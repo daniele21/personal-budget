@@ -108,6 +108,15 @@ async function main() {
       160,
     );
 
+    await waitFor(
+      () => client.evaluate(`Boolean(
+        !document.body.textContent.includes('Continue with Google')
+        && document.querySelector('[data-tour-id="bottom-nav-transactions"]')
+      )`),
+      'Authenticated Aura shell',
+      160,
+    );
+
     await client.evaluate(`(() => {
       const values = {
         aura_transactions: [],
