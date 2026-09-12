@@ -81,4 +81,26 @@ describe('Android Google Play release workflows', () => {
       'Repository health $run_id passed for exact candidate $candidate_sha',
     );
   });
+
+  it('bounds ADB recovery while preserving fail-closed full-media validation', () => {
+    expect(healthWorkflow).toContain('recover_adb_transport()');
+    expect(healthWorkflow).toContain(
+      'if ! kill -0 "$emulator_pid" 2>/dev/null; then',
+    );
+    expect(healthWorkflow).toContain(
+      'timeout 5s adb reconnect offline >/dev/null 2>&1 || true',
+    );
+    expect(healthWorkflow).toContain(
+      'timeout 5s adb kill-server >/dev/null 2>&1 || true',
+    );
+    expect(healthWorkflow).toContain(
+      'timeout 5s adb start-server >/dev/null 2>&1 || true',
+    );
+    expect(healthWorkflow).toContain(
+      'Unable to recover ADB transport during ${phase}; preserving fail-closed media validation.',
+    );
+    expect(healthWorkflow).toContain(
+      'Incomplete local media evidence for ${name}.',
+    );
+  });
 });
