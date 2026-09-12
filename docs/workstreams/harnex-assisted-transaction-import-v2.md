@@ -20,8 +20,6 @@ Import reasonably structured CSV/XLSX bank exports without fixed column names/or
 - trust/ownership: [`../../adr/0008-aura-harnex-assisted-import.md`](../../adr/0008-aura-harnex-assisted-import.md)
 - privacy/data flow: [`../04-privacy-gdpr/harnex-assisted-import-processing-record.md`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md)
 
-Material changes to data fields, model authority, network behavior, persistence or ledger/category semantics update the owner before implementation.
-
 ## Invariants
 
 - Existing CSV/XLSX encoding, resource, ZIP, formula and row/file bounds remain Aura-local.
