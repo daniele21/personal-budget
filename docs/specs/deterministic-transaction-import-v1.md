@@ -1,7 +1,6 @@
 # Deterministic Transaction Import V1
 
-Status: **Approved product direction; M0 contract frozen on 2026-08-03. No
-runtime implementation has started.**
+Status: **Implemented and regression-protected through M6; M0 contract frozen on 2026-08-03. Release-only physical/manual qualification remains tracked separately.**
 
 Delivery tracker:
 [`12-deterministic-transaction-import-progress-plan.md`](../00-discovery/12-deterministic-transaction-import-progress-plan.md).
@@ -12,10 +11,7 @@ Aura accepts a deliberately structured CSV or XLSX file, validates it entirely
 on the device, lets the user review and categorize the valid rows, and commits
 the selected transactions only after verified local persistence.
 
-The V1 replaces the current generic Gemini-assisted spreadsheet workflow. It
-does not attempt to understand arbitrary bank exports. Files that do not match
-the documented structure fail with precise local guidance and a downloadable
-template.
+V1 replaced the legacy generic Gemini-assisted spreadsheet workflow with a strict deterministic fast path. It deliberately does not understand arbitrary bank exports. The separately approved [`Harnex-assisted Transaction Import V2`](./harnex-assisted-transaction-import-v2.md) extends supported generic/localized exports without changing this V1 contract: files matching V1 continue through the deterministic fast path without schema inference.
 
 ## User promise
 
@@ -47,8 +43,7 @@ template.
 - post-import batch category correction in transaction history;
 - legacy Aura transaction CSV compatibility;
 - `.aura` isolation before spreadsheet parsing;
-- retirement of the current Gemini runtime path after the replacement passes
-  its release gates.
+- the retired Gemini runtime path remaining absent from V1.
 
 ### Out of scope
 
@@ -64,6 +59,8 @@ template.
 - persisted import drafts or import batch metadata;
 - reconciliation or Open Banking.
 
+Arbitrary/localized column mapping and optional on-device Harnex assistance are V2 responsibilities, not hidden fallbacks inside V1.
+
 ## File classification order
 
 Aura must classify a selected file in this order:
@@ -76,11 +73,9 @@ Aura must classify a selected file in this order:
 5. Detect the existing Aura transaction CSV header and route it to the local
    legacy transaction importer.
 6. Otherwise validate the deterministic V1 schema.
-7. If the V1 schema does not match, fail locally with template guidance.
+7. If the V1 schema does not match, terminate the V1 path with local guidance.
 
-There is no AI, network, Firebase, analytics, or generic fallback after step 7.
-A file renamed to `.csv` or `.xlsx` does not bypass signature or structural
-checks.
+Within V1 there is no AI, network, Firebase, analytics, or generic fallback after step 7. The product may separately offer the V2 manual/Harnex-assisted generic-import path under its own contract; that routing does not change V1 parsing or commit semantics. A file renamed to `.csv` or `.xlsx` does not bypass signature or structural checks.
 
 ## Resource limits
 
@@ -403,7 +398,7 @@ No existing transaction is modified or removed.
 5. `Done`
 
 There is no AI consent, AI confidence, model selection, cache bypass or remote
-processing copy.
+processing copy in the V1 path.
 
 ### Collection strategy
 
@@ -541,8 +536,7 @@ History supports explicit selection mode. Category changes:
   cells.
 - React renders imported descriptions as text.
 - Gemini historical Firestore documents are not deleted by this initiative.
-- A future AI or remote categorization path requires a new product, privacy,
-  security, subprocessor and AI-governance decision.
+- A future remote categorization/inference path, or any AI boundary beyond the separately approved local Harnex V2 contract, requires a new product, privacy, security, subprocessor/transfer and AI-governance decision.
 
 ## Accessibility and design-system requirements
 
@@ -597,7 +591,7 @@ History supports explicit selection mode. Category changes:
 - CSV and XLSX happy paths;
 - commit, reload and history correction;
 - `.aura` and Aura CSV legacy isolation;
-- no network call during the complete import;
+- no network call during the complete V1 import;
 - formula-safe CSV export;
 - keyboard, axe, light/dark, reduced motion and 320/360/390/430 px layouts;
 - Android API 36 bundled-WebView file picker and template download smoke.
@@ -626,6 +620,6 @@ security owner approves otherwise.
 7. Commit failure never produces a success state and verified rollback restores
    the previous transaction storage.
 8. `.aura` and Aura CSV legacy paths remain isolated and functional.
-9. The import emits no network request and logs no financial content.
+9. The V1 import emits no network request and logs no financial content.
 10. Gemini runtime, client key, model/admin import surfaces and provider
-    dependency are absent from the released path.
+    dependency are absent from the released V1 path.

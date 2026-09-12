@@ -42,8 +42,10 @@ Import reasonably structured CSV/XLSX bank exports without fixed column names/or
 - W9 exact evidence: Aura `b8df48bfabe8b5053c0988f4687474a40d83fa37`, Repository health #111 (`34622077635`), proved host-absent fail-closed and authorized two-APK lifecycle including schema/category profile switch, cancellation cleanup and reconnect/restart. Its packaged G2 then exposed the unauthenticated WebView precondition.
 - The packaged-auth repair keeps product auth unchanged and uses isolated Firebase Auth/Firestore emulators with a synthetic non-admin `.invalid` identity. Normal web/release and ordinary Android debug configuration remain unchanged.
 - Harnex PR #567 also repaired exact `(modelDigest, modelProfileId)` residency/protection so distinct Aura schema/category profiles sharing an artifact can transition safely.
-- W10 exact evidence: Aura `9dd9dde0ad2f8c70e71fbd054fffea9b7fc0331d`, Repository health #132 (`34678973020`), passed selector FULL, engineering baseline, web validation, browser `FULL_MEDIA`, exact Harnex host build and Android API 36 preflight.
+- W10 first accepted exact evidence: Aura `9dd9dde0ad2f8c70e71fbd054fffea9b7fc0331d`, Repository health #132 (`34678973020`), passed selector FULL, engineering baseline, web validation, browser `FULL_MEDIA`, exact Harnex host build and Android API 36 preflight.
 - #132 Android evidence contains terminal `OK (1 test)` for host-absent and packaged lifecycle plus packaged G2 `status: PASS`: date/amount/description mapping selected, `ledgerBeforeConfirm=0`, review remained outside the ledger, both synthetic transactions were reviewed, categorized `Food`, committed as expenses with clean metadata, and `AURA_HARNEX_TWO_APK result=PASS`. Android instrumentation, Harnex G2 and WebView each produced non-empty video and screenshot evidence.
+- W10 exact-head confirmation after tracker/CI hardening: Aura `944c818da900588b68e5318f88aa0aa166780d6d`, Repository health #134 (`34681900077`), FULL success across selector, engineering baseline, web, browser `FULL_MEDIA`, exact Harnex host and Android API 36 preflight. The two-APK lane again produced host-absent and packaged-lifecycle `OK (1 test)`, G2 `status: PASS`, two reviewed/committed `Food` expenses with clean metadata and all required media, followed by a successful generic WebView journey.
+- Runs #129/#133 had already reached G2 PASS before the API 36 emulator went `offline` during post-journey media/WebView collection. After the repeated signature, the diagnostic strategy changed: the harness now releases completed Gradle/Kotlin daemons before Harnex G2 and records ADB/emulator/memory/cgroup health checkpoints. #134 stayed `device/alive` through G2 and WebView; the failure was CI resource lifecycle, not Aura/Harnex product semantics.
 - The E2E contract declares `harnex-assisted-import-user-flow` material Android UI requiring `full_media`.
 - Branch: `feat/import-v2-integrated-ux-w10`. Material edits invalidate older exact-head evidence.
 
@@ -75,9 +77,9 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 | W7 Schema inference | DONE | W2,W3,W4,W6 | #19 bounded candidate selection; invalid output fails closed. |
 | W8 Category engine | DONE | W3,W4,W6 | #20 history-first, bounded sequential batches, supplied-ID validation. |
 | W9 Cross-app/eval lane | DONE | W3,W4 | #111 proved absent/auth/assignment/readiness/schema/category/profile-switch/cancel/reconnect against exact Harnex `9074cf8d...`. |
-| W10 Integrated UX G2 | DONE | W7,W8,W9 | #132 proved authenticated packaged discovery -> assistance -> deterministic extraction -> categories -> review -> verified commit with `full_media`. |
-| W11 Hardening/docs | ACTIVE | W10 | Privacy/security/offline/accessibility/limits/rollback/V1 current and tested. |
-| W12 Integration preflight G3 | BLOCKED | W11 | Fresh exact heads; selector-owned deterministic gates green; material UI FULL_MEDIA. |
+| W10 Integrated UX G2 | DONE | W7,W8,W9 | #132 accepted packaged discovery -> assistance -> deterministic extraction -> categories -> review -> verified commit; #134 reconfirmed exact-head FULL + `full_media` after CI resource hardening. |
+| W11 Hardening/docs | DONE | W10 | Privacy/security/offline/accessibility/limits/rollback/V1 contracts reconciled with implemented behavior and existing automated tests/evidence. |
+| W12 Integration preflight G3 | ACTIVE | W11 | Fresh exact head after W11; selector-owned deterministic gates green; material UI FULL_MEDIA. |
 | W13 Release qualification | BLOCKED | W12 | Physical local-model/resource/accessibility/authorization evidence. |
 
 ## W10 accepted behavior
@@ -92,22 +94,35 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 - Packaged G2 executes after W9 in the same authorized Host state without reinstalling Aura.
 - Browser/Harnex-absent and V1 paths remain first-class regressions.
 
+## W11 hardening closure
+
+- V1 is documented as the implemented deterministic fast path; V2 is a separate extension, not an AI/network fallback inside V1.
+- V2 implementation status, privacy processing record, privacy notes, discovery/current-state and testing strategy now reflect the implemented local Harnex boundary rather than the retired Gemini workflow or a pending-runtime state.
+- Existing Aura file/ZIP/formula/row limits remain authoritative and are covered by domain/service/browser tests; V2 profiling does not weaken them.
+- Existing verified transaction-only commit/read-back/rollback and undo remain canonical; Harnex never owns persistence.
+- Harnex unavailable/unauthorized/unready/invalid/ambiguous/cancelled/offline paths retain manual recovery with no cloud fallback.
+- Harnex-specific task UI already exposes busy/live/alert/progress semantics, named controls, focus trapping and non-color-only meaning, with focused component/state tests.
+- Cross-app tests cover authorization/readiness/profile transitions/cancellation/reconnect; packaged G2 verifies ledger stays unchanged before Review and committed transactions contain no Harnex/import provenance.
+- Privacy owner governance (lawful basis/transparency/RoPA/DPIA/AI-governance) remains a release obligation; automated engineering evidence does not claim legal approval.
+
 ## Validation and deferred release evidence
 
-- Deterministic W9/W10 emulator evidence is complete through #132 and exact Harnex `9074cf8d...`.
+- Deterministic W9/W10 emulator evidence is complete and reconfirmed by exact Aura FULL #134 on `944c818da900588b68e5318f88aa0aa166780d6d` with exact Harnex `9074cf8d...`.
+- #134 resource checkpoints remained `adb_state=device` and `emulator_state=alive` through packaged G2; post-G2 memory remained healthy and the following WebView journey passed. Required Android instrumentation/Harnex/WebView media were non-empty.
 - Real-model quality is separate from deterministic CI.
 - Missing local Android tooling is `REMOTE_AUTOMATED`, never user-run work.
 - Physical Google/Credential Manager sign-in, ARM64/JNI/GGUF behavior and model quality, thermal/memory/OEM lifecycle, Play signer topology, and representative TalkBack/text scaling remain release `REAL_ENVIRONMENT` evidence. Emulator success does not satisfy them.
 
 ## Executable now
 
-1. W11: review and reconcile affected privacy/security/offline/accessibility/limits/rollback/V1 documentation and tests against the accepted W10 behavior.
-2. Preserve the isolated packaged-auth lane and bounded debug cleartext exception while hardening failure/recovery evidence.
-3. When W11 is complete, run W12 fresh exact-head integration preflight; do not reuse older material-head success.
+1. W12: validate the fresh post-W11 exact head against the unchanged base using the selector-owned integration gates; do not reuse #134 after this documentation change.
+2. Review the complete PR diff/base freshness and confirm no unrelated/debug/generated changes before any merge-readiness claim.
+3. Preserve the isolated packaged-auth lane, exact Harnex pin and bounded debug cleartext exception; do not weaken `FULL_MEDIA` or deterministic Android evidence to avoid resource pressure.
+4. Keep W13 physical/model/privacy-governance obligations deferred to release; integration automation cannot satisfy them.
 
 ## Resume checkpoint
 
-Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W10 DONE; Harnex exact `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc` STRONG-validated; W10 accepted by Aura FULL #132 on `9dd9dde0ad2f8c70e71fbd054fffea9b7fc0331d`; W11 ACTIVE; W12-W13 downstream. Next action: hardening/docs reconciliation while retaining the deferred `REAL_ENVIRONMENT` obligations above.
+Aura base `dev@4d816359470a0bff2d2397b567faa117ec1e4c89`; W0-W11 DONE; Harnex exact `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc` STRONG-validated; W10 reconfirmed by Aura FULL #134 on `944c818da900588b68e5318f88aa0aa166780d6d`; W12 ACTIVE because this W11 documentation commit creates a new exact head; W13 remains release-only downstream. Next action: fresh exact-head W12 integration preflight, full diff/base-freshness review, then transfer final evidence to PR/current-state owners while retaining all deferred `REAL_ENVIRONMENT` obligations.
 
 ## Durable destinations
 
