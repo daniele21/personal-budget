@@ -78,16 +78,6 @@ jobs:
           trigger_track="$(sed -n 's/^track=//p' "$trigger" | tail -n 1)"
           trigger_version="$(sed -n 's/^version=//p' "$trigger" | tail -n 1)"
           source_sha="$(sed -n 's/^source_sha=//p' "$trigger" | tail -n 1)"
-          qualification="$(sed -n 's/^qualification=//p' "$trigger" | tail -n 1)"
-          qualification="${qualification:-false}"
-          if [[ "$qualification" != "true" && "$qualification" != "false" ]]; then
-            echo "Release trigger qualification must be true or false when present." >&2
-            exit 1
-          fi
-          if [[ "$qualification" == "true" && "$track" != "internal" ]]; then
-            echo "Release qualification is supported only on the internal track." >&2
-            exit 1
-          fi
           if [[ "$trigger_track" != "$track" || "$trigger_version" != "$version_name" ]]; then
             echo "Release trigger metadata does not match branch target/version." >&2
             exit 1
@@ -102,18 +92,10 @@ jobs:
           fi
 
           git fetch --no-tags origin main:refs/remotes/origin/main
-          if [[ "$qualification" == "true" ]]; then
-            git fetch --no-tags origin dev:refs/remotes/origin/dev
-            current_dev_sha="$(git rev-parse refs/remotes/origin/dev)"
-            if [[ "$source_sha" != "$current_dev_sha" ]]; then
-              echo "Qualification source_sha must equal current dev: $current_dev_sha" >&2
-              exit 1
-            fi
-          elif ! git merge-base --is-ancestor "$source_sha" origin/main; then
+          if ! git merge-base --is-ancestor "$source_sha" origin/main; then
             echo "Release source_sha must already belong to main." >&2
             exit 1
           fi
-
           mapfile -t release_delta < <(git diff --name-only "$source_sha" HEAD)
           if (( ${#release_delta[@]} != 1 )) || [[ "${release_delta[0]:-}" != "$trigger" ]]; then
             echo "Release branch may differ from source_sha only by $trigger." >&2
@@ -130,7 +112,6 @@ jobs:
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
-          echo "qualification=$qualification" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -244,7 +225,6 @@ jobs:
           track=${{ steps.release.outputs.track }}
           version_name=${{ steps.release.outputs.version_name }}
           version_code=${{ steps.release.outputs.version_code }}
-          qualification=${{ steps.release.outputs.qualification }}
           EOF
 
       - name: Upload signed release evidence
@@ -278,5 +258,4 @@ jobs:
             echo "- Repository health run: \`${{ github.event.workflow_run.id }}\`"
             echo "- Track: \`${{ steps.release.outputs.track }}\`"
             echo "- Version: \`${{ steps.release.outputs.version_name }}\` (code \`${{ steps.release.outputs.version_code }}\`)"
-            echo "- W13 qualification: \`${{ steps.release.outputs.qualification }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
