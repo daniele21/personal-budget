@@ -11,7 +11,7 @@ if (!email || !password) {
   throw new Error('Synthetic Android CI Firebase auth identity is not configured.');
 }
 
-async function waitFor(url, label, attempts = 120) {
+async function waitFor(url, label, attempts = 480) {
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
