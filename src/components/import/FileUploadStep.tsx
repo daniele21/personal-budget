@@ -13,7 +13,7 @@ import {
 import { buildStructuredImportCsvTemplate, buildStructuredImportXlsxTemplate } from '../../data/import';
 import type { ImportIssue } from '../../domain/import';
 import { isSupportedStructuredImportFile } from '../../data/import';
-import { harnexClient, type HarnexFailure } from '../../platform/harnex';
+import { harnexClient, openHarnexHostApp, type HarnexFailure } from '../../platform/harnex';
 import { getPlatformCapabilities } from '../../platform/platformCapabilities';
 import { downloadBlob } from '../../services/archive/archiveDownload';
 import { cn } from '../../lib/utils';
@@ -196,7 +196,7 @@ export function FileUploadStep({
 
   const openHarnex = useCallback(async () => {
     try {
-      const result = await harnexClient.openHostApp();
+      const result = await openHarnexHostApp();
       if (result.status === 'unavailable') setHarnexReadiness(readinessFromFailure(result.failure));
     } catch {
       setHarnexReadiness({ kind: 'unavailable', detail: 'Harnex could not be opened.' });
