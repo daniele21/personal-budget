@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createHarnexClient,
   HARNEX_SCHEMA_INFERENCE_USE_CASE,
+  openHarnexHostApp,
   type NativeHarnexPlugin,
 } from '../harnex';
 import { resolvePlatformCapabilities } from '../platformCapabilities';
@@ -28,16 +29,14 @@ function nativePlugin(): NativeHarnexPlugin {
 describe('createHarnexClient', () => {
   it('fails closed in the browser harness without invoking the native plugin', async () => {
     const native = nativePlugin();
-    const client = createHarnexClient(
-      () => resolvePlatformCapabilities('web'),
-      native,
-    );
+    const capabilities = () => resolvePlatformCapabilities('web');
+    const client = createHarnexClient(capabilities, native);
 
     await expect(client.connect()).resolves.toMatchObject({
       status: 'unavailable',
       failure: { code: 'PLATFORM_UNSUPPORTED' },
     });
-    await expect(client.openHostApp()).resolves.toMatchObject({
+    await expect(openHarnexHostApp(capabilities, native)).resolves.toMatchObject({
       status: 'unavailable',
       failure: { code: 'PLATFORM_UNSUPPORTED' },
     });
@@ -66,15 +65,13 @@ describe('createHarnexClient', () => {
     expect(native.disconnect).not.toHaveBeenCalled();
   });
 
-  it('forwards Android calls through the typed native boundary', async () => {
+  it('forwards Android inference and host-launch calls through typed native boundaries', async () => {
     const native = nativePlugin();
-    const client = createHarnexClient(
-      () => resolvePlatformCapabilities('android'),
-      native,
-    );
+    const capabilities = () => resolvePlatformCapabilities('android');
+    const client = createHarnexClient(capabilities, native);
 
     await expect(client.connect()).resolves.toEqual({ status: 'connected' });
-    await expect(client.openHostApp()).resolves.toEqual({ status: 'opened' });
+    await expect(openHarnexHostApp(capabilities, native)).resolves.toEqual({ status: 'opened' });
     await expect(client.probe(HARNEX_SCHEMA_INFERENCE_USE_CASE)).resolves.toMatchObject({
       status: 'available',
       maxInputCharacters: 12_000,
