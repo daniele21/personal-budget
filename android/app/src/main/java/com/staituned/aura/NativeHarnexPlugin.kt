@@ -1,5 +1,6 @@
 package com.staituned.aura
 
+import android.content.Intent
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -31,6 +32,23 @@ class NativeHarnexPlugin : Plugin() {
     @PluginMethod
     fun connect(call: PluginCall) {
         submit(call) { connectionToJs(runner.connect()) }
+    }
+
+    @PluginMethod
+    fun openHostApp(call: PluginCall) {
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(BuildConfig.HARNEX_HOST_PACKAGE)
+        if (launchIntent == null) {
+            call.resolve(hostLaunchFailureToJs(auraHarnexFailure(AuraHarnexFailureCode.HOST_NOT_INSTALLED)))
+            return
+        }
+        val result = runCatching {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(launchIntent)
+            JSObject().put("status", "opened")
+        }.getOrElse {
+            hostLaunchFailureToJs(auraHarnexFailure(AuraHarnexFailureCode.RUNTIME_FAILURE))
+        }
+        call.resolve(result)
     }
 
     @PluginMethod
@@ -135,6 +153,10 @@ private fun disconnectToJs(outcome: AuraHarnexDisconnectOutcome): JSObject = whe
     AuraHarnexDisconnectOutcome.Disconnected -> JSObject().put("status", "disconnected")
     is AuraHarnexDisconnectOutcome.Failed -> operationFailureToJs(outcome.failure)
 }
+
+private fun hostLaunchFailureToJs(failure: AuraHarnexFailure): JSObject = JSObject()
+    .put("status", "unavailable")
+    .put("failure", failureToJs(failure))
 
 private fun operationFailureToJs(failure: AuraHarnexFailure): JSObject = JSObject()
     .put("status", "failed")
