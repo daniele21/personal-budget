@@ -38,6 +38,10 @@ export type HarnexConnectionResult =
   | { status: 'connected' }
   | { status: 'unavailable'; failure: HarnexFailure };
 
+export type HarnexHostLaunchResult =
+  | { status: 'opened' }
+  | { status: 'unavailable'; failure: HarnexFailure };
+
 export type HarnexCapabilityResult =
   | {
       status: 'available';
@@ -73,6 +77,7 @@ export type HarnexDisconnectResult =
 
 export interface NativeHarnexPlugin {
   connect(): Promise<HarnexConnectionResult>;
+  openHostApp(): Promise<HarnexHostLaunchResult>;
   probe(options: { useCaseId: HarnexUseCaseId }): Promise<HarnexCapabilityResult>;
   generate(options: HarnexGenerationRequest): Promise<HarnexGenerationResult>;
   cancel(): Promise<{ cancelled: boolean }>;
@@ -81,6 +86,7 @@ export interface NativeHarnexPlugin {
 
 export interface HarnexClient {
   connect(): Promise<HarnexConnectionResult>;
+  openHostApp(): Promise<HarnexHostLaunchResult>;
   probe(useCaseId: HarnexUseCaseId): Promise<HarnexCapabilityResult>;
   generate(request: HarnexGenerationRequest): Promise<HarnexGenerationResult>;
   cancel(): Promise<{ cancelled: boolean }>;
@@ -104,6 +110,13 @@ export function createHarnexClient(
         return { status: 'unavailable', failure: platformFailure() };
       }
       return nativePlugin.connect();
+    },
+
+    async openHostApp() {
+      if (!capabilitiesProvider().harnexSupported) {
+        return { status: 'unavailable', failure: platformFailure() };
+      }
+      return nativePlugin.openHostApp();
     },
 
     async probe(useCaseId) {
