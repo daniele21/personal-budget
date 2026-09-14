@@ -18,8 +18,8 @@ vi.mock('../../../platform/harnex', () => ({
   harnexClient: {
     connect: mocks.connect,
     disconnect: mocks.disconnect,
-    openHostApp: mocks.openHostApp,
   },
+  openHarnexHostApp: mocks.openHostApp,
 }));
 
 describe('FileUploadStep', () => {
