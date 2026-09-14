@@ -9,6 +9,7 @@ import { resolvePlatformCapabilities } from '../platformCapabilities';
 function nativePlugin(): NativeHarnexPlugin {
   return {
     connect: vi.fn(async () => ({ status: 'connected' as const })),
+    openHostApp: vi.fn(async () => ({ status: 'opened' as const })),
     probe: vi.fn(async () => ({
       status: 'available' as const,
       maxInputCharacters: 12_000,
@@ -36,6 +37,10 @@ describe('createHarnexClient', () => {
       status: 'unavailable',
       failure: { code: 'PLATFORM_UNSUPPORTED' },
     });
+    await expect(client.openHostApp()).resolves.toMatchObject({
+      status: 'unavailable',
+      failure: { code: 'PLATFORM_UNSUPPORTED' },
+    });
     await expect(client.probe(HARNEX_SCHEMA_INFERENCE_USE_CASE)).resolves.toMatchObject({
       status: 'unavailable',
       failure: { code: 'PLATFORM_UNSUPPORTED' },
@@ -54,6 +59,7 @@ describe('createHarnexClient', () => {
     await expect(client.disconnect()).resolves.toEqual({ status: 'disconnected' });
 
     expect(native.connect).not.toHaveBeenCalled();
+    expect(native.openHostApp).not.toHaveBeenCalled();
     expect(native.probe).not.toHaveBeenCalled();
     expect(native.generate).not.toHaveBeenCalled();
     expect(native.cancel).not.toHaveBeenCalled();
@@ -68,6 +74,7 @@ describe('createHarnexClient', () => {
     );
 
     await expect(client.connect()).resolves.toEqual({ status: 'connected' });
+    await expect(client.openHostApp()).resolves.toEqual({ status: 'opened' });
     await expect(client.probe(HARNEX_SCHEMA_INFERENCE_USE_CASE)).resolves.toMatchObject({
       status: 'available',
       maxInputCharacters: 12_000,
@@ -82,6 +89,7 @@ describe('createHarnexClient', () => {
     await expect(client.cancel()).resolves.toEqual({ cancelled: true });
     await expect(client.disconnect()).resolves.toEqual({ status: 'disconnected' });
 
+    expect(native.openHostApp).toHaveBeenCalledTimes(1);
     expect(native.probe).toHaveBeenCalledWith({
       useCaseId: HARNEX_SCHEMA_INFERENCE_USE_CASE,
     });
