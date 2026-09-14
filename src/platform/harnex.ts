@@ -86,7 +86,6 @@ export interface NativeHarnexPlugin {
 
 export interface HarnexClient {
   connect(): Promise<HarnexConnectionResult>;
-  openHostApp(): Promise<HarnexHostLaunchResult>;
   probe(useCaseId: HarnexUseCaseId): Promise<HarnexCapabilityResult>;
   generate(request: HarnexGenerationRequest): Promise<HarnexGenerationResult>;
   cancel(): Promise<{ cancelled: boolean }>;
@@ -95,28 +94,33 @@ export interface HarnexClient {
 
 const NativeHarnex = registerPlugin<NativeHarnexPlugin>('NativeHarnex');
 
+function platformFailure(): HarnexFailure {
+  return {
+    code: 'PLATFORM_UNSUPPORTED',
+    message: 'Local Harnex assistance is available only in Aura for Android.',
+  };
+}
+
+export async function openHarnexHostApp(
+  capabilitiesProvider: () => PlatformCapabilities = getPlatformCapabilities,
+  nativePlugin: NativeHarnexPlugin = NativeHarnex,
+): Promise<HarnexHostLaunchResult> {
+  if (!capabilitiesProvider().harnexSupported) {
+    return { status: 'unavailable', failure: platformFailure() };
+  }
+  return nativePlugin.openHostApp();
+}
+
 export function createHarnexClient(
   capabilitiesProvider: () => PlatformCapabilities = getPlatformCapabilities,
   nativePlugin: NativeHarnexPlugin = NativeHarnex,
 ): HarnexClient {
-  const platformFailure = (): HarnexFailure => ({
-    code: 'PLATFORM_UNSUPPORTED',
-    message: 'Local Harnex assistance is available only in Aura for Android.',
-  });
-
   return {
     async connect() {
       if (!capabilitiesProvider().harnexSupported) {
         return { status: 'unavailable', failure: platformFailure() };
       }
       return nativePlugin.connect();
-    },
-
-    async openHostApp() {
-      if (!capabilitiesProvider().harnexSupported) {
-        return { status: 'unavailable', failure: platformFailure() };
-      }
-      return nativePlugin.openHostApp();
     },
 
     async probe(useCaseId) {
