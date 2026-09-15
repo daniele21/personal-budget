@@ -82,26 +82,13 @@ export async function readTransactionImportFile(
   file: File,
   options: TransactionImportFileReaderOptions = {},
 ): Promise<TransactionImportFileReadResult> {
-  const attemptId = beginImportV2DiagnosticAttempt(sourceKindHint(file));
-
-  if (await isAuraPortableArchive(file)) {
-    recordImportV2Diagnostic('file-route', 'aura-archive', {}, attemptId);
-    return { kind: 'aura-archive' };
-  }
+  if (await isAuraPortableArchive(file)) return { kind: 'aura-archive' };
   const local = await readLocalSpreadsheetFile(file);
-  if (local.kind === 'rejected') {
-    recordImportV2Diagnostic('file-route', 'rejected', {
-      reasonCode: local.issues.map((issue) => issue.code).sort().join(','),
-    }, attemptId);
-    return local;
-  }
+  if (local.kind === 'rejected') return local;
 
   if (local.sourceKind === 'structured-csv') {
     const auraLegacyRows = legacyRows(local.spreadsheet.rows);
-    if (auraLegacyRows) {
-      recordImportV2Diagnostic('file-route', 'aura-legacy-csv', { sourceKind: 'csv' }, attemptId);
-      return { kind: 'aura-legacy-csv', rawRows: auraLegacyRows };
-    }
+    if (auraLegacyRows) return { kind: 'aura-legacy-csv', rawRows: auraLegacyRows };
   }
 
   const validation = validateStructuredImport({
@@ -112,12 +99,10 @@ export async function readTransactionImportFile(
     today: options.today,
   });
   if (!validation.hasBlockingIssues || !shouldProfileImportV2(validation)) {
-    recordImportV2Diagnostic('file-route', 'structured', {
-      reasonCode: validation.hasBlockingIssues ? 'non-v2-blocking-issues' : 'v1-valid',
-    }, attemptId);
     return { kind: 'structured', sheetName: local.spreadsheet.sheetName, validation };
   }
 
+  const attemptId = beginImportV2DiagnosticAttempt(sourceKindHint(file));
   const profiled = await readSpreadsheetProfile(file);
   if (profiled.kind === 'profiled') {
     recordImportV2Diagnostic('file-route', 'mapping-required', {

@@ -46,6 +46,12 @@ export interface ImportV2DiagnosticEvent {
   details: ImportV2DiagnosticDetails;
 }
 
+declare global {
+  interface Window {
+    readonly __AURA_IMPORT_V2_DIAGNOSTICS__?: readonly ImportV2DiagnosticEvent[];
+  }
+}
+
 const MAX_SESSION_EVENTS = 128;
 const sessionEvents: ImportV2DiagnosticEvent[] = [];
 let activeAttemptId: string | null = null;
@@ -122,4 +128,11 @@ export function resetImportV2DiagnosticsForTests(): void {
   sessionEvents.length = 0;
   activeAttemptId = null;
   attemptSequence = 0;
+}
+
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__AURA_IMPORT_V2_DIAGNOSTICS__', {
+    configurable: true,
+    get: getImportV2Diagnostics,
+  });
 }
