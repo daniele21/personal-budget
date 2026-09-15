@@ -213,6 +213,34 @@ describe('ImportWizardDialog Import V2 assisted flow', () => {
     ]);
   });
 
+  it('routes an incomplete local mapping profile through Harnex instead of rejecting at upload', async () => {
+    const incompleteProfile = {
+      ...profile,
+      sheets: profile.sheets.map((sheet) => ({
+        ...sheet,
+        headerCandidates: sheet.headerCandidates.map((candidate) => ({
+          ...candidate,
+          dateCandidates: [],
+          amountCandidates: [],
+          descriptionCandidateColumnIds: [],
+        })),
+      })),
+    };
+    mocks.readTransactionImportFile.mockResolvedValue({ kind: 'mapping-required', profile: incompleteProfile });
+    mocks.inferImportV2SchemaWithHarnex.mockResolvedValue({ status: 'unsupported' });
+    render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose assisted file' }));
+
+    await waitFor(() => expect(mocks.inferImportV2SchemaWithHarnex).toHaveBeenCalledWith(
+      incompleteProfile,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ));
+    expect(screen.queryByText(/Aura could not find a safe date, amount, and description mapping/i)).not.toBeInTheDocument();
+    expect(await screen.findByText('Aura needs your confirmation')).toBeInTheDocument();
+    expect(screen.getByText(/could not identify a safe mapping/i)).toBeInTheDocument();
+  });
+
   it('keeps manual mapping first-class when Aura is not authorized for assistance', async () => {
     mocks.inferImportV2SchemaWithHarnex.mockResolvedValue({
       status: 'assistance-unavailable',
