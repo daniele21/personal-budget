@@ -176,13 +176,13 @@ async function main() {
 
     const started = await client.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
-        .find((candidate) => candidate.textContent.trim() === 'Validate file');
+        .find((candidate) => candidate.textContent.trim() === 'Analyze file');
       if (!button || button.disabled) return null;
       const timestamp = performance.now();
       button.click();
       return timestamp;
     })()`);
-    if (started === null) throw new Error('Validate file action is unavailable.');
+    if (started === null) throw new Error('Analyze file action is unavailable.');
 
     await waitFor(
       () => client.evaluate(`document.body.textContent.includes('Suggested mapping ready')`),

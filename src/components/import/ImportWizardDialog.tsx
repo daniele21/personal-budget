@@ -413,12 +413,6 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         return;
       }
       if (result.kind === 'mapping-required') {
-        const choices = createImportV2MappingChoices(result.profile);
-        if (choices.dateOptions.length === 0 || choices.amountOptions.length === 0 || choices.descriptionOptions.length === 0) {
-          setErrorMessage('Aura could not find a safe date, amount, and description mapping for this file.');
-          setStep('upload');
-          return;
-        }
         await runSchemaAssistance(file, result.profile, operationRevision);
         return;
       }

@@ -52,7 +52,13 @@ function visibleProfile(profile: SpreadsheetProfile): SpreadsheetProfile {
   };
 }
 
-function hasViableHeader(profile: SpreadsheetProfile): boolean {
+function hasProfiledHeader(profile: SpreadsheetProfile): boolean {
+  return profile.sheets.some((sheet) =>
+    sheet.headerCandidates.some((header) => header.columns.length > 0),
+  );
+}
+
+function hasResolvableHeader(profile: SpreadsheetProfile): boolean {
   return profile.sheets.some((sheet) => sheet.headerCandidates.some((header) =>
     header.dateCandidates.length > 0
       && header.amountCandidates.length > 0
@@ -109,57 +115,60 @@ function inferenceJsonSchema(profile: SpreadsheetProfile): string {
   const dateIds = headers.flatMap((header) => header.dateCandidates.map((candidate) => candidate.id));
   const amountIds = headers.flatMap((header) => header.amountCandidates.map((candidate) => candidate.id));
   const descriptionIds = headers.flatMap((header) => header.descriptionCandidateColumnIds);
+  const branches: UnknownRecord[] = [];
 
-  return JSON.stringify({
-    type: 'object',
-    oneOf: [
-      {
-        type: 'object',
-        additionalProperties: false,
-        required: [
-          'status',
-          'sheetId',
-          'headerCandidateId',
-          'dateCandidateId',
-          'descriptionColumnIds',
-          'amountCandidateId',
-        ],
-        properties: {
-          status: { enum: ['resolved'] },
-          sheetId: { type: 'string', enum: sheetIds },
-          headerCandidateId: { type: 'string', enum: headerIds },
-          dateCandidateId: { type: 'string', enum: dateIds },
-          descriptionColumnIds: {
-            type: 'array',
-            minItems: 1,
-            uniqueItems: true,
-            items: { type: 'string', enum: descriptionIds },
-          },
-          amountCandidateId: { type: 'string', enum: amountIds },
+  if (hasResolvableHeader(profile)) {
+    branches.push({
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'status',
+        'sheetId',
+        'headerCandidateId',
+        'dateCandidateId',
+        'descriptionColumnIds',
+        'amountCandidateId',
+      ],
+      properties: {
+        status: { enum: ['resolved'] },
+        sheetId: { type: 'string', enum: sheetIds },
+        headerCandidateId: { type: 'string', enum: headerIds },
+        dateCandidateId: { type: 'string', enum: dateIds },
+        descriptionColumnIds: {
+          type: 'array',
+          minItems: 1,
+          uniqueItems: true,
+          items: { type: 'string', enum: descriptionIds },
+        },
+        amountCandidateId: { type: 'string', enum: amountIds },
+      },
+    });
+  }
+
+  branches.push(
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['status', 'ambiguities'],
+      properties: {
+        status: { enum: ['ambiguous'] },
+        ambiguities: {
+          type: 'array',
+          minItems: 1,
+          uniqueItems: true,
+          items: { type: 'string', enum: MODEL_AMBIGUITIES },
         },
       },
-      {
-        type: 'object',
-        additionalProperties: false,
-        required: ['status', 'ambiguities'],
-        properties: {
-          status: { enum: ['ambiguous'] },
-          ambiguities: {
-            type: 'array',
-            minItems: 1,
-            uniqueItems: true,
-            items: { type: 'string', enum: MODEL_AMBIGUITIES },
-          },
-        },
-      },
-      {
-        type: 'object',
-        additionalProperties: false,
-        required: ['status'],
-        properties: { status: { enum: ['unsupported'] } },
-      },
-    ],
-  });
+    },
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['status'],
+      properties: { status: { enum: ['unsupported'] } },
+    },
+  );
+
+  return JSON.stringify({ type: 'object', oneOf: branches });
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -296,7 +305,7 @@ export async function inferImportV2SchemaWithHarnex(
 ): Promise<ImportV2SchemaInferenceOutcome> {
   const client = options.client ?? harnexClient;
   const profileForInference = visibleProfile(profile);
-  if (!hasViableHeader(profileForInference)) return { status: 'unsupported' };
+  if (!hasProfiledHeader(profileForInference)) return { status: 'unsupported' };
   if (options.signal?.aborted) {
     return { status: 'assistance-unavailable', failure: cancelledFailure() };
   }

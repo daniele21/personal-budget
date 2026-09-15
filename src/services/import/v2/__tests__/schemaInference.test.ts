@@ -185,6 +185,35 @@ describe('inferImportV2SchemaWithHarnex', () => {
     });
   });
 
+  it('still asks Harnex to inspect a bounded profile when local candidates are incomplete', async () => {
+    const incomplete = profile();
+    const visibleHeader = incomplete.sheets[0]!.headerCandidates[0]!;
+    incomplete.sheets[0] = {
+      ...incomplete.sheets[0]!,
+      headerCandidates: [{
+        ...visibleHeader,
+        dateCandidates: [],
+        amountCandidates: [],
+        descriptionCandidateColumnIds: [],
+      }],
+    };
+    const client = fakeClient(JSON.stringify({ status: 'unsupported' }));
+
+    await expect(inferImportV2SchemaWithHarnex(incomplete, { client })).resolves.toEqual({
+      status: 'unsupported',
+    });
+    expect(client.connect).toHaveBeenCalledOnce();
+    expect(client.probe).toHaveBeenCalledOnce();
+    expect(client.generate).toHaveBeenCalledOnce();
+
+    const request = client.generate.mock.calls[0]![0];
+    expect(request.input).toContain('Coffee shop');
+    const schema = JSON.parse(request.jsonSchema) as {
+      oneOf: Array<{ properties?: { status?: { enum?: string[] } } }>;
+    };
+    expect(schema.oneOf.some((branch) => branch.properties?.status?.enum?.includes('resolved'))).toBe(false);
+  });
+
   it('does not generate when the bounded request exceeds advertised capability', async () => {
     const client = fakeClient();
     client.probe.mockResolvedValue({

@@ -258,7 +258,7 @@ export function FileUploadStep({
             onRefresh={() => void checkHarnexReadiness()}
           />
           <p className="px-1 text-xs leading-relaxed text-on-surface-variant">
-            File structure and Harnex connection are separate checks. Aura first builds safe parsing candidates locally; Harnex can only choose among those candidates. A file-structure error can therefore appear even when Harnex is connected.
+            File safety and Harnex availability are separate checks. Aura first verifies that the spreadsheet can be read safely. When the columns are not already canonical, Harnex can help identify them from a bounded on-device profile; Aura validates the chosen mapping before any import.
           </p>
         </div>
       )}
@@ -346,7 +346,7 @@ export function FileUploadStep({
         onClick={() => selectedFile && onFileSelected(selectedFile)}
         disabled={!selectedFile || isProcessing}
       >
-        {isProcessing ? 'Validating file…' : 'Validate file'}
+        {isProcessing ? 'Analyzing file…' : 'Analyze file'}
       </Button>
       <p className="text-center text-micro text-on-surface-variant">
         CSV and XLSX import transactions only. Use an Aura archive to restore a complete backup.

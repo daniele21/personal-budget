@@ -1,6 +1,6 @@
 # Harnex-assisted Transaction Import V2
 
-Status: **Implemented through W10 and integration-validated on Android; W0 contract frozen on 2026-09-08. Release qualification remains separate.**
+Status: **Implemented through W12; schema-discovery routing correction under integration validation on 2026-09-15. Release qualification remains separate.**
 
 Active delivery tracker: [`../workstreams/harnex-assisted-transaction-import-v2.md`](../workstreams/harnex-assisted-transaction-import-v2.md).
 
@@ -15,6 +15,7 @@ V2 extends rather than replaces V1. A file already matching the canonical V1 sch
 - Spreadsheet parsing, candidate generation, extraction, review and commit remain Aura-owned and local-first.
 - Harnex assistance runs only through the explicitly authorized on-device Android Consumer boundary; there is no cloud fallback.
 - Aura never lets the model invent executable parsing logic, arbitrary columns, a category outside the supplied set, or a ledger write.
+- A supported file that can be read safely does not fail at Upload merely because Aura cannot already prove a complete semantic column mapping locally; that is a schema-understanding state for Harnex/manual mapping.
 - Ambiguous schema understanding is surfaced for user correction instead of silently guessed.
 - Harnex absence, authorization failure, model unavailability or inference failure leaves a usable manual mapping/import path.
 - Every included transaction remains reviewable before the existing verified commit.
@@ -56,16 +57,19 @@ V2 extends rather than replaces V1. A file already matching the canonical V1 sch
 ```text
 selected file
   -> existing outer file/signature/resource gates
-  -> local generic spreadsheet discovery/profiling
-  -> Aura-generated schema candidates
-  -> V1 fast path OR manual/Harnex-assisted mapping
+  -> V1 canonical fast path when the fixed schema is already valid
+  -> otherwise local generic spreadsheet discovery/profiling
+  -> bounded Aura-owned executable candidate space
+  -> manual/Harnex-assisted semantic mapping selection
   -> user-confirmed mapping when ambiguous/edited
-  -> deterministic extraction and row validation
+  -> deterministic extraction and full row validation
   -> local duplicate/history/category resolution
   -> Harnex category batches for unresolved groups when available
   -> existing review
   -> existing verified transaction-only commit
 ```
+
+The outer gates answer whether Aura can safely read the source at all. Schema inference answers what the readable columns mean. Those are separate decisions: failure to infer a complete local mapping is not by itself a file-safety rejection.
 
 The model is never the parser and never writes the ledger.
 
@@ -92,7 +96,9 @@ interface SheetProfile {
 
 Profiles use opaque candidate/column IDs. Samples are bounded and selected locally; a complete workbook is not sent through the Harnex inference boundary.
 
-Existing CSV/XLSX protections remain authoritative: file/row/ZIP bounds, UTF-8 gate, safe XLSX preflight and formula/resource controls must not be weakened to support profiling.
+Profile generation is deliberately more permissive than final transaction validation. Strong local type evidence remains preferred, but when a technically safe table has unfamiliar labels or weakly typed samples Aura may expose a bounded fallback set of its own supported parser/amount possibilities so Harnex can perform the semantic selection. The fallback set is capped and remains limited to safe columns and Aura-owned strategies.
+
+Existing CSV/XLSX protections remain authoritative: file/row/column/worksheet/ZIP bounds, UTF-8 gate, safe XLSX preflight and formula/resource controls must not be weakened to support profiling. A source that fails those gates is rejected before Harnex.
 
 ## Schema candidate contract
 
@@ -112,7 +118,11 @@ type AmountCandidate =
   | { id: string; strategy: 'amount-direction'; amountColumnId: string; directionColumnId: string; directionMapId: string };
 ```
 
-Harnex may select candidate IDs and description columns; it may not return formulas, code, parser configuration outside the advertised candidates, arbitrary column names as authority, or a new amount strategy.
+A candidate is an **allowed executable possibility**, not proof that the whole source already satisfies that parser/strategy. Local evidence may produce a strong candidate directly; bounded discovery fallback may advertise multiple Aura-owned possibilities. Correctness authority is the deterministic extraction/validation that follows explicit mapping selection.
+
+Formula/merged columns remain ineligible where the executable contract cannot handle them. Harnex may select candidate IDs and description columns; it may not return formulas, code, parser configuration outside the advertised candidates, arbitrary column names as authority, or a new amount strategy.
+
+If a bounded profile exists but Aura cannot advertise a complete resolved combination, Harnex may still inspect that profile and return `ambiguous` or `unsupported`; Aura must not convert that condition into an Upload-time “invalid file” error. A `resolved` result is allowed only when the response schema can constrain every selected ID to advertised candidates.
 
 The schema result is closed:
 
@@ -136,7 +146,7 @@ Aura rejects/falls back on unknown IDs, duplicate IDs where uniqueness is requir
 
 A resolved model suggestion is still an Aura mapping. Users can inspect/edit the mapping before extraction when the UX contract requires it; every model-reported ambiguity requires explicit resolution.
 
-After a mapping is accepted, Aura deterministically produces candidate rows containing at minimum:
+After a mapping is accepted, Aura deterministically executes the selected Aura-owned parser/amount strategy against the source rows and produces candidate rows containing at minimum:
 
 ```ts
 interface ImportedTransactionCandidate {
@@ -147,6 +157,8 @@ interface ImportedTransactionCandidate {
   type: 'expense' | 'income';
 }
 ```
+
+This is the correctness gate for the mapping. A semantically plausible Harnex selection that cannot parse the actual rows remains a normal Aura mapping/row-validation failure and returns to editable mapping or source correction; it never becomes a fallback transaction and never reaches commit.
 
 Harnex is not used to parse every date/amount row. Invalid or ambiguous values remain normal Aura validation issues and do not become fallback transactions.
 
@@ -231,21 +243,28 @@ The import remains usable when Harnex is unavailable.
 
 | Condition | Required Aura behavior |
 | --- | --- |
+| source fails technical/resource safety gate | reject locally with the specific file-safety issue; do not invoke Harnex |
+| readable source but local heuristics cannot prove a complete mapping | continue to bounded Harnex schema assistance when available; otherwise manual mapping |
 | Harnex not installed/unreachable | explain automatic assistance is unavailable; offer manual mapping |
 | Aura not authorized | explain authorization requirement; keep manual path |
 | use case disabled/model unavailable/incompatible | typed unavailable state; keep manual path |
-| schema response invalid/ambiguous | manual mapping/review; no silent guess |
+| schema response invalid/ambiguous/unsupported | manual mapping/review; no silent guess |
+| selected mapping fails deterministic row validation | return to editable mapping/source correction; no ledger mutation |
 | category batch partial/invalid | keep valid accepted results only where contract permits; unresolved items remain reviewable |
 | cancellation | stop active inference and retain no hidden commit action |
 | offline | no cloud attempt; local/manual path remains available |
 
 ## UX state model
 
-The user-facing task model is `Upload -> Understand file -> Check transactions -> Categorize -> Review -> Done`. UI copy describes the user task rather than internal Binder/model/batch mechanics. Reachable loading, unavailable, unauthorized, ambiguous, partial-failure, cancellation and recovery states require accessible semantics and non-color-only meaning.
+The user-facing task model is `Upload -> Understand file -> Check transactions -> Categorize -> Review -> Done`. UI copy describes the user task rather than internal Binder/model/batch mechanics. Reachable loading, unavailable, unauthorized, ambiguous, unsupported, post-selection validation failure, partial-failure, cancellation and recovery states require accessible semantics and non-color-only meaning.
+
+Upload copy must distinguish “can this file be read safely?” from “what do these columns mean?”. A missing local semantic mapping is not presented as a corrupt/invalid file when assistance or manual mapping can continue.
 
 ## Test and qualification contract
 
 Normal CI remains deterministic. It uses synthetic CSV/XLSX fixtures, fake schema/category inferencers and native bridge fakes for contracts, response validation, fallback and lifecycle state.
+
+Regression coverage must include weakly typed/arbitrary-header files for which the old local heuristics produce no complete safe mapping, proving that the bounded profile reaches Harnex/manual schema understanding instead of returning to Upload. Strong candidates outside bounded speculative fallback positions must remain discoverable.
 
 A separate real-Harnex evaluation lane measures model behavior against synthetic goldens. Minimum safety metric for automatic schema mapping is:
 
@@ -262,9 +281,10 @@ Cross-app Android automation must cover host absent, pending/authorized identity
 V2 implementation is acceptable when:
 
 1. V1 canonical imports remain deterministic and regression-green;
-2. an unknown but supported synthetic CSV/XLSX can be imported through manual mapping with Harnex absent;
-3. an authorized packaged Android Aura can obtain JSON-schema-constrained Harnex schema/category assistance without cloud traffic;
-4. invalid/ambiguous model output cannot silently alter parsing, categories or ledger semantics;
-5. the existing review/verified-commit path remains the only canonical transaction write;
-6. privacy/logging/lifecycle tests show bounded session data and cleanup;
-7. required automated exact-head validation and affected material-UX evidence pass before integration, with release-only real-environment gaps tracked separately.
+2. a technically safe arbitrary-header CSV/XLSX does not fail at Upload solely because local heuristics cannot already prove date/amount/description semantics;
+3. an unknown but supported synthetic CSV/XLSX can be imported through manual mapping with Harnex absent;
+4. an authorized packaged Android Aura can obtain JSON-schema-constrained Harnex schema/category assistance without cloud traffic;
+5. invalid/ambiguous model output or a model-selected mapping that fails deterministic row validation cannot silently alter parsing, categories or ledger semantics;
+6. the existing review/verified-commit path remains the only canonical transaction write;
+7. privacy/logging/lifecycle tests show bounded session data and cleanup;
+8. required automated exact-head validation and affected material-UX evidence pass before integration, with release-only real-environment gaps tracked separately.

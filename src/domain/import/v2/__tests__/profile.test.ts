@@ -66,6 +66,63 @@ describe('Import V2 spreadsheet profiler', () => {
     expect(signedColumns).toEqual(expect.arrayContaining(['Amount', 'Balance']));
   });
 
+  it('keeps weakly typed arbitrary columns available for Harnex selection', () => {
+    const profile = profileSpreadsheet(csvInput([
+      { rowNumber: 1, cells: ['Recorded', 'Narrative', 'Value'] },
+      { rowNumber: 2, cells: ['01.09.2026 10:30', 'Synthetic Cafe', 'EUR 12,40'] },
+      { rowNumber: 3, cells: ['02.09.2026 08:00', 'Synthetic Salary', 'EUR 2400,00'] },
+      { rowNumber: 4, cells: ['03.09.2026 18:10', 'Synthetic Transit', 'EUR 4,20'] },
+    ]));
+    const header = profile.sheets[0]?.headerCandidates[0];
+    expect(header).toBeDefined();
+
+    const candidateColumnLabels = (ids: readonly string[]) => ids.map((id) =>
+      header?.columns.find((column) => column.id === id)?.header,
+    );
+    const amountColumnLabels = header?.amountCandidates.flatMap((candidate) => {
+      if ('columnId' in candidate) return candidateColumnLabels([candidate.columnId]);
+      if ('debitColumnId' in candidate) {
+        return candidateColumnLabels([candidate.debitColumnId, candidate.creditColumnId]);
+      }
+      return candidateColumnLabels([candidate.amountColumnId, candidate.directionColumnId]);
+    });
+
+    expect(header?.dateCandidates.length).toBeGreaterThan(0);
+    expect(amountColumnLabels).toContain('Value');
+    expect(candidateColumnLabels(header?.descriptionCandidateColumnIds ?? [])).toContain('Narrative');
+  });
+
+  it('preserves strongly evidenced candidates beyond the speculative fallback cap', () => {
+    const headings = [
+      'Meta 1', 'Meta 2', 'Meta 3', 'Meta 4', 'Meta 5',
+      'Meta 6', 'Meta 7', 'Meta 8', 'Posted Date', 'Amount',
+    ];
+    const dataRow = (date: string, amount: string) => [
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', date, amount,
+    ];
+    const profile = profileSpreadsheet(csvInput([
+      { rowNumber: 1, cells: headings },
+      { rowNumber: 2, cells: dataRow('2026-09-01', '-12.40') },
+      { rowNumber: 3, cells: dataRow('2026-09-02', '2400.00') },
+      { rowNumber: 4, cells: dataRow('2026-09-03', '-4.20') },
+    ]));
+    const header = profile.sheets[0]?.headerCandidates[0];
+    expect(header).toBeDefined();
+
+    const dateLabels = header?.dateCandidates.map((candidate) =>
+      header.columns.find((column) => column.id === candidate.columnId)?.header,
+    );
+    const signedAmountLabels = header?.amountCandidates
+      .filter((candidate) => candidate.strategy === 'signed-negative-expense')
+      .map((candidate) => {
+        if (!('columnId' in candidate)) return '';
+        return header.columns.find((column) => column.id === candidate.columnId)?.header ?? '';
+      });
+
+    expect(dateLabels).toContain('Posted Date');
+    expect(signedAmountLabels).toContain('Amount');
+  });
+
   it('makes formula and merged columns ineligible for executable candidates', () => {
     const profile = profileSpreadsheet(csvInput([
       { rowNumber: 1, cells: ['Date', 'Description', 'Amount'] },
