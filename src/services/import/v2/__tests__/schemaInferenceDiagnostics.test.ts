@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { profileSpreadsheet } from '../../../../domain/import/v2';
 import {
   getImportV2Diagnostics,
@@ -46,6 +46,10 @@ describe('Import V2 schema inference diagnostics', () => {
   beforeEach(() => {
     resetImportV2DiagnosticsForTests();
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('records candidate-space counts and the model outcome without financial content', async () => {

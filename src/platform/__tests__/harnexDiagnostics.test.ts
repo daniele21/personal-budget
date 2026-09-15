@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   beginImportV2DiagnosticAttempt,
   getImportV2Diagnostics,
@@ -34,6 +34,10 @@ describe('Harnex import diagnostics', () => {
   beforeEach(() => {
     resetImportV2DiagnosticsForTests();
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('records lifecycle stage, sizes, limits and timing without request or output content', async () => {

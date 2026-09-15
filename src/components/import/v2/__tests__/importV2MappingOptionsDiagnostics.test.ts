@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { profileSpreadsheet } from '../../../../domain/import/v2';
 import {
   beginImportV2DiagnosticAttempt,
@@ -11,6 +11,10 @@ describe('Import V2 mapping option diagnostics', () => {
   beforeEach(() => {
     resetImportV2DiagnosticsForTests();
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('makes an empty date picker visible in the trace without logging labels or samples', () => {
