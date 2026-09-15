@@ -8,21 +8,20 @@ import type { HarnexClient } from '../../../../platform/harnex';
 import { inferImportV2SchemaWithHarnex } from '../schemaInferenceDiagnostics';
 
 function fakeClient(answer: string): HarnexClient {
-  return {
-    connect: vi.fn(async () => ({ status: 'connected' })),
-    probe: vi.fn(async () => ({
-      status: 'available',
-      maxInputCharacters: 12_000,
-      maxJsonSchemaCharacters: 4_096,
-    })),
-    generate: vi.fn(async () => ({
-      status: 'completed',
-      answer,
-      metrics: { totalMs: 5 },
-    })),
-    cancel: vi.fn(async () => ({ cancelled: true })),
-    disconnect: vi.fn(async () => ({ status: 'disconnected' })),
-  };
+  const connect = vi.fn<HarnexClient['connect']>(async () => ({ status: 'connected' }));
+  const probe = vi.fn<HarnexClient['probe']>(async () => ({
+    status: 'available',
+    maxInputCharacters: 12_000,
+    maxJsonSchemaCharacters: 4_096,
+  }));
+  const generate = vi.fn<HarnexClient['generate']>(async () => ({
+    status: 'completed',
+    answer,
+    metrics: { totalMs: 5 },
+  }));
+  const cancel = vi.fn<HarnexClient['cancel']>(async () => ({ cancelled: true }));
+  const disconnect = vi.fn<HarnexClient['disconnect']>(async () => ({ status: 'disconnected' }));
+  return { connect, probe, generate, cancel, disconnect } satisfies HarnexClient;
 }
 
 const profile = profileSpreadsheet({
