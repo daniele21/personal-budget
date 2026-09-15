@@ -14,6 +14,7 @@ Aura Finance is an active Android-first personal-finance product in controlled r
 - `debug-test/**` remains a repository-owned diagnostic channel for exact source revisions without a developer workstation.
 - `repo-template-sw` **0.10.0** is the engineering baseline with `typescript + android + product-ui` profiles and L2 as the target engineering level.
 - `dev` is the shared integration branch; `main` is the stable/release branch.
+- Google Play Internal publication automation has been exercised successfully for the current W13 Aura/Harnex checkpoint: current-source signed Android artifacts were built, verified and published to their controlled `internal` tracks. This proves the automated distribution path, not the remaining physical-device release evidence.
 
 ## Active coordinated work
 
@@ -28,8 +29,8 @@ Aura Finance is an active Android-first personal-finance product in controlled r
 ## Material gaps before a reference-grade L2/release claim
 
 - Physical-device/OEM/TalkBack/text-scaling/real payment-source evidence remains separate `REAL_ENVIRONMENT` evidence where required.
-- Google Play publication automation is repository-owned, but production signing/Play Developer API credentials and an actual controlled-track publication must provide executable evidence before release automation is considered proven end to end.
-- Build identity, immutable release artifact promotion, manifest/checksum, comparable-build delta and bounded retention remain evidence requirements for each release; the release workflow provides the identity/checksum path but a real release run is still required.
+- Google Play Internal publication automation is proven for the current Aura/Harnex W13 checkpoint, including protected signing/Play API execution and controlled-track publication; production/release promotion still requires the applicable release identity, target-environment and approval evidence for that candidate.
+- Build identity, immutable release artifact promotion, manifest/checksum, comparable-build delta and bounded retention remain evidence requirements for each release; the release workflow provides the identity/checksum path and the current Internal qualification now provides an executed controlled-track example.
 - Privacy-owner, rollout and rollback release gates remain authoritative.
 
 ## Current engineering direction
