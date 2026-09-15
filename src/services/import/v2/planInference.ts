@@ -123,11 +123,10 @@ function parsePlan(value: unknown, document: ImportV2RawDocument): ImportV2Trans
 
   const description = value.description;
   if (!isRecord(description)
-    || !hasOnlyKeys(description, ['columnIndexes', 'joinWith'])
+    || !hasOnlyKeys(description, ['columnIndexes'])
     || !Array.isArray(description.columnIndexes)
     || description.columnIndexes.length === 0
-    || !description.columnIndexes.every(integer)
-    || ![' ', ' · '].includes(String(description.joinWith))) return null;
+    || !description.columnIndexes.every(integer)) return null;
 
   const amount = value.amount;
   if (!isRecord(amount) || typeof amount.strategy !== 'string') return null;
@@ -167,7 +166,6 @@ function parsePlan(value: unknown, document: ImportV2RawDocument): ImportV2Trans
     },
     description: {
       columnIndexes: description.columnIndexes,
-      joinWith: description.joinWith as ' ' | ' · ',
     },
     amount: parsedAmount,
   };
@@ -205,6 +203,7 @@ function inputPayload(
       'Use grid when source cells already represent logical columns.',
       'Use delimited-cell only when one source cell contains a repeated logical record delimiter.',
       'For delimited-cell, date/description/amount column indexes refer to fields after splitting that cell.',
+      'Select description source columns only; Aura owns the canonical joining semantics.',
       'Do not invent transaction values. Return ambiguous or unsupported when evidence is insufficient.',
       'When feedback is present, return a complete revised plan rather than a patch.',
     ],
@@ -273,10 +272,9 @@ function planJsonSchema(document: ImportV2RawDocument): string {
         properties: { columnIndex: index, parser: { enum: ['iso-date', 'dmy-slash', 'dmy-dash', 'excel-date'] } },
       },
       description: {
-        type: 'object', additionalProperties: false, required: ['columnIndexes', 'joinWith'],
+        type: 'object', additionalProperties: false, required: ['columnIndexes'],
         properties: {
           columnIndexes: { type: 'array', minItems: 1, maxItems: 8, uniqueItems: true, items: index },
-          joinWith: { enum: [' ', ' · '] },
         },
       },
       amount,
@@ -378,7 +376,7 @@ async function runConnectedInference(
     };
   }
 
-  let rowsPerSheet = Math.min(12, Math.max(2, ...document.sheets.map(({ rows }) => rows.length)));
+  let rowsPerSheet = Math.min(12, Math.max(2, ...document.sheets.map(({ rows }) => rows.length));
   let input = inputPayload(document, rowsPerSheet, options.feedback);
   while (input.length > capability.maxInputCharacters && rowsPerSheet > 2) {
     rowsPerSheet = Math.max(2, Math.floor(rowsPerSheet / 2));
