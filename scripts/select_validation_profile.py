@@ -71,6 +71,9 @@ def classify(paths: list[str], stage: str) -> tuple[str, str, list[str], list[st
         "vite.config.ts",
         "vite.android-runtime.ts",
         "playwright.config.ts",
+        "scripts/run-harnex-two-apk-e2e.sh",
+        "scripts/verify-harnex-import-webview.mjs",
+        "scripts/verify-android-webview.mjs",
     }
     scoped_prefix = ("src/", "tests/", "scripts/")
     lean_prefix = ("docs/", "skills/", "brand-kit/", ".engineering/", ".github/")
@@ -117,6 +120,8 @@ def self_test() -> int:
         (["docs/README.md"], "integration", "lean"),
         (["src/pages/Home.tsx"], "integration", "strong"),
         (["android/app/build.gradle"], "integration", "strong"),
+        (["scripts/run-harnex-two-apk-e2e.sh"], "integration", "strong"),
+        (["scripts/verify-harnex-import-webview.mjs"], "integration", "strong"),
         (["package.json"], "integration", "full"),
         (["docs/README.md"], "release", "full"),
     ]

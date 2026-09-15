@@ -11,7 +11,10 @@ AURA_TEST_PACKAGE="com.staituned.aura.debug.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 TEST_CLASS="com.staituned.aura.harnex.AuraHarnexTwoApkInstrumentedTest"
 CI_UI_REMOTE_VIDEO="/data/local/tmp/android-harnex-two-apk.mp4"
+CI_UI_RUNTIME_LOG="artifacts/android-ci/harnex-ui-runtime-health.log"
+CI_UI_SCREENRECORD_LOG="artifacts/android-ci/harnex-focused-screenrecord.log"
 ci_ui_recorder_pid=""
+ci_ui_monitor_pid=""
 
 if [[ -n "${AURA_HARNEX_EVIDENCE_FILE:-}" ]]; then
   mkdir -p "$(dirname "$AURA_HARNEX_EVIDENCE_FILE")"
@@ -98,6 +101,67 @@ run_test() {
   fi
 }
 
+start_ci_ui_runtime_monitor() {
+  if [[ "${CI:-}" != "true" ]]; then
+    return
+  fi
+
+  mkdir -p artifacts/android-ci
+  : > "$CI_UI_RUNTIME_LOG"
+  (
+    set +e
+    while true; do
+      timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+      adb_state="$(timeout 2s adb get-state 2>&1 || true)"
+      emulator_state="unknown"
+      emulator_rss_kb="unknown"
+      mem_available_kb="$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null || true)"
+      if [[ -s /tmp/aura-android-emulator.pid ]]; then
+        emulator_pid="$(cat /tmp/aura-android-emulator.pid)"
+        if kill -0 "$emulator_pid" 2>/dev/null; then
+          emulator_state="alive"
+          emulator_rss_kb="$(ps -o rss= -p "$emulator_pid" 2>/dev/null | tr -d ' ' || true)"
+        else
+          emulator_state="exited"
+        fi
+      fi
+      printf '%s adb_state=%q emulator_state=%s emulator_rss_kb=%s mem_available_kb=%s\n' \
+        "$timestamp" "$adb_state" "$emulator_state" "${emulator_rss_kb:-unknown}" "${mem_available_kb:-unknown}" \
+        >> "$CI_UI_RUNTIME_LOG"
+      if [[ "$emulator_state" == "exited" ]]; then
+        break
+      fi
+      sleep 2
+    done
+  ) &
+  ci_ui_monitor_pid=$!
+}
+
+stop_ci_ui_runtime_monitor() {
+  if [[ -z "$ci_ui_monitor_pid" ]]; then
+    return
+  fi
+  kill "$ci_ui_monitor_pid" >/dev/null 2>&1 || true
+  wait "$ci_ui_monitor_pid" >/dev/null 2>&1 || true
+  ci_ui_monitor_pid=""
+}
+
+collect_ci_failure_diagnostics() {
+  if [[ "${CI:-}" != "true" ]]; then
+    return
+  fi
+
+  mkdir -p artifacts/android-ci
+  cp /tmp/aura-harnex-import-screenrecord.log "$CI_UI_SCREENRECORD_LOG" 2>/dev/null || true
+  cp /tmp/android-runner/emu-crash-*.db artifacts/android-ci/ 2>/dev/null || true
+  cat /proc/meminfo > artifacts/android-ci/host-meminfo.txt 2>/dev/null || true
+  ps -eo pid,ppid,stat,rss,vsz,etimes,comm,args --sort=-rss \
+    > artifacts/android-ci/host-processes.txt 2>/dev/null || true
+  timeout 5s dmesg > artifacts/android-ci/host-dmesg.txt 2>&1 || true
+  timeout 5s journalctl -k -n 400 --no-pager \
+    > artifacts/android-ci/host-kernel-journal.txt 2>&1 || true
+}
+
 start_ci_ui_media() {
   if [[ "${CI:-}" != "true" ]]; then
     return
@@ -131,9 +195,12 @@ stop_ci_ui_media() {
     return
   fi
 
+  local recorder_status=0
   adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
-  wait "$ci_ui_recorder_pid" || true
+  wait "$ci_ui_recorder_pid" || recorder_status=$?
   ci_ui_recorder_pid=""
+  cp /tmp/aura-harnex-import-screenrecord.log "$CI_UI_SCREENRECORD_LOG" 2>/dev/null || true
+  printf 'AURA_HARNEX_TWO_APK media_recorder_exit status=%s\n' "$recorder_status"
   if ! adb shell test -s "$CI_UI_REMOTE_VIDEO"; then
     cat /tmp/aura-harnex-import-screenrecord.log >&2 || true
     echo "Focused Harnex import media evidence is missing." >&2
@@ -143,9 +210,10 @@ stop_ci_ui_media() {
 }
 
 cleanup_host() {
+  stop_ci_ui_runtime_monitor
   if [[ -n "$ci_ui_recorder_pid" ]]; then
     adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
-    wait "$ci_ui_recorder_pid" || true
+    wait "$ci_ui_recorder_pid" >/dev/null 2>&1 || true
   fi
   adb uninstall "$HOST_PACKAGE" >/dev/null 2>&1 || true
 }
@@ -180,7 +248,11 @@ record_runtime_health post_packaged_lifecycle
 # The lifecycle test leaves the real Host installed, authorized, assigned and model-ready.
 # Exercise the packaged Aura WebView through that exact Binder/control-plane state before cleanup.
 printf 'AURA_HARNEX_TWO_APK scenario=packaged_import_ui aura_package=%s host_package=%s\n' "$AURA_PACKAGE" "$HOST_PACKAGE"
-start_ci_ui_media
+start_ci_ui_runtime_monitor
+if ! start_ci_ui_media; then
+  collect_ci_failure_diagnostics
+  exit 1
+fi
 ui_started_ms="$(date +%s%3N)"
 set +e
 node scripts/verify-harnex-import-webview.mjs
@@ -190,9 +262,14 @@ ui_finished_ms="$(date +%s%3N)"
 printf 'AURA_HARNEX_TWO_APK ui_process_exit status=%s elapsed_ms=%s\n' \
   "$ui_status" "$((ui_finished_ms - ui_started_ms))"
 if [[ "$ui_status" -ne 0 ]]; then
+  collect_ci_failure_diagnostics
   exit "$ui_status"
 fi
-stop_ci_ui_media
+if ! stop_ci_ui_media; then
+  collect_ci_failure_diagnostics
+  exit 1
+fi
+stop_ci_ui_runtime_monitor
 record_runtime_health post_packaged_import_ui
 
 printf 'AURA_HARNEX_TWO_APK result=PASS\n'
