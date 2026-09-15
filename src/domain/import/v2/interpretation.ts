@@ -82,7 +82,6 @@ export interface ImportV2TransformationPlan {
   };
   description: {
     columnIndexes: readonly number[];
-    joinWith: ' ' | ' · ';
   };
   amount: ImportV2AmountPlan;
 }
