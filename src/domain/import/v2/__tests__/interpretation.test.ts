@@ -36,7 +36,7 @@ const plan: ImportV2TransformationPlan = {
     firstDataRowNumber: 2,
   },
   date: { columnIndex: 0, parser: 'dmy-slash' },
-  description: { columnIndexes: [1], joinWith: ' ' },
+  description: { columnIndexes: [1] },
   amount: {
     strategy: 'debit-credit',
     debitColumnIndex: 2,
@@ -57,7 +57,7 @@ describe('Import V2 interactive interpretation contract', () => {
 
     const issues = validateImportV2TransformationPlan(document, {
       ...plan,
-      description: { columnIndexes: [1, 1], joinWith: ' ' },
+      description: { columnIndexes: [1, 1] },
       amount: {
         strategy: 'debit-credit',
         debitColumnIndex: 2,
