@@ -40,7 +40,7 @@ describe('FileUploadStep', () => {
 
     expect(screen.getByText('Processed only on this device')).toBeInTheDocument();
     expect(screen.getByText(/common or custom column names/)).toBeInTheDocument();
-    expect(screen.queryByText(/Gemini|Google|AI/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\b(?:Gemini|Google|AI)\b/i)).not.toBeInTheDocument();
 
     const file = new File(['date,description,amount'], 'transactions.csv', { type: 'text/csv' });
     fireEvent.change(screen.getByLabelText('Choose transaction file'), { target: { files: [file] } });
