@@ -90,9 +90,13 @@ function materializeRows(
   const structuralFailures: number[] = [];
 
   for (const row of rows) {
+    const isHeader = row.rowNumber === plan.layout.headerRowNumber;
+    const isData = row.rowNumber >= plan.layout.firstDataRowNumber;
+    if (!isHeader && !isData) continue;
+
     const cells = logicalCells(row, plan);
     if (!cells) {
-      if (row.rowNumber >= plan.layout.firstDataRowNumber) structuralFailures.push(row.rowNumber);
+      if (isData) structuralFailures.push(row.rowNumber);
       continue;
     }
     materialized.push({
@@ -130,13 +134,9 @@ function resolvedMapping(
     headerRowNumber: plan.layout.headerRowNumber,
     date: { ...plan.date },
     descriptionColumnIndexes: [...plan.description.columnIndexes],
-    amount: plan.amount.strategy === 'debit-credit'
-      ? { ...plan.amount }
-      : plan.amount.strategy === 'amount-direction'
-        ? { ...plan.amount }
-        : { ...plan.amount },
+    amount: { ...plan.amount },
     currencyColumnIndexes: [],
-  };
+  } as ResolvedImportV2Mapping;
 }
 
 export function createImportV2InterpretationPreview(
