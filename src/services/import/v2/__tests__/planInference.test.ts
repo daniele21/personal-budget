@@ -49,7 +49,7 @@ const plan: ImportV2TransformationPlan = {
     firstDataRowNumber: 2,
   },
   date: { columnIndex: 0, parser: 'dmy-slash' },
-  description: { columnIndexes: [1], joinWith: ' ' },
+  description: { columnIndexes: [1] },
   amount: { strategy: 'debit-credit', debitColumnIndex: 2, creditColumnIndex: 3 },
 };
 
@@ -97,6 +97,7 @@ describe('inferImportV2PlanWithHarnex', () => {
     expect(request.input).toContain('Data Operazione;Causale;Uscite;Entrate');
     expect(request.input).not.toContain('SECRET-HIDDEN');
     expect(request.jsonSchema).toContain('delimited-cell');
+    expect(request.jsonSchema).not.toContain('joinWith');
   });
 
   it('rejects model plans that reference an unknown source row or sheet', async () => {
