@@ -12,15 +12,17 @@ Durable owners: [`V2 spec`](../specs/harnex-assisted-transaction-import-v2.md), 
 
 ## Integrated checkpoint
 
-- Aura `dev`: `7bc1d7bee30431abeeccfa30068537ae8a299463` (PR #26 merged: Harnex readiness/recovery UX).
-- Harnex `dev`: `ef1ac35c1a8e97ce7e2098948b4d463b7d0bd920` (PR #569 merged: explicit consumer authorization recovery).
-- Integrated Harnex runtime implementation pin used by Aura automation remains `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`; PR #569 changes the Host authorization UI/read presentation, not the Binder/public protocol.
+- Aura `dev`: `d6282e3c851c240741ccea041d9e1a8e1466a5eb` (PR #27 merged after the Harnex readiness/recovery remediation).
+- Harnex `dev`: `772a66083d6fa3d5e22ae00f659506a067f412fd` (PR #569 authorization UX + PR #570 Play SDK bootstrap fix integrated).
+- Integrated Harnex runtime implementation pin used by Aura automation remains `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`; PR #569 changes the Host authorization UI/read presentation, not the Binder/public protocol. Compatibility with the newer Host was additionally proven by the exact-pair cross-repo run below.
 - Aura PR #26 exact-head Repository health run `34939786383`: STRONG green, including browser `FULL_MEDIA`, web validation and Android API 36 packaged instrumentation/WebView evidence.
 - Harnex PR #569 exact-head Validate run `34943646634`: FULL green; authorization UI `FULL_MEDIA` run `34940793083` proves `Needs approval -> Allow Aura Finance -> Connected` with source-bound media.
 - Cross-repo exact-pair run `34942259376`: Aura `52c85c8b373ac1dccbe11e46b2068f1fbebcfa3b` + Harnex `4b7b22e594738edf428d19f2d73d780c87a7ee45` green for Host-absent fail-closed behavior, authorized packaged lifecycle and assisted import UI.
-- Harnex post-merge Repository health run `34944441843` is green on `dev@ef1ac35c1a8e97ce7e2098948b4d463b7d0bd920`.
-- Google Play Internal qualification `1.0.9` was successfully published for the earlier Aura source `c0c86f4cad1356f95e8d6ed54506fc6f2a5985be`. It is no longer current-source W13 evidence after PR #26; a fresh qualification candidate must be generated from the final current `dev` checkpoint before physical W13.1 evidence is accepted.
-- Deterministic automated integration evidence for the readiness remediation is complete. Emulator evidence is not physical-device evidence.
+- Aura current-source qualification: product source `dev@d6282e3c851c240741ccea041d9e1a8e1466a5eb`, qualification commit `9ee8bbfd110d86279b62caa68e7ee6913f9ba96f`, Google Play Internal `1.0.10` / versionCode `100162`, package `com.staituned.aura`, track `internal`.
+- Aura qualification Repository health run `34945603120`: FULL deterministic validation is green on the exact qualification candidate. The first Android-emulator attempt reached `AURA_HARNEX_TWO_APK result=PASS` before the emulator process went offline during media collection; rerunning only that same exact-head Android job completed instrumentation, Harnex two-APK, WebView and media evidence successfully. This classifies the first failure as runner/emulator instability rather than a product regression.
+- Aura Google Play Internal publication run `34945602267` succeeded on rerun after the FULL gate was green. Signed qualification evidence artifact `10389205546` (`aura-internal-qualification-1.0.10-100162`), artifact ZIP SHA-256 `22ec3939665402ec46200618b6674a71ac57dc4311269584631363a285d6888c`.
+- Harnex Google Play Internal publication run `34946104432` succeeded from `dev@772a66083d6fa3d5e22ae00f659506a067f412fd`: versionName `1.0.57`, versionCode `57`, package `io.github.daniele21.localllm.phonetest`, track `internal`. Released AAB evidence artifact `10387880763`, artifact ZIP SHA-256 `314a9bae1438f565616081ff5f4ed84f61ed2d797fa338017251e496880a03e3`.
+- Deterministic automated integration, source-bound media evidence and controlled-track publication evidence are complete for the current W13 checkpoint. Emulator/CI/Play publication evidence does not replace physical-device W13.1-W13.6 evidence.
 
 ## Execution DAG
 
@@ -131,13 +133,13 @@ Promotion `dev -> main` is a separate explicit action after release qualificatio
 
 ## Immediate next actions
 
-1. Regenerate the Aura Google Play Internal qualification candidate from the final current `dev` checkpoint after this tracker refresh is integrated; use a new semantic patch version because `1.0.9` is already published for the superseded source.
-2. Install the fresh Play-delivered Aura candidate and production-representative Harnex build on the first physical ARM64 reference device; begin W13.1 with Aura initially unauthorized.
-3. Execute unauthorized -> explicit exact-identity approval -> schema/category assistance -> restart/repeat -> mismatch/update-reinstall scenarios without sideloading Aura.
-4. Prepare the synthetic/approved W13.3 corpus and performance/result sheet without financial-content logging; run W13.3-W13.5 in parallel once the W13.1 topology is settled.
+1. Install/update the Play-delivered Harnex `1.0.57` and Aura `1.0.10` candidates on the first physical ARM64 reference device; begin W13.1 with Aura initially unauthorized in Harnex.
+2. In Aura, verify that import assistance reports the authorization-required state and offers the Harnex recovery action; in Harnex verify `Needs approval`, review the exact Aura identity and explicitly allow it. Return to Aura and verify readiness refreshes to ready without reinstall/sideload.
+3. Execute schema then category assistance on synthetic/approved input, restart both apps and repeat, then exercise disabled/manual-fallback and the relevant update/reinstall/mismatch path for the planned Play topology.
+4. Prepare/run the synthetic/approved W13.3 corpus and performance/result sheet without financial-content logging; run W13.3-W13.5 in parallel once the W13.1 topology is settled.
 5. Start/continue W13.6 governance approval in parallel.
 6. Record only evidence references/state transitions here; put durable conclusions in canonical owners.
 
 ## Resume checkpoint
 
-Aura integrated source: `dev@7bc1d7bee30431abeeccfa30068537ae8a299463`. Harnex integrated source: `dev@ef1ac35c1a8e97ce7e2098948b4d463b7d0bd920`. W0-W12 DONE; readiness-remediation exact-head and cross-app deterministic automation green. W13 ACTIVE with six real-environment gates READY; none is claimed complete. The prior Play Internal `1.0.9` candidate is superseded as release evidence because it predates Aura PR #26. Next discriminating action: publish a fresh current-source Internal candidate, then execute W13.1 production-representative package/signer/Play authorization evidence on a physical ARM64 device.
+Aura integrated source: `dev@d6282e3c851c240741ccea041d9e1a8e1466a5eb`; current Play Internal candidate `1.0.10` / `100162` from qualification `9ee8bbfd110d86279b62caa68e7ee6913f9ba96f`. Harnex integrated source: `dev@772a66083d6fa3d5e22ae00f659506a067f412fd`; current Play Internal build `1.0.57` / `57`. W0-W12 DONE; deterministic exact-head/cross-app automation, FULL/FULL_MEDIA evidence and controlled-track publication are current. W13 ACTIVE with six real-environment gates READY; none is claimed complete. Next discriminating action: execute W13.1 production-representative package/signer/Play authorization evidence on a physical ARM64 device using the Play-delivered builds.
