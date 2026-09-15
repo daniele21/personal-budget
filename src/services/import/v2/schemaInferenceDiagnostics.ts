@@ -76,6 +76,11 @@ export async function inferImportV2SchemaWithHarnex(
   const attemptId = ensureImportV2DiagnosticAttempt(profile.sourceKind);
   const summary = profileSummary(profile);
   recordImportV2Diagnostic('schema-profile', 'profiled', summary, attemptId);
+  if (options.feedback) {
+    recordImportV2Diagnostic('schema-feedback', 'requested', {
+      feedbackArea: options.feedback.area,
+    }, attemptId);
+  }
 
   try {
     const outcome = await inferImportV2SchemaWithHarnexRaw(profile, options);
