@@ -126,6 +126,11 @@ export type ImportV2InterpretationFeedbackArea =
 
 export interface ImportV2InterpretationFeedback {
   area: ImportV2InterpretationFeedbackArea;
+  previousProposal?: {
+    proposalId: string;
+    plan: ImportV2TransformationPlan;
+  };
+  /** Transitional W12.1 compatibility; removed once candidate mapping is retired. */
   previousSelection?: {
     sheetId: string;
     headerCandidateId: string;
@@ -163,10 +168,12 @@ export function validateImportV2TransformationPlan(
   const sheet = document.sheets.find(({ id }) => id === plan.sheetId);
   if (!sheet) return [{ code: 'unknown-sheet' }];
 
+  const sampledRows = new Set(sheet.rows.map(({ rowNumber }) => rowNumber));
   if (
     plan.layout.headerRowNumber < 1
     || plan.layout.firstDataRowNumber <= plan.layout.headerRowNumber
-    || plan.layout.firstDataRowNumber > sheet.totalNonEmptyRows + plan.layout.headerRowNumber
+    || !sampledRows.has(plan.layout.headerRowNumber)
+    || !sampledRows.has(plan.layout.firstDataRowNumber)
   ) {
     issues.push({ code: 'invalid-row-range' });
   }
