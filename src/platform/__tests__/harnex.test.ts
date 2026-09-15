@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createHarnexClient,
   HARNEX_SCHEMA_INFERENCE_USE_CASE,
+  openHarnexHostApp,
   type NativeHarnexPlugin,
 } from '../harnex';
 import { resolvePlatformCapabilities } from '../platformCapabilities';
@@ -9,6 +10,7 @@ import { resolvePlatformCapabilities } from '../platformCapabilities';
 function nativePlugin(): NativeHarnexPlugin {
   return {
     connect: vi.fn(async () => ({ status: 'connected' as const })),
+    openHostApp: vi.fn(async () => ({ status: 'opened' as const })),
     probe: vi.fn(async () => ({
       status: 'available' as const,
       maxInputCharacters: 12_000,
@@ -27,12 +29,14 @@ function nativePlugin(): NativeHarnexPlugin {
 describe('createHarnexClient', () => {
   it('fails closed in the browser harness without invoking the native plugin', async () => {
     const native = nativePlugin();
-    const client = createHarnexClient(
-      () => resolvePlatformCapabilities('web'),
-      native,
-    );
+    const capabilities = () => resolvePlatformCapabilities('web');
+    const client = createHarnexClient(capabilities, native);
 
     await expect(client.connect()).resolves.toMatchObject({
+      status: 'unavailable',
+      failure: { code: 'PLATFORM_UNSUPPORTED' },
+    });
+    await expect(openHarnexHostApp(capabilities, native)).resolves.toMatchObject({
       status: 'unavailable',
       failure: { code: 'PLATFORM_UNSUPPORTED' },
     });
@@ -54,20 +58,20 @@ describe('createHarnexClient', () => {
     await expect(client.disconnect()).resolves.toEqual({ status: 'disconnected' });
 
     expect(native.connect).not.toHaveBeenCalled();
+    expect(native.openHostApp).not.toHaveBeenCalled();
     expect(native.probe).not.toHaveBeenCalled();
     expect(native.generate).not.toHaveBeenCalled();
     expect(native.cancel).not.toHaveBeenCalled();
     expect(native.disconnect).not.toHaveBeenCalled();
   });
 
-  it('forwards Android calls through the typed native boundary', async () => {
+  it('forwards Android inference and host-launch calls through typed native boundaries', async () => {
     const native = nativePlugin();
-    const client = createHarnexClient(
-      () => resolvePlatformCapabilities('android'),
-      native,
-    );
+    const capabilities = () => resolvePlatformCapabilities('android');
+    const client = createHarnexClient(capabilities, native);
 
     await expect(client.connect()).resolves.toEqual({ status: 'connected' });
+    await expect(openHarnexHostApp(capabilities, native)).resolves.toEqual({ status: 'opened' });
     await expect(client.probe(HARNEX_SCHEMA_INFERENCE_USE_CASE)).resolves.toMatchObject({
       status: 'available',
       maxInputCharacters: 12_000,
@@ -82,6 +86,7 @@ describe('createHarnexClient', () => {
     await expect(client.cancel()).resolves.toEqual({ cancelled: true });
     await expect(client.disconnect()).resolves.toEqual({ status: 'disconnected' });
 
+    expect(native.openHostApp).toHaveBeenCalledTimes(1);
     expect(native.probe).toHaveBeenCalledWith({
       useCaseId: HARNEX_SCHEMA_INFERENCE_USE_CASE,
     });
