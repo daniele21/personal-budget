@@ -35,7 +35,7 @@ const plan: ImportV2TransformationPlan = {
     firstDataRowNumber: 2,
   },
   date: { columnIndex: 0, parser: 'dmy-slash' },
-  description: { columnIndexes: [1], joinWith: ' ' },
+  description: { columnIndexes: [1] },
   amount: {
     strategy: 'debit-credit',
     debitColumnIndex: 2,
@@ -71,6 +71,28 @@ describe('Import V2 interpretation executor', () => {
         provenance: expect.objectContaining({ sourceRowNumber: 4 }),
       }),
     ]);
+  });
+
+  it('honors firstDataRowNumber instead of treating metadata after the header as a transaction', () => {
+    const withMetadataGap: ImportV2RawDocument = {
+      ...document,
+      sheets: [{
+        ...document.sheets[0]!,
+        rows: [
+          { rowNumber: 1, cells: ['Data Operazione;Causale;Uscite;Entrate'] },
+          { rowNumber: 2, cells: ['Periodo;Settembre;;;'] },
+          { rowNumber: 3, cells: ['12/09/2026;SUPERMERCATO;43,20;'] },
+        ],
+        totalNonEmptyRows: 3,
+      }],
+    };
+    const result = createImportV2InterpretationPreview(withMetadataGap, {
+      ...plan,
+      layout: { ...plan.layout, firstDataRowNumber: 3 },
+    }, '2026-09-30');
+
+    expect(result.unresolvedSourceRowNumbers).toEqual([]);
+    expect(result.preview.map(({ provenance }) => provenance.sourceRowNumber)).toEqual([3]);
   });
 
   it('marks a row unresolved instead of silently dropping a malformed logical record', () => {
