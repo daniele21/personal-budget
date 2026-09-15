@@ -6,6 +6,7 @@ export const IMPORT_V2_PROFILE_LIMITS = {
   headerCandidates: 4,
   samplesPerColumn: 8,
   sampleCodePoints: 160,
+  discoveryColumnsPerRole: 8,
 } as const;
 
 export type ImportV2DateParserId =
@@ -135,9 +136,11 @@ type CellAnalysis = {
 const DEBIT_HEADER = /\b(debit|debit amount|dare|addebiti?|spese?|uscite?)\b/i;
 const CREDIT_HEADER = /\b(credit|avere|accrediti?|entrate?)\b/i;
 const AMOUNT_HEADER = /\b(amount|importo|value|valore|movimento)\b/i;
+const DATE_HEADER = /\b(date|data|booking date|booked at|transaction date|operation date)\b/i;
 const CURRENCY_HEADER = /\b(currency|valuta|divisa)\b/i;
 const DIRECTION_HEADER = /\b(direction|type|tipo|segno|movimento)\b/i;
 const DIRECTION_VALUE = /^(debit|credit|expense|income|spesa|entrata|uscita|addebito|accredito|dare|avere)$/i;
+const STRING_DATE_PARSERS: readonly ImportV2DateParserId[] = ['iso-date', 'dmy-slash', 'dmy-dash'];
 
 function roundRatio(value: number): number {
   return Math.round(value * 1_000) / 1_000;
@@ -231,6 +234,12 @@ function isHeaderLike(row: ProfileRowInput): boolean {
   return formulaCount === 0 && textCount / nonEmpty.length >= 0.75;
 }
 
+function isFallbackHeaderCandidate(row: ProfileRowInput): boolean {
+  const analyses = row.cells.map(analyzeCell);
+  const nonEmpty = analyses.filter(({ kind }) => kind !== 'empty');
+  return nonEmpty.length >= 2 && nonEmpty.every(({ kind }) => kind !== 'formula');
+}
+
 function dataSupportScore(rows: ProfileRowInput[], headerIndex: number): number {
   const candidates = rows.slice(headerIndex + 1, headerIndex + 4);
   if (candidates.length === 0) return 0;
@@ -289,10 +298,21 @@ function isSafeCandidateColumn(column: ColumnProfile): boolean {
   return column.formulaCount === 0 && column.mergedCellCount === 0;
 }
 
+function discoveryColumns(columns: ColumnProfile[]): ColumnProfile[] {
+  return columns
+    .filter((column) => isSafeCandidateColumn(column) && column.nonEmptyCount > 0)
+    .slice(0, IMPORT_V2_PROFILE_LIMITS.discoveryColumnsPerRole);
+}
+
 function dateCandidates(columns: ColumnProfile[]): DateCandidate[] {
-  return columns.flatMap((column) => {
-    if (!isSafeCandidateColumn(column) || column.dateLikeRatio < 0.6 || column.nonEmptyCount === 0) return [];
-    return column.dateParsers.map((parser) => ({
+  const safeColumns = discoveryColumns(columns);
+  const evidenced = safeColumns.filter((column) => column.dateParsers.length > 0);
+  const fallback = safeColumns.filter((column) => DATE_HEADER.test(column.header));
+  const selected = evidenced.length > 0 ? evidenced : (fallback.length > 0 ? fallback : safeColumns);
+
+  return selected.flatMap((column) => {
+    const parsers = column.dateParsers.length > 0 ? column.dateParsers : STRING_DATE_PARSERS;
+    return parsers.map((parser) => ({
       id: `${column.id}:date:${parser}`,
       columnId: column.id,
       parser,
@@ -300,36 +320,35 @@ function dateCandidates(columns: ColumnProfile[]): DateCandidate[] {
   });
 }
 
-function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
-  const result: AmountCandidate[] = [];
-  const numeric = columns.filter(
-    (column) => isSafeCandidateColumn(column) && column.numericRatio >= 0.6 && column.nonEmptyCount > 0,
-  );
+function looksAmountLike(column: ColumnProfile): boolean {
+  return column.numericRatio > 0
+    || AMOUNT_HEADER.test(column.header)
+    || DEBIT_HEADER.test(column.header)
+    || CREDIT_HEADER.test(column.header)
+    || column.samples.some((sample) => /\d/.test(sample));
+}
 
-  for (const column of numeric) {
-    result.push({
-      id: `${column.id}:amount:signed-negative-expense`,
-      strategy: 'signed-negative-expense',
-      columnId: column.id,
-    });
-
-    if (
-      column.negativeNumericRatio === 0
-      && column.positiveNumericRatio >= 0.6
-      && DEBIT_HEADER.test(column.header)
-    ) {
-      result.push({
-        id: `${column.id}:amount:signed-positive-expense`,
-        strategy: 'signed-positive-expense',
-        columnId: column.id,
-      });
+function addDebitCreditCandidates(result: AmountCandidate[], columns: ColumnProfile[]): void {
+  const explicitDebits = columns.filter((column) => DEBIT_HEADER.test(column.header));
+  const explicitCredits = columns.filter((column) => CREDIT_HEADER.test(column.header));
+  if (explicitDebits.length > 0 && explicitCredits.length > 0) {
+    for (const debit of explicitDebits) {
+      for (const credit of explicitCredits) {
+        if (debit.id === credit.id) continue;
+        result.push({
+          id: `${debit.id}+${credit.id}:amount:debit-credit`,
+          strategy: 'debit-credit',
+          debitColumnId: debit.id,
+          creditColumnId: credit.id,
+        });
+      }
     }
+    return;
   }
 
-  const debits = numeric.filter((column) => DEBIT_HEADER.test(column.header));
-  const credits = numeric.filter((column) => CREDIT_HEADER.test(column.header));
-  for (const debit of debits) {
-    for (const credit of credits) {
+  const sparse = columns.filter((column) => column.nonEmptyRatio < 0.9).slice(0, 4);
+  for (const debit of sparse) {
+    for (const credit of sparse) {
       if (debit.id === credit.id) continue;
       result.push({
         id: `${debit.id}+${credit.id}:amount:debit-credit`,
@@ -339,14 +358,39 @@ function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
       });
     }
   }
+}
 
-  const directions = columns.filter(
-    (column) => isSafeCandidateColumn(column)
-      && (column.directionRatio >= 0.6 || DIRECTION_HEADER.test(column.header)),
+function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
+  const result: AmountCandidate[] = [];
+  const safeColumns = discoveryColumns(columns);
+  const numeric = safeColumns.filter((column) => column.numericRatio > 0);
+  const hinted = safeColumns.filter(looksAmountLike);
+  const amountColumns = numeric.length > 0 ? numeric : hinted;
+
+  for (const column of amountColumns) {
+    result.push({
+      id: `${column.id}:amount:signed-negative-expense`,
+      strategy: 'signed-negative-expense',
+      columnId: column.id,
+    });
+
+    if (column.negativeNumericRatio === 0) {
+      result.push({
+        id: `${column.id}:amount:signed-positive-expense`,
+        strategy: 'signed-positive-expense',
+        columnId: column.id,
+      });
+    }
+  }
+
+  addDebitCreditCandidates(result, amountColumns);
+
+  const directions = safeColumns.filter(
+    (column) => column.directionRatio > 0 || DIRECTION_HEADER.test(column.header),
   );
-  const amounts = numeric.filter((column) => AMOUNT_HEADER.test(column.header));
-  for (const amount of amounts) {
+  for (const amount of amountColumns) {
     for (const direction of directions) {
+      if (amount.id === direction.id) continue;
       result.push({
         id: `${amount.id}+${direction.id}:amount:amount-direction`,
         strategy: 'amount-direction',
@@ -361,27 +405,36 @@ function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
 }
 
 function descriptionCandidates(columns: ColumnProfile[]): string[] {
-  return columns
-    .filter((column) =>
-      isSafeCandidateColumn(column)
-      && column.textRatio >= 0.6
-      && column.directionRatio < 0.6
-      && !DIRECTION_HEADER.test(column.header)
-      && !CURRENCY_HEADER.test(column.header)
-      && !/^[A-Z]{3}$/i.test(column.samples[0] ?? ''),
-    )
-    .map(({ id }) => id);
+  const safeColumns = discoveryColumns(columns);
+  const textCandidates = safeColumns.filter((column) =>
+    column.textRatio > 0
+    && column.directionRatio < 1
+    && !DIRECTION_HEADER.test(column.header)
+    && !CURRENCY_HEADER.test(column.header)
+    && !/^[A-Z]{3}$/i.test(column.samples[0] ?? ''),
+  );
+  const selected = textCandidates.length > 0
+    ? textCandidates
+    : safeColumns.filter((column) => !CURRENCY_HEADER.test(column.header));
+  return selected.map(({ id }) => id);
 }
 
 function profileSheet(sheet: ProfileSheetInput): SheetProfile {
   const searchableRows = sheet.rows.slice(0, IMPORT_V2_PROFILE_LIMITS.headerSearchRows);
-  const ranked = searchableRows
+  const scored = searchableRows.map((row, index) => ({
+    row,
+    index,
+    score: isHeaderLike(row) ? 1 + dataSupportScore(sheet.rows, index) : 0,
+  }));
+  const primary = scored.filter(({ score }) => score > 0);
+  const fallback = searchableRows
     .map((row, index) => ({
       row,
       index,
-      score: isHeaderLike(row) ? 1 + dataSupportScore(sheet.rows, index) : 0,
+      score: isFallbackHeaderCandidate(row) ? 0.25 + dataSupportScore(sheet.rows, index) : 0,
     }))
-    .filter(({ score }) => score > 0)
+    .filter(({ score }) => score > 0);
+  const ranked = (primary.length > 0 ? primary : fallback)
     .sort((left, right) => right.score - left.score || left.row.rowNumber - right.row.rowNumber)
     .slice(0, IMPORT_V2_PROFILE_LIMITS.headerCandidates);
 
