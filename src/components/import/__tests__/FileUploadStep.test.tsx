@@ -44,7 +44,7 @@ describe('FileUploadStep', () => {
 
     const file = new File(['date,description,amount'], 'transactions.csv', { type: 'text/csv' });
     fireEvent.change(screen.getByLabelText('Choose transaction file'), { target: { files: [file] } });
-    fireEvent.click(screen.getByRole('button', { name: 'Validate file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze file' }));
     expect(onFileSelected).toHaveBeenCalledWith(file);
   });
 
@@ -76,7 +76,8 @@ describe('FileUploadStep', () => {
     render(<FileUploadStep onFileSelected={vi.fn()} isProcessing={false} />);
 
     expect(await screen.findByText('Harnex assistance ready')).toBeInTheDocument();
-    expect(screen.getByText(/File structure and Harnex connection are separate checks/)).toBeInTheDocument();
+    expect(screen.getByText(/File safety and Harnex availability are separate checks/)).toBeInTheDocument();
+    expect(screen.getByText(/Harnex can help identify them from a bounded on-device profile/)).toBeInTheDocument();
     expect(mocks.connect).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledTimes(1));
   });
