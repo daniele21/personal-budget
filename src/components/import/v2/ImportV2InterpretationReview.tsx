@@ -10,6 +10,7 @@ import { Button } from '../../ui';
 
 interface ImportV2InterpretationReviewProps {
   proposal: ImportV2InterpretationProposal;
+  issue?: string | null;
   isBusy?: boolean;
   onConfirm: () => void;
   onRequestRevision: (area: ImportV2InterpretationFeedbackArea) => void;
@@ -48,6 +49,7 @@ function planSummary(plan: ImportV2TransformationPlan): string[] {
 
 export function ImportV2InterpretationReview({
   proposal,
+  issue = null,
   isBusy = false,
   onConfirm,
   onRequestRevision,
@@ -107,9 +109,16 @@ export function ImportV2InterpretationReview({
         </div>
       )}
 
+      {issue && (
+        <div className="flex gap-3 rounded-2xl border border-error/25 bg-error/10 p-4" role="alert">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-error" aria-hidden="true" />
+          <p className="text-sm font-semibold leading-relaxed text-error">{issue}</p>
+        </div>
+      )}
+
       {!showFeedback ? (
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button type="button" fullWidth disabled={isBusy} onClick={onConfirm}>
+          <Button type="button" fullWidth disabled={isBusy || Boolean(issue)} onClick={onConfirm}>
             Yes, this is correct
           </Button>
           <Button type="button" variant="secondary" fullWidth disabled={isBusy} onClick={() => setShowFeedback(true)}>
