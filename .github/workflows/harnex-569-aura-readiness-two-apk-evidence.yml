@@ -108,6 +108,16 @@ jobs:
           configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/debug/google-services.json)"
           test "$configured_project" = "$VITE_ANDROID_FIREBASE_PROJECT_ID"
 
+      - name: Configure isolated Android CI Firebase identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::${password}"
+          echo 'AURA_ANDROID_CI_FIREBASE_EMULATORS=true' >> "$GITHUB_ENV"
+          echo 'AURA_ANDROID_CI_AUTH_EMAIL=android-e2e@aura.invalid' >> "$GITHUB_ENV"
+          printf 'AURA_ANDROID_CI_AUTH_PASSWORD=%s\n' "$password" >> "$GITHUB_ENV"
+
       - name: Build packaged Aura app and instrumentation
         shell: bash
         run: |
@@ -153,6 +163,7 @@ jobs:
             -camera-front none \
             > /tmp/aura-harnex-569-emulator.log 2>&1 &
           emulator_pid=$!
+          echo "$emulator_pid" > /tmp/aura-harnex-569-emulator.pid
           if ! timeout 240s adb wait-for-device; then
             tail -n 200 /tmp/aura-harnex-569-emulator.log || true
             exit 1
@@ -176,6 +187,18 @@ jobs:
           adb shell input keyevent 82 || true
           adb devices -l
 
+      - name: Start isolated Firebase Auth and Firestore emulators
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup setsid npx --yes firebase-tools@15.30.0 emulators:start \
+            --only auth,firestore \
+            --project demo-aura-android-ci \
+            --config firebase.json \
+            > /tmp/aura-harnex-569-firebase-emulators.log 2>&1 &
+          echo "$!" > /tmp/aura-harnex-569-firebase-emulators.pid
+          node scripts/seed-android-ci-firebase-emulators.mjs
+
       - name: Run exact Aura-Harnex two-APK lifecycle
         shell: bash
         run: |
@@ -189,9 +212,19 @@ jobs:
         run: |
           mkdir -p artifacts/harnex-569
           cp /tmp/aura-harnex-569-emulator.log artifacts/harnex-569/emulator.log || true
+          cp /tmp/aura-harnex-569-firebase-emulators.log artifacts/harnex-569/firebase-emulators.log || true
           timeout 15s adb logcat -d > artifacts/harnex-569/logcat.txt 2>&1 || true
           timeout 15s adb shell dumpsys package com.staituned.aura.debug > artifacts/harnex-569/aura-package.txt 2>&1 || true
           timeout 15s adb shell dumpsys package io.github.daniele21.localllm.phonetest.debug > artifacts/harnex-569/harnex-package.txt 2>&1 || true
+
+      - name: Stop isolated Firebase emulators
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f /tmp/aura-harnex-569-firebase-emulators.pid ]]; then
+            firebase_pid="$(cat /tmp/aura-harnex-569-firebase-emulators.pid)"
+            kill -- "-${firebase_pid}" 2>/dev/null || true
+          fi
 
       - name: Upload exact cross-app evidence
         if: always()
