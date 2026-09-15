@@ -8,6 +8,10 @@ import {
   type StructuredImportValidationResult,
 } from '../../domain/import';
 import type { SpreadsheetProfile } from '../../domain/import/v2';
+import {
+  beginImportV2DiagnosticAttempt,
+  recordImportV2Diagnostic,
+} from '../../lib/importV2Diagnostics';
 import { isAuraPortableArchive } from '../archive/archiveReader';
 
 export type TransactionImportFileReadResult =
@@ -62,6 +66,13 @@ function legacyRows(rows: RawStructuredImportRow[]): string[][] | null {
   return header ? stringRows : null;
 }
 
+function sourceKindHint(file: File): 'csv' | 'xlsx' | 'unknown' {
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.csv')) return 'csv';
+  if (lowerName.endsWith('.xlsx')) return 'xlsx';
+  return 'unknown';
+}
+
 /**
  * Classifies archive, legacy Aura CSV and deterministic V1 content in that
  * order. Only a V1-blocked supported spreadsheet can continue into the local
@@ -91,9 +102,18 @@ export async function readTransactionImportFile(
     return { kind: 'structured', sheetName: local.spreadsheet.sheetName, validation };
   }
 
+  const attemptId = beginImportV2DiagnosticAttempt(sourceKindHint(file));
   const profiled = await readSpreadsheetProfile(file);
-  if (profiled.kind === 'profiled') return { kind: 'mapping-required', profile: profiled.profile };
+  if (profiled.kind === 'profiled') {
+    recordImportV2Diagnostic('file-route', 'mapping-required', {
+      sourceKind: profiled.profile.sourceKind,
+    }, attemptId);
+    return { kind: 'mapping-required', profile: profiled.profile };
+  }
 
+  recordImportV2Diagnostic('file-route', 'profile-rejected', {
+    reasonCode: profiled.reason,
+  }, attemptId);
   return {
     kind: 'structured',
     sheetName: local.spreadsheet.sheetName,

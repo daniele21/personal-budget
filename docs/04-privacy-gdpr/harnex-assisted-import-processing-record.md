@@ -2,7 +2,7 @@
 
 ## Status
 
-Engineering processing record, updated 2026-09-12 for the implemented W10 boundary. Deterministic integration evidence is complete, but this is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
+Engineering processing record, updated 2026-09-15 for the implemented W12.1 boundary and privacy-safe troubleshooting diagnostics. Deterministic integration evidence is complete, but this is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
 
 The privacy/legal owner must reconcile this record with the organization’s authoritative data inventory, role/lawful-basis register and DPIA process before general release.
 
@@ -65,7 +65,9 @@ No silent cloud fallback is allowed. Adding remote inference or content upload r
 | Category/group candidate IDs | ephemeral import session only |
 | Imported transactions | existing Aura canonical local retention after explicit commit |
 
-Aura must not intentionally log filenames, sample cells, transaction descriptions, dates, amounts, categories or generated output. Harnex normal logs/telemetry for these use cases must remain content-free. Any optional Harnex sensitive-activity persistence outside the normal Consumer contract must be disabled/not used for this feature unless separately approved.
+Aura must not intentionally log filenames, sheet/header labels, sample cells, transaction descriptions, dates, amounts, categories, prompt/schema content or generated output. Harnex normal logs/telemetry for these use cases must remain content-free. Any optional Harnex sensitive-activity persistence outside the normal Consumer contract must be disabled/not used for this feature unless separately approved.
+
+For troubleshooting, Aura may emit a **content-free Import V2 diagnostic trace**. Its fields are limited to an ephemeral attempt ID, closed stage/result/failure/ambiguity codes, candidate/option counts, request/schema character counts, advertised capability limits and bounded timing/token counts. Aura keeps at most 128 events in session memory and exposes that bounded trace only for runtime troubleshooting; it does not persist the trace in canonical app storage. The runtime console may receive the same content-free structured events. Adding filenames, labels, samples, transaction content, categories, prompt/schema bodies or generated answers to this trace is prohibited.
 
 ## Security and lifecycle controls
 

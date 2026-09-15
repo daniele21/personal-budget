@@ -1,5 +1,8 @@
 import { registerPlugin } from '@capacitor/core';
 import {
+  recordImportV2Diagnostic,
+} from '../lib/importV2Diagnostics';
+import {
   getPlatformCapabilities,
   type PlatformCapabilities,
 } from './platformCapabilities';
@@ -118,37 +121,122 @@ export function createHarnexClient(
   return {
     async connect() {
       if (!capabilitiesProvider().harnexSupported) {
-        return { status: 'unavailable', failure: platformFailure() };
+        const result = { status: 'unavailable', failure: platformFailure() } as const;
+        recordImportV2Diagnostic('harnex-connect', 'unavailable', {
+          failureCode: result.failure.code,
+        });
+        return result;
       }
-      return nativePlugin.connect();
+
+      recordImportV2Diagnostic('harnex-connect', 'started');
+      try {
+        const result = await nativePlugin.connect();
+        recordImportV2Diagnostic('harnex-connect', result.status, result.status === 'unavailable'
+          ? { failureCode: result.failure.code }
+          : {});
+        return result;
+      } catch (error) {
+        recordImportV2Diagnostic('harnex-connect', 'threw', { reasonCode: 'native-exception' });
+        throw error;
+      }
     },
 
     async probe(useCaseId) {
       if (!capabilitiesProvider().harnexSupported) {
-        return { status: 'unavailable', failure: platformFailure() };
+        const result = { status: 'unavailable', failure: platformFailure() } as const;
+        recordImportV2Diagnostic('harnex-probe', 'unavailable', {
+          useCaseId,
+          failureCode: result.failure.code,
+        });
+        return result;
       }
-      return nativePlugin.probe({ useCaseId });
+
+      recordImportV2Diagnostic('harnex-probe', 'started', { useCaseId });
+      try {
+        const result = await nativePlugin.probe({ useCaseId });
+        recordImportV2Diagnostic('harnex-probe', result.status, result.status === 'available'
+          ? {
+              useCaseId,
+              maxInputCharacters: result.maxInputCharacters,
+              maxJsonSchemaCharacters: result.maxJsonSchemaCharacters,
+            }
+          : { useCaseId, failureCode: result.failure.code });
+        return result;
+      } catch (error) {
+        recordImportV2Diagnostic('harnex-probe', 'threw', {
+          useCaseId,
+          reasonCode: 'native-exception',
+        });
+        throw error;
+      }
     },
 
     async generate(request) {
+      const requestDetails = {
+        useCaseId: request.useCaseId,
+        inputCharacters: request.input.length,
+        jsonSchemaCharacters: request.jsonSchema.length,
+      };
       if (!capabilitiesProvider().harnexSupported) {
-        return { status: 'failed', failure: platformFailure() };
+        const result = { status: 'failed', failure: platformFailure() } as const;
+        recordImportV2Diagnostic('harnex-generate', 'failed', {
+          ...requestDetails,
+          failureCode: result.failure.code,
+        });
+        return result;
       }
-      return nativePlugin.generate(request);
+
+      recordImportV2Diagnostic('harnex-generate', 'started', requestDetails);
+      try {
+        const result = await nativePlugin.generate(request);
+        recordImportV2Diagnostic('harnex-generate', result.status, result.status === 'completed'
+          ? {
+              ...requestDetails,
+              totalMs: result.metrics.totalMs,
+              ...(result.metrics.outputTokens != null ? { outputTokens: result.metrics.outputTokens } : {}),
+            }
+          : { ...requestDetails, failureCode: result.failure.code });
+        return result;
+      } catch (error) {
+        recordImportV2Diagnostic('harnex-generate', 'threw', {
+          ...requestDetails,
+          reasonCode: 'native-exception',
+        });
+        throw error;
+      }
     },
 
     async cancel() {
       if (!capabilitiesProvider().harnexSupported) {
+        recordImportV2Diagnostic('harnex-cancel', 'not-supported');
         return { cancelled: false };
       }
-      return nativePlugin.cancel();
+      try {
+        const result = await nativePlugin.cancel();
+        recordImportV2Diagnostic('harnex-cancel', result.cancelled ? 'cancelled' : 'idle');
+        return result;
+      } catch (error) {
+        recordImportV2Diagnostic('harnex-cancel', 'threw', { reasonCode: 'native-exception' });
+        throw error;
+      }
     },
 
     async disconnect() {
       if (!capabilitiesProvider().harnexSupported) {
+        recordImportV2Diagnostic('harnex-disconnect', 'disconnected');
         return { status: 'disconnected' };
       }
-      return nativePlugin.disconnect();
+      recordImportV2Diagnostic('harnex-disconnect', 'started');
+      try {
+        const result = await nativePlugin.disconnect();
+        recordImportV2Diagnostic('harnex-disconnect', result.status, result.status === 'failed'
+          ? { failureCode: result.failure.code }
+          : {});
+        return result;
+      } catch (error) {
+        recordImportV2Diagnostic('harnex-disconnect', 'threw', { reasonCode: 'native-exception' });
+        throw error;
+      }
     },
   };
 }
