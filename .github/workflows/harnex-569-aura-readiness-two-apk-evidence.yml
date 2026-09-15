@@ -1,0 +1,203 @@
+name: Harnex 569 Aura readiness two-APK evidence
+
+on:
+  push:
+    branches:
+      - evidence/harnex-569-aura-readiness-two-apk
+
+permissions:
+  contents: read
+
+jobs:
+  harnex-emulator-host:
+    uses: daniele21/harnex/.github/workflows/build-emulator-e2e-host.yml@9074cf8d7dd5b90f5e49f6b3fc41622512faccbc
+    with:
+      harness_ref: 4b7b22e594738edf428d19f2d73d780c87a7ee45
+      release_identity_topology: false
+
+  aura-two-apk:
+    needs: harnex-emulator-host
+    environment: android-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AURA_CANDIDATE_SHA: 52c85c8b373ac1dccbe11e46b2068f1fbebcfa3b
+      HARNEX_CANDIDATE_SHA: 4b7b22e594738edf428d19f2d73d780c87a7ee45
+      VITE_ANDROID_FIREBASE_API_KEY: ${{ vars.VITE_ANDROID_FIREBASE_API_KEY }}
+      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_ANDROID_FIREBASE_AUTH_DOMAIN }}
+      VITE_ANDROID_FIREBASE_PROJECT_ID: ${{ vars.VITE_ANDROID_FIREBASE_PROJECT_ID }}
+      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_ANDROID_FIREBASE_STORAGE_BUCKET }}
+      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_ANDROID_FIREBASE_APP_ID: ${{ vars.VITE_ANDROID_FIREBASE_APP_ID }}
+      VITE_ANDROID_FIRESTORE_DATABASE_ID: ${{ vars.VITE_ANDROID_FIRESTORE_DATABASE_ID }}
+    steps:
+      - name: Check out exact Aura candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.AURA_CANDIDATE_SHA }}
+          fetch-depth: 1
+
+      - name: Verify exact Aura source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$AURA_CANDIDATE_SHA"
+          mkdir -p artifacts/harnex-569
+          printf '%s\n' "$actual" > artifacts/harnex-569/aura-source-revision.txt
+          printf 'aura=%s\nharnex=%s\nworkflow_run=%s\n' \
+            "$AURA_CANDIDATE_SHA" "$HARNEX_CANDIDATE_SHA" "$GITHUB_RUN_ID" \
+            > artifacts/harnex-569/candidate-pair.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Download exact Harnex emulator host
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-runtime-emulator-host
+          path: artifacts/harnex-e2e
+
+      - name: Verify exact Harnex source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(cat artifacts/harnex-e2e/source-revision.txt)"
+          test "$actual" = "$HARNEX_CANDIDATE_SHA"
+          test "$(cat artifacts/harnex-e2e/host-package.txt)" = "io.github.daniele21.localllm.phonetest.debug"
+          test -s artifacts/harnex-e2e/harness-emulator-e2e.apk
+          cp artifacts/harnex-e2e/source-revision.txt artifacts/harnex-569/harnex-source-revision.txt
+          sha256sum artifacts/harnex-e2e/harness-emulator-e2e.apk > artifacts/harnex-569/harnex-host-sha256.txt
+
+      - name: Materialize Android CI configuration
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          required=(
+            VITE_ANDROID_FIREBASE_API_KEY
+            VITE_ANDROID_FIREBASE_AUTH_DOMAIN
+            VITE_ANDROID_FIREBASE_PROJECT_ID
+            VITE_ANDROID_FIREBASE_STORAGE_BUCKET
+            VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID
+            VITE_ANDROID_FIREBASE_APP_ID
+            VITE_ANDROID_FIRESTORE_DATABASE_ID
+          )
+          for key in "${required[@]}"; do test -n "${!key:-}"; done
+          test -n "${GOOGLE_SERVICES_JSON_B64:-}"
+          mkdir -p android/app/src/debug
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/src/debug/google-services.json
+          jq -e '
+            any(.client[]?;
+              .client_info.android_client_info.package_name == "com.staituned.aura.debug"
+              and any(.oauth_client[]?; .client_type == 3)
+            )
+          ' android/app/src/debug/google-services.json >/dev/null
+          configured_project="$(jq -r '.project_info.project_id // empty' android/app/src/debug/google-services.json)"
+          test "$configured_project" = "$VITE_ANDROID_FIREBASE_PROJECT_ID"
+
+      - name: Build packaged Aura app and instrumentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run android:sync:debug
+          bash scripts/run-android-gradle.sh :app:assembleDebug :app:assembleDebugAndroidTest
+          mapfile -t aura_apks < <(find android/app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | sort)
+          test "${#aura_apks[@]}" -eq 1
+          sha256sum "${aura_apks[0]}" > artifacts/harnex-569/aura-debug-sha256.txt
+
+      - name: Provision Android API 36 emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          AVDMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager"
+          AVD_HOME="${RUNNER_TEMP}/android-avd"
+          mkdir -p "$AVD_HOME"
+          export ANDROID_AVD_HOME="$AVD_HOME"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "emulator" \
+            "platforms;android-36" \
+            "system-images;android-36;google_apis;x86_64"
+          echo "${ANDROID_HOME}/platform-tools" >> "$GITHUB_PATH"
+          export PATH="${ANDROID_HOME}/platform-tools:${PATH}"
+          echo "no" | "$AVDMANAGER" create avd \
+            --force \
+            --name aura-harnex-569 \
+            --package "system-images;android-36;google_apis;x86_64" \
+            --device pixel_6
+          sudo chmod 666 /dev/kvm || true
+          nohup "${ANDROID_HOME}/emulator/emulator" \
+            -avd aura-harnex-569 \
+            -no-window \
+            -noaudio \
+            -no-boot-anim \
+            -no-snapshot \
+            -gpu swiftshader_indirect \
+            -camera-back none \
+            -camera-front none \
+            > /tmp/aura-harnex-569-emulator.log 2>&1 &
+          emulator_pid=$!
+          if ! timeout 240s adb wait-for-device; then
+            tail -n 200 /tmp/aura-harnex-569-emulator.log || true
+            exit 1
+          fi
+          ready=0
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              tail -n 200 /tmp/aura-harnex-569-emulator.log || true
+              exit 1
+            fi
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = "1"
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell input keyevent 82 || true
+          adb devices -l
+
+      - name: Run exact Aura-Harnex two-APK lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          AURA_HARNEX_EVIDENCE_FILE=artifacts/harnex-569/two-apk.txt \
+            bash scripts/run-harnex-two-apk-e2e.sh artifacts/harnex-e2e/harness-emulator-e2e.apk
+
+      - name: Collect diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/harnex-569
+          cp /tmp/aura-harnex-569-emulator.log artifacts/harnex-569/emulator.log || true
+          timeout 15s adb logcat -d > artifacts/harnex-569/logcat.txt 2>&1 || true
+          timeout 15s adb shell dumpsys package com.staituned.aura.debug > artifacts/harnex-569/aura-package.txt 2>&1 || true
+          timeout 15s adb shell dumpsys package io.github.daniele21.localllm.phonetest.debug > artifacts/harnex-569/harnex-package.txt 2>&1 || true
+
+      - name: Upload exact cross-app evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harnex-569-aura-readiness-two-apk-${{ github.sha }}
+          path: artifacts/harnex-569/
+          if-no-files-found: error
+          retention-days: 7
