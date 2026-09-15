@@ -31,12 +31,30 @@ export type RawImportV2DocumentReadResult =
 
 const MAX_NON_EMPTY_ROWS = STRUCTURED_IMPORT_LIMITS.dataRows + 1;
 
+type ReadOptions = {
+  retainedRowsPerSheet: number;
+  cellCodePoints: number;
+};
+
+const HARNEX_SAMPLE_OPTIONS: ReadOptions = {
+  retainedRowsPerSheet: IMPORT_V2_INTERPRETATION_LIMITS.sampledRowsPerSheet,
+  cellCodePoints: IMPORT_V2_INTERPRETATION_LIMITS.cellCodePoints,
+};
+
+const EXECUTION_OPTIONS: ReadOptions = {
+  retainedRowsPerSheet: MAX_NON_EMPTY_ROWS,
+  // Preserve one code point beyond the canonical description limit so the
+  // deterministic validator can still detect oversize descriptions instead of
+  // accepting silently truncated source content.
+  cellCodePoints: STRUCTURED_IMPORT_LIMITS.descriptionCodePoints + 1,
+};
+
 function rejected(reason: RawImportV2DocumentRejectReason): RawImportV2DocumentReadResult {
   return { kind: 'rejected', reason };
 }
 
-function clampText(value: string): string {
-  return Array.from(value).slice(0, IMPORT_V2_INTERPRETATION_LIMITS.cellCodePoints).join('');
+function clampText(value: string, limit: number): string {
+  return Array.from(value).slice(0, limit).join('');
 }
 
 function isEmptyRawRow(cells: readonly ImportV2RawCell[]): boolean {
@@ -63,7 +81,7 @@ async function isValidUtf8(file: File): Promise<boolean> {
   }
 }
 
-async function readCsv(file: File): Promise<RawImportV2DocumentReadResult> {
+async function readCsv(file: File, options: ReadOptions): Promise<RawImportV2DocumentReadResult> {
   if (!(await isValidUtf8(file))) return rejected('invalid_csv_encoding');
   const { default: Papa } = await import('papaparse');
 
@@ -86,7 +104,7 @@ async function readCsv(file: File): Promise<RawImportV2DocumentReadResult> {
           return;
         }
 
-        const cells = stepResult.data.map((cell) => clampText(String(cell)));
+        const cells = stepResult.data.map((cell) => clampText(String(cell), options.cellCodePoints));
         if (isEmptyRawRow(cells)) return;
         totalNonEmptyRows += 1;
         if (totalNonEmptyRows > MAX_NON_EMPTY_ROWS) {
@@ -99,7 +117,7 @@ async function readCsv(file: File): Promise<RawImportV2DocumentReadResult> {
           parser.abort();
           return;
         }
-        if (rows.length < IMPORT_V2_INTERPRETATION_LIMITS.sampledRowsPerSheet) {
+        if (rows.length < options.retainedRowsPerSheet) {
           rows.push({ rowNumber: logicalRowNumber, cells });
         }
       },
@@ -129,24 +147,25 @@ async function readCsv(file: File): Promise<RawImportV2DocumentReadResult> {
   });
 }
 
-function xlsxCell(value: ExcelJS.CellValue): ImportV2RawCell {
+function xlsxCell(value: ExcelJS.CellValue, cellCodePoints: number): ImportV2RawCell {
   if (value == null) return undefined;
   if (value instanceof Date) return { kind: 'date', isoDate: value.toISOString() };
   if (typeof value === 'number') return value;
-  if (typeof value === 'string') return clampText(value);
+  if (typeof value === 'string') return clampText(value, cellCodePoints);
   if (typeof value === 'object') {
     if ('formula' in value || 'sharedFormula' in value) return { kind: 'formula' };
     if ('richText' in value && Array.isArray(value.richText)) {
-      return clampText(value.richText.map((part) => part.text).join(''));
+      return clampText(value.richText.map((part) => part.text).join(''), cellCodePoints);
     }
-    if ('text' in value && typeof value.text === 'string') return clampText(value.text);
+    if ('text' in value && typeof value.text === 'string') return clampText(value.text, cellCodePoints);
   }
-  return clampText(String(value));
+  return clampText(String(value), cellCodePoints);
 }
 
 function readWorksheet(
   worksheet: ExcelJS.Worksheet,
   sheetIndex: number,
+  options: ReadOptions,
 ): ImportV2RawSheet | RawImportV2DocumentReadResult {
   const rows: ImportV2RawRow[] = [];
   let totalNonEmptyRows = 0;
@@ -163,7 +182,7 @@ function readWorksheet(
     const mergedColumnIndexes: number[] = [];
     for (let column = 1; column <= row.cellCount; column += 1) {
       const cell = row.getCell(column);
-      cells.push(xlsxCell(cell.value));
+      cells.push(xlsxCell(cell.value, options.cellCodePoints));
       if (cell.isMerged) mergedColumnIndexes.push(column - 1);
     }
     if (isEmptyRawRow(cells)) return;
@@ -173,7 +192,7 @@ function readWorksheet(
       failure = 'row_limit_exceeded';
       return;
     }
-    if (rows.length < IMPORT_V2_INTERPRETATION_LIMITS.sampledRowsPerSheet) {
+    if (rows.length < options.retainedRowsPerSheet) {
       rows.push({
         rowNumber,
         cells,
@@ -185,7 +204,7 @@ function readWorksheet(
   if (failure) return rejected(failure);
   return {
     id: `sheet-${sheetIndex + 1}`,
-    name: clampText(worksheet.name),
+    name: clampText(worksheet.name, options.cellCodePoints),
     state: worksheet.state,
     rows,
     totalNonEmptyRows,
@@ -193,7 +212,7 @@ function readWorksheet(
   };
 }
 
-async function readXlsx(file: File): Promise<RawImportV2DocumentReadResult> {
+async function readXlsx(file: File, options: ReadOptions): Promise<RawImportV2DocumentReadResult> {
   const buffer = await file.arrayBuffer();
   const preflight = preflightXlsxContainer(new Uint8Array(buffer));
   if ('code' in preflight) return rejected(preflight.code);
@@ -209,7 +228,7 @@ async function readXlsx(file: File): Promise<RawImportV2DocumentReadResult> {
 
     const sheets: ImportV2RawSheet[] = [];
     for (const [sheetIndex, worksheet] of workbook.worksheets.entries()) {
-      const sheet = readWorksheet(worksheet, sheetIndex);
+      const sheet = readWorksheet(worksheet, sheetIndex, options);
       if ('kind' in sheet) return sheet;
       sheets.push(sheet);
     }
@@ -227,13 +246,7 @@ async function readXlsx(file: File): Promise<RawImportV2DocumentReadResult> {
   }
 }
 
-/**
- * Reads a bounded, source-shaped document view after technical/resource safety
- * gates only. It intentionally does not decide what the rows/columns mean.
- * The returned content is session-only input for interactive local Harnex
- * interpretation and must never be logged or persisted.
- */
-export async function readRawImportV2Document(file: File): Promise<RawImportV2DocumentReadResult> {
+async function readDocument(file: File, options: ReadOptions): Promise<RawImportV2DocumentReadResult> {
   if (!isSupportedStructuredImportFile(file.name)) return rejected('unsupported_file_type');
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith('.csv') && file.size > STRUCTURED_IMPORT_LIMITS.csvBytes) {
@@ -242,5 +255,24 @@ export async function readRawImportV2Document(file: File): Promise<RawImportV2Do
   if (lowerName.endsWith('.xlsx') && file.size > STRUCTURED_IMPORT_LIMITS.xlsxBytes) {
     return rejected('file_too_large');
   }
-  return lowerName.endsWith('.csv') ? readCsv(file) : readXlsx(file);
+  return lowerName.endsWith('.csv') ? readCsv(file, options) : readXlsx(file, options);
+}
+
+/**
+ * Reads a bounded, source-shaped document view after technical/resource safety
+ * gates only. It intentionally does not decide what the rows/columns mean.
+ * This sampled representation is session-only Harnex input and must never be
+ * logged or persisted.
+ */
+export async function readRawImportV2Document(file: File): Promise<RawImportV2DocumentReadResult> {
+  return readDocument(file, HARNEX_SAMPLE_OPTIONS);
+}
+
+/**
+ * Re-reads the already user-selected file locally after a proposal is confirmed
+ * so Aura can execute the declarative plan over all resource-bounded rows. This
+ * representation is never Harnex input and is not persisted.
+ */
+export async function readImportV2ExecutionDocument(file: File): Promise<RawImportV2DocumentReadResult> {
+  return readDocument(file, EXECUTION_OPTIONS);
 }
