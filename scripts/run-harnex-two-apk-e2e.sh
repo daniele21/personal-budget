@@ -10,6 +10,8 @@ AURA_PACKAGE="com.staituned.aura.debug"
 AURA_TEST_PACKAGE="com.staituned.aura.debug.test"
 RUNNER="androidx.test.runner.AndroidJUnitRunner"
 TEST_CLASS="com.staituned.aura.harnex.AuraHarnexTwoApkInstrumentedTest"
+CI_UI_REMOTE_VIDEO="/data/local/tmp/android-harnex-two-apk.mp4"
+ci_ui_recorder_pid=""
 
 if [[ -n "${AURA_HARNEX_EVIDENCE_FILE:-}" ]]; then
   mkdir -p "$(dirname "$AURA_HARNEX_EVIDENCE_FILE")"
@@ -96,7 +98,55 @@ run_test() {
   fi
 }
 
+start_ci_ui_media() {
+  if [[ "${CI:-}" != "true" ]]; then
+    return
+  fi
+
+  # The workflow starts one broad recorder around this script. The material UI
+  # evidence is only the packaged import flow below; the preceding Binder tests
+  # are assertion-only. Stop the broad recorder and restart a bounded recorder
+  # at lower encoder load so long Harnex runs do not destabilize the emulator.
+  adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
+  sleep 1
+  adb shell rm -f "$CI_UI_REMOTE_VIDEO" || true
+  adb shell screenrecord \
+    --size 720x1600 \
+    --bit-rate 4000000 \
+    --time-limit 120 \
+    "$CI_UI_REMOTE_VIDEO" \
+    >/tmp/aura-harnex-import-screenrecord.log 2>&1 &
+  ci_ui_recorder_pid=$!
+  sleep 1
+  if ! kill -0 "$ci_ui_recorder_pid" 2>/dev/null; then
+    cat /tmp/aura-harnex-import-screenrecord.log >&2 || true
+    echo "Focused Harnex import media recorder failed to start." >&2
+    return 1
+  fi
+  printf 'AURA_HARNEX_TWO_APK media_capture=focused size=720x1600 bit_rate=4000000\n'
+}
+
+stop_ci_ui_media() {
+  if [[ "${CI:-}" != "true" || -z "$ci_ui_recorder_pid" ]]; then
+    return
+  fi
+
+  adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
+  wait "$ci_ui_recorder_pid" || true
+  ci_ui_recorder_pid=""
+  if ! adb shell test -s "$CI_UI_REMOTE_VIDEO"; then
+    cat /tmp/aura-harnex-import-screenrecord.log >&2 || true
+    echo "Focused Harnex import media evidence is missing." >&2
+    return 1
+  fi
+  printf 'AURA_HARNEX_TWO_APK media_capture=focused_complete\n'
+}
+
 cleanup_host() {
+  if [[ -n "$ci_ui_recorder_pid" ]]; then
+    adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
+    wait "$ci_ui_recorder_pid" || true
+  fi
   adb uninstall "$HOST_PACKAGE" >/dev/null 2>&1 || true
 }
 trap cleanup_host EXIT
@@ -130,7 +180,19 @@ record_runtime_health post_packaged_lifecycle
 # The lifecycle test leaves the real Host installed, authorized, assigned and model-ready.
 # Exercise the packaged Aura WebView through that exact Binder/control-plane state before cleanup.
 printf 'AURA_HARNEX_TWO_APK scenario=packaged_import_ui aura_package=%s host_package=%s\n' "$AURA_PACKAGE" "$HOST_PACKAGE"
+start_ci_ui_media
+ui_started_ms="$(date +%s%3N)"
+set +e
 node scripts/verify-harnex-import-webview.mjs
+ui_status=$?
+set -e
+ui_finished_ms="$(date +%s%3N)"
+printf 'AURA_HARNEX_TWO_APK ui_process_exit status=%s elapsed_ms=%s\n' \
+  "$ui_status" "$((ui_finished_ms - ui_started_ms))"
+if [[ "$ui_status" -ne 0 ]]; then
+  exit "$ui_status"
+fi
+stop_ci_ui_media
 record_runtime_health post_packaged_import_ui
 
 printf 'AURA_HARNEX_TWO_APK result=PASS\n'
