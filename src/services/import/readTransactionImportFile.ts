@@ -8,6 +8,10 @@ import {
   type StructuredImportValidationResult,
 } from '../../domain/import';
 import type { SpreadsheetProfile } from '../../domain/import/v2';
+import {
+  beginImportV2DiagnosticAttempt,
+  recordImportV2Diagnostic,
+} from '../../lib/importV2Diagnostics';
 import { isAuraPortableArchive } from '../archive/archiveReader';
 
 export type TransactionImportFileReadResult =
@@ -62,6 +66,13 @@ function legacyRows(rows: RawStructuredImportRow[]): string[][] | null {
   return header ? stringRows : null;
 }
 
+function sourceKindHint(file: File): 'csv' | 'xlsx' | 'unknown' {
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.csv')) return 'csv';
+  if (lowerName.endsWith('.xlsx')) return 'xlsx';
+  return 'unknown';
+}
+
 /**
  * Classifies archive, legacy Aura CSV and deterministic V1 content in that
  * order. Only a V1-blocked supported spreadsheet can continue into the local
@@ -71,13 +82,26 @@ export async function readTransactionImportFile(
   file: File,
   options: TransactionImportFileReaderOptions = {},
 ): Promise<TransactionImportFileReadResult> {
-  if (await isAuraPortableArchive(file)) return { kind: 'aura-archive' };
+  const attemptId = beginImportV2DiagnosticAttempt(sourceKindHint(file));
+
+  if (await isAuraPortableArchive(file)) {
+    recordImportV2Diagnostic('file-route', 'aura-archive', {}, attemptId);
+    return { kind: 'aura-archive' };
+  }
   const local = await readLocalSpreadsheetFile(file);
-  if (local.kind === 'rejected') return local;
+  if (local.kind === 'rejected') {
+    recordImportV2Diagnostic('file-route', 'rejected', {
+      reasonCode: local.issues.map((issue) => issue.code).sort().join(','),
+    }, attemptId);
+    return local;
+  }
 
   if (local.sourceKind === 'structured-csv') {
     const auraLegacyRows = legacyRows(local.spreadsheet.rows);
-    if (auraLegacyRows) return { kind: 'aura-legacy-csv', rawRows: auraLegacyRows };
+    if (auraLegacyRows) {
+      recordImportV2Diagnostic('file-route', 'aura-legacy-csv', { sourceKind: 'csv' }, attemptId);
+      return { kind: 'aura-legacy-csv', rawRows: auraLegacyRows };
+    }
   }
 
   const validation = validateStructuredImport({
@@ -88,12 +112,23 @@ export async function readTransactionImportFile(
     today: options.today,
   });
   if (!validation.hasBlockingIssues || !shouldProfileImportV2(validation)) {
+    recordImportV2Diagnostic('file-route', 'structured', {
+      reasonCode: validation.hasBlockingIssues ? 'non-v2-blocking-issues' : 'v1-valid',
+    }, attemptId);
     return { kind: 'structured', sheetName: local.spreadsheet.sheetName, validation };
   }
 
   const profiled = await readSpreadsheetProfile(file);
-  if (profiled.kind === 'profiled') return { kind: 'mapping-required', profile: profiled.profile };
+  if (profiled.kind === 'profiled') {
+    recordImportV2Diagnostic('file-route', 'mapping-required', {
+      sourceKind: profiled.profile.sourceKind,
+    }, attemptId);
+    return { kind: 'mapping-required', profile: profiled.profile };
+  }
 
+  recordImportV2Diagnostic('file-route', 'profile-rejected', {
+    reasonCode: profiled.reason,
+  }, attemptId);
   return {
     kind: 'structured',
     sheetName: local.spreadsheet.sheetName,

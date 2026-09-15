@@ -1,4 +1,5 @@
 import type { AmountCandidate, HeaderCandidate, SpreadsheetProfile } from '../../../domain/import/v2';
+import { recordImportV2Diagnostic } from '../../../lib/importV2Diagnostics';
 import type { ImportV2MappingOption } from './ImportV2MappingEditor';
 
 export interface ImportV2MappingChoices {
@@ -53,6 +54,19 @@ export function createImportV2MappingChoices(profile: SpreadsheetProfile): Impor
       }
     }
   }
+
+  recordImportV2Diagnostic(
+    'mapping-options',
+    dateOptions.length > 0 && amountOptions.length > 0 && descriptionOptions.length > 0
+      ? 'complete'
+      : 'incomplete',
+    {
+      sourceKind: profile.sourceKind,
+      dateOptions: dateOptions.length,
+      amountOptions: amountOptions.length,
+      descriptionOptions: descriptionOptions.length,
+    },
+  );
 
   return { dateOptions, amountOptions, descriptionOptions };
 }
