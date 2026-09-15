@@ -298,17 +298,19 @@ function isSafeCandidateColumn(column: ColumnProfile): boolean {
   return column.formulaCount === 0 && column.mergedCellCount === 0;
 }
 
-function discoveryColumns(columns: ColumnProfile[]): ColumnProfile[] {
-  return columns
-    .filter((column) => isSafeCandidateColumn(column) && column.nonEmptyCount > 0)
-    .slice(0, IMPORT_V2_PROFILE_LIMITS.discoveryColumnsPerRole);
+function safeCandidateColumns(columns: ColumnProfile[]): ColumnProfile[] {
+  return columns.filter((column) => isSafeCandidateColumn(column) && column.nonEmptyCount > 0);
 }
 
 function dateCandidates(columns: ColumnProfile[]): DateCandidate[] {
-  const safeColumns = discoveryColumns(columns);
+  const safeColumns = safeCandidateColumns(columns);
   const evidenced = safeColumns.filter((column) => column.dateParsers.length > 0);
-  const fallback = safeColumns.filter((column) => DATE_HEADER.test(column.header));
-  const selected = evidenced.length > 0 ? evidenced : (fallback.length > 0 ? fallback : safeColumns);
+  const headerHints = safeColumns.filter((column) => DATE_HEADER.test(column.header));
+  const selected = evidenced.length > 0
+    ? evidenced
+    : headerHints.length > 0
+      ? headerHints
+      : safeColumns.slice(0, IMPORT_V2_PROFILE_LIMITS.discoveryColumnsPerRole);
 
   return selected.flatMap((column) => {
     const parsers = column.dateParsers.length > 0 ? column.dateParsers : STRING_DATE_PARSERS;
@@ -362,9 +364,9 @@ function addDebitCreditCandidates(result: AmountCandidate[], columns: ColumnProf
 
 function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
   const result: AmountCandidate[] = [];
-  const safeColumns = discoveryColumns(columns);
+  const safeColumns = safeCandidateColumns(columns);
   const numeric = safeColumns.filter((column) => column.numericRatio > 0);
-  const hinted = safeColumns.filter(looksAmountLike);
+  const hinted = safeColumns.filter(looksAmountLike).slice(0, IMPORT_V2_PROFILE_LIMITS.discoveryColumnsPerRole);
   const amountColumns = numeric.length > 0 ? numeric : hinted;
 
   for (const column of amountColumns) {
@@ -405,7 +407,7 @@ function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
 }
 
 function descriptionCandidates(columns: ColumnProfile[]): string[] {
-  const safeColumns = discoveryColumns(columns);
+  const safeColumns = safeCandidateColumns(columns);
   const textCandidates = safeColumns.filter((column) =>
     column.textRatio > 0
     && column.directionRatio < 1
@@ -415,7 +417,9 @@ function descriptionCandidates(columns: ColumnProfile[]): string[] {
   );
   const selected = textCandidates.length > 0
     ? textCandidates
-    : safeColumns.filter((column) => !CURRENCY_HEADER.test(column.header));
+    : safeColumns
+      .filter((column) => !CURRENCY_HEADER.test(column.header))
+      .slice(0, IMPORT_V2_PROFILE_LIMITS.discoveryColumnsPerRole);
   return selected.map(({ id }) => id);
 }
 
