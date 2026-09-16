@@ -13,6 +13,7 @@ import {
   isSupportedStructuredImportFile,
   preflightXlsxContainer,
 } from './spreadsheetFileReader';
+import { detectDelimitedCellLayout } from './delimitedCellLayout';
 
 export type SpreadsheetProfileRejectReason =
   | 'unsupported_file_type'
@@ -132,14 +133,20 @@ async function readCsvProfileInput(file: File): Promise<ProfileWorkbookInput | S
           return;
         }
 
+        const delimitedCellLayout = detectDelimitedCellLayout(sampledRows);
+        const profileRows = delimitedCellLayout?.rows ?? sampledRows;
+        const profileDelimiter = delimitedCellLayout?.delimiter === ',' || delimitedCellLayout?.delimiter === ';'
+          ? delimitedCellLayout.delimiter
+          : delimiter ?? ',';
+
         resolve({
           sourceKind: 'csv',
-          csvDelimiter: delimiter ?? ',',
+          csvDelimiter: profileDelimiter,
           sheets: [{
-            id: 'sheet-1',
+            id: delimitedCellLayout?.sheetId ?? 'sheet-1',
             name: 'CSV',
             state: 'visible',
-            rows: sampledRows,
+            rows: profileRows,
             totalNonEmptyRows,
             samplesTruncated: totalNonEmptyRows > sampledRows.length,
           }],
@@ -241,6 +248,12 @@ async function readXlsxProfileInput(file: File): Promise<ProfileWorkbookInput | 
  * Low-level W2 discovery reader. W6 orchestration must call it only after the
  * existing Aura archive/legacy classification order has been preserved.
  * This function never performs network, model, persistence or ledger work.
+ *
+ * For manual recovery only, a CSV whose bounded sampled rows are all one outer
+ * cell may be structurally materialized when exactly one repeated field
+ * delimiter explains every sampled row. That recovery does not assign semantic
+ * transaction roles; date/amount/description still require user or Harnex
+ * selection, and full-file execution revalidates the same structure.
  */
 export async function readSpreadsheetProfile(file: File): Promise<SpreadsheetProfileReadResult> {
   if (!isSupportedStructuredImportFile(file.name)) return rejected('unsupported_file_type');
