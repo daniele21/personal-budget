@@ -10,6 +10,10 @@ import {
   isSupportedStructuredImportFile,
   preflightXlsxContainer,
 } from './spreadsheetFileReader';
+import {
+  decodeDelimitedCellSheetId,
+  materializeDelimitedCellRows,
+} from './delimitedCellLayout';
 
 export type ImportV2MappedFileReadErrorCode =
   | 'unsupported_file_type'
@@ -69,7 +73,10 @@ async function isValidUtf8(file: File): Promise<boolean> {
 }
 
 async function readCsv(file: File, mapping: ResolvedImportV2Mapping): Promise<ImportV2MappedSheetReadResult> {
-  if (mapping.sheetIndex !== 0 || mapping.sheetId !== 'sheet-1') fail('sheet_mapping_mismatch');
+  const delimitedCellDelimiter = decodeDelimitedCellSheetId(mapping.sheetId);
+  if (mapping.sheetIndex !== 0 || (mapping.sheetId !== 'sheet-1' && !delimitedCellDelimiter)) {
+    fail('sheet_mapping_mismatch');
+  }
   if (!(await isValidUtf8(file))) fail('invalid_csv_encoding');
 
   const { default: Papa } = await import('papaparse');
@@ -126,7 +133,23 @@ async function readCsv(file: File, mapping: ResolvedImportV2Mapping): Promise<Im
           reject(new ImportV2MappedFileReadError('mixed_csv_delimiter'));
           return;
         }
-        resolve({ sourceKind: 'structured-csv', rows, csvDelimiter: delimiter ?? ',' });
+
+        const mappedRows = delimitedCellDelimiter
+          ? materializeDelimitedCellRows(rows, delimitedCellDelimiter)
+          : rows;
+        if (!mappedRows) {
+          reject(new ImportV2MappedFileReadError('sheet_mapping_mismatch'));
+          return;
+        }
+
+        const effectiveDelimiter = delimitedCellDelimiter === ',' || delimitedCellDelimiter === ';'
+          ? delimitedCellDelimiter
+          : delimiter ?? ',';
+        resolve({
+          sourceKind: 'structured-csv',
+          rows: mappedRows,
+          csvDelimiter: effectiveDelimiter,
+        });
       },
       error: () => reject(new ImportV2MappedFileReadError('invalid_csv_syntax')),
     });
