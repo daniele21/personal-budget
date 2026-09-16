@@ -41,7 +41,7 @@ export async function executeConfirmedImportV2Interpretation(
   }
 
   if (executed.unresolvedSourceRowNumbers.length > 0 || executed.validation.hasBlockingIssues) {
-    const unresolved = new Set(executed.unresolvedSourceRowNumbers);
+    const unresolved = new Set<number>(executed.unresolvedSourceRowNumbers);
     for (const row of executed.validation.rows) {
       if (row.issues.some(({ severity }) => severity === 'error')) unresolved.add(row.sourceRowNumber);
     }
