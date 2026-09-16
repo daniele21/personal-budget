@@ -157,10 +157,13 @@ export function ImportV2InterpretationFlow({
 
   const handleConfirm = useCallback(async () => {
     if (state.kind !== 'review' || state.issue) return;
+    const operationSequence = ++requestSequenceRef.current;
     setIsExecuting(true);
     try {
       const confirmed = confirmImportV2Interpretation(state.proposal);
       const outcome = await executeConfirmedImportV2Interpretation(file, confirmed);
+      if (operationSequence !== requestSequenceRef.current) return;
+
       if (outcome.status === 'resolved') {
         await onResolved(outcome.validation);
         return;
@@ -179,13 +182,14 @@ export function ImportV2InterpretationFlow({
         issue: 'Aura could not safely execute this interpretation against the full file. No transaction was imported. Ask Harnex to revise the interpretation or continue with manual mapping.',
       });
     } catch {
+      if (operationSequence !== requestSequenceRef.current) return;
       setState({
         kind: 'review',
         proposal: state.proposal,
         issue: 'Aura could not safely finish checking this interpretation. No transaction was imported. Retry with a revised interpretation or continue manually.',
       });
     } finally {
-      setIsExecuting(false);
+      if (operationSequence === requestSequenceRef.current) setIsExecuting(false);
     }
   }, [file, onResolved, state]);
 
@@ -214,6 +218,7 @@ export function ImportV2InterpretationFlow({
         isBusy={isExecuting}
         onConfirm={() => { void handleConfirm(); }}
         onRequestRevision={handleRevision}
+        onContinueManually={() => onManualFallback('unavailable')}
       />
     );
   }
