@@ -1,6 +1,6 @@
 # Harnex-assisted Transaction Import V2
 
-Status: **W12.2 interactive raw interpretation in progress. Prior candidate-based W12/W12.1 remains the integrated baseline; release qualification is paused until this successor boundary is integrated.**
+Status: **W12.2 interactive source interpretation is implemented through the explicit user-confirmation/full-execution boundary and is under integration validation. Prior candidate-based W12/W12.1 remains the integrated baseline; release qualification is paused until this successor boundary is integrated.**
 
 Active delivery tracker: [`../workstreams/harnex-assisted-transaction-import-v2.md`](../workstreams/harnex-assisted-transaction-import-v2.md).
 
@@ -8,7 +8,7 @@ Durable decision: [`../../adr/0009-aura-interactive-harnex-import-interpretation
 
 ## Purpose
 
-Aura accepts technically safe CSV/XLSX bank exports without requiring the user to reshape them to a known template. Aura preserves a bounded source-shaped view, uses authorized on-device Harnex to propose how that source maps to Aura transactions, executes only Aura-owned declarative transformation primitives, shows a deterministic preview, asks the user whether the interpretation is correct, and only after explicit confirmation executes the plan across the full source.
+Aura accepts technically safe CSV/XLSX bank exports without requiring the user to reshape them to a known template. Aura preserves a bounded source-shaped view, uses authorized on-device Harnex to propose how that source maps to Aura transactions, executes only Aura-owned declarative transformation primitives, shows a deterministic preview, asks the user whether the interpretation is correct, and only after explicit confirmation executes the plan across a fresh full local read of the source.
 
 If the user says the Harnex result is wrong, Aura captures structured feedback and requests a revised complete proposal. Every revised proposal gets a new preview and requires confirmation again.
 
@@ -21,7 +21,7 @@ V1 remains the deterministic canonical fast path when a source already matches `
 - Harnex may interpret bounded source content, but it cannot write Aura storage, create transactions, invent categories or return executable parser code.
 - Aura shows what Harnex understood before full-file execution.
 - A Harnex proposal is never silently accepted: the user explicitly confirms it or reports what is wrong.
-- A rejected/edited proposal loses confirmation; a revised proposal must be previewed and confirmed again.
+- A rejected proposal loses authority; a revised proposal must be previewed and confirmed again.
 - Every candidate source row is either deterministically resolved or explicitly unresolved; rows are never silently dropped.
 - Final transaction Review + verified commit remains the only canonical ledger write.
 
@@ -36,7 +36,7 @@ V1 remains the deterministic canonical fast path when a source already matches `
 - ordinary grid records;
 - a delimited logical record contained in one source cell, including the quoted-row CSV shape;
 - one date field using Aura-owned date parsers;
-- one or more description fields;
+- one or more description source fields, joined with Aura-owned deterministic semantics;
 - signed amount, debit/credit and amount+direction strategies;
 - deterministic preview with source-row/column provenance;
 - explicit correct/wrong user feedback after Harnex interpretation;
@@ -121,7 +121,7 @@ The reader preserves source shape instead of forcing a semantic table first. For
 
 may reach interpretation as one source cell per row containing the semicolon-delimited logical record. It is not rejected merely because a conventional CSV parser sees one column.
 
-Bounds remain authoritative. The current first-slice contract caps worksheets, logical columns, retained source rows and cell code points. Large documents use representative bounded windows; the complete workbook is not sent as one unconstrained Harnex prompt.
+Bounds remain authoritative. The sampled Harnex representation caps worksheets, logical columns, retained source rows and cell code points. Full execution does not reuse that truncated sample: after confirmation Aura re-reads the already selected file locally, within the authoritative file/row/column/resource limits, and applies the confirmed plan without sending the whole source to Harnex.
 
 The raw-document reader does not decide what date, amount, description, header or table means.
 
@@ -146,7 +146,7 @@ interface ImportV2TransformationPlan {
         firstDataRowNumber: number;
       };
   date: { columnIndex: number; parser: AuraDateParserId };
-  description: { columnIndexes: number[]; joinWith: ' ' | ' · ' };
+  description: { columnIndexes: number[] };
   amount: AuraAmountPlan;
 }
 ```
@@ -168,11 +168,13 @@ type AuraAmountPlan =
 
 Aura rejects unknown sheets, invalid row ranges, out-of-range column references, duplicate description references, conflicting amount columns, unsupported parser IDs and any schema output outside the closed contract.
 
+Harnex selects description source columns only. Aura owns the canonical joining/normalization behavior so the model cannot introduce arbitrary formatting logic through the plan.
+
 Future primitives require an explicit contract change; Harnex cannot smuggle new execution semantics through free text.
 
 ## Preview and provenance
 
-Before full-file execution Aura applies the proposed plan only to a bounded representative preview. Preview rows include canonical values plus source provenance:
+Before full-file execution Aura applies the proposed plan only to the bounded source representation and builds a representative preview. Preview rows include canonical values plus source provenance:
 
 ```ts
 interface ImportV2PreviewRow {
@@ -189,7 +191,7 @@ interface ImportV2PreviewRow {
 }
 ```
 
-The preview is the user-facing explanation of what Harnex understood. It must be generated by Aura's deterministic executor from the proposed plan; it is not a second model-authored transaction list.
+The preview is the user-facing explanation of what Harnex understood. It is generated by Aura's deterministic executor from the proposed plan; it is not a second model-authored transaction list.
 
 ## Mandatory user confirmation and feedback loop
 
@@ -212,13 +214,13 @@ Initial feedback areas:
 
 When feedback is submitted, Aura sends the previous proposal identity/plan plus only the bounded source context needed for revision. Harnex returns a complete replacement proposal, not an imperative patch. Aura validates it, rebuilds the preview and asks again.
 
-A previous `confirmed` marker is invalid once the plan changes.
+A previous proposal cannot be executed after the user rejects it. Only a newly confirmed current proposal may enter full execution.
 
 Feedback is session-only. Aura does not silently learn a bank format, merchant rule or category preference across imports in this slice.
 
 ## Deterministic full-file execution
 
-Only a `ConfirmedImportV2Interpretation` may enter full execution.
+Only a `ConfirmedImportV2Interpretation` may enter full execution. Aura performs a fresh local read of the user-selected source after confirmation so sampled Harnex bounds never become a silent row-drop boundary.
 
 Execution invariants:
 
@@ -229,13 +231,15 @@ Execution invariants:
 - output remains subject to existing canonical validation, duplicate detection and Review;
 - ledger mutation remains impossible before the verified commit stage.
 
-The full executor returns resolved rows and explicit unresolved rows with closed reason codes.
+The full executor returns resolved rows and explicit unresolved source-row numbers. Any unresolved/blocking result prevents transaction preparation and commit.
 
 ## Exception repair
 
 If a confirmed plan resolves most of the document but a small bounded set of rows remains unresolved, Aura may request local Harnex repair for only those row contexts.
 
 Exception repair is row-scoped. It must not silently replace the confirmed global transformation plan. If Harnex concludes the global structure itself is wrong, Aura returns to interpretation feedback and requires a new global proposal/preview/confirmation.
+
+Until bounded row repair is implemented and validated, unresolved full-file rows remain an explicit blocking recovery state rather than being dropped or guessed.
 
 ## Category-resolution contract
 
@@ -281,18 +285,18 @@ Aura/Harnex logs and diagnostics remain content-free. Prompt/source cells, dates
 | Harnex missing/unreachable/unauthorized/unready | explain assistance unavailable; keep safe manual/source-correction recovery where supported |
 | invalid plan response | reject proposal; no preview/full execution |
 | preview cannot be built deterministically | treat proposal as invalid/needs revision |
-| user says result is wrong | invalidate confirmation; capture feedback; request revised proposal or manual correction |
-| confirmed plan leaves unresolved rows | keep them explicit; optional bounded repair; never drop silently |
+| user says result is wrong | invalidate that proposal for execution; capture feedback; request revised proposal or manual correction |
+| confirmed plan leaves unresolved rows | keep them explicit and blocking; optional bounded repair may resolve them; never drop silently |
 | cancellation | cancel generation and retain no hidden commit action |
 | offline | no cloud attempt |
 
 ## UX task model
 
-The user-facing journey remains roughly:
+The user-facing journey is:
 
 `Upload -> Understand file -> Check interpretation -> Check transactions -> Categorize -> Review -> Done`
 
-The new `Check interpretation` state is a mandatory gate when Harnex has proposed source semantics. It shows representative rows, what Aura will treat as date/description/amount and clear `Correct` / `Something is wrong` actions.
+`Check interpretation` is a mandatory gate when Harnex has proposed source semantics. It shows representative rows, an expandable summary of how Aura will interpret the source, and clear `Yes, this is correct` / `Something is wrong` actions. Full execution is not reachable from the proposal merely because Harnex returned `resolved`.
 
 Manual correction and feedback states must remain operable with keyboard, Android touch, screen reader and text scaling. Error meaning cannot depend on color alone.
 
@@ -312,7 +316,7 @@ Deterministic CI must cover at minimum:
 10. non-financial/insufficient source returns unsupported/unresolved rather than invented transactions;
 11. invalid Harnex plan/source references fail closed;
 12. full execution rejects an unconfirmed proposal;
-13. user rejection invalidates prior confirmation;
+13. user rejection prevents the prior proposal from entering full execution;
 14. feedback creates a new proposal/preview gate;
 15. Harnex unavailable/cancelled leaves no ledger mutation;
 16. diagnostics/logging contain no financial source or generated content.
