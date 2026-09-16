@@ -156,9 +156,10 @@ async function main() {
       if (!input) return false;
       const file = new File([
         [
-          'Booking Date,Details,Amount',
-          '2026-09-01,Synthetic Harnex Market,-42.00',
-          '2026-09-02,Synthetic Harnex Taxi,-18.00'
+          '"Data Operazione;Causale;Uscite;Entrate"',
+          '"12/09/2026;SUPERMERCATO;43,20;"',
+          '"13/09/2026;STIPENDIO;;2100,00"',
+          '"14/09/2026;RISTORANTE;31,50;"'
         ].join('\\n')
       ], 'harnex-assisted-bank.csv', { type: 'text/csv' });
       const transfer = new DataTransfer();
@@ -171,7 +172,7 @@ async function main() {
 
     await waitFor(
       () => client.evaluate(`document.body.textContent.includes('harnex-assisted-bank.csv')`),
-      'Synthetic assisted import file selection',
+      'Non-standard assisted import file selection',
     );
 
     const started = await client.evaluate(`(() => {
@@ -185,42 +186,49 @@ async function main() {
     if (started === null) throw new Error('Analyze file action is unavailable.');
 
     await waitFor(
-      () => client.evaluate(`document.body.textContent.includes('Suggested mapping ready')`),
-      'Harnex-assisted schema mapping',
+      () => client.evaluate(`document.body.textContent.includes('Check what Harnex understood')`),
+      'Harnex-assisted interpretation preview',
       240,
     );
 
-    const mapping = await client.evaluate(`(() => {
+    const interpretation = await client.evaluate(`(() => {
       const dialog = document.querySelector('[role="dialog"]');
-      const controlByLabel = (text) => {
-        const label = Array.from(dialog?.querySelectorAll('label') ?? [])
-          .find((candidate) => candidate.textContent.trim() === text);
-        return label?.htmlFor ? document.getElementById(label.htmlFor) : null;
-      };
-      const date = controlByLabel('Transaction date');
-      const amount = controlByLabel('Amount');
-      const description = Array.from(dialog?.querySelectorAll('input[type="checkbox"]') ?? [])
-        .find((candidate) => candidate.checked);
+      const text = dialog?.textContent ?? '';
+      const buttons = Array.from(dialog?.querySelectorAll('button') ?? []);
       return {
-        dateSelected: Boolean(date?.value),
-        amountSelected: Boolean(amount?.value),
-        descriptionSelected: Boolean(description),
+        hasSupermarket: text.includes('SUPERMERCATO'),
+        hasSalary: text.includes('STIPENDIO'),
+        hasRestaurant: text.includes('RISTORANTE'),
+        hasCorrectAction: buttons.some((button) => button.textContent.trim() === 'Yes, this is correct' && !button.disabled),
+        hasWrongAction: buttons.some((button) => button.textContent.trim() === 'Something is wrong' && !button.disabled),
+        hasInterpretationStep: text.includes('Check interpretation'),
         ledgerBeforeConfirm: JSON.parse(localStorage.getItem('aura_transactions') ?? '[]').length
       };
     })()`);
-    if (!mapping?.dateSelected || !mapping?.amountSelected || !mapping?.descriptionSelected) {
-      throw new Error(`Harnex suggestion did not populate a complete Aura mapping: ${JSON.stringify(mapping)}`);
+    if (
+      !interpretation?.hasSupermarket
+      || !interpretation?.hasSalary
+      || !interpretation?.hasRestaurant
+      || !interpretation?.hasCorrectAction
+      || !interpretation?.hasWrongAction
+    ) {
+      throw new Error(`Harnex interpretation preview is incomplete: ${JSON.stringify(interpretation)}`);
     }
-    if (mapping.ledgerBeforeConfirm !== 0) throw new Error('Ledger changed before mapping confirmation.');
+    if (!interpretation?.hasInterpretationStep) {
+      throw new Error(`Interactive interpretation step was not visible: ${JSON.stringify(interpretation)}`);
+    }
+    if (interpretation.ledgerBeforeConfirm !== 0) {
+      throw new Error('Ledger changed before explicit interpretation confirmation.');
+    }
 
     const confirmed = await client.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
-        .find((candidate) => candidate.textContent.trim() === 'Confirm mapping');
+        .find((candidate) => candidate.textContent.trim() === 'Yes, this is correct');
       if (!button || button.disabled) return false;
       button.click();
       return true;
     })()`);
-    if (!confirmed) throw new Error('Confirmed mapping action is unavailable.');
+    if (!confirmed) throw new Error('Interpretation confirmation action is unavailable.');
 
     await waitFor(
       () => client.evaluate(`document.body.textContent.includes('Categorize and review')`),
@@ -236,18 +244,25 @@ async function main() {
         ledgerRows: ledger.length,
         hasUncategorized: text.includes('Needs category'),
         hasFoodSuggestion: text.includes('Food'),
-        hasMarket: text.includes('Synthetic Harnex Market'),
-        hasTaxi: text.includes('Synthetic Harnex Taxi')
+        hasSupermarket: text.includes('SUPERMERCATO'),
+        hasSalary: text.includes('STIPENDIO'),
+        hasRestaurant: text.includes('RISTORANTE')
       };
     })()`);
     if (review?.ledgerRows !== 0) throw new Error('Ledger changed before verified Review/commit.');
-    if (review?.hasUncategorized || !review?.hasFoodSuggestion || !review?.hasMarket || !review?.hasTaxi) {
+    if (
+      review?.hasUncategorized
+      || !review?.hasFoodSuggestion
+      || !review?.hasSupermarket
+      || !review?.hasSalary
+      || !review?.hasRestaurant
+    ) {
       throw new Error(`Category review did not contain expected safe suggestions: ${JSON.stringify(review)}`);
     }
 
     const reviewOpened = await client.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
-        .find((candidate) => candidate.textContent.trim() === 'Review 2 transactions');
+        .find((candidate) => candidate.textContent.trim() === 'Review 3 transactions');
       if (!button || button.disabled) return false;
       button.click();
       return true;
@@ -261,7 +276,7 @@ async function main() {
 
     const committed = await client.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
-        .find((candidate) => candidate.textContent.trim() === 'Import 2 transactions');
+        .find((candidate) => candidate.textContent.trim() === 'Import 3 transactions');
       if (!button || button.disabled) return false;
       button.click();
       return true;
@@ -280,26 +295,36 @@ async function main() {
       return {
         durationMs: Math.round(performance.now() - ${started}),
         count: transactions.length,
-        titles: transactions.map((transaction) => transaction.title).sort(),
+        canonical: transactions
+          .map((transaction) => ({
+            title: transaction.title,
+            amount: transaction.amount,
+            type: transaction.type,
+            date: String(transaction.date).slice(0, 10)
+          }))
+          .sort((left, right) => left.title.localeCompare(right.title)),
         categories: transactions.map((transaction) => transaction.category),
-        allExpenses: transactions.every((transaction) => transaction.type === 'expense'),
         metadataClean: transactions.every((transaction) =>
           forbiddenKeys.every((key) => !Object.prototype.hasOwnProperty.call(transaction, key))
         )
       };
     })()`);
 
+    const expectedCanonical = [
+      { title: 'RISTORANTE', amount: 31.5, type: 'expense', date: '2026-09-14' },
+      { title: 'STIPENDIO', amount: 2100, type: 'income', date: '2026-09-13' },
+      { title: 'SUPERMERCATO', amount: 43.2, type: 'expense', date: '2026-09-12' },
+    ];
     const failures = [
-      evidence?.count !== 2 && 'two committed transactions',
-      JSON.stringify(evidence?.titles) !== JSON.stringify(['Synthetic Harnex Market', 'Synthetic Harnex Taxi']) && 'deterministic descriptions',
+      evidence?.count !== 3 && 'three committed transactions',
+      JSON.stringify(evidence?.canonical) !== JSON.stringify(expectedCanonical) && 'deterministic quoted-row extraction',
       !evidence?.categories?.every((category) => category === 'Food') && 'Harnex category suggestions constrained to Aura categories',
-      !evidence?.allExpenses && 'deterministic amount/type extraction',
       !evidence?.metadataClean && 'canonical ledger metadata isolation',
       evidence?.durationMs > 60_000 && 'bounded assisted import duration',
     ].filter(Boolean);
     if (failures.length > 0) throw new Error(`Harnex assisted import verification failed: ${failures.join(', ')}`);
 
-    console.log(JSON.stringify({ status: 'PASS', mapping, review, evidence }, null, 2));
+    console.log(JSON.stringify({ status: 'PASS', interpretation, review, evidence }, null, 2));
   } finally {
     client.close();
   }

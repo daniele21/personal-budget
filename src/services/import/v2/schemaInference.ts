@@ -1,6 +1,7 @@
 import {
   ImportV2MappingError,
   resolveImportV2Mapping,
+  type ImportV2InterpretationFeedback,
   type ImportV2MappingSelection,
   type SpreadsheetProfile,
 } from '../../../domain/import/v2';
@@ -31,6 +32,7 @@ export type ImportV2SchemaInferenceOutcome =
 export interface InferImportV2SchemaOptions {
   client?: HarnexClient;
   signal?: AbortSignal;
+  feedback?: ImportV2InterpretationFeedback;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -66,14 +68,24 @@ function hasResolvableHeader(profile: SpreadsheetProfile): boolean {
   ));
 }
 
-function inferencePayload(profile: SpreadsheetProfile): string {
+function inferencePayload(
+  profile: SpreadsheetProfile,
+  feedback?: ImportV2InterpretationFeedback,
+): string {
   return JSON.stringify({
     task: 'select-transaction-schema',
     rules: [
       'Select only IDs present in this payload.',
       'Return ambiguous when evidence does not safely identify one mapping.',
       'Return unsupported when no advertised candidate combination can represent the transactions.',
+      'When user feedback is present, return a complete revised mapping that addresses it when the supplied evidence supports one.',
     ],
+    ...(feedback ? {
+      userFeedback: {
+        area: feedback.area,
+        ...(feedback.previousSelection ? { previousSelection: feedback.previousSelection } : {}),
+      },
+    } : {}),
     sourceKind: profile.sourceKind,
     csvDelimiter: profile.csvDelimiter,
     sheets: profile.sheets.map((sheet) => ({
@@ -266,6 +278,7 @@ async function runConnectedInference(
   profile: SpreadsheetProfile,
   client: HarnexClient,
   signal?: AbortSignal,
+  feedback?: ImportV2InterpretationFeedback,
 ): Promise<ImportV2SchemaInferenceOutcome> {
   if (signal?.aborted) return { status: 'assistance-unavailable', failure: cancelledFailure() };
 
@@ -275,7 +288,7 @@ async function runConnectedInference(
   }
   if (signal?.aborted) return { status: 'assistance-unavailable', failure: cancelledFailure() };
 
-  const input = inferencePayload(profile);
+  const input = inferencePayload(profile, feedback);
   const jsonSchema = inferenceJsonSchema(profile);
   if (
     input.length > capability.maxInputCharacters
@@ -324,7 +337,12 @@ export async function inferImportV2SchemaWithHarnex(
       outcome = { status: 'assistance-unavailable', failure: connection.failure };
     } else {
       connected = true;
-      outcome = await runConnectedInference(profileForInference, client, options.signal);
+      outcome = await runConnectedInference(
+        profileForInference,
+        client,
+        options.signal,
+        options.feedback,
+      );
     }
   } catch {
     outcome = {

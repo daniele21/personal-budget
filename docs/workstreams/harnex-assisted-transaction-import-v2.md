@@ -1,40 +1,36 @@
 # Harnex-assisted Transaction Import V2
 
-Status: ACTIVE — W0-W12.1 integrated; W13 release qualification in progress.
+Status: ACTIVE — W0-W12.1 integrated; W12.2 is implemented through bounded unresolved-row repair and is under exact-head integration validation; W13 remains blocked until W12.2 is integrated.
 
-## Goal and boundary
+Canonical contracts: [`V2 spec`](../specs/harnex-assisted-transaction-import-v2.md), [`ADR 0009`](../../adr/0009-aura-interactive-harnex-import-interpretation.md), [`privacy record`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md). ADR 0008 is superseded for the schema-understanding boundary.
 
-Aura imports reasonably structured CSV/XLSX without fixed headers. Aura owns technical file gates, profiling, Aura-owned executable schema candidates, deterministic extraction, Review and canonical commit. Authorized on-device Harnex may select only supplied schema/category IDs. A technically safe file with unfamiliar columns must continue to Harnex/manual schema understanding rather than fail Upload because local heuristics cannot already prove a complete mapping.
+## Goal and invariants
 
-Invariants: no cloud fallback; manual import remains usable; V1 deterministic fast path stays isolated; complete workbook/ledger is never sent to Harnex; no model-generated executable parser or ledger rule; Harnex/provider/model provenance is not persisted in `Transaction`; Review + verified commit remains the only canonical write path.
+Aura accepts technically safe CSV/XLSX exports whose semantic structure is not known in advance. Aura owns safety/resource gates, bounded raw-document representation, the declarative transformation language, deterministic execution/provenance, Review and canonical commit. Authorized on-device Harnex may interpret bounded source content and propose only Aura-owned primitives.
 
-Durable owners: [`V2 spec`](../specs/harnex-assisted-transaction-import-v2.md), [`ADR 0008`](../../adr/0008-aura-harnex-assisted-import.md), [`privacy record`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md). This file is only the active execution/resume plan.
+A proposal has no authority until Aura renders a deterministic preview and the user explicitly confirms that exact proposal. Rejection or revision invalidates confirmation and requires a new preview/confirmation. After confirmed full execution, every candidate row is resolved or explicit unresolved; no row is silently invented or dropped.
 
-## Integrated checkpoint
+For a small unresolved set, Aura may attempt bounded row repair. The confirmed sheet/layout stay immutable; Harnex may return only row-local parser/column/amount-strategy references, never canonical financial values. Aura deterministically re-executes each accepted repair. Any remaining unresolved row keeps preparation/commit blocked; `global-plan-wrong` returns to global interpretation feedback.
 
-- Aura W12.1 product correction merged through PR #29 at `dev@9bb9ed3b3cfb3fec84e2a3d441afa711f933b19d`; exact-head STRONG repository-health run `34963959305` passed required web, browser FULL_MEDIA, Harnex host and Android emulator gates.
-- Android FULL_MEDIA gate hardening/diagnostics merged through PR #30 at `dev@f31d4cb7d5e1e715a57869d3de5223c789c6939c`; exact-head FULL repository-health run `34972468025` passed repository health, web validation, browser FULL_MEDIA and Android API 36 emulator validation.
-- Harnex `dev@772a66083d6fa3d5e22ae00f659506a067f412fd`; Aura automation pin remains Harnex `9074cf8d7dd5b90f5e49f6b3fc41622512faccbc`.
-- Play Internal baseline remains Aura `1.0.10` / `100162`; Harnex `1.0.57` / `57`.
-- W13 physical/release evidence remains separate; emulator evidence does not satisfy real-device, signer, model-quality, thermal/OEM, accessibility or governance gates.
+Cross-cutting invariants: no cloud fallback; no Harnex storage write; no model-generated executable parsing code; source/plan/preview/feedback/repair state is session-only; diagnostics are content-free; V1 remains the deterministic fast path; verified Review/commit remains the only ledger writer.
 
-## W12.1 schema-discovery routing correction
+## Current implementation
 
-Observed behavior: Aura could show Harnex ready and then return to Upload with `Aura could not find a safe date, amount, and description mapping for this file.` before schema assistance ran.
+The active branch now contains the complete W12.2 functional path:
 
-Root cause: UI and inference orchestration treated strict local candidate completeness as a prerequisite to Harnex. That inverted the intended boundary: unfamiliar-but-readable schema is exactly the case Harnex/manual mapping should resolve.
+- bounded source-shaped CSV/XLSX read plus fresh full local execution read;
+- JSON-schema-constrained Harnex transformation-plan inference from visible bounded source windows;
+- Aura validation and deterministic provenance-bearing preview;
+- mandatory `Check interpretation` with `Yes, this is correct` / `Something is wrong`;
+- structured feedback requesting a complete replacement proposal and second confirmation gate;
+- full-file execution only for the exact confirmed proposal;
+- explicit unresolved-row accounting with no partial preparation/commit;
+- bounded repair for at most eight unresolved rows, one Harnex generation per row, using only confirmed header + target row context;
+- repair output limited to Aura-owned semantic source references; deterministic Aura re-execution decides acceptance;
+- `global-plan-wrong`, invalid repair, Harnex unavailability and residual unresolved rows remain blocking with global revision/manual recovery;
+- category assistance and verified Review/commit remain downstream and unchanged.
 
-Integrated correction:
-
-- technical/resource safety rejects remain local and authoritative;
-- canonical V1 remains the deterministic fast path;
-- V2 profiling prefers strong local evidence but may expose a bounded fallback set of Aura-owned parser/amount possibilities for safe weakly typed columns;
-- `mapping-required` enters schema assistance/manual recovery rather than a complete-mapping precheck;
-- Harnex may inspect an incomplete bounded profile and return `ambiguous`/`unsupported`; `resolved` stays JSON-schema constrained to advertised IDs;
-- explicit mapping confirmation plus deterministic full-row extraction/validation remains the correctness gate before categorization, Review and commit;
-- formula/merged/resource protections and verified-commit invariants remain unchanged.
-
-Regression evidence covers weakly typed arbitrary-header profiling, strong candidates beyond speculative fallback bounds, Harnex invocation for incomplete candidate sets, wizard routing without the former Upload error, V1/manual/ambiguous regressions, and packaged Android `harnex-assisted-import-user-flow` with `FULL_MEDIA`.
+Row repair reuses `aura-transaction-schema-inference`; it does not add a new Binder/use-case policy surface.
 
 ## Execution DAG
 
@@ -42,42 +38,26 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 | ID | State | Acceptance |
 | --- | --- | --- |
-| W0-W12 Implementation/integration | DONE | Contracts, implementation and prior deterministic integration evidence are merged. |
-| W12.1 Schema-discovery routing correction | DONE | Unknown-but-safe schema reaches Harnex/manual mapping; deterministic validation remains fail-closed; exact-head automated integration and material UI evidence passed and the correction is integrated into `dev`. |
-| W13.1 Production identity/authorization | READY | Release signer/package topology authorizes only the exact Aura identity. |
-| W13.2 Physical authentication | READY | Physical Google/Credential Manager lifecycle works without CI bypass. |
-| W13.3 Real GGUF quality | READY | Representative ARM64/JNI/GGUF evaluation has unsafe silent schema mapping rate `0`. |
-| W13.4 Performance/resource/OEM | READY | Accepted latency/memory/thermal/OEM envelope with no crash/ANR/OOM/leak. |
-| W13.5 Accessibility | READY | TalkBack/text scaling keep task and recovery operable. |
-| W13.6 Privacy/legal/AI governance | READY | Required approvals or documented non-applicability are complete. |
-| W13 Release qualification | ACTIVE | W13.1-W13.6 DONE and release candidate passes required release gates. |
+| W0-W12 prior implementation | DONE | Candidate-based V2 baseline integrated. |
+| W12.1 diagnostics/schema-routing correction | DONE | Unknown safe schema reaches assistance/manual path; content-free diagnostics integrated. |
+| W12.2.1 contract/docs/raw reader | ACTIVE | Bounded source-shaped reader and transformation-plan contract pass current exact-head deterministic gates. |
+| W12.2.2 inference + preview | ACTIVE | Only valid plan primitives accepted; deterministic provenance preview passes current exact-head tests. |
+| W12.2.3 confirmation/feedback | ACTIVE | Explicit correct/wrong gate and revised-proposal reconfirmation pass current exact-head material UX evidence. |
+| W12.2.4 full executor/accounting | ACTIVE | Confirmed-plan-only execution; every candidate row resolved or explicit unresolved. |
+| W12.2.5 exception repair + category integration | ACTIVE | Bounded row repair cannot mutate global layout or author values; category/cancel/cleanup invariants pass current exact-head automation. |
+| W12.2.6 exact-head integration | ACTIVE | Selector-required browser/Android `FULL_MEDIA` and all automated gates pass on final W12.2 HEAD. |
+| W13 release qualification | BLOCKED | Resume only after W12.2 integration. |
 
-W13 real-environment gates remain release work and are not replaced by emulator evidence.
+## Validation and evidence
 
-## W13 gate notes
+This is a material domain/service/UI boundary. The selector owns validation depth; Android/Gradle gates are `REMOTE_AUTOMATED` when the local agent lacks the toolchain and are never delegated to the user.
 
-- **W13.1 `REAL_ENVIRONMENT`:** Play/release-representative Aura starts unauthorized; approve the exact identity; verify schema/category assistance, restart/update/reinstall and mismatch behavior.
-- **W13.2 `REAL_ENVIRONMENT`:** clean sign-in, process death/restart, logout/login, cancel and offline/reconnect with release configuration.
-- **W13.3 `REAL_ENVIRONMENT`:** representative ARM64 + actual GGUF over synthetic/approved V1, arbitrary-header, debit/credit, signed, ambiguous and unsupported fixtures. Wrong automatic financial mapping blocks release.
-- **W13.4 `REAL_ENVIRONMENT`:** first/warm/cancel/repeat runs, memory/residency cleanup, crash/ANR/OOM/process loss and thermal behavior; add materially different OEM/SoC before broad claims.
-- **W13.5 `REAL_ENVIRONMENT`:** TalkBack/text scaling through `Upload -> Understand file -> Check transactions -> Categorize -> Review -> Done` plus unavailable/ambiguous/cancel/recovery states.
-- **W13.6 human authority:** lawful basis/transparency, data inventory/RoPA, DPIA/AI-governance screening, bounded inference fields/content-free logging and no prompt/output persistence.
+Repository Health #222 proved predecessor HEAD `388cb78eace833c6c4457c29ab7c3eb89d09fb38`, including the packaged Android quoted-CSV journey through Harnex preview, explicit confirmation and deterministic full execution. W12.2.5 changes the unresolved-row branch, so #222 is historical evidence only; final readiness requires current exact-head automation.
 
-Physical/model evidence records build/channel, non-secret identity, device/API/ABI, model digest/profile, scenario/corpus, date and bounded timing/resource results. Never record credentials, signing material or real bank content.
+Required fixture assertions include: quoted-row source, invalid/unknown plan output, rejection/reconfirmation, explicit unresolved rows, successful deterministic row repair, repair attempts that smuggle financial values, `global-plan-wrong`, Harnex unavailable/cancelled, no silent ledger mutation and content-free diagnostics.
 
-## Failure handling and closure
-
-Classify failures before patching: current regression; signing/authorization; model/preset quality; device/OEM/resource; environment/toolchain; accessibility/design; or governance/requirement. Fix the canonical owner and add deterministic regression coverage where possible. Never replace failed real-environment evidence with emulator evidence.
-
-W12.1 is DONE: the corrected product path and required automated/material UI evidence are integrated into `dev`. W13 is DONE only when W13.1-W13.6 are complete against the release identity/configuration. Promotion `dev -> main` remains separate.
-
-## Immediate next actions
-
-1. Execute W13.1 production identity/authorization against a Play/release-representative Aura build and exact Harnex authorization topology.
-2. Execute W13.2-W13.5 physical authentication, GGUF quality, resource/OEM and accessibility evidence with bounded non-secret records.
-3. Complete W13.6 privacy/legal/AI-governance authority or record explicit non-applicability where justified.
-4. Only after W13.1-W13.6 are DONE, run release-stage validation and consider promotion `dev -> main`.
+W13 physical signer/GGUF/resource/OEM/TalkBack/privacy-authority evidence remains `REAL_ENVIRONMENT` and deferred until W12.2 is integrated.
 
 ## Resume checkpoint
 
-W0-W12.1 DONE and integrated through `dev@f31d4cb7d5e1e715a57869d3de5223c789c6939c`. PR #29 delivered the schema-discovery correction; PR #30 hardened the Android FULL_MEDIA gate and corrected validation scope for Android/Harnex E2E runners. W13 remains ACTIVE with W13.1-W13.6 READY and no real-environment gate complete yet.
+W12.2 started from `dev@0e12462f7e386f0ccf0367f119fedcff235a18f5` on `feature/harnex-interactive-raw-import` / draft PR #33. Functional implementation through bounded row repair is complete. Immediate next action: current exact-head Repository Health, then full-diff/base/readiness review and PR publication only if every required deterministic gate is green. W13 stays blocked until integration.

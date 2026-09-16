@@ -4,6 +4,7 @@ export type ImportV2DiagnosticStage =
   | 'attempt'
   | 'file-route'
   | 'schema-profile'
+  | 'schema-feedback'
   | 'schema-outcome'
   | 'harnex-connect'
   | 'harnex-probe'
@@ -17,6 +18,7 @@ export interface ImportV2DiagnosticDetails {
   reasonCode?: string;
   failureCode?: string;
   ambiguityCodes?: string;
+  feedbackArea?: string;
   useCaseId?: string;
   visibleSheets?: number;
   profiledHeaders?: number;
@@ -114,9 +116,10 @@ export function recordImportV2Diagnostic(
   sessionEvents.push(event);
   if (sessionEvents.length > MAX_SESSION_EVENTS) sessionEvents.shift();
 
-  // Content-free by contract: callers may log only closed status/failure codes,
-  // counts, payload sizes, capability limits and timing. Never pass filenames,
-  // headers, sample cells, transaction data, categories, prompts or model output.
+  // Content-free by contract: callers may log only closed status/failure/
+  // feedback codes, counts, payload sizes, capability limits and timing. Never
+  // pass filenames, headers, sample cells, transaction data, categories,
+  // prompts, plans/previews or model output.
   console.info('[AuraImportV2]', JSON.stringify(event));
 }
 
