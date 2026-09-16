@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   readTransactionImportFile: vi.fn(),
   inferImportV2PlanWithHarnex: vi.fn(),
   executeConfirmedImportV2Interpretation: vi.fn(),
+  repairUnresolvedImportV2RowsWithHarnex: vi.fn(),
   inferImportV2SchemaWithHarnex: vi.fn(),
   executeImportV2Mapping: vi.fn(),
   prepareTransactionImport: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock('../../../services/import', () => ({
   readTransactionImportFile: mocks.readTransactionImportFile,
   inferImportV2PlanWithHarnex: mocks.inferImportV2PlanWithHarnex,
   executeConfirmedImportV2Interpretation: mocks.executeConfirmedImportV2Interpretation,
+  repairUnresolvedImportV2RowsWithHarnex: mocks.repairUnresolvedImportV2RowsWithHarnex,
   inferImportV2SchemaWithHarnex: mocks.inferImportV2SchemaWithHarnex,
   executeImportV2Mapping: mocks.executeImportV2Mapping,
   prepareTransactionImport: mocks.prepareTransactionImport,
@@ -244,6 +246,40 @@ describe('ImportWizardDialog interactive Harnex interpretation', () => {
         plan: proposal().plan,
       },
     ));
+    expect(mocks.repairUnresolvedImportV2RowsWithHarnex).not.toHaveBeenCalled();
+    expect(mocks.prepareTransactionImport).toHaveBeenCalledWith(validation, []);
+    expect(await screen.findByText('Categorize and review')).toBeInTheDocument();
+    expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
+  });
+
+  it('executes bounded row repair after confirmation before category review', async () => {
+    const unresolved = {
+      status: 'unresolved' as const,
+      validation,
+      sourceRowNumbers: [3],
+    };
+    mocks.executeConfirmedImportV2Interpretation.mockResolvedValue(unresolved);
+    mocks.repairUnresolvedImportV2RowsWithHarnex.mockResolvedValue({
+      status: 'resolved',
+      validation,
+      repairedSourceRowNumbers: [3],
+    });
+    render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose raw file' }));
+    await screen.findByText('Check what Harnex understood');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, this is correct' }));
+
+    await waitFor(() => expect(mocks.repairUnresolvedImportV2RowsWithHarnex).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'wrapped.csv' }),
+      {
+        status: 'confirmed',
+        proposalId: 'proposal-1',
+        plan: proposal().plan,
+      },
+      unresolved,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ));
     expect(mocks.prepareTransactionImport).toHaveBeenCalledWith(validation, []);
     expect(await screen.findByText('Categorize and review')).toBeInTheDocument();
     expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
@@ -283,10 +319,17 @@ describe('ImportWizardDialog interactive Harnex interpretation', () => {
   });
 
   it('keeps unresolved full-file rows explicit, blocks preparation and exposes manual recovery', async () => {
-    mocks.executeConfirmedImportV2Interpretation.mockResolvedValue({
+    const unresolved = {
+      status: 'unresolved' as const,
+      validation,
+      sourceRowNumbers: [9, 11],
+    };
+    mocks.executeConfirmedImportV2Interpretation.mockResolvedValue(unresolved);
+    mocks.repairUnresolvedImportV2RowsWithHarnex.mockResolvedValue({
       status: 'unresolved',
       validation,
       sourceRowNumbers: [9, 11],
+      repairedSourceRowNumbers: [],
     });
     render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Choose raw file' }));
@@ -294,6 +337,7 @@ describe('ImportWizardDialog interactive Harnex interpretation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yes, this is correct' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('2 source rows still need a safe interpretation');
+    expect(mocks.repairUnresolvedImportV2RowsWithHarnex).toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Yes, this is correct' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Something is wrong' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Continue manually' })).toBeEnabled();
@@ -302,6 +346,26 @@ describe('ImportWizardDialog interactive Harnex interpretation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Continue manually' }));
     expect(await screen.findByText('Check the columns Aura should use')).toBeInTheDocument();
+  });
+
+  it('returns to a new global proposal when row repair says the confirmed interpretation is wrong', async () => {
+    mocks.executeConfirmedImportV2Interpretation.mockResolvedValue({
+      status: 'unresolved', validation, sourceRowNumbers: [3],
+    });
+    mocks.repairUnresolvedImportV2RowsWithHarnex.mockResolvedValue({
+      status: 'global-plan-wrong',
+      validation,
+      sourceRowNumbers: [3],
+      repairedSourceRowNumbers: [],
+    });
+    render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose raw file' }));
+    await screen.findByText('Check what Harnex understood');
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, this is correct' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('needs a broader revision');
+    expect(mocks.prepareTransactionImport).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Something is wrong' })).toBeEnabled();
   });
 
   it('discards a stale confirmed full-file result after the import session closes', async () => {

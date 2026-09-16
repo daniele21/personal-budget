@@ -10,6 +10,7 @@ import {
 import {
   executeConfirmedImportV2Interpretation,
   inferImportV2PlanWithHarnex,
+  repairUnresolvedImportV2RowsWithHarnex,
 } from '../../../services/import';
 import type { HarnexFailure } from '../../../platform/harnex';
 import { ImportV2InterpretationReview } from './ImportV2InterpretationReview';
@@ -158,6 +159,7 @@ export function ImportV2InterpretationFlow({
   const handleConfirm = useCallback(async () => {
     if (state.kind !== 'review' || state.issue) return;
     const operationSequence = ++requestSequenceRef.current;
+    let repairController: AbortController | null = null;
     setIsExecuting(true);
     try {
       const confirmed = confirmImportV2Interpretation(state.proposal);
@@ -169,10 +171,32 @@ export function ImportV2InterpretationFlow({
         return;
       }
       if (outcome.status === 'unresolved') {
+        repairController = new AbortController();
+        controllerRef.current = repairController;
+        const repair = await repairUnresolvedImportV2RowsWithHarnex(file, confirmed, outcome, {
+          signal: repairController.signal,
+        });
+        if (operationSequence !== requestSequenceRef.current) return;
+        if (repair.status === 'resolved') {
+          await onResolved(repair.validation);
+          return;
+        }
+        if (repair.status === 'global-plan-wrong') {
+          setState({
+            kind: 'review',
+            proposal: state.proposal,
+            issue: 'The unresolved rows indicate that the confirmed interpretation needs a broader revision. No transaction was imported. Use “Something is wrong” to request a new global proposal, or continue with manual mapping.',
+          });
+          return;
+        }
+        const remaining = repair.sourceRowNumbers.length;
+        const assistance = repair.status === 'assistance-unavailable'
+          ? ' Bounded Harnex row repair is not available right now.'
+          : ' Bounded Harnex row repair could not resolve them safely.';
         setState({
           kind: 'review',
           proposal: state.proposal,
-          issue: `${outcome.sourceRowNumbers.length} source ${outcome.sourceRowNumbers.length === 1 ? 'row still needs' : 'rows still need'} a safe interpretation. No transaction was imported. Use “Something is wrong” and choose “Some rows” or “Missing transactions” to request a revised interpretation.`,
+          issue: `${remaining} source ${remaining === 1 ? 'row still needs' : 'rows still need'} a safe interpretation. No transaction was imported.${assistance} Use “Something is wrong” and choose “Some rows” or “Missing transactions” to request a revised interpretation.`,
         });
         return;
       }
@@ -189,6 +213,7 @@ export function ImportV2InterpretationFlow({
         issue: 'Aura could not safely finish checking this interpretation. No transaction was imported. Retry with a revised interpretation or continue manually.',
       });
     } finally {
+      if (repairController && controllerRef.current === repairController) controllerRef.current = null;
       if (operationSequence === requestSequenceRef.current) setIsExecuting(false);
     }
   }, [file, onResolved, state]);
