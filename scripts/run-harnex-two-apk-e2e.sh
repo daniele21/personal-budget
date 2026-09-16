@@ -13,6 +13,8 @@ TEST_CLASS="com.staituned.aura.harnex.AuraHarnexTwoApkInstrumentedTest"
 CI_UI_REMOTE_VIDEO="/data/local/tmp/android-harnex-two-apk.mp4"
 CI_UI_RUNTIME_LOG="artifacts/android-ci/harnex-ui-runtime-health.log"
 CI_UI_SCREENRECORD_LOG="artifacts/android-ci/harnex-focused-screenrecord.log"
+CI_UI_VIDEO_SIZE="540x1200"
+CI_UI_VIDEO_BIT_RATE="2000000"
 ci_ui_recorder_pid=""
 ci_ui_monitor_pid=""
 
@@ -160,6 +162,12 @@ collect_ci_failure_diagnostics() {
   timeout 5s dmesg > artifacts/android-ci/host-dmesg.txt 2>&1 || true
   timeout 5s journalctl -k -n 400 --no-pager \
     > artifacts/android-ci/host-kernel-journal.txt 2>&1 || true
+  timeout 5s journalctl -n 600 --no-pager \
+    > artifacts/android-ci/host-system-journal.txt 2>&1 || true
+  timeout 5s coredumpctl list --no-pager \
+    > artifacts/android-ci/host-coredumps.txt 2>&1 || true
+  timeout 5s coredumpctl info --no-pager \
+    > artifacts/android-ci/host-coredump-info.txt 2>&1 || true
 }
 
 start_ci_ui_media() {
@@ -169,14 +177,16 @@ start_ci_ui_media() {
 
   # The workflow starts one broad recorder around this script. The material UI
   # evidence is only the packaged import flow below; the preceding Binder tests
-  # are assertion-only. Stop the broad recorder and restart a bounded recorder
-  # at lower encoder load so long Harnex runs do not destabilize the emulator.
+  # are assertion-only. Stop the broad recorder and restart a bounded continuous
+  # recorder at lower encoder load. Repeated fresh-runner failures showed the
+  # functional journey completing immediately before the emulator exited while
+  # finalizing 720x1600@4Mbps media; keep FULL_MEDIA but reduce encoder pressure.
   adb shell pkill -INT screenrecord >/dev/null 2>&1 || true
   sleep 1
   adb shell rm -f "$CI_UI_REMOTE_VIDEO" || true
   adb shell screenrecord \
-    --size 720x1600 \
-    --bit-rate 4000000 \
+    --size "$CI_UI_VIDEO_SIZE" \
+    --bit-rate "$CI_UI_VIDEO_BIT_RATE" \
     --time-limit 120 \
     "$CI_UI_REMOTE_VIDEO" \
     >/tmp/aura-harnex-import-screenrecord.log 2>&1 &
@@ -187,7 +197,8 @@ start_ci_ui_media() {
     echo "Focused Harnex import media recorder failed to start." >&2
     return 1
   fi
-  printf 'AURA_HARNEX_TWO_APK media_capture=focused size=720x1600 bit_rate=4000000\n'
+  printf 'AURA_HARNEX_TWO_APK media_capture=focused size=%s bit_rate=%s\n' \
+    "$CI_UI_VIDEO_SIZE" "$CI_UI_VIDEO_BIT_RATE"
 }
 
 stop_ci_ui_media() {
