@@ -63,14 +63,24 @@ function guidedClient(
   base: HarnexClient,
   retryAmbiguities?: readonly ImportV2PlanInferenceAmbiguity[],
 ): HarnexClient {
+  let maxInputCharacters: number | null = null;
   return {
     connect: () => base.connect(),
-    probe: (useCaseId) => base.probe(useCaseId),
-    generate: (request: HarnexGenerationRequest) => base.generate(
-      request.useCaseId === HARNEX_SCHEMA_INFERENCE_USE_CASE
-        ? { ...request, input: augmentInterpretationInput(request.input, retryAmbiguities) }
-        : request,
-    ),
+    async probe(useCaseId) {
+      const capability = await base.probe(useCaseId);
+      maxInputCharacters = capability.status === 'available'
+        ? capability.maxInputCharacters
+        : null;
+      return capability;
+    },
+    generate: (request: HarnexGenerationRequest) => {
+      if (request.useCaseId !== HARNEX_SCHEMA_INFERENCE_USE_CASE) return base.generate(request);
+      const augmented = augmentInterpretationInput(request.input, retryAmbiguities);
+      const input = maxInputCharacters != null && augmented.length > maxInputCharacters
+        ? request.input
+        : augmented;
+      return base.generate({ ...request, input });
+    },
     cancel: () => base.cancel(),
     disconnect: () => base.disconnect(),
   };
