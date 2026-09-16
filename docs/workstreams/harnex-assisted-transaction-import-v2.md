@@ -1,6 +1,6 @@
 # Harnex-assisted Transaction Import V2
 
-Status: ACTIVE — W0-W12.2 are integrated on `dev`; W13 release qualification is the active workstream stage.
+Status: ACTIVE — W0-W12.2 are integrated on `dev`; W13 release qualification is active with current Aura/Harnex candidates published to Google Play Internal Testing.
 
 Canonical contracts: [`V2 spec`](../specs/harnex-assisted-transaction-import-v2.md), [`ADR 0009`](../../adr/0009-aura-interactive-harnex-import-interpretation.md), [`privacy record`](../04-privacy-gdpr/harnex-assisted-import-processing-record.md). ADR 0008 is superseded for the schema-understanding boundary.
 
@@ -46,7 +46,7 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 | W12.2.4 full executor/accounting | DONE | Confirmed-plan-only execution; every candidate row resolved or explicit unresolved. |
 | W12.2.5 exception repair + category integration | DONE | Bounded row repair cannot mutate global layout or author values; category/cancel/cleanup invariants integrated. |
 | W12.2.6 exact-head integration | DONE | Final W12.2 HEAD passed selector-required browser/Android `FULL_MEDIA` and all automated gates before merge. |
-| W13 release qualification | ACTIVE | Qualify a fresh Play-installed Aura release candidate against the exact current Harnex release and close all applicable real-environment/privacy gates before promotion. |
+| W13 release qualification | ACTIVE | Current Play-installed Aura/Harnex candidates exist; close all applicable real-environment/privacy gates before promotion. |
 | W13.1 production identity/authorization | READY | Play-installed Aura release identity is authorized by Play-installed Harnex; missing/unauthorized paths fail closed to safe recovery. |
 | W13.2 physical Google sign-in | READY | Physical-device Credential Manager/Google sign-in happy path, sign-out, cancellation and failure recovery are verified. |
 | W13.3 real model quality | READY | ARM64/JNI/GGUF execution validates source interpretation, bounded repair and category assistance against the curated corpus; ambiguous cases stay reviewable/blocking. |
@@ -56,11 +56,15 @@ States: `READY | ACTIVE | BLOCKED | DONE`.
 
 ## Validation and evidence
 
-W12.2 final PR evidence is Repository Health #227 on Aura `e46bc8187ed309b8a00313b0c28ad704bdb38d9d`, with exact Harnex `b4dd636c220819aabc0ac046bb6e690e55ea80ae`. The FULL integration matrix passed engineering baseline, web type/tests/build, browser `FULL_MEDIA`, exact Harnex host/Consumer SDK identity, Android native unit/lint, packaged APK, API 36 emulator, packaged instrumentation/WebView journeys and evidence upload. PR #33 merged to `dev` as `e1227248a8281ca364610f4b53dd9eaa53cbbc8e`; post-merge Repository Health #228 is the exact merge-head confirmation and must be green before its evidence is recorded as complete.
+W12.2 final PR evidence is Repository Health #227 on Aura `e46bc8187ed309b8a00313b0c28ad704bdb38d9d`, with exact Harnex `b4dd636c220819aabc0ac046bb6e690e55ea80ae`. The FULL integration matrix passed engineering baseline, web type/tests/build, browser `FULL_MEDIA`, exact Harnex host/Consumer SDK identity, Android native unit/lint, packaged APK, API 36 emulator, packaged instrumentation/WebView journeys and evidence upload. PR #33 merged to `dev` as `e1227248a8281ca364610f4b53dd9eaa53cbbc8e`; post-merge Repository Health #228 passed on that exact merge head.
 
-Harnex `b4dd636c220819aabc0ac046bb6e690e55ea80ae` is already published to Google Play Internal Testing by Harnex `Publish Play Internal` run `35082206990` as package `io.github.daniele21.localllm.phonetest`, versionName `1.0.59`, versionCode `59`. This is the Harnex release candidate for W13 unless its exact source changes.
+PR #34 then aligned the durable W13 tracker and merged to `dev` as product-source commit `322e25bd65b23a0c684d182b45f48e3041da9947`. The current Aura qualification candidate is `9478ee3e54cf626aecee4d6edafcf630714ca76f`, whose only delta from that source is `android/release-trigger.properties`.
 
-Aura owns `.github/workflows/google-play-qualification.yml`. A W13 Aura candidate must come from the then-current `dev`, use a dedicated `play-release/qualification/internal/v<semver>` branch whose only delta is `android/release-trigger.properties`, pass release/FULL Repository Health, build/sign the release AAB and publish that exact candidate to Google Play Internal Testing. The semantic version is a release decision and is not inferred from `android/version.properties` or historical qualification branches.
+Aura Google Play Internal qualification is complete for versionName `1.0.12`, versionCode `100232`, package `com.staituned.aura`, product source `322e25bd65b23a0c684d182b45f48e3041da9947` and qualification commit `9478ee3e54cf626aecee4d6edafcf630714ca76f`. Repository Health #232 / run `35093031951` selected release/FULL and passed engineering baseline, web validation, browser `FULL_MEDIA`, exact Harnex host/Consumer SDK and packaged Android API 36 instrumentation/WebView evidence. Google Play W13 qualification run `35093031651` then passed release-readiness, R8/release bundle/signature verification and published that exact candidate to the `internal` track. Evidence artifact `10445417326` has ZIP SHA-256 `974be36c4d17f3f7fb3f90942d09f543975118ad09e6469dd536aaafde0644b6`.
+
+Harnex `b4dd636c220819aabc0ac046bb6e690e55ea80ae` is published to Google Play Internal Testing by Harnex `Publish Play Internal` run `35082206990` as package `io.github.daniele21.localllm.phonetest`, versionName `1.0.59`, versionCode `59`. This remains the exact Harnex W13 candidate unless its source changes.
+
+The automated build/package/sign/publish path is therefore exercised on the current W13 candidate pair. This is `AUTOMATED_PREFLIGHT_CONFIRMED` plus controlled-track publication evidence; it does not satisfy W13.1-W13.6 real-environment/privacy evidence.
 
 W13.1-W13.6 remain `REAL_ENVIRONMENT` where they genuinely require Play-installed packages, physical hardware, representative model/runtime behavior, accessibility judgement or privacy-owner authority. Deterministic build/package/publish gates remain `REMOTE_AUTOMATED` and are never delegated to the user merely because the agent cannot execute them locally.
 
@@ -77,6 +81,6 @@ No release promotion is allowed while an applicable W13 gate remains unconfirmed
 
 ## Resume checkpoint
 
-W12.2 is integrated on `dev` via PR #33. Current canonical merge commit is `e1227248a8281ca364610f4b53dd9eaa53cbbc8e`; Repository Health #228 is the post-merge exact-head confirmation. Harnex Play Internal `1.0.59` is already available from exact source `b4dd636c220819aabc0ac046bb6e690e55ea80ae`.
+W12.2 and its W13 activation bookkeeping are integrated on `dev`. Aura `1.0.12` / `100232` and Harnex `1.0.59` / `59` are both available on Google Play Internal from the exact sources recorded above, and Aura FULL automated qualification/publication is green.
 
-Next automated action after #228 is green: select the Aura qualification semantic version from the release owner/policy, create the exact-current-`dev` Google Play qualification candidate and inspect its FULL/package/publish evidence. After Aura reaches Internal Testing, execute W13.1 first, then the remaining applicable real-environment/privacy gates. Promotion to `main` stays blocked until W13 is complete.
+Immediate next action: execute **W13.1 production identity/authorization** on a physical device using those Play-installed candidates. Verify the unauthorized/missing path fails closed with manual recovery, explicitly authorize the exact Aura identity for both Harnex-assisted import use cases, exercise schema interpretation and category assistance, restart both apps and repeat, and cover the applicable update/reinstall path. W13.2-W13.5 can proceed on representative hardware once W13.1 establishes the production signer/authorization topology; W13.6 can proceed independently with the privacy/legal owner. Promotion to `main` remains blocked until every applicable W13 gate is complete.
