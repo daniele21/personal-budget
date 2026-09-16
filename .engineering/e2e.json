@@ -136,7 +136,7 @@
     },
     {
       "id": "harnex-assisted-import-runtime",
-      "claim": "The packaged Aura debug APK fails closed when Harnex is absent or unauthorized and, after explicit authorization, exercises assigned schema/category Consumer use cases through the real Harnex APK, Binder control plane, cancellation and reconnect lifecycle without bypassing Aura's manual fallback model.",
+      "claim": "The packaged Aura debug APK fails closed when Harnex is absent or unauthorized and, after explicit authorization, exercises assigned source-interpretation and category Consumer use cases through the real Harnex APK, Binder control plane, cancellation and reconnect lifecycle without bypassing Aura's safe recovery model.",
       "ui_surface": false,
       "minimum_ui_evidence_mode": "assertions",
       "target_environment_refs": ["android-api36-device"],
@@ -148,7 +148,7 @@
     },
     {
       "id": "harnex-assisted-import-user-flow",
-      "claim": "A user can import an arbitrary-header transaction CSV in the packaged Aura Android UI, receive Harnex schema and category assistance through the real Host/Consumer boundary, explicitly confirm the mapping, review deterministic Aura extraction, and commit only through Aura's verified ledger path.",
+      "claim": "A user can import a non-standard transaction CSV in the packaged Aura Android UI, receive Harnex source interpretation and category assistance through the real Host/Consumer boundary, inspect Aura's deterministic interpretation preview, explicitly confirm the exact interpretation before full-file execution, review deterministic transaction extraction, and commit only through Aura's verified ledger path.",
       "ui_surface": true,
       "minimum_ui_evidence_mode": "full_media",
       "target_environment_refs": ["android-api36-device"],
