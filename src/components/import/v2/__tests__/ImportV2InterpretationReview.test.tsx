@@ -101,4 +101,39 @@ describe('ImportV2InterpretationReview', () => {
     );
     expect(screen.getByText(/2 sampled rows still need attention/i)).toBeInTheDocument();
   });
+
+  it('shows a blocking full-file issue with revision and manual recovery instead of a confirm action', () => {
+    const onContinueManually = vi.fn();
+    render(
+      <ImportV2InterpretationReview
+        proposal={proposal()}
+        issue="2 source rows still need a safe interpretation."
+        onConfirm={vi.fn()}
+        onRequestRevision={vi.fn()}
+        onContinueManually={onContinueManually}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('2 source rows still need a safe interpretation');
+    expect(screen.queryByRole('button', { name: 'Yes, this is correct' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Something is wrong' })).toBeEnabled();
+    const manual = screen.getByRole('button', { name: 'Continue manually' });
+    expect(manual).toBeEnabled();
+    fireEvent.click(manual);
+    expect(onContinueManually).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes the full-file execution phase explicit while confirmation is busy', () => {
+    render(
+      <ImportV2InterpretationReview
+        proposal={proposal()}
+        isBusy
+        onConfirm={vi.fn()}
+        onRequestRevision={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Checking whole file…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Something is wrong' })).toBeDisabled();
+  });
 });
