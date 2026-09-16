@@ -39,13 +39,13 @@ const plan: ImportV2TransformationPlan = {
   amount: { strategy: 'debit-credit', debitColumnIndex: 2, creditColumnIndex: 3 },
 };
 
-function fakeClient(answers: readonly string[]): HarnexClient {
+function fakeClient(answers: readonly string[], maxInputCharacters = 50_000): HarnexClient {
   let answerIndex = 0;
   return {
     connect: vi.fn<HarnexClient['connect']>(async () => ({ status: 'connected' })),
     probe: vi.fn<HarnexClient['probe']>(async () => ({
       status: 'available',
-      maxInputCharacters: 50_000,
+      maxInputCharacters,
       maxJsonSchemaCharacters: 20_000,
     })),
     generate: vi.fn<HarnexClient['generate']>(async () => {
@@ -63,7 +63,7 @@ function resolved(): string {
 }
 
 describe('guided Harnex plan inference recovery', () => {
-  it('adds semantic role guidance and performs one bounded retry for model ambiguity', async () => {
+  it('adds semantic rules and performs one bounded retry for model ambiguity', async () => {
     const client = fakeClient([
       JSON.stringify({ status: 'ambiguous', ambiguities: ['date', 'description', 'amount'] }),
       resolved(),
@@ -87,17 +87,24 @@ describe('guided Harnex plan inference recovery', () => {
     expect(client.disconnect).toHaveBeenCalledTimes(2);
 
     const firstInput = JSON.parse(vi.mocked(client.generate).mock.calls[0]![0].input) as {
-      roleGuide?: Record<string, string>;
-      ambiguityRetry?: unknown;
+      rules?: string[];
+      previousAmbiguities?: unknown;
     };
-    expect(firstInput.roleGuide?.debitCredit).toContain('Uscite/Entrate');
-    expect(firstInput.roleGuide?.description).toContain('causale');
-    expect(firstInput.ambiguityRetry).toBeUndefined();
+    expect(firstInput.rules).toEqual(expect.arrayContaining([
+      expect.stringContaining('Uscite/Entrate'),
+      expect.stringContaining('causale'),
+      expect.stringContaining('Low confidence'),
+    ]));
+    expect(firstInput.previousAmbiguities).toBeUndefined();
 
     const retryInput = JSON.parse(vi.mocked(client.generate).mock.calls[1]![0].input) as {
-      ambiguityRetry?: { previousAmbiguities?: string[] };
+      rules?: string[];
+      previousAmbiguities?: string[];
     };
-    expect(retryInput.ambiguityRetry?.previousAmbiguities).toEqual(['date', 'description', 'amount']);
+    expect(retryInput.previousAmbiguities).toEqual(['date', 'description', 'amount']);
+    expect(retryInput.rules).toEqual(expect.arrayContaining([
+      expect.stringContaining('bounded re-evaluation'),
+    ]));
   });
 
   it('does not retry invalid model output', async () => {
@@ -119,5 +126,20 @@ describe('guided Harnex plan inference recovery', () => {
       feedback: { area: 'amount' },
     })).resolves.toEqual({ status: 'ambiguous', ambiguities: ['amount'] });
     expect(client.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the already-bounded request when semantic guidance would exceed Harnex input limits', async () => {
+    const wideClient = fakeClient([resolved()]);
+    await inferImportV2PlanWithHarnex(document, { client: wideClient });
+    const originalLength = JSON.parse(vi.mocked(wideClient.generate).mock.calls[0]![0].input).document
+      ? vi.mocked(wideClient.generate).mock.calls[0]![0].input.length
+      : 0;
+
+    const limitedClient = fakeClient([resolved()], originalLength - 1);
+    await inferImportV2PlanWithHarnex(document, { client: limitedClient });
+    const limitedInput = JSON.parse(vi.mocked(limitedClient.generate).mock.calls[0]![0].input) as {
+      rules?: string[];
+    };
+    expect(limitedInput.rules?.some((rule) => rule.includes('Uscite/Entrate'))).toBe(false);
   });
 });
