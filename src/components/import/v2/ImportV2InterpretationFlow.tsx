@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { StructuredImportValidationResult } from '../../../domain/import';
 import {
   confirmImportV2Interpretation,
   type ImportV2InterpretationFeedback,
   type ImportV2InterpretationFeedbackArea,
   type ImportV2InterpretationProposal,
   type ImportV2RawDocument,
-  type StructuredImportValidationResult,
 } from '../../../domain/import/v2';
 import {
   executeConfirmedImportV2Interpretation,
