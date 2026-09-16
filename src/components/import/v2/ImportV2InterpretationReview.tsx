@@ -14,6 +14,7 @@ interface ImportV2InterpretationReviewProps {
   isBusy?: boolean;
   onConfirm: () => void;
   onRequestRevision: (area: ImportV2InterpretationFeedbackArea) => void;
+  onContinueManually?: () => void;
 }
 
 const FEEDBACK_OPTIONS: ReadonlyArray<{
@@ -53,6 +54,7 @@ export function ImportV2InterpretationReview({
   isBusy = false,
   onConfirm,
   onRequestRevision,
+  onContinueManually,
 }: ImportV2InterpretationReviewProps) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackArea, setFeedbackArea] = useState<ImportV2InterpretationFeedbackArea | null>(null);
@@ -117,14 +119,27 @@ export function ImportV2InterpretationReview({
       )}
 
       {!showFeedback ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button type="button" fullWidth disabled={isBusy || Boolean(issue)} onClick={onConfirm}>
-            Yes, this is correct
-          </Button>
-          <Button type="button" variant="secondary" fullWidth disabled={isBusy} onClick={() => setShowFeedback(true)}>
-            Something is wrong
-          </Button>
-        </div>
+        issue ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button type="button" fullWidth disabled={isBusy} onClick={() => setShowFeedback(true)}>
+              Something is wrong
+            </Button>
+            {onContinueManually && (
+              <Button type="button" variant="secondary" fullWidth disabled={isBusy} onClick={onContinueManually}>
+                Continue manually
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button type="button" fullWidth disabled={isBusy} onClick={onConfirm}>
+              {isBusy ? 'Checking whole file…' : 'Yes, this is correct'}
+            </Button>
+            <Button type="button" variant="secondary" fullWidth disabled={isBusy} onClick={() => setShowFeedback(true)}>
+              Something is wrong
+            </Button>
+          </div>
+        )
       ) : (
         <div className="space-y-3 rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-4">
           <fieldset disabled={isBusy}>
