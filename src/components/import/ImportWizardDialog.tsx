@@ -7,8 +7,9 @@ import {
   type ImportIssue,
   type ImportSummary as ImportReviewSummary,
   type PreparedTransactionImport,
+  type StructuredImportValidationResult,
 } from '../../domain/import';
-import type { SpreadsheetProfile } from '../../domain/import/v2';
+import type { ImportV2RawDocument, SpreadsheetProfile } from '../../domain/import/v2';
 import {
   executeImportV2Mapping,
   inferImportV2SchemaWithHarnex,
@@ -28,6 +29,7 @@ import { useToast } from '../Toast';
 import { FileUploadStep } from './FileUploadStep';
 import { ImportSummary } from './ImportSummary';
 import { ReviewStep } from './ReviewStep';
+import { ImportV2InterpretationFlow } from './v2/ImportV2InterpretationFlow';
 import { ImportV2MappingEditor } from './v2/ImportV2MappingEditor';
 import { ImportV2TaskStatePanel } from './v2/ImportV2TaskStatePanel';
 import { createImportV2MappingChoices } from './v2/importV2MappingOptions';
@@ -44,16 +46,25 @@ type WizardStep =
   | 'validating'
   | 'assistance'
   | 'mapping'
+  | 'interpretation'
   | 'checking'
   | 'categorizing'
   | 'review'
   | 'confirm'
   | 'summary';
-type DisplayWizardStep = 'upload' | 'understand-file' | 'check-transactions' | 'categorize' | 'review' | 'summary';
+type DisplayWizardStep =
+  | 'upload'
+  | 'understand-file'
+  | 'check-interpretation'
+  | 'check-transactions'
+  | 'categorize'
+  | 'review'
+  | 'summary';
 
 const STEPS: Array<{ key: DisplayWizardStep; label: string }> = [
   { key: 'upload', label: 'Upload' },
   { key: 'understand-file', label: 'Understand file' },
+  { key: 'check-interpretation', label: 'Check interpretation' },
   { key: 'check-transactions', label: 'Check transactions' },
   { key: 'categorize', label: 'Categorize' },
   { key: 'review', label: 'Review' },
@@ -179,6 +190,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [v2File, setV2File] = useState<File | null>(null);
   const [v2Profile, setV2Profile] = useState<SpreadsheetProfile | null>(null);
+  const [v2RawDocument, setV2RawDocument] = useState<ImportV2RawDocument | null>(null);
   const [v2Mapping, setV2Mapping] = useState<ImportV2MappingDraft>(EMPTY_IMPORT_V2_MAPPING);
   const [v2MappingResolution, setV2MappingResolution] = useState<'resolved' | 'ambiguous'>('ambiguous');
   const [v2MappingIssues, setV2MappingIssues] = useState<string[]>([]);
@@ -199,6 +211,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     setErrorMessage(null);
     setV2File(null);
     setV2Profile(null);
+    setV2RawDocument(null);
     setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
     setV2MappingResolution('ambiguous');
     setV2MappingIssues([]);
@@ -370,6 +383,35 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     }
   }, [categories, transactions]);
 
+  const handleManualV2Fallback = useCallback((kind: 'ambiguous' | 'unsupported' | 'unavailable') => {
+    setV2AssistanceState(null);
+    setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
+    setV2MappingResolution('ambiguous');
+    setV2MappingIssues([manualMappingIssue(kind)]);
+    setStep('mapping');
+  }, []);
+
+  const handleResolvedV2Interpretation = useCallback(async (validation: StructuredImportValidationResult) => {
+    const operationRevision = ++operationRevisionRef.current;
+    setStep('checking');
+    setErrorMessage(null);
+    try {
+      if (validation.hasBlockingIssues) {
+        throw new Error('The confirmed interpretation still contains blocking transaction errors.');
+      }
+      const nextPrepared = await prepareTransactionImport(validation, transactions);
+      if (operationRevision !== operationRevisionRef.current) return;
+      if (nextPrepared.rows.length === 0) throw new Error('The confirmed interpretation does not produce valid transaction rows.');
+      await runCategoryAssistance(nextPrepared, operationRevision);
+    } catch (error) {
+      if (operationRevision !== operationRevisionRef.current) return;
+      const message = error instanceof Error ? error.message : 'The confirmed interpretation could not be prepared safely.';
+      setErrorMessage(message);
+      setStep('upload');
+      toast(message, 'error');
+    }
+  }, [prepareTransactionImport, runCategoryAssistance, toast, transactions]);
+
   const handleFileSelected = useCallback(async (file: File) => {
     const operationRevision = ++operationRevisionRef.current;
     setStep('validating');
@@ -377,6 +419,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     setErrorMessage(null);
     setV2MappingIssues([]);
     setV2AssistanceState(null);
+    setV2RawDocument(null);
     try {
       const result = await readTransactionImportFile(file);
       if (operationRevision !== operationRevisionRef.current) return;
@@ -413,6 +456,13 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         return;
       }
       if (result.kind === 'mapping-required') {
+        setV2File(file);
+        setV2Profile(result.profile);
+        setV2RawDocument(result.rawDocument ?? null);
+        if (result.rawDocument && getPlatformCapabilities().harnexSupported) {
+          setStep('interpretation');
+          return;
+        }
         await runSchemaAssistance(file, result.profile, operationRevision);
         return;
       }
@@ -433,7 +483,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       setStep('upload');
       toast(message, 'error');
     }
-  }, [commitExistingTransactionImport, runSchemaAssistance, toast, transactions, undoTransactionImport]);
+  }, [commitExistingTransactionImport, prepareTransactionImport, runSchemaAssistance, toast, transactions, undoTransactionImport]);
 
   const handleConfirmV2Mapping = useCallback(async () => {
     if (!v2File || !v2Profile || !v2Mapping.dateCandidateId || !v2Mapping.amountCandidateId) return;
@@ -510,7 +560,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const handleBack = () => {
     if (step === 'confirm') setStep('review');
     else if (step === 'review') setDiscardAction('upload');
-    else if (step === 'mapping') reset();
+    else if (step === 'mapping' || step === 'interpretation') reset();
   };
 
   const handleImport = async () => {
@@ -552,15 +602,17 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     ? 'upload'
     : step === 'validating' || step === 'mapping' || (step === 'assistance' && v2AssistanceState?.step === 'understand-file')
       ? 'understand-file'
-      : step === 'checking'
-        ? 'check-transactions'
-        : step === 'categorizing' || step === 'review' || (step === 'assistance' && v2AssistanceState?.step === 'categorize')
-          ? 'categorize'
-          : step === 'confirm'
-            ? 'review'
-            : 'summary';
+      : step === 'interpretation'
+        ? 'check-interpretation'
+        : step === 'checking'
+          ? 'check-transactions'
+          : step === 'categorizing' || step === 'review' || (step === 'assistance' && v2AssistanceState?.step === 'categorize')
+            ? 'categorize'
+            : step === 'confirm'
+              ? 'review'
+              : 'summary';
   const currentStepIndex = STEPS.findIndex((item) => item.key === displayStep);
-  const canGoBack = step === 'mapping' || step === 'review' || step === 'confirm';
+  const canGoBack = step === 'mapping' || step === 'interpretation' || step === 'review' || step === 'confirm';
   const v2Choices = v2Profile ? createImportV2MappingChoices(v2Profile) : null;
   if (!isOpen) return null;
 
@@ -665,6 +717,17 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
               </motion.div>
             )}
 
+            {step === 'interpretation' && v2File && v2RawDocument && (
+              <motion.div key="interpretation" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
+                <ImportV2InterpretationFlow
+                  file={v2File}
+                  rawDocument={v2RawDocument}
+                  onResolved={handleResolvedV2Interpretation}
+                  onManualFallback={handleManualV2Fallback}
+                />
+              </motion.div>
+            )}
+
             {step === 'mapping' && v2Choices && (
               <motion.div key="mapping" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
                 <ImportV2MappingEditor
@@ -696,9 +759,9 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
               >
                 <Loader2 className="h-10 w-10 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
                 <div>
-                  <h3 className="font-headline text-lg font-bold text-on-surface">Checking mapped transactions</h3>
+                  <h3 className="font-headline text-lg font-bold text-on-surface">Checking transactions</h3>
                   <p className="mt-1 max-w-xs text-sm text-on-surface-variant">
-                    Aura is applying the confirmed mapping and validating each transaction locally before categorization.
+                    Aura is applying the confirmed interpretation and validating each transaction locally before categorization.
                   </p>
                 </div>
               </motion.div>
@@ -716,7 +779,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
             )}
 
             {step === 'confirm' && prepared && (
-              <motion.div key="confirm" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
+              <motion.div key="confirm" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -12 }} className="space-y-5">
                 <div className="flex items-start gap-3 rounded-2xl bg-surface-container-low p-4">
                   {prepared.summary.uncategorizedRows > 0
                     ? <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-accent-amber" aria-hidden="true" />
