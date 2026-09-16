@@ -1,6 +1,6 @@
 # Harnex-assisted Transaction Import V2
 
-Status: **W12.2 interactive source interpretation is implemented through the explicit user-confirmation/full-execution boundary and is under integration validation. Prior candidate-based W12/W12.1 remains the integrated baseline; release qualification is paused until this successor boundary is integrated.**
+Status: **W12.2 interactive source interpretation is implemented through explicit user confirmation, deterministic full-file execution and bounded unresolved-row repair, and is under exact-head integration validation. Prior candidate-based W12/W12.1 remains the integrated baseline; release qualification is paused until this successor boundary is integrated.**
 
 Active delivery tracker: [`../workstreams/harnex-assisted-transaction-import-v2.md`](../workstreams/harnex-assisted-transaction-import-v2.md).
 
@@ -11,6 +11,8 @@ Durable decision: [`../../adr/0009-aura-interactive-harnex-import-interpretation
 Aura accepts technically safe CSV/XLSX bank exports without requiring the user to reshape them to a known template. Aura preserves a bounded source-shaped view, uses authorized on-device Harnex to propose how that source maps to Aura transactions, executes only Aura-owned declarative transformation primitives, shows a deterministic preview, asks the user whether the interpretation is correct, and only after explicit confirmation executes the plan across a fresh full local read of the source.
 
 If the user says the Harnex result is wrong, Aura captures structured feedback and requests a revised complete proposal. Every revised proposal gets a new preview and requires confirmation again.
+
+If the confirmed global plan resolves most rows but leaves a small bounded exception set, Aura may ask Harnex for row-scoped declarative repair. Harnex still does not author transaction values: Aura re-executes each accepted row repair deterministically against the original source row.
 
 V1 remains the deterministic canonical fast path when a source already matches `date,description,amount`.
 
@@ -23,6 +25,7 @@ V1 remains the deterministic canonical fast path when a source already matches `
 - A Harnex proposal is never silently accepted: the user explicitly confirms it or reports what is wrong.
 - A rejected proposal loses authority; a revised proposal must be previewed and confirmed again.
 - Every candidate source row is either deterministically resolved or explicitly unresolved; rows are never silently dropped.
+- Row repair cannot mutate the confirmed global sheet/layout or return date/description/amount values; it can only select Aura-owned semantic primitives for a specific unresolved source row.
 - Final transaction Review + verified commit remains the only canonical ledger write.
 
 ## Scope
@@ -43,7 +46,7 @@ V1 remains the deterministic canonical fast path when a source already matches `
 - structured feedback refinement loop;
 - unresolved-row accounting and bounded exception repair;
 - optional category suggestions from the user's existing taxonomy;
-- session-only interpretation state;
+- session-only interpretation/repair state;
 - existing duplicate warning, Review, verified commit and undo semantics.
 
 ### Out of scope
@@ -51,7 +54,7 @@ V1 remains the deterministic canonical fast path when a source already matches `
 - `.xls`, `.xlsm`, PDF, images or OCR;
 - cloud inference fallback;
 - model-generated code, scripts, arbitrary regex or spreadsheet formulas;
-- model-authoritative ledger mutation;
+- model-authoritative ledger mutation or model-authored canonical financial values;
 - FX conversion or automatic mixed-currency normalization in this slice;
 - bank connectivity/Open Banking;
 - automatic category creation/rename/delete;
@@ -73,7 +76,10 @@ selected file
        Wrong   -> structured feedback -> new Harnex proposal -> new preview -> confirm again
   -> confirmed-plan deterministic full-file execution
   -> every candidate row resolved or explicitly unresolved
-  -> optional bounded Harnex exception repair for unresolved rows
+  -> bounded Harnex exception repair for a small unresolved set
+       repair -> Aura deterministic row re-execution
+       unresolved -> keep row blocking
+       global-plan-wrong -> return to global feedback/new preview/new confirmation
   -> local duplicate/history/category resolution
   -> optional Harnex category batches
   -> Review
@@ -231,15 +237,27 @@ Execution invariants:
 - output remains subject to existing canonical validation, duplicate detection and Review;
 - ledger mutation remains impossible before the verified commit stage.
 
-The full executor returns resolved rows and explicit unresolved source-row numbers. Any unresolved/blocking result prevents transaction preparation and commit.
+The full executor returns resolved rows and explicit unresolved source-row numbers. Any unresolved/blocking result prevents transaction preparation and commit until safe repair resolves every blocking row.
 
 ## Exception repair
 
 If a confirmed plan resolves most of the document but a small bounded set of rows remains unresolved, Aura may request local Harnex repair for only those row contexts.
 
-Exception repair is row-scoped. It must not silently replace the confirmed global transformation plan. If Harnex concludes the global structure itself is wrong, Aura returns to interpretation feedback and requires a new global proposal/preview/confirmation.
+The implemented repair boundary is deliberately narrower than global plan inference:
 
-Until bounded row repair is implemented and validated, unresolved full-file rows remain an explicit blocking recovery state rather than being dropped or guessed.
+- at most eight unresolved rows are eligible in one import attempt;
+- each Harnex generation receives only the confirmed global plan, the confirmed header row, one target source row and closed issue codes;
+- source cell text is bounded again before crossing the Harnex boundary and is reduced further when capability limits require it;
+- the confirmed sheet and record layout are immutable for row repair;
+- the response may choose only Aura-owned date parser, description source columns and amount-strategy source columns for that exact row;
+- the response schema contains no canonical date, description, amount, type or category fields;
+- Aura deterministically executes the proposed row semantics against the original source row and accepts it only when normal canonical validation has no blocking issue;
+- invalid response, unsafe source references, deterministic failure or `unresolved` keeps the row explicit and blocking;
+- `global-plan-wrong` returns to global interpretation feedback and therefore requires a new proposal, preview and explicit confirmation.
+
+Repair reuses the authorized `aura-transaction-schema-inference` Harnex use case. It does not introduce a third Android Binder/policy use case because the operation is still schema/source interpretation under a stricter response contract.
+
+Partial repair never permits partial transaction preparation: the import advances only when all candidate rows are safe and the merged validation result is non-blocking.
 
 ## Category-resolution contract
 
@@ -253,10 +271,10 @@ Date and amount remain excluded from the initial category-classification request
 
 Current Android use cases remain:
 
-- `aura-transaction-schema-inference` — evolves in W12.2 to return a transformation-plan proposal rather than only Aura candidate IDs;
+- `aura-transaction-schema-inference` — transformation-plan proposal, structured revision and bounded row-level source interpretation under distinct closed JSON schemas;
 - `aura-transaction-category-classification`.
 
-A separate exception-repair use case may be introduced only if the existing inference use case cannot keep schema/repair semantics clear and independently testable.
+No separate exception-repair use case is introduced in W12.2 because the existing schema-inference authorization can keep global-plan and row-repair semantics independently constrained at the Aura request/response boundary. A future split remains possible if Harnex policy/resource ownership needs independent assignment.
 
 Use cases are local, explicitly assigned/authorized, stateless for the workflow and JSON-schema constrained. Aura does not choose the model/preset; Harnex remains the runtime owner.
 
@@ -276,6 +294,8 @@ It must still exclude unless a successor decision proves necessity:
 
 Aura/Harnex logs and diagnostics remain content-free. Prompt/source cells, dates, amounts, descriptions, categories and generated output are never intentionally logged.
 
+Row repair further minimizes context by sending only the confirmed header plus the single unresolved target row per generation rather than replaying resolved rows or the full execution document.
+
 ## Availability and recovery
 
 | Condition | Required Aura behavior |
@@ -286,7 +306,9 @@ Aura/Harnex logs and diagnostics remain content-free. Prompt/source cells, dates
 | invalid plan response | reject proposal; no preview/full execution |
 | preview cannot be built deterministically | treat proposal as invalid/needs revision |
 | user says result is wrong | invalidate that proposal for execution; capture feedback; request revised proposal or manual correction |
-| confirmed plan leaves unresolved rows | keep them explicit and blocking; optional bounded repair may resolve them; never drop silently |
+| confirmed plan leaves a small bounded unresolved set | attempt row-scoped declarative repair when Harnex is available; never drop or accept model-authored values |
+| repair remains unresolved/unavailable | keep rows explicit and blocking; offer global revision/manual recovery |
+| row repair reports global-plan-wrong | return to global feedback/new proposal/preview/confirmation |
 | cancellation | cancel generation and retain no hidden commit action |
 | offline | no cloud attempt |
 
@@ -297,6 +319,8 @@ The user-facing journey is:
 `Upload -> Understand file -> Check interpretation -> Check transactions -> Categorize -> Review -> Done`
 
 `Check interpretation` is a mandatory gate when Harnex has proposed source semantics. It shows representative rows, an expandable summary of how Aura will interpret the source, and clear `Yes, this is correct` / `Something is wrong` actions. Full execution is not reachable from the proposal merely because Harnex returned `resolved`.
+
+After confirmation, bounded row repair is an internal continuation of `Check interpretation`: no transactions are prepared while repair is running or while rows remain unresolved. If repair requires a global change, the user returns to the same explicit correction/new-proposal gate rather than receiving a silently changed interpretation.
 
 Manual correction and feedback states must remain operable with keyboard, Android touch, screen reader and text scaling. Error meaning cannot depend on color alone.
 
@@ -318,8 +342,11 @@ Deterministic CI must cover at minimum:
 12. full execution rejects an unconfirmed proposal;
 13. user rejection prevents the prior proposal from entering full execution;
 14. feedback creates a new proposal/preview gate;
-15. Harnex unavailable/cancelled leaves no ledger mutation;
-16. diagnostics/logging contain no financial source or generated content.
+15. bounded row repair sends only the unresolved row/header context and deterministically re-executes accepted source references;
+16. row-repair attempts to return financial values or mutate the global structure fail closed;
+17. `global-plan-wrong` returns to global feedback/new confirmation rather than replacing the confirmed plan;
+18. Harnex unavailable/cancelled leaves no ledger mutation;
+19. diagnostics/logging contain no financial source or generated content.
 
 Real-Harnex qualification keeps `unsafe silent mapping rate = 0` as the minimum structural safety metric. Emulator/browser tests do not replace physical GGUF/OEM/accessibility/privacy-authority release evidence.
 
@@ -333,6 +360,7 @@ W12.2 is integration-ready when:
 - no plan reaches full execution without explicit confirmation;
 - structured negative feedback can produce a revised proposal and a second confirmation gate;
 - every full-file candidate row is resolved or explicitly unresolved;
+- bounded row repair cannot mutate the confirmed global sheet/layout or author financial values, and only Aura-deterministic repaired rows can unblock the import;
 - existing category/review/verified-commit invariants remain intact;
 - privacy/logging/lifecycle contracts are current;
 - required exact-head automated validation and affected material-UX `FULL_MEDIA` evidence pass.
