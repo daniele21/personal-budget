@@ -1,6 +1,6 @@
 # Harnex-assisted Transaction Import V2
 
-Status: **W12.2 interactive source interpretation is implemented through explicit user confirmation, deterministic full-file execution and bounded unresolved-row repair, and is under exact-head integration validation. Prior candidate-based W12/W12.1 remains the integrated baseline; release qualification is paused until this successor boundary is integrated.**
+Status: **W12.2 interactive source interpretation is integrated through explicit user confirmation, deterministic full-file execution and bounded unresolved-row repair. W13 release qualification is now active; promotion remains blocked until its applicable real-environment and privacy-owner gates are complete.**
 
 Active delivery tracker: [`../workstreams/harnex-assisted-transaction-import-v2.md`](../workstreams/harnex-assisted-transaction-import-v2.md).
 
