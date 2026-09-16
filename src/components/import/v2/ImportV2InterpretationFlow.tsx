@@ -209,7 +209,6 @@ export function ImportV2InterpretationFlow({
   if (state.kind === 'review') {
     return (
       <ImportV2InterpretationReview
-        key={state.proposal.proposalId}
         proposal={state.proposal}
         issue={state.issue}
         isBusy={isExecuting}
