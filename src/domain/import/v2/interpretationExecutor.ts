@@ -18,7 +18,8 @@ export interface ImportV2InterpretationPreviewResult {
 }
 
 function rawCellToMappingCell(value: ImportV2RawCell): RawImportCell {
-  if (value == null || typeof value === 'string' || typeof value === 'number') return value;
+  if (value === undefined) return undefined;
+  if (typeof value === 'string' || typeof value === 'number') return value;
   if (value.kind === 'formula') return { kind: 'formula' };
   return new Date(value.isoDate);
 }
