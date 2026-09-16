@@ -20,14 +20,15 @@ const RETRYABLE_AMBIGUITIES = new Set<ImportV2PlanInferenceAmbiguity>([
   'amount',
 ]);
 
-const ROLE_GUIDE = {
-  evidence: 'Header semantics and sampled value shapes are both relevant. Header labels can be localized.',
-  date: 'Transaction date means booking, operation, posting, or value date. Examples include Date, Data Operazione, Fecha, and Datum when the values are date-shaped.',
-  description: 'Description means merchant, payee, counterparty, memo, reason, or causale; descriptive text is distinct from date, amount, currency, and direction fields.',
-  debitCredit: 'Separate outflow and inflow columns map to debit-credit. Examples include Debit/Credit, Uscite/Entrate, and Dare/Avere; outflow is debit and inflow is credit.',
-  delimitedCell: 'In a delimited-cell layout, the delimiter separates fields inside each source row and should split the same source cell position consistently across header and sampled data rows.',
-  ambiguity: 'Ambiguous means at least two incompatible supported plans remain plausible after considering the supplied evidence; uncertainty alone is not a second plausible plan.',
-} as const;
+const SEMANTIC_RULES = [
+  'Use header meaning and sampled value shapes together. Header labels may be localized; do not require English names.',
+  'Transaction date means the booking, operation, posting, or value date. Labels such as Date, Data Operazione, Fecha, or Datum are evidence when sampled values are date-shaped.',
+  'Description means merchant, payee, counterparty, memo, reason, or causale. Prefer descriptive text fields over date, amount, currency, or direction fields.',
+  'When separate outflow and inflow columns exist, use debit-credit. Examples include Debit/Credit, Uscite/Entrate, and Dare/Avere; the outflow column is debit and the inflow column is credit.',
+  'For delimited-cell, the delimiter separates fields inside each source row. Select it only when the same source cell position splits consistently across the header and sampled data rows.',
+  'Return ambiguous only when at least two incompatible supported plans remain plausible after considering the supplied headers and samples. Low confidence by itself is not a second plausible plan.',
+  'Never select a parser, semantic column, or amount strategy when sampled values contradict that interpretation.',
+] as const;
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -47,15 +48,19 @@ function augmentInterpretationInput(
   }
   if (!isRecord(parsed) || parsed.task !== 'interpret-transaction-source') return input;
 
+  const rules = Array.isArray(parsed.rules)
+    ? parsed.rules.filter((rule): rule is string => typeof rule === 'string')
+    : [];
   return JSON.stringify({
     ...parsed,
-    roleGuide: ROLE_GUIDE,
-    ...(retryAmbiguities ? {
-      ambiguityRetry: {
-        previousAmbiguities: retryAmbiguities,
-        goal: 'A second evaluation of the same evidence using the role guide, producing a complete supported plan when only one remains plausible.',
-      },
-    } : {}),
+    rules: [
+      ...rules,
+      ...SEMANTIC_RULES,
+      ...(retryAmbiguities ? [
+        `This is one bounded re-evaluation after ambiguities ${retryAmbiguities.join(', ')}. Re-evaluate the same source using the semantic rules and return a complete supported plan when only one remains plausible.`,
+      ] : []),
+    ],
+    ...(retryAmbiguities ? { previousAmbiguities: retryAmbiguities } : {}),
   });
 }
 
@@ -95,6 +100,13 @@ function shouldRetry(outcome: ImportV2PlanInferenceOutcome): outcome is Extract<
     && outcome.ambiguities.every((ambiguity) => RETRYABLE_AMBIGUITIES.has(ambiguity));
 }
 
+/**
+ * Production-facing plan inference wrapper. The accepted transformation-plan
+ * validator/executor remains unchanged. This layer only strengthens the bounded
+ * semantic instructions seen by the real local model and performs at most one
+ * second pass for a structurally valid ambiguity. Invalid output/plan/preview
+ * failures and user-requested revisions are never retried automatically.
+ */
 export async function inferImportV2PlanWithHarnex(
   rawDocument: ImportV2RawDocument,
   options: InferImportV2PlanOptions = {},
