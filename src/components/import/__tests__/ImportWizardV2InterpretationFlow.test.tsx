@@ -282,7 +282,7 @@ describe('ImportWizardDialog interactive Harnex interpretation', () => {
     ));
   });
 
-  it('keeps unresolved full-file rows explicit and blocks preparation', async () => {
+  it('keeps unresolved full-file rows explicit, blocks preparation and exposes manual recovery', async () => {
     mocks.executeConfirmedImportV2Interpretation.mockResolvedValue({
       status: 'unresolved',
       validation,
@@ -294,9 +294,37 @@ describe('ImportWizardDialog interactive Harnex interpretation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yes, this is correct' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('2 source rows still need a safe interpretation');
-    expect(screen.getByRole('button', { name: 'Yes, this is correct' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Yes, this is correct' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Something is wrong' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Continue manually' })).toBeEnabled();
     expect(mocks.prepareTransactionImport).not.toHaveBeenCalled();
+    expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue manually' }));
+    expect(await screen.findByText('Check the columns Aura should use')).toBeInTheDocument();
+  });
+
+  it('discards a stale confirmed full-file result after the import session closes', async () => {
+    let resolveExecution: ((value: { status: 'resolved'; validation: StructuredImportValidationResult }) => void) | undefined;
+    mocks.executeConfirmedImportV2Interpretation.mockReturnValue(new Promise((resolve) => {
+      resolveExecution = resolve;
+    }));
+    const onClose = vi.fn();
+    render(<ImportWizardDialog isOpen onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose raw file' }));
+    await screen.findByText('Check what Harnex understood');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, this is correct' }));
+    expect(await screen.findByRole('button', { name: 'Checking whole file…' })).toBeDisabled();
+    await waitFor(() => expect(mocks.executeConfirmedImportV2Interpretation).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close import wizard' }).at(-1)!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    resolveExecution?.({ status: 'resolved', validation });
+
+    expect(await screen.findByRole('button', { name: 'Choose raw file' })).toBeInTheDocument();
+    await waitFor(() => expect(mocks.prepareTransactionImport).not.toHaveBeenCalled());
+    expect(mocks.resolveImportV2Categories).not.toHaveBeenCalled();
     expect(mocks.commitPreparedTransactionImport).not.toHaveBeenCalled();
   });
 
