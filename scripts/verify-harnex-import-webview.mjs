@@ -185,42 +185,42 @@ async function main() {
     if (started === null) throw new Error('Analyze file action is unavailable.');
 
     await waitFor(
-      () => client.evaluate(`document.body.textContent.includes('Suggested mapping ready')`),
-      'Harnex-assisted schema mapping',
+      () => client.evaluate(`document.body.textContent.includes('Check what Harnex understood')`),
+      'Harnex-assisted interpretation preview',
       240,
     );
 
-    const mapping = await client.evaluate(`(() => {
+    const interpretation = await client.evaluate(`(() => {
       const dialog = document.querySelector('[role="dialog"]');
-      const controlByLabel = (text) => {
-        const label = Array.from(dialog?.querySelectorAll('label') ?? [])
-          .find((candidate) => candidate.textContent.trim() === text);
-        return label?.htmlFor ? document.getElementById(label.htmlFor) : null;
-      };
-      const date = controlByLabel('Transaction date');
-      const amount = controlByLabel('Amount');
-      const description = Array.from(dialog?.querySelectorAll('input[type="checkbox"]') ?? [])
-        .find((candidate) => candidate.checked);
+      const text = dialog?.textContent ?? '';
+      const buttons = Array.from(dialog?.querySelectorAll('button') ?? []);
       return {
-        dateSelected: Boolean(date?.value),
-        amountSelected: Boolean(amount?.value),
-        descriptionSelected: Boolean(description),
+        hasMarket: text.includes('Synthetic Harnex Market'),
+        hasTaxi: text.includes('Synthetic Harnex Taxi'),
+        hasCorrectAction: buttons.some((button) => button.textContent.trim() === 'Yes, this is correct' && !button.disabled),
+        hasWrongAction: buttons.some((button) => button.textContent.trim() === 'Something is wrong' && !button.disabled),
+        hasInterpretationStep: text.includes('Check interpretation'),
         ledgerBeforeConfirm: JSON.parse(localStorage.getItem('aura_transactions') ?? '[]').length
       };
     })()`);
-    if (!mapping?.dateSelected || !mapping?.amountSelected || !mapping?.descriptionSelected) {
-      throw new Error(`Harnex suggestion did not populate a complete Aura mapping: ${JSON.stringify(mapping)}`);
+    if (!interpretation?.hasMarket || !interpretation?.hasTaxi || !interpretation?.hasCorrectAction || !interpretation?.hasWrongAction) {
+      throw new Error(`Harnex interpretation preview is incomplete: ${JSON.stringify(interpretation)}`);
     }
-    if (mapping.ledgerBeforeConfirm !== 0) throw new Error('Ledger changed before mapping confirmation.');
+    if (!interpretation?.hasInterpretationStep) {
+      throw new Error(`Interactive interpretation step was not visible: ${JSON.stringify(interpretation)}`);
+    }
+    if (interpretation.ledgerBeforeConfirm !== 0) {
+      throw new Error('Ledger changed before explicit interpretation confirmation.');
+    }
 
     const confirmed = await client.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
-        .find((candidate) => candidate.textContent.trim() === 'Confirm mapping');
+        .find((candidate) => candidate.textContent.trim() === 'Yes, this is correct');
       if (!button || button.disabled) return false;
       button.click();
       return true;
     })()`);
-    if (!confirmed) throw new Error('Confirmed mapping action is unavailable.');
+    if (!confirmed) throw new Error('Interpretation confirmation action is unavailable.');
 
     await waitFor(
       () => client.evaluate(`document.body.textContent.includes('Categorize and review')`),
@@ -299,7 +299,7 @@ async function main() {
     ].filter(Boolean);
     if (failures.length > 0) throw new Error(`Harnex assisted import verification failed: ${failures.join(', ')}`);
 
-    console.log(JSON.stringify({ status: 'PASS', mapping, review, evidence }, null, 2));
+    console.log(JSON.stringify({ status: 'PASS', interpretation, review, evidence }, null, 2));
   } finally {
     client.close();
   }
