@@ -376,7 +376,7 @@ async function runConnectedInference(
     };
   }
 
-  let rowsPerSheet = Math.min(12, Math.max(2, ...document.sheets.map(({ rows }) => rows.length));
+  let rowsPerSheet = Math.min(12, Math.max(2, ...document.sheets.map(({ rows }) => rows.length)));
   let input = inputPayload(document, rowsPerSheet, options.feedback);
   while (input.length > capability.maxInputCharacters && rowsPerSheet > 2) {
     rowsPerSheet = Math.max(2, Math.floor(rowsPerSheet / 2));
