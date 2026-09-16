@@ -1,4 +1,5 @@
 import {
+  IMPORT_V2_PROFILE_LIMITS,
   splitImportV2DelimitedRecord,
   type ProfileRowInput,
 } from '../../domain/import/v2';
@@ -50,7 +51,11 @@ export function materializeDelimitedCellRows(
   for (const row of rows) {
     if (row.cells.length !== 1 || typeof row.cells[0] !== 'string') return null;
     const split = splitImportV2DelimitedRecord(row.cells[0], delimiter);
-    if (!split || split.length < 2) return null;
+    if (
+      !split
+      || split.length < 2
+      || split.length > IMPORT_V2_PROFILE_LIMITS.columns
+    ) return null;
     if (logicalColumnCount == null) logicalColumnCount = split.length;
     if (split.length !== logicalColumnCount) return null;
     materialized.push({
@@ -61,17 +66,29 @@ export function materializeDelimitedCellRows(
   return materialized;
 }
 
+function hasHeaderEvidence(rows: readonly ProfileRowInput[]): boolean {
+  const first = rows[0];
+  if (!first) return false;
+  const labeledFields = first.cells.filter((cell) =>
+    typeof cell === 'string' && /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(cell),
+  ).length;
+  return labeledFields >= Math.min(2, first.cells.length);
+}
+
 /**
  * Detects only an unambiguous repeated-field layout. If more than one delimiter
- * can explain the sampled one-cell rows, Aura leaves the profile source-shaped
- * rather than guessing a layout.
+ * can explain the sampled one-cell rows, or the first logical row does not look
+ * like a labeled header, Aura leaves the profile source-shaped rather than
+ * guessing a layout.
  */
 export function detectDelimitedCellLayout(
   rows: readonly ProfileRowInput[],
 ): ImportV2DelimitedCellLayout | null {
   const candidates = DELIMITERS.flatMap((delimiter) => {
     const materialized = materializeDelimitedCellRows(rows, delimiter);
-    return materialized ? [{ delimiter, rows: materialized }] : [];
+    return materialized && hasHeaderEvidence(materialized)
+      ? [{ delimiter, rows: materialized }]
+      : [];
   });
   if (candidates.length !== 1) return null;
   const candidate = candidates[0]!;
