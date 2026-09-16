@@ -383,7 +383,6 @@ export async function repairUnresolvedImportV2RowsWithHarnex(
   options: RepairImportV2RowsOptions = {},
 ): Promise<ImportV2RowRepairOutcome> {
   const originalRows = [...new Set(execution.sourceRowNumbers)].sort((left, right) => left - right);
-  const emptyRepairs = new Map<number, ValidatedRow>();
   if (originalRows.length === 0 || originalRows.length > IMPORT_V2_ROW_REPAIR_MAX_ROWS) {
     return {
       status: 'unresolved',
@@ -473,7 +472,7 @@ export async function repairUnresolvedImportV2RowsWithHarnex(
             break;
           }
 
-          let cellCodePoints = IMPORT_V2_INTERPRETATION_LIMITS.cellCodePoints;
+          let cellCodePoints: number = IMPORT_V2_INTERPRETATION_LIMITS.cellCodePoints;
           let input = repairInput(
             confirmed,
             headerRow,
@@ -555,7 +554,7 @@ export async function repairUnresolvedImportV2RowsWithHarnex(
     return {
       status: 'assistance-unavailable',
       validation,
-      sourceRowNumbers: remaining,
+      sourceRowNumbers: remaining.length > 0 ? remaining : originalRows,
       repairedSourceRowNumbers,
       failure: terminalFailure,
     };
