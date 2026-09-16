@@ -159,6 +159,56 @@ describe('repairUnresolvedImportV2RowsWithHarnex', () => {
     }
   });
 
+  it('cancels the active Harnex repair and still disconnects before returning', async () => {
+    const file = fileWithOneDateException();
+    const { confirmed, execution } = await unresolvedExecution(file);
+    const controller = new AbortController();
+    const client = fakeClient(repairAnswer());
+    vi.mocked(client.generate).mockImplementation(async () => {
+      controller.abort();
+      return {
+        status: 'failed',
+        failure: { code: 'CANCELLED', message: 'Cancelled.' },
+      };
+    });
+
+    const outcome = await repairUnresolvedImportV2RowsWithHarnex(file, confirmed, execution, {
+      client,
+      signal: controller.signal,
+      today: '2026-09-30',
+    });
+
+    expect(outcome.status).toBe('assistance-unavailable');
+    if (outcome.status !== 'assistance-unavailable') return;
+    expect(outcome.failure.code).toBe('CANCELLED');
+    expect(outcome.sourceRowNumbers).toEqual([3]);
+    expect(outcome.repairedSourceRowNumbers).toEqual([]);
+    expect(client.cancel).toHaveBeenCalledOnce();
+    expect(client.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed when cleanup fails after a row was deterministically repaired', async () => {
+    const file = fileWithOneDateException();
+    const { confirmed, execution } = await unresolvedExecution(file);
+    const client = fakeClient(repairAnswer());
+    vi.mocked(client.disconnect).mockResolvedValue({
+      status: 'failed',
+      failure: { code: 'RUNTIME_FAILURE', message: 'Cleanup failed.' },
+    });
+
+    const outcome = await repairUnresolvedImportV2RowsWithHarnex(file, confirmed, execution, {
+      client,
+      today: '2026-09-30',
+    });
+
+    expect(outcome.status).toBe('assistance-unavailable');
+    if (outcome.status !== 'assistance-unavailable') return;
+    expect(outcome.failure.code).toBe('RUNTIME_FAILURE');
+    expect(outcome.repairedSourceRowNumbers).toEqual([3]);
+    expect(outcome.sourceRowNumbers).toEqual([3]);
+    expect(client.disconnect).toHaveBeenCalledOnce();
+  });
+
   it('does not invoke Harnex when the unresolved set exceeds the bounded repair budget', async () => {
     const client = fakeClient(repairAnswer());
     const sourceRowNumbers = Array.from(
