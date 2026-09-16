@@ -2,7 +2,7 @@
 
 ## Status
 
-Engineering processing record, updated 2026-09-15 for W12.2 interactive raw interpretation. Deterministic integration evidence for this successor boundary is not complete yet. This document is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
+Engineering processing record, updated 2026-09-16 after W12.2 interactive raw interpretation was integrated through Aura PR #33 with deterministic FULL integration evidence. W13.6 privacy/legal/AI-governance owner approval remains pending. This document is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
 
 The privacy/legal owner must reconcile this record with the organization’s authoritative data inventory, role/lawful-basis register and DPIA/AI-governance process before general release.
 
