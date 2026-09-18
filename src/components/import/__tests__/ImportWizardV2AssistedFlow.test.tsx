@@ -184,11 +184,11 @@ describe('ImportWizardDialog Import V2 assisted flow', () => {
     render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose assisted file' }));
-    expect(await screen.findByText('Suggested mapping ready')).toBeInTheDocument();
-    expect(screen.getByLabelText('Transaction date')).toHaveValue(dateCandidate.id);
-    expect(screen.getByLabelText('Amount')).toHaveValue(amountCandidate.id);
-    expect(screen.getByRole('checkbox', { name: /Details/ })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
+    expect(await screen.findByText('Check what Aura found')).toBeInTheDocument();
+    expect(screen.getByText('Booking Date', { exact: true })).toBeInTheDocument();
+    expect(screen.getByText(/Amount · signs determine expense \/ income/)).toBeInTheDocument();
+    expect(mocks.inferImportV2SchemaWithHarnex).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Categorize and review')).toBeInTheDocument();
     expect(screen.getByText('Groceries', { exact: true })).toBeInTheDocument();
@@ -241,7 +241,24 @@ describe('ImportWizardDialog Import V2 assisted flow', () => {
     expect(screen.getByText(/could not identify a safe mapping/i)).toBeInTheDocument();
   });
 
-  it('keeps manual mapping first-class when Aura is not authorized for assistance', async () => {
+  it('keeps manual mapping first-class when unresolved columns are not authorized for assistance', async () => {
+    const unresolvedProfile = profileSpreadsheet({
+      sourceKind: 'csv',
+      csvDelimiter: ',',
+      sheets: [{
+        id: 'sheet-1',
+        name: 'CSV',
+        state: 'visible',
+        rows: [
+          { rowNumber: 1, cells: ['Column A', 'Column B', 'Column C'] },
+          { rowNumber: 2, cells: ['2026-09-01', 'Synthetic Grocery', '-42.00'] },
+          { rowNumber: 3, cells: ['2026-09-02', 'Synthetic Taxi', '-18.00'] },
+        ],
+        totalNonEmptyRows: 3,
+        samplesTruncated: false,
+      }],
+    });
+    mocks.readTransactionImportFile.mockResolvedValue({ kind: 'mapping-required', profile: unresolvedProfile });
     mocks.inferImportV2SchemaWithHarnex.mockResolvedValue({
       status: 'assistance-unavailable',
       failure: { code: 'UNAUTHORIZED', message: 'Not authorized.' },
@@ -260,6 +277,22 @@ describe('ImportWizardDialog Import V2 assisted flow', () => {
   });
 
   it('fails an ambiguous assisted schema closed to editable manual mapping', async () => {
+    const unresolvedProfile = profileSpreadsheet({
+      sourceKind: 'csv',
+      csvDelimiter: ',',
+      sheets: [{
+        id: 'sheet-1',
+        name: 'CSV',
+        state: 'visible',
+        rows: [
+          { rowNumber: 1, cells: ['Column A', 'Column B', 'Column C'] },
+          { rowNumber: 2, cells: ['2026-09-01', 'Synthetic Grocery', '-42.00'] },
+        ],
+        totalNonEmptyRows: 2,
+        samplesTruncated: false,
+      }],
+    });
+    mocks.readTransactionImportFile.mockResolvedValue({ kind: 'mapping-required', profile: unresolvedProfile });
     mocks.inferImportV2SchemaWithHarnex.mockResolvedValue({
       status: 'ambiguous',
       ambiguities: ['date'],
@@ -289,8 +322,8 @@ describe('ImportWizardDialog Import V2 assisted flow', () => {
     render(<ImportWizardDialog isOpen onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose assisted file' }));
-    await screen.findByText('Suggested mapping ready');
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm mapping' }));
+    await screen.findByText('Check what Aura found');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Some suggestions could not be completed')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continue manually' }));

@@ -29,7 +29,11 @@
     }
   },
   "ui_evidence": {
-    "modes": ["assertions", "screenshots", "full_media"],
+    "modes": [
+      "assertions",
+      "screenshots",
+      "full_media"
+    ],
     "default_mode": "screenshots",
     "assertions_allowed_when_ui_incidental": true,
     "full_media_triggers": [
@@ -41,19 +45,40 @@
       "release_acceptance"
     ]
   },
-  "fidelity_order": ["host_or_fake", "simulated_or_emulated", "representative_virtual", "representative_physical", "target_environment"],
+  "fidelity_order": [
+    "host_or_fake",
+    "simulated_or_emulated",
+    "representative_virtual",
+    "representative_physical",
+    "target_environment"
+  ],
   "target_environments": [
     {
       "id": "web-regression-runtime",
       "platform": "browser",
       "description": "Shared Aura React runtime used for deterministic product-flow regression before Android packaging.",
-      "material_dimensions": ["supported browser engine", "desktop/mobile viewport", "local persisted state", "shared domain and UI behavior"]
+      "material_dimensions": [
+        "supported browser engine",
+        "desktop/mobile viewport",
+        "local persisted state",
+        "shared domain and UI behavior"
+      ]
     },
     {
       "id": "android-api36-device",
       "platform": "Android",
       "description": "Packaged Aura application on the supported Android API 36 device surface.",
-      "material_dimensions": ["API level", "bundled WebView", "Capacitor/native bridge", "permissions and notification listener", "process lifecycle and restart", "optional Harnex Binder host boundary", "OEM behavior", "accessibility", "real payment-source behavior"]
+      "material_dimensions": [
+        "API level",
+        "bundled WebView",
+        "Capacitor/native bridge",
+        "permissions and notification listener",
+        "process lifecycle and restart",
+        "optional Harnex Binder host boundary",
+        "OEM behavior",
+        "accessibility",
+        "real payment-source behavior"
+      ]
     }
   ],
   "execution_environments": [
@@ -63,8 +88,15 @@
       "automation": "automated",
       "platform": "GitHub Actions / Node 22 / Playwright Chromium preflight; full suite additionally covers WebKit and mobile emulation",
       "artifact_surface": "source-backed Vite E2E runtime with bounded success/failure media for critical journeys",
-      "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "known_gaps": ["does not execute the packaged APK", "does not execute Capacitor native bridges", "mobile browser emulation is not physical Android evidence"]
+      "target_environment_refs": [
+        "web-regression-runtime",
+        "android-api36-device"
+      ],
+      "known_gaps": [
+        "does not execute the packaged APK",
+        "does not execute Capacitor native bridges",
+        "mobile browser emulation is not physical Android evidence"
+      ]
     },
     {
       "id": "android-api36-ci",
@@ -72,8 +104,15 @@
       "automation": "automated",
       "platform": "GitHub Actions / Android API 36 Google APIs x86_64 emulator",
       "artifact_surface": "packaged com.staituned.aura.debug APK installed on a booted emulator with native instrumentation, WebView/Capacitor verification, exact-source Harnex emulatorE2e host integration, screenshots and continuous journey video",
-      "target_environment_refs": ["android-api36-device"],
-      "known_gaps": ["not physical OEM hardware", "Harnex emulatorE2e replaces production GGUF/native inference with a deterministic backend", "does not reproduce every third-party payment source application", "TalkBack and physical-device text-scaling confirmation remain separate"]
+      "target_environment_refs": [
+        "android-api36-device"
+      ],
+      "known_gaps": [
+        "not physical OEM hardware",
+        "Harnex emulatorE2e replaces production GGUF/native inference with a deterministic backend",
+        "does not reproduce every third-party payment source application",
+        "TalkBack and physical-device text-scaling confirmation remain separate"
+      ]
     },
     {
       "id": "physical-android-device",
@@ -81,8 +120,12 @@
       "automation": "real_environment",
       "platform": "supported physical Android API 36 device",
       "artifact_surface": "release-candidate Aura APK exercised with physical permission, lifecycle, accessibility and approved payment-source evidence",
-      "target_environment_refs": ["android-api36-device"],
-      "known_gaps": ["one representative device does not establish every supported OEM/device combination"]
+      "target_environment_refs": [
+        "android-api36-device"
+      ],
+      "known_gaps": [
+        "one representative device does not establish every supported OEM/device combination"
+      ]
     }
   ],
   "critical_journeys": [
@@ -91,10 +134,18 @@
       "claim": "A user can inspect the month, record/review spending, and obtain the resulting budget/safe-to-spend state coherently.",
       "ui_surface": true,
       "minimum_ui_evidence_mode": "full_media",
-      "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "automated_environment_refs": ["playwright-ci", "android-api36-ci"],
+      "target_environment_refs": [
+        "web-regression-runtime",
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "playwright-ci",
+        "android-api36-ci"
+      ],
       "minimum_automated_fidelity": "representative_virtual",
-      "residual_gaps": ["physical Android WebView, OEM lifecycle and accessibility behavior"],
+      "residual_gaps": [
+        "physical Android WebView, OEM lifecycle and accessibility behavior"
+      ],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     },
@@ -103,10 +154,39 @@
       "claim": "A user can export/import the supported portable financial-data surface without silently changing canonical ledger semantics.",
       "ui_surface": true,
       "minimum_ui_evidence_mode": "full_media",
-      "target_environment_refs": ["web-regression-runtime", "android-api36-device"],
-      "automated_environment_refs": ["playwright-ci", "android-api36-ci"],
+      "target_environment_refs": [
+        "web-regression-runtime",
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "playwright-ci",
+        "android-api36-ci"
+      ],
       "minimum_automated_fidelity": "representative_virtual",
-      "residual_gaps": ["physical Android file-picker/storage-provider integration when that surface changes"],
+      "residual_gaps": [
+        "physical Android file-picker/storage-provider integration when that surface changes"
+      ],
+      "real_environment_confirmation": "conditional",
+      "automation_gap_reason": null
+    },
+    {
+      "id": "deterministic-import-mapping-flow",
+      "claim": "A user can upload a non-canonical but familiar bank CSV, inspect a human-readable deterministic mapping without requiring Harnex schema inference, continue to deterministic extraction, review the resulting transactions, and keep the ledger unchanged until explicit commit.",
+      "ui_surface": true,
+      "minimum_ui_evidence_mode": "full_media",
+      "target_environment_refs": [
+        "web-regression-runtime",
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "playwright-ci",
+        "android-api36-ci"
+      ],
+      "minimum_automated_fidelity": "representative_virtual",
+      "residual_gaps": [
+        "physical Android WebView/OEM behavior",
+        "representative TalkBack and text-scaling confirmation"
+      ],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     },
@@ -115,10 +195,18 @@
       "claim": "An Android payment candidate remains outside the canonical ledger until the user reviews and explicitly confirms or ignores it.",
       "ui_surface": true,
       "minimum_ui_evidence_mode": "full_media",
-      "target_environment_refs": ["android-api36-device"],
-      "automated_environment_refs": ["android-api36-ci"],
+      "target_environment_refs": [
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "android-api36-ci"
+      ],
       "minimum_automated_fidelity": "simulated_or_emulated",
-      "residual_gaps": ["real notification-listener permission grant flow", "approved real source application behavior", "OEM process lifecycle and reboot recovery"],
+      "residual_gaps": [
+        "real notification-listener permission grant flow",
+        "approved real source application behavior",
+        "OEM process lifecycle and reboot recovery"
+      ],
       "real_environment_confirmation": "required",
       "automation_gap_reason": null
     },
@@ -127,34 +215,59 @@
       "claim": "The built Android debug/release-candidate artifact installs, launches, renders the shared application and recovers across the supported native lifecycle.",
       "ui_surface": true,
       "minimum_ui_evidence_mode": "full_media",
-      "target_environment_refs": ["android-api36-device"],
-      "automated_environment_refs": ["android-api36-ci"],
+      "target_environment_refs": [
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "android-api36-ci"
+      ],
       "minimum_automated_fidelity": "simulated_or_emulated",
-      "residual_gaps": ["physical-device/OEM behavior", "TalkBack and device text-scaling confirmation"],
+      "residual_gaps": [
+        "physical-device/OEM behavior",
+        "TalkBack and device text-scaling confirmation"
+      ],
       "real_environment_confirmation": "required",
       "automation_gap_reason": null
     },
     {
       "id": "harnex-assisted-import-runtime",
-      "claim": "The packaged Aura debug APK fails closed when Harnex is absent or unauthorized and, after explicit authorization, exercises assigned source-interpretation and category Consumer use cases through the real Harnex APK, Binder control plane, cancellation and reconnect lifecycle without bypassing Aura's safe recovery model.",
+      "claim": "The packaged Aura debug APK fails closed when Harnex is absent or unauthorized and, after explicit authorization, exercises the schema-fallback and category Consumer use cases through the real Harnex APK/Binder lifecycle without bypassing Aura's deterministic-first mapping or safe recovery model.",
       "ui_surface": false,
       "minimum_ui_evidence_mode": "assertions",
-      "target_environment_refs": ["android-api36-device"],
-      "automated_environment_refs": ["android-api36-ci"],
+      "target_environment_refs": [
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "android-api36-ci"
+      ],
       "minimum_automated_fidelity": "simulated_or_emulated",
-      "residual_gaps": ["physical ARM64/JNI/GGUF execution", "production model quality/latency", "memory and thermal behavior", "production signer topology and OEM lifecycle"],
+      "residual_gaps": [
+        "physical ARM64/JNI/GGUF execution",
+        "production model quality/latency",
+        "memory and thermal behavior",
+        "production signer topology and OEM lifecycle"
+      ],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     },
     {
       "id": "harnex-assisted-import-user-flow",
-      "claim": "A user can import a non-standard transaction CSV in the packaged Aura Android UI, receive Harnex source interpretation and category assistance through the real Host/Consumer boundary, inspect Aura's deterministic interpretation preview, explicitly confirm the exact interpretation before full-file execution, review deterministic transaction extraction, and commit only through Aura's verified ledger path.",
+      "claim": "A user can import a non-standard but locally recognizable transaction CSV in packaged Aura Android, inspect Aura's deterministic date/description/money mapping before extraction, continue into Harnex category assistance through the real Host/Consumer boundary, review canonical transactions, and commit only through Aura's verified ledger path.",
       "ui_surface": true,
       "minimum_ui_evidence_mode": "full_media",
-      "target_environment_refs": ["android-api36-device"],
-      "automated_environment_refs": ["android-api36-ci"],
+      "target_environment_refs": [
+        "android-api36-device"
+      ],
+      "automated_environment_refs": [
+        "android-api36-ci"
+      ],
       "minimum_automated_fidelity": "simulated_or_emulated",
-      "residual_gaps": ["physical ARM64/JNI/GGUF execution and production-model quality", "memory and thermal behavior", "production signer topology and OEM lifecycle", "representative TalkBack and device text-scaling confirmation"],
+      "residual_gaps": [
+        "physical ARM64/JNI/GGUF execution and production-model quality for remaining Harnex fallback/category use cases",
+        "memory and thermal behavior",
+        "production signer topology and OEM lifecycle",
+        "representative TalkBack and device text-scaling confirmation"
+      ],
       "real_environment_confirmation": "conditional",
       "automation_gap_reason": null
     }
