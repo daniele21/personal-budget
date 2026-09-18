@@ -2,69 +2,73 @@
 
 ## Status
 
-Engineering processing record, updated 2026-09-16 after W12.2 interactive raw interpretation was integrated through Aura PR #33 with deterministic FULL integration evidence. W13.6 privacy/legal/AI-governance owner approval remains pending. This document is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
+Engineering processing record updated for W12.3 deterministic-first Import V2. W13 privacy/legal/AI-governance owner approval remains pending. This is not an approved RoPA entry, legal interpretation, DPIA decision or GDPR certification.
 
-The privacy/legal owner must reconcile this record with the organization’s authoritative data inventory, role/lawful-basis register and DPIA/AI-governance process before general release.
+ADR 0010 replaces ADR 0009's raw source-plan interpretation as the canonical wizard path. The previous broader raw-plan boundary remains historical and is not the data flow this candidate intends to ship.
 
 ## Processing activity and purpose
 
-User-initiated import of a CSV/XLSX financial export. Aura performs technical/resource safety checks locally, retains a bounded source-shaped document view, and may use an explicitly authorized installed Harnex Android runtime for on-device interpretation of the source into an Aura-owned declarative transformation plan. Aura then executes that plan deterministically only for a representative preview, asks the user whether the interpretation is correct, and either confirms the exact proposal or sends structured corrective feedback for a revised local Harnex proposal.
+User-initiated import of a CSV/XLSX financial export.
 
-Only a confirmed plan may be executed across the full source. Canonical transaction Review and verified commit remain Aura-owned.
+Aura performs technical/resource safety checks, structural normalization and conservative semantic mapping locally. Familiar schemas are mapped without Harnex. Only when the local resolver cannot complete the schema may Aura call an explicitly authorized installed Harnex Android runtime to select among Aura-owned bounded schema candidates.
 
-Purpose: reduce manual reshaping/categorization of bank exports while preserving local execution, explicit user control, deterministic financial parsing and canonical Aura ownership.
+After a complete mapping is shown and the user continues, Aura executes/validates it deterministically. Category assistance remains optional and downstream. Canonical Review and verified commit remain Aura-owned.
+
+Purpose: reduce manual reshaping/categorization while minimizing model exposure and preserving local execution, user control and deterministic financial semantics.
 
 ## Data categories
 
 Aura may process locally:
 
-- source spreadsheet structure and bounded source row/cell content;
+- source spreadsheet structure and bounded sampled cell content;
 - transaction date, description, amount and derived expense/income type;
-- user feedback about interpretation quality (for example date, amount/sign, description, table selection, missing transactions or row interpretation);
 - user-defined active category labels;
-- local ledger descriptions/categories used for exact conservative history matching.
+- local ledger description/category history used for conservative exact matching.
 
-The W12.2 Harnex schema/plan boundary is broader than the earlier candidate-ID-only design because source structure may be lost before semantic profiling. Harnex may therefore receive **bounded source-shaped row/cell content** needed to understand structure.
+### Schema assistance boundary
 
-The schema/plan request may include:
+The canonical schema request is the bounded semantic profile/candidate space, not a raw transformation-plan document.
 
-- opaque sheet/row/proposal identifiers;
-- bounded sheet labels where structurally useful;
-- bounded source cell values from representative windows;
-- structural metadata such as row counts, hidden/visible sheet state and merged-cell markers;
-- the previous plan/proposal identity when revising;
-- a closed structured feedback area supplied by the user.
+It may include:
+
+- opaque sheet/header/column/candidate IDs;
+- bounded sheet/header labels;
+- bounded column samples and structural ratios needed to distinguish candidate roles;
+- Aura-owned date parser/amount candidate metadata;
+- source kind and bounded structural metadata.
+
+Harnex may return only advertised Aura candidate IDs or an ambiguous/unsupported result. Aura validates every returned selection.
 
 It must not intentionally include:
 
 - filename/path;
 - Firebase UID/email/token;
-- credentials, signing information or authorization tokens;
-- bank account/IBAN/card identifiers intentionally extracted as metadata;
+- credentials/signing/authorization material;
 - cloud-backup content;
 - the complete Aura ledger;
-- an unrestricted whole-workbook prompt when bounded windows are sufficient.
+- an unrestricted whole-workbook prompt;
+- model-authored executable parser code.
 
-Large sources remain bounded by Aura/Harnex capability limits. Additional source windows may be provided only when needed for interpretation/validation/repair; the whole file is not copied into one unconstrained model prompt.
+The raw source-plan/revision/row-repair requests defined under ADR 0009 are retired from the canonical product journey.
 
-Category inference remains narrower and may receive only opaque group IDs, transaction description text needed for classification, expense/income type and ephemeral active-category IDs/labels. Date and amount remain excluded initially from category requests.
+### Category assistance boundary
+
+Category inference may receive only opaque group IDs, normalized transaction description text needed for classification, expense/income type and ephemeral active-category IDs/labels. Date and amount remain excluded.
 
 ## Systems and flow
 
 ```text
 user-selected CSV/XLSX
- -> Aura technical/resource safety gates
- -> bounded source-shaped rows/cells in Aura session memory
- -> optional local Binder Harnex plan inference
- -> JSON-schema-constrained Aura declarative transformation plan
- -> Aura deterministic preview + source provenance
- -> explicit user Correct / Something is wrong decision
-      Wrong -> structured feedback + bounded source context -> revised Harnex plan -> new preview
-      Correct -> exact proposal becomes confirmed
- -> deterministic full-file execution with resolved/unresolved row accounting
- -> optional bounded Harnex exception repair for unresolved rows
- -> Aura local history/category grouping
- -> optional local Binder category batches
+ -> Aura local technical/resource safety gates
+ -> deterministic structural normalization + bounded profile
+ -> Aura deterministic semantic resolver
+      resolved   -> mapping summary
+      unresolved -> optional local Binder Harnex candidate selection
+                    -> Aura validates selected candidate IDs
+ -> user Continue or Edit
+ -> Aura deterministic extraction/validation
+ -> local history category grouping
+ -> optional bounded local Binder category batches
  -> Aura Review
  -> existing verified local transaction commit
 ```
@@ -76,105 +80,76 @@ Harnex cannot write Aura storage. Model output never directly becomes a transact
 - remote recipient introduced: none;
 - cloud AI provider introduced: none;
 - international/network transfer introduced by this feature: none;
-- new Android application/process boundary: Harnex, installed on the same device and explicitly authorized through its caller-identity/use-case policy.
-
-Whether Harnex is represented as a separate internal recipient/system in the organization’s formal RoPA is a privacy-owner governance decision. Engineering must not describe local Harnex execution as a remote subprocessor or cloud transfer.
+- local Android application/process boundary: Harnex, installed on the same device and explicitly authorized through caller/use-case policy.
 
 No silent cloud fallback is allowed. Adding remote inference/content upload requires a successor product/privacy/security decision.
 
 ## Retention and logging
 
 | Data | Retention contract |
-|---|---|
-| Source file/raw document/profile | Aura import session memory only |
-| Harnex request content | operation/session only; Consumer contract does not authorize prompt persistence |
-| Proposed transformation plan/preview | Aura import session memory only |
-| User interpretation feedback | Aura import session memory only; not persistent learning |
-| Confirmed plan | import session only; not persisted in `Transaction` |
-| Unresolved-row repair context | operation/session only |
+| --- | --- |
+| Source file/profile | Aura import session memory only |
+| Harnex schema/category request content | operation/session only; prompt persistence is not authorized |
+| Candidate mapping | import session only; not persisted in `Transaction` |
 | Category/group candidate IDs | ephemeral import session only |
 | Imported transactions | existing Aura canonical local retention after explicit commit |
 
-Aura must not intentionally log filenames, sheet/header labels, source/sample cells, transaction descriptions, dates, amounts, categories, user free-form financial feedback, prompt/schema content or generated output. Harnex normal logs/telemetry for these use cases must remain content-free. Any optional Harnex sensitive-activity persistence outside the normal Consumer contract must be disabled/not used unless separately approved.
+Aura must not intentionally log filenames, sheet/header labels, sample cells, transaction descriptions, dates, amounts, categories, prompt/schema bodies or generated answers.
 
-Aura may emit a **content-free Import V2 diagnostic trace**. Its fields remain limited to an ephemeral attempt ID, closed stage/result/failure/ambiguity/feedback-area codes, counts, request/schema character counts, capability limits and bounded timing/token metrics. The bounded trace stays in session memory and may be mirrored to runtime console for troubleshooting. Adding source values, preview rows, plan bodies, descriptions, dates, amounts, categories, prompt/schema bodies or generated answers to diagnostics is prohibited.
+Aura may emit the existing content-free Import V2 diagnostic trace: ephemeral attempt ID, closed stage/result/failure codes, counts, request/schema sizes, capability limits and bounded timing/token metrics. Source values and generated content remain prohibited.
 
 ## Security and lifecycle controls
 
 - Android UID/package/signer and explicit Harnex authorization govern access;
-- release/debug Aura identities are separate consumers;
-- all Harnex output is JSON-schema constrained and Aura validates plan/source references fail-closed;
-- Harnex may choose only Aura-owned declarative transformation primitives, never code/scripts/arbitrary regex;
-- proposal preview is generated by Aura’s deterministic executor, not by directly trusting a model-authored transaction list;
-- full-file execution requires explicit confirmation of the exact proposal identity;
-- changing/rejecting a proposal invalidates prior confirmation;
-- every candidate row must be resolved or explicitly unresolved; no silent drop/invention;
-- generation is cancellable and sessions/activations are cleaned on close/cancel/failure;
+- release/debug Aura identities remain separate;
+- schema output is JSON-schema constrained to Aura-owned candidate IDs and revalidated locally;
+- local deterministic mapping resolves only one high-signal interpretation; competing meanings remain unresolved;
+- explicit debit/credit pairs are one financial interpretation rather than several contradictory standalone amount choices;
 - Harnex unavailable/unauthorized/model-unready has no cloud fallback and no hidden ledger mutation;
+- generation remains cancellable with cleanup on close/cancel/failure;
 - existing CSV/XLSX file/ZIP/formula/resource protections remain in force;
-- existing verified transaction commit/read-back/rollback remains canonical.
+- existing verified commit/read-back/rollback remains canonical.
 
 ## Automated decision-making and user control
 
-Harnex produces advisory interpretation/category proposals. Aura does not permit a model to perform an irreversible or canonical financial action autonomously.
+Harnex is advisory. For schema understanding it is invoked only after local deterministic resolution fails and may choose only Aura-owned candidates. The resulting mapping is shown to the user, who can Continue or Edit before deterministic extraction.
 
-For source interpretation, explicit user feedback is mandatory before Harnex-derived semantics can be applied to the complete file:
+Category suggestions remain editable in Review. Only the user-confirmed Aura commit writes canonical transactions.
 
-- **Correct** confirms that exact proposal;
-- **Something is wrong** blocks full execution and asks for structured corrective feedback/revision.
+## Data minimization rationale for W12.3
 
-Each revised proposal requires a new preview and confirmation. Harnex self-reported confidence cannot bypass this gate.
+W12.3 narrows the shipping source-understanding boundary compared with ADR 0009:
 
-Category suggestions remain reviewable in the existing transaction review flow. Only the user-confirmed Aura commit writes canonical transactions.
+- familiar schemas require no Harnex schema call;
+- quoted-row normalization happens locally before semantic resolution;
+- unresolved schema assistance uses a bounded profile/candidate space rather than raw plan inference;
+- raw proposal/revision/row-repair context is no longer sent by the canonical wizard;
+- category requests remain separately minimized.
 
-The privacy owner must determine whether/how this advisory automation and feedback loop is described under applicable transparency/automated-decision governance.
-
-## Data minimization rationale for W12.2
-
-The earlier candidate-ID-only boundary minimized content further but was insufficient for source structures that Aura had already flattened or constrained before Harnex could reason about them. W12.2 permits bounded raw/source-shaped content because understanding unknown financial-export structure requires some semantic evidence from the actual rows.
-
-Minimization is preserved by:
-
-- retaining only bounded representative rows/cells for plan inference;
-- clamping cell content length;
-- excluding filename/auth/account/ledger metadata;
-- using a declarative plan so the model need not receive every transaction merely to normalize a regular file;
-- executing the confirmed global plan deterministically in Aura;
-- sending only unresolved-row context for optional repair instead of resubmitting all successfully resolved rows.
-
-This boundary must be re-reviewed if limits increase materially, a whole file is sent routinely, additional identity/account fields are added, or feedback becomes persistent learning.
+Re-review is required if raw source-plan inference is reintroduced, profile/sample limits materially expand, persistent learning is added, date/amount are added to category inference, or any network inference is introduced.
 
 ## Engineering evidence boundary
 
-Automated integration evidence for W12.2 must verify at least:
+Integration evidence must verify:
 
-- technical rejects remain local and no unsafe source reaches Harnex;
-- unusual safe source shapes can reach bounded interpretation;
-- invalid/unknown plan primitives and source references fail closed;
-- no full-file plan execution occurs before explicit user confirmation;
-- user rejection invalidates prior confirmation and creates a new proposal/preview gate;
-- row accounting has no silent loss/invention;
-- Harnex unavailable/cancelled leaves the ledger unchanged;
-- category outputs remain limited to supplied IDs;
-- canonical committed transactions carry no Harnex/import provenance;
-- diagnostics/logs remain content-free;
-- no cloud inference fallback exists.
+- safe familiar schemas resolve without Harnex schema inference;
+- unknown/ambiguous schemas invoke optional Harnex/manual fallback and fail closed;
+- explicit debit/credit semantics collapse to one human-readable money choice;
+- no mapped extraction occurs before user Continue;
+- deterministic extraction precedes category assistance;
+- Harnex/category failure leaves the ledger unchanged and Review usable;
+- canonical transactions carry no Harnex/import provenance;
+- diagnostics remain content-free;
+- no cloud fallback exists.
 
-This evidence does not substitute for the privacy-owner governance actions below or physical release evidence.
-
-## DPIA and governance screening
-
-This feature processes financial context with generative AI, but inference is local, user initiated, bounded, non-cloud and non-authoritative over the ledger. W12.2 increases the amount of raw financial content that may cross the local Aura/Harnex process boundary compared with the earlier candidate-only design and adds interactive user feedback as model input.
-
-A formal DPIA/AI-governance screening therefore remains required before general release. The broader source-content boundary must be explicitly reviewed rather than relying on the earlier W12 assessment.
+This automated evidence does not substitute for privacy-owner governance or applicable physical release evidence.
 
 ## Owner actions before release
 
-- confirm controller/processor/internal-system classification for local Harnex processing;
-- confirm lawful basis/transparency wording and RoPA/data-inventory entry;
-- review/approve bounded raw source content and feedback minimization;
-- record DPIA/AI-governance screening outcome for ADR 0009/W12.2;
-- approve content-free logging/diagnostic evidence;
-- confirm no Harnex prompt/output/feedback persistence is enabled for Aura use cases;
-- confirm the user-facing interpretation preview/feedback disclosure;
-- re-review if raw limits expand materially, whole-file prompting becomes routine, date/amount are added to category inference, persistent learning is introduced or any network inference is added.
+- confirm controller/processor/internal-system classification for local Harnex;
+- confirm lawful basis/transparency wording and RoPA/data inventory;
+- approve the narrowed schema-profile/sample boundary and content-free diagnostics;
+- record DPIA/AI-governance screening outcome for ADR 0010/W12.3;
+- confirm no Harnex prompt/output persistence is enabled for Aura use cases;
+- confirm user-facing disclosure for optional schema/category assistance;
+- re-review any future expansion listed above.
