@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_version": "0.2.2",
+  "contract_version": "0.2.1",
   "applicability": {
     "status": "required",
     "reason": "Aura has material browser and packaged Android user journeys across React, Capacitor, native persistence, notification and optional Harnex cross-app boundaries that lower-level tests alone cannot fully prove."
