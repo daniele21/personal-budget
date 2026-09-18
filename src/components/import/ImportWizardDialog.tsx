@@ -7,9 +7,11 @@ import {
   type ImportIssue,
   type ImportSummary as ImportReviewSummary,
   type PreparedTransactionImport,
-  type StructuredImportValidationResult,
 } from '../../domain/import';
-import type { ImportV2RawDocument, SpreadsheetProfile } from '../../domain/import/v2';
+import {
+  inferDeterministicImportV2Mapping,
+  type SpreadsheetProfile,
+} from '../../domain/import/v2';
 import {
   executeImportV2Mapping,
   inferImportV2SchemaWithHarnex,
@@ -29,8 +31,8 @@ import { useToast } from '../Toast';
 import { FileUploadStep } from './FileUploadStep';
 import { ImportSummary } from './ImportSummary';
 import { ReviewStep } from './ReviewStep';
-import { ImportV2InterpretationFlow } from './v2/ImportV2InterpretationFlow';
 import { ImportV2MappingEditor } from './v2/ImportV2MappingEditor';
+import { ImportV2MappingReview } from './v2/ImportV2MappingReview';
 import { ImportV2TaskStatePanel } from './v2/ImportV2TaskStatePanel';
 import { createImportV2MappingChoices } from './v2/importV2MappingOptions';
 import {
@@ -46,27 +48,16 @@ type WizardStep =
   | 'validating'
   | 'assistance'
   | 'mapping'
-  | 'interpretation'
   | 'checking'
   | 'categorizing'
   | 'review'
   | 'confirm'
   | 'summary';
-type DisplayWizardStep =
-  | 'upload'
-  | 'understand-file'
-  | 'check-interpretation'
-  | 'check-transactions'
-  | 'categorize'
-  | 'review'
-  | 'summary';
+type DisplayWizardStep = 'upload' | 'preview' | 'review' | 'summary';
 
 const STEPS: Array<{ key: DisplayWizardStep; label: string }> = [
   { key: 'upload', label: 'Upload' },
-  { key: 'understand-file', label: 'Understand file' },
-  { key: 'check-interpretation', label: 'Check interpretation' },
-  { key: 'check-transactions', label: 'Check transactions' },
-  { key: 'categorize', label: 'Categorize' },
+  { key: 'preview', label: 'Check preview' },
   { key: 'review', label: 'Review' },
   { key: 'summary', label: 'Done' },
 ];
@@ -190,10 +181,10 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [v2File, setV2File] = useState<File | null>(null);
   const [v2Profile, setV2Profile] = useState<SpreadsheetProfile | null>(null);
-  const [v2RawDocument, setV2RawDocument] = useState<ImportV2RawDocument | null>(null);
   const [v2Mapping, setV2Mapping] = useState<ImportV2MappingDraft>(EMPTY_IMPORT_V2_MAPPING);
   const [v2MappingResolution, setV2MappingResolution] = useState<'resolved' | 'ambiguous'>('ambiguous');
   const [v2MappingIssues, setV2MappingIssues] = useState<string[]>([]);
+  const [v2MappingEditorOpen, setV2MappingEditorOpen] = useState(false);
   const [v2AssistanceState, setV2AssistanceState] = useState<ImportV2TaskState | null>(null);
   const [importedTransactions, setImportedTransactions] = useState<Transaction[]>([]);
   const [completedSummary, setCompletedSummary] = useState<ImportReviewSummary>(emptySummary(0));
@@ -211,10 +202,10 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     setErrorMessage(null);
     setV2File(null);
     setV2Profile(null);
-    setV2RawDocument(null);
     setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
     setV2MappingResolution('ambiguous');
     setV2MappingIssues([]);
+    setV2MappingEditorOpen(false);
     setV2AssistanceState(null);
     setImportedTransactions([]);
     setCompletedSummary(emptySummary(0));
@@ -245,6 +236,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
       setV2MappingResolution('ambiguous');
       setV2MappingIssues([manualMappingIssue('unavailable')]);
+      setV2MappingEditorOpen(true);
       setStep('mapping');
       return;
     }
@@ -261,6 +253,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         setV2Mapping(outcome.suggestion.selection);
         setV2MappingResolution('resolved');
         setV2MappingIssues([]);
+        setV2MappingEditorOpen(false);
         setV2AssistanceState(null);
         setStep('mapping');
         return;
@@ -269,6 +262,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
         setV2MappingResolution('ambiguous');
         setV2MappingIssues([manualMappingIssue(outcome.status)]);
+        setV2MappingEditorOpen(true);
         setV2AssistanceState(null);
         setStep('mapping');
         return;
@@ -277,6 +271,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
         setV2MappingResolution('ambiguous');
         setV2MappingIssues([manualMappingIssue('unavailable')]);
+        setV2MappingEditorOpen(true);
         setV2AssistanceState(null);
         setStep('mapping');
         return;
@@ -383,43 +378,14 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
     }
   }, [categories, transactions]);
 
-  const handleManualV2Fallback = useCallback((kind: 'ambiguous' | 'unsupported' | 'unavailable') => {
-    setV2AssistanceState(null);
-    setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
-    setV2MappingResolution('ambiguous');
-    setV2MappingIssues([manualMappingIssue(kind)]);
-    setStep('mapping');
-  }, []);
-
-  const handleResolvedV2Interpretation = useCallback(async (validation: StructuredImportValidationResult) => {
-    const operationRevision = ++operationRevisionRef.current;
-    setStep('checking');
-    setErrorMessage(null);
-    try {
-      if (validation.hasBlockingIssues) {
-        throw new Error('The confirmed interpretation still contains blocking transaction errors.');
-      }
-      const nextPrepared = await prepareTransactionImport(validation, transactions);
-      if (operationRevision !== operationRevisionRef.current) return;
-      if (nextPrepared.rows.length === 0) throw new Error('The confirmed interpretation does not produce valid transaction rows.');
-      await runCategoryAssistance(nextPrepared, operationRevision);
-    } catch (error) {
-      if (operationRevision !== operationRevisionRef.current) return;
-      const message = error instanceof Error ? error.message : 'The confirmed interpretation could not be prepared safely.';
-      setErrorMessage(message);
-      setStep('upload');
-      toast(message, 'error');
-    }
-  }, [prepareTransactionImport, runCategoryAssistance, toast, transactions]);
-
   const handleFileSelected = useCallback(async (file: File) => {
     const operationRevision = ++operationRevisionRef.current;
     setStep('validating');
     setValidationIssues([]);
     setErrorMessage(null);
     setV2MappingIssues([]);
+    setV2MappingEditorOpen(false);
     setV2AssistanceState(null);
-    setV2RawDocument(null);
     try {
       const result = await readTransactionImportFile(file);
       if (operationRevision !== operationRevisionRef.current) return;
@@ -458,11 +424,17 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
       if (result.kind === 'mapping-required') {
         setV2File(file);
         setV2Profile(result.profile);
-        setV2RawDocument(result.rawDocument ?? null);
-        if (result.rawDocument && getPlatformCapabilities().harnexSupported) {
-          setStep('interpretation');
+
+        const localMapping = inferDeterministicImportV2Mapping(result.profile);
+        if (localMapping.status === 'resolved') {
+          setV2Mapping(localMapping.selection);
+          setV2MappingResolution('resolved');
+          setV2MappingIssues([]);
+          setV2MappingEditorOpen(false);
+          setStep('mapping');
           return;
         }
+
         await runSchemaAssistance(file, result.profile, operationRevision);
         return;
       }
@@ -539,6 +511,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
         setV2Mapping(EMPTY_IMPORT_V2_MAPPING);
         setV2MappingResolution('ambiguous');
         setV2MappingIssues([manualMappingIssue('unavailable')]);
+        setV2MappingEditorOpen(true);
         setStep('mapping');
       } else if (state.step === 'categorize') {
         setStep('review');
@@ -560,7 +533,7 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
   const handleBack = () => {
     if (step === 'confirm') setStep('review');
     else if (step === 'review') setDiscardAction('upload');
-    else if (step === 'mapping' || step === 'interpretation') reset();
+    else if (step === 'mapping') reset();
   };
 
   const handleImport = async () => {
@@ -600,19 +573,16 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
 
   const displayStep: DisplayWizardStep = step === 'upload'
     ? 'upload'
-    : step === 'validating' || step === 'mapping' || (step === 'assistance' && v2AssistanceState?.step === 'understand-file')
-      ? 'understand-file'
-      : step === 'interpretation'
-        ? 'check-interpretation'
-        : step === 'checking'
-          ? 'check-transactions'
-          : step === 'categorizing' || step === 'review' || (step === 'assistance' && v2AssistanceState?.step === 'categorize')
-            ? 'categorize'
-            : step === 'confirm'
-              ? 'review'
-              : 'summary';
+    : step === 'summary'
+      ? 'summary'
+      : step === 'categorizing'
+        || step === 'review'
+        || step === 'confirm'
+        || (step === 'assistance' && v2AssistanceState?.step === 'categorize')
+        ? 'review'
+        : 'preview';
   const currentStepIndex = STEPS.findIndex((item) => item.key === displayStep);
-  const canGoBack = step === 'mapping' || step === 'interpretation' || step === 'review' || step === 'confirm';
+  const canGoBack = step === 'mapping' || step === 'review' || step === 'confirm';
   const v2Choices = v2Profile ? createImportV2MappingChoices(v2Profile) : null;
   if (!isOpen) return null;
 
@@ -717,33 +687,35 @@ export function ImportWizardDialog({ isOpen, onClose, onViewUncategorized }: Imp
               </motion.div>
             )}
 
-            {step === 'interpretation' && v2File && v2RawDocument && (
-              <motion.div key="interpretation" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
-                <ImportV2InterpretationFlow
-                  file={v2File}
-                  rawDocument={v2RawDocument}
-                  onResolved={handleResolvedV2Interpretation}
-                  onManualFallback={handleManualV2Fallback}
-                />
-              </motion.div>
-            )}
-
             {step === 'mapping' && v2Choices && (
               <motion.div key="mapping" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
-                <ImportV2MappingEditor
-                  resolution={v2MappingResolution}
-                  value={v2Mapping}
-                  dateOptions={v2Choices.dateOptions}
-                  amountOptions={v2Choices.amountOptions}
-                  descriptionOptions={v2Choices.descriptionOptions}
-                  issues={v2MappingIssues}
-                  onChange={(next) => {
-                    setV2Mapping(next);
-                    setV2MappingIssues([]);
-                  }}
-                  onConfirm={handleConfirmV2Mapping}
-                  onCancel={reset}
-                />
+                {v2MappingResolution === 'resolved' && !v2MappingEditorOpen ? (
+                  <ImportV2MappingReview
+                    value={v2Mapping}
+                    dateOptions={v2Choices.dateOptions}
+                    amountOptions={v2Choices.amountOptions}
+                    descriptionOptions={v2Choices.descriptionOptions}
+                    onContinue={handleConfirmV2Mapping}
+                    onEdit={() => setV2MappingEditorOpen(true)}
+                    onCancel={reset}
+                  />
+                ) : (
+                  <ImportV2MappingEditor
+                    resolution={v2MappingResolution}
+                    value={v2Mapping}
+                    dateOptions={v2Choices.dateOptions}
+                    amountOptions={v2Choices.amountOptions}
+                    descriptionOptions={v2Choices.descriptionOptions}
+                    issues={v2MappingIssues}
+                    onChange={(next) => {
+                      setV2Mapping(next);
+                      setV2MappingResolution('ambiguous');
+                      setV2MappingIssues([]);
+                    }}
+                    onConfirm={handleConfirmV2Mapping}
+                    onCancel={reset}
+                  />
+                )}
               </motion.div>
             )}
 
