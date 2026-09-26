@@ -1,0 +1,214 @@
+name: Internal testing preflight
+
+on:
+  push:
+    branches:
+      - fix/android-payment-listener-reliability
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: internal-testing-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  web:
+    name: Web regression and E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Regression
+        run: npm run test:regression
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+      - name: Browser E2E
+        run: npm run test:e2e
+
+  android-host:
+    name: Android JVM and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_ANDROID_FIREBASE_API_KEY: ci-debug-api-key
+      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: aura-ci-debug.invalid
+      VITE_ANDROID_FIREBASE_PROJECT_ID: aura-ci-debug
+      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: aura-ci-debug.invalid
+      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: "100000000001"
+      VITE_ANDROID_FIREBASE_APP_ID: "1:100000000001:web:0000000000000000"
+      VITE_ANDROID_FIRESTORE_DATABASE_ID: "(default)"
+      AURA_ANDROID_UPLOAD_STORE_FILE: /tmp/aura-ci-unused.jks
+      AURA_ANDROID_UPLOAD_STORE_PASSWORD: unused
+      AURA_ANDROID_UPLOAD_KEY_ALIAS: unused
+      AURA_ANDROID_UPLOAD_KEY_PASSWORD: unused
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - run: npm ci
+      - name: Install Android API 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Create synthetic debug Google Services config
+        run: |
+          mkdir -p android/app/src/debug
+          cat > android/app/src/debug/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "100000000001",
+              "project_id": "aura-ci-debug",
+              "storage_bucket": "aura-ci-debug.invalid"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:100000000001:android:0000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.staituned.aura.debug"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "100000000001-ci.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "ci-debug-api-key"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "100000000001-ci.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+      - name: Sync debug assets
+        run: npm run android:sync:debug
+      - name: Android JVM tests
+        run: npm run android:test
+      - name: Android lint
+        run: npm run android:lint
+
+  android-emulator:
+    name: Android API 36 instrumentation and listener recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      ANDROID_SERIAL: emulator-5554
+      VITE_ANDROID_FIREBASE_API_KEY: ci-debug-api-key
+      VITE_ANDROID_FIREBASE_AUTH_DOMAIN: aura-ci-debug.invalid
+      VITE_ANDROID_FIREBASE_PROJECT_ID: aura-ci-debug
+      VITE_ANDROID_FIREBASE_STORAGE_BUCKET: aura-ci-debug.invalid
+      VITE_ANDROID_FIREBASE_MESSAGING_SENDER_ID: "100000000001"
+      VITE_ANDROID_FIREBASE_APP_ID: "1:100000000001:web:0000000000000000"
+      VITE_ANDROID_FIRESTORE_DATABASE_ID: "(default)"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - run: npm ci
+      - name: Install Android API 36 emulator
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "emulator"             "system-images;android-36;google_apis;x86_64"
+      - name: Create synthetic debug Google Services config
+        run: |
+          mkdir -p android/app/src/debug
+          cat > android/app/src/debug/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "100000000001",
+              "project_id": "aura-ci-debug",
+              "storage_bucket": "aura-ci-debug.invalid"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:100000000001:android:0000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.staituned.aura.debug"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "100000000001-ci.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "ci-debug-api-key"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "100000000001-ci.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+      - name: Start API 36 emulator
+        run: |
+          echo "no" | avdmanager create avd             --force             --name aura_api_36             --package "system-images;android-36;google_apis;x86_64"
+          sudo chown "$USER" /dev/kvm || true
+          nohup emulator             -avd aura_api_36             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/aura-emulator.log 2>&1 &
+          adb wait-for-device
+          for attempt in $(seq 1 180); do
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
+              adb shell settings put global window_animation_scale 0
+              adb shell settings put global transition_animation_scale 0
+              adb shell settings put global animator_duration_scale 0
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/aura-emulator.log
+          exit 1
+      - name: Android instrumentation
+        run: npm run android:test:instrumentation
+      - name: Listener background recovery
+        run: npm run android:verify:listener-recovery
