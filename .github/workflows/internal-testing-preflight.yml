@@ -139,6 +139,113 @@ jobs:
       - name: Android lint
         run: npm run android:lint
 
+  android-release-smoke:
+    name: Android release smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VITE_FIREBASE_API_KEY: ci-release-api-key
+      VITE_FIREBASE_AUTH_DOMAIN: aura-ci-release.invalid
+      VITE_FIREBASE_PROJECT_ID: aura-ci-release
+      VITE_FIREBASE_STORAGE_BUCKET: aura-ci-release.invalid
+      VITE_FIREBASE_MESSAGING_SENDER_ID: "100000000010"
+      VITE_FIREBASE_APP_ID: "1:100000000010:web:0000000000000000"
+      VITE_FIRESTORE_DATABASE_ID: "(default)"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - run: npm ci
+      - name: Install Android API 36
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=${SDK_ROOT}" >> "${GITHUB_ENV}"
+          echo "ANDROID_SDK_ROOT=${SDK_ROOT}" >> "${GITHUB_ENV}"
+          SDKMANAGER="$(find "${SDK_ROOT}/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
+          test -x "${SDKMANAGER}"
+          echo "$(dirname "${SDKMANAGER}")" >> "${GITHUB_PATH}"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Create synthetic variant Google Services configs
+        run: |
+          mkdir -p android/app/src/debug android/app/src/release
+          cat > android/app/src/debug/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "100000000001",
+              "project_id": "aura-ci-debug",
+              "storage_bucket": "aura-ci-debug.invalid"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:100000000001:android:0000000000000000",
+                "android_client_info": {
+                  "package_name": "com.staituned.aura.debug"
+                }
+              },
+              "oauth_client": [{
+                "client_id": "100000000001-debug.apps.googleusercontent.com",
+                "client_type": 3
+              }],
+              "api_key": [{"current_key": "ci-debug-api-key"}]
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+          cat > android/app/src/release/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "100000000010",
+              "project_id": "aura-ci-release",
+              "storage_bucket": "aura-ci-release.invalid"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:100000000010:android:0000000000000000",
+                "android_client_info": {
+                  "package_name": "com.staituned.aura"
+                }
+              },
+              "oauth_client": [{
+                "client_id": "100000000010-release.apps.googleusercontent.com",
+                "client_type": 3
+              }],
+              "api_key": [{"current_key": "ci-release-api-key"}]
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+      - name: Sync production web assets
+        run: npm run android:sync
+      - name: Release readiness
+        run: npm run android:verify:release-readiness
+      - name: Generate ephemeral CI signing key
+        run: |
+          keytool -genkeypair             -keystore /tmp/aura-ci-release.jks             -storepass ci-release-password             -keypass ci-release-password             -alias aura-ci-release             -keyalg RSA             -keysize 2048             -validity 2             -dname "CN=Aura CI, OU=CI, O=Staituned, L=CI, ST=CI, C=IT"
+      - name: Build minified release bundle
+        env:
+          AURA_ANDROID_UPLOAD_STORE_FILE: /tmp/aura-ci-release.jks
+          AURA_ANDROID_UPLOAD_STORE_PASSWORD: ci-release-password
+          AURA_ANDROID_UPLOAD_KEY_ALIAS: aura-ci-release
+          AURA_ANDROID_UPLOAD_KEY_PASSWORD: ci-release-password
+        run: bash scripts/run-android-gradle.sh :app:bundleRelease
+      - name: Verify release bundle
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          MAPPING=android/app/build/outputs/mapping/release/mapping.txt
+          test -s "${AAB}"
+          test -s "${MAPPING}"
+          jarsigner -verify -strict "${AAB}"
+          sha256sum "${AAB}" "${MAPPING}"
+          echo "CI release smoke uses synthetic Firebase and an ephemeral key; it is not uploadable to Play."
+
   android-emulator:
     name: Android API 36 instrumentation and listener recovery
     runs-on: ubuntu-latest
