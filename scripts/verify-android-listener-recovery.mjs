@@ -10,7 +10,7 @@ const adb = `${androidSdk}/platform-tools/adb`;
 const auraPackage = 'com.staituned.aura.debug';
 const sourcePackage = 'com.staituned.aura.syntheticnotifications';
 const sourceActivity =
-  `${sourcePackage}/com.staituned.aura.testsource.SyntheticNotificationActivity`;
+  `${sourcePackage}/com.staituned.aura.testsource.ShellSyntheticNotificationActivity`;
 const listenerClass =
   'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerService';
 const listenerComponent = `${auraPackage}/${listenerClass}`;
@@ -90,20 +90,10 @@ function startHarness(mode) {
 }
 
 function postSyntheticNotification() {
-  // The synthetic source is protected by a signature permission shared with
-  // Aura debug. Execute ActivityManager as Aura's debuggable UID so the test
-  // preserves that boundary without starting an Aura Activity/process first.
+  // This debug-only source entrypoint belongs to the external test APK, not
+  // Aura. Starting it verifies listener recovery without first waking Aura UI.
   runAdb(
-    [
-      'shell',
-      'run-as',
-      auraPackage,
-      'am',
-      'start',
-      '-W',
-      '-n',
-      sourceActivity,
-    ],
+    ['shell', 'am', 'start', '-W', '-n', sourceActivity],
     { quiet: true },
   );
 }
