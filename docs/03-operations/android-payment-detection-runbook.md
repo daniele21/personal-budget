@@ -122,6 +122,13 @@ Safe evidence includes:
 
 If detection is unavailable:
 
+Aura treats Android notification-access permission and the live listener
+connection as separate states. When access remains granted but the listener is
+disconnected, the in-app status shows `Reconnecting` and a status refresh asks
+Android to rebind the listener. The listener accepts alerting and silent
+notification types; package and user-selection gates still run before extras
+are read.
+
 1. confirm the user is authenticated;
 2. inspect the in-app feature state;
 3. confirm notification access in Android settings;

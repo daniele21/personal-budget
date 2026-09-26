@@ -62,12 +62,6 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.notification.default_filter_types"
-                android:value="alerting" />
-            <meta-data
-                android:name="android.service.notification.disabled_filter_types"
-                android:value="conversations|ongoing|silent" />
         </service>
 
         <receiver
