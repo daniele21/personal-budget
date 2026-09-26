@@ -63,15 +63,45 @@ internal class PaymentCandidateRepository(
         PaymentDetectionPrivacyStore(context),
     private val databaseName: String =
         PaymentCandidateDatabase.DEFAULT_DATABASE_NAME,
-    private val database: PaymentCandidateDatabase =
-        PaymentCandidateDatabaseProvider.get(context, databaseName),
+    database: PaymentCandidateDatabase? = null,
     private val fieldProtector: CandidateFieldProtector = CandidateFieldProtector(),
     private val fingerprintHasher: CandidateFingerprintHasher =
         CandidateFingerprintHasher(),
     private val tokenFactory: AcceptanceTokenFactory = AcceptanceTokenFactory(),
     private val now: () -> Long = System::currentTimeMillis,
 ) {
-    private val dao = database.candidateDao()
+    /**
+     * Production repositories must not retain a Room instance across owner purge.
+     * Logout/reset closes and deletes the provider database while long-lived
+     * listener/plugin objects can remain alive. Resolve the provider database on
+     * every operation so the next callback can reopen a fresh instance.
+     *
+     * Tests may inject a fixed database to preserve explicit closed-database
+     * failure coverage.
+     */
+    private val fixedDatabase = database
+
+    private fun openDatabase(): PaymentCandidateDatabase =
+        fixedDatabase ?: PaymentCandidateDatabaseProvider.get(
+            context.applicationContext,
+            databaseName,
+        )
+
+    private inline fun <T> withActiveOwnerDatabase(
+        expectedOwnerKeyHash: String = privacyStore.requireActiveOwnerHash(),
+        block: (
+            database: PaymentCandidateDatabase,
+            dao: PaymentCandidateDao,
+            ownerKeyHash: String,
+        ) -> T,
+    ): T {
+        val database = openDatabase()
+        val dao = database.candidateDao()
+        check(privacyStore.requireActiveOwnerHash() == expectedOwnerKeyHash) {
+            "Native payment owner changed during database operation."
+        }
+        return block(database, dao, expectedOwnerKeyHash)
+    }
 
     fun persist(
         candidate: PaymentDetectionResult.Candidate,
@@ -81,7 +111,6 @@ internal class PaymentCandidateRepository(
         require(notificationKey.isNotBlank() && notificationKey.length <= MAX_NOTIFICATION_KEY)
         require(candidate.tier == PaymentMatchTier.EXACT || candidate.tier == PaymentMatchTier.REVIEW)
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
-        cleanup(ownerKeyHash, detectedAt)
         val technicalFingerprint = fingerprintHasher.hashTechnical(
             ownerKeyHash = ownerKeyHash,
             sourceAppId = candidate.sourceAppId,
@@ -104,10 +133,12 @@ internal class PaymentCandidateRepository(
             occurredAtEpochMillis = candidate.occurredAtEpochMillis,
         )
 
-        return database.runInTransaction(
-            Callable {
-                val technicalMatch = dao.findByTechnicalFingerprint(
-                    ownerKeyHash,
+        return withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            cleanup(database, dao, activeOwnerKeyHash, detectedAt)
+            database.runInTransaction(
+                Callable {
+                    val technicalMatch = dao.findByTechnicalFingerprint(
+                    activeOwnerKeyHash,
                     technicalFingerprint,
                 )
                 if (technicalMatch != null) {
@@ -119,7 +150,7 @@ internal class PaymentCandidateRepository(
                     val protectedPayload = protect(
                         payload = payload,
                         candidateId = technicalMatch.id,
-                        ownerKeyHash = ownerKeyHash,
+                        ownerKeyHash = activeOwnerKeyHash,
                     )
                     val updated = technicalMatch.copy(
                         sourceAppId = candidate.sourceAppId,
@@ -142,7 +173,7 @@ internal class PaymentCandidateRepository(
 
                 if (semanticFingerprint != null) {
                     val semanticMatch = dao.findCrossSourceSemanticDuplicate(
-                        ownerKeyHash = ownerKeyHash,
+                        ownerKeyHash = activeOwnerKeyHash,
                         semanticFingerprint = semanticFingerprint,
                         sourceAppId = candidate.sourceAppId,
                         fromDetectedAt = (detectedAt - SEMANTIC_DEDUPE_WINDOW_MS)
@@ -160,11 +191,11 @@ internal class PaymentCandidateRepository(
                 }
 
                 val id = SecureOpaqueId.create()
-                val protectedPayload = protect(payload, id, ownerKeyHash)
+                    val protectedPayload = protect(payload, id, activeOwnerKeyHash)
                 val entity = PaymentCandidateEntity(
                     id = id,
                     schemaVersion = PaymentCandidateDatabase.SCHEMA_VERSION,
-                    ownerKeyHash = ownerKeyHash,
+                    ownerKeyHash = activeOwnerKeyHash,
                     sourceAppId = candidate.sourceAppId,
                     payloadCiphertext = protectedPayload.ciphertext,
                     payloadNonce = protectedPayload.nonce,
@@ -183,7 +214,7 @@ internal class PaymentCandidateRepository(
                 if (dao.insert(entity) == INSERT_CONFLICT) {
                     val duplicate = checkNotNull(
                         dao.findByTechnicalFingerprint(
-                            ownerKeyHash,
+                            activeOwnerKeyHash,
                             technicalFingerprint,
                         ),
                     )
@@ -192,63 +223,77 @@ internal class PaymentCandidateRepository(
                     CandidatePersistenceResult.Created(id, candidate.tier)
                 }
             },
-        )
+            )
+        }
     }
 
     fun listPending(): List<PaymentCandidateRecord> {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
-        cleanup(ownerKeyHash, now())
-        return withPayloadFailurePurge(ownerKeyHash) {
-            dao.listPending(ownerKeyHash).map { it.toRecord(ownerKeyHash) }
+        return withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            cleanup(database, dao, activeOwnerKeyHash, now())
+            withPayloadFailurePurge(activeOwnerKeyHash, dao) {
+                dao.listPending(activeOwnerKeyHash).map {
+                    it.toRecord(activeOwnerKeyHash)
+                }
+            }
         }
     }
 
     fun get(candidateId: String): PaymentCandidateRecord {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
-        cleanup(ownerKeyHash, now())
-        val entity = dao.findByIdForOwner(ownerKeyHash, candidateId)
-            ?: throw CandidateNotFoundException()
-        return withPayloadFailurePurge(ownerKeyHash) {
-            entity.toRecord(ownerKeyHash)
+        return withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            cleanup(database, dao, activeOwnerKeyHash, now())
+            val entity = dao.findByIdForOwner(activeOwnerKeyHash, candidateId)
+                ?: throw CandidateNotFoundException()
+            withPayloadFailurePurge(activeOwnerKeyHash, dao) {
+                entity.toRecord(activeOwnerKeyHash)
+            }
         }
     }
 
     fun ignore(candidateId: String) {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
         val timestamp = now()
-        cleanup(ownerKeyHash, timestamp)
-        database.runInTransaction {
-            val entity = dao.findByIdForOwner(ownerKeyHash, candidateId)
-                ?: throw CandidateNotFoundException()
-            if (entity.status != CandidateStatus.PENDING.storageValue) {
-                throw CandidateStateException()
+        withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            cleanup(database, dao, activeOwnerKeyHash, timestamp)
+            database.runInTransaction {
+                val entity = dao.findByIdForOwner(
+                    activeOwnerKeyHash,
+                    candidateId,
+                ) ?: throw CandidateNotFoundException()
+                if (entity.status != CandidateStatus.PENDING.storageValue) {
+                    throw CandidateStateException()
+                }
+                check(
+                    dao.update(
+                        entity.toTombstone(
+                            status = CandidateStatus.IGNORED,
+                            updatedAt = timestamp,
+                            expiresAt = safeAdd(timestamp, IGNORED_RETENTION_MS),
+                        ),
+                    ) == 1,
+                )
             }
-            check(
-                dao.update(
-                    entity.toTombstone(
-                        status = CandidateStatus.IGNORED,
-                        updatedAt = timestamp,
-                        expiresAt = safeAdd(timestamp, IGNORED_RETENTION_MS),
-                    ),
-                ) == 1,
-            )
         }
     }
 
     fun beginAcceptance(candidateId: String): AcceptanceReservation {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
-        cleanup(ownerKeyHash, now())
-        return try {
-            database.runInTransaction(
-                Callable {
-                    val entity = dao.findByIdForOwner(ownerKeyHash, candidateId)
-                        ?: throw CandidateNotFoundException()
-                    val record = entity.toRecord(ownerKeyHash)
-                    when (entity.status) {
+        return withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            cleanup(database, dao, activeOwnerKeyHash, now())
+            try {
+                database.runInTransaction(
+                    Callable {
+                        val entity = dao.findByIdForOwner(
+                            activeOwnerKeyHash,
+                            candidateId,
+                        ) ?: throw CandidateNotFoundException()
+                        val record = entity.toRecord(activeOwnerKeyHash)
+                        when (entity.status) {
                         CandidateStatus.PENDING.storageValue -> {
                             val reservedTransactionId = UUID.randomUUID().toString()
                             val token = tokenFactory.create(
-                                ownerKeyHash,
+                                activeOwnerKeyHash,
                                 entity.id,
                                 reservedTransactionId,
                             )
@@ -275,7 +320,7 @@ internal class PaymentCandidateRepository(
                                 entity.acceptanceTokenHash
                                     ?: throw CandidateStateException()
                             val token = tokenFactory.create(
-                                ownerKeyHash,
+                                activeOwnerKeyHash,
                                 entity.id,
                                 reservedTransactionId,
                             )
@@ -288,13 +333,14 @@ internal class PaymentCandidateRepository(
                                 reservedTransactionId = reservedTransactionId,
                             )
                         }
-                        else -> throw CandidateStateException()
-                    }
-                },
-            )
-        } catch (error: CandidatePayloadUnavailableException) {
-            dao.deleteAllForOwner(ownerKeyHash)
-            throw error
+                            else -> throw CandidateStateException()
+                        }
+                    },
+                )
+            } catch (error: CandidatePayloadUnavailableException) {
+                dao.deleteAllForOwner(activeOwnerKeyHash)
+                throw error
+            }
         }
     }
 
@@ -306,33 +352,44 @@ internal class PaymentCandidateRepository(
         require(acceptanceToken.isNotBlank() && acceptanceToken.length <= MAX_TOKEN_LENGTH)
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
         val timestamp = now()
-        database.runInTransaction {
-            val entity = dao.findByIdForOwner(ownerKeyHash, candidateId)
-                ?: throw CandidateNotFoundException()
-            val expectedHash = entity.acceptanceTokenHash
-                ?: throw CandidateStateException()
-            if (!tokenFactory.matches(acceptanceToken, expectedHash)) {
-                throw CandidateTokenException()
-            }
-            when (entity.status) {
-                CandidateStatus.ACCEPTING.storageValue -> {
-                    val completedStatus =
-                        if (edited) CandidateStatus.EDITED else CandidateStatus.ACCEPTED
-                    check(
-                        dao.update(
-                            entity.toTombstone(
-                                status = completedStatus,
-                                updatedAt = timestamp,
-                                expiresAt = safeAdd(timestamp, ACCEPTED_RETENTION_MS),
-                                retainAcceptance = true,
-                            ),
-                        ) == 1,
-                    )
+        withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            database.runInTransaction {
+                val entity = dao.findByIdForOwner(
+                    activeOwnerKeyHash,
+                    candidateId,
+                ) ?: throw CandidateNotFoundException()
+                val expectedHash = entity.acceptanceTokenHash
+                    ?: throw CandidateStateException()
+                if (!tokenFactory.matches(acceptanceToken, expectedHash)) {
+                    throw CandidateTokenException()
                 }
-                CandidateStatus.ACCEPTED.storageValue,
-                CandidateStatus.EDITED.storageValue,
-                -> Unit
-                else -> throw CandidateStateException()
+                when (entity.status) {
+                    CandidateStatus.ACCEPTING.storageValue -> {
+                        val completedStatus =
+                            if (edited) {
+                                CandidateStatus.EDITED
+                            } else {
+                                CandidateStatus.ACCEPTED
+                            }
+                        check(
+                            dao.update(
+                                entity.toTombstone(
+                                    status = completedStatus,
+                                    updatedAt = timestamp,
+                                    expiresAt = safeAdd(
+                                        timestamp,
+                                        ACCEPTED_RETENTION_MS,
+                                    ),
+                                    retainAcceptance = true,
+                                ),
+                            ) == 1,
+                        )
+                    }
+                    CandidateStatus.ACCEPTED.storageValue,
+                    CandidateStatus.EDITED.storageValue,
+                    -> Unit
+                    else -> throw CandidateStateException()
+                }
             }
         }
     }
@@ -342,12 +399,13 @@ internal class PaymentCandidateRepository(
     ): AcceptanceRecoveryResult {
         val ownerKeyHash = privacyStore.requireActiveOwnerHash()
         val timestamp = now()
-        return database.runInTransaction(
-            Callable {
-                val completed = mutableSetOf<String>()
-                val returned = mutableSetOf<String>()
-                dao.listAccepting(ownerKeyHash).forEach { entity ->
-                    val reservedId = entity.reservedTransactionId
+        return withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            database.runInTransaction(
+                Callable {
+                    val completed = mutableSetOf<String>()
+                    val returned = mutableSetOf<String>()
+                    dao.listAccepting(activeOwnerKeyHash).forEach { entity ->
+                        val reservedId = entity.reservedTransactionId
                     if (reservedId != null && reservedId in verifiedTransactionIds) {
                         check(
                             dao.update(
@@ -380,26 +438,47 @@ internal class PaymentCandidateRepository(
                         )
                         returned += entity.id
                     }
-                }
-                AcceptanceRecoveryResult(completed, returned)
-            },
-        )
+                    }
+                    AcceptanceRecoveryResult(completed, returned)
+                },
+            )
+        }
     }
 
     fun cleanup() {
-        cleanup(privacyStore.requireActiveOwnerHash(), now())
+        val ownerKeyHash = privacyStore.requireActiveOwnerHash()
+        withActiveOwnerDatabase(ownerKeyHash) { database, dao, activeOwnerKeyHash ->
+            cleanup(database, dao, activeOwnerKeyHash, now())
+        }
     }
 
-    fun deleteAllForOwner(): Int =
-        dao.deleteAllForOwner(privacyStore.requireActiveOwnerHash())
+    fun deleteAllForOwner(): Int {
+        val ownerKeyHash = privacyStore.requireActiveOwnerHash()
+        return withActiveOwnerDatabase(ownerKeyHash) { _, dao, activeOwnerKeyHash ->
+            dao.deleteAllForOwner(activeOwnerKeyHash)
+        }
+    }
 
-    internal fun countForActiveOwner(): Int =
-        dao.countForOwner(privacyStore.requireActiveOwnerHash())
+    internal fun countForActiveOwner(): Int {
+        val ownerKeyHash = privacyStore.requireActiveOwnerHash()
+        return withActiveOwnerDatabase(ownerKeyHash) { _, dao, activeOwnerKeyHash ->
+            dao.countForOwner(activeOwnerKeyHash)
+        }
+    }
 
-    internal fun entitiesForActiveOwner(): List<PaymentCandidateEntity> =
-        dao.listAllForOwner(privacyStore.requireActiveOwnerHash())
+    internal fun entitiesForActiveOwner(): List<PaymentCandidateEntity> {
+        val ownerKeyHash = privacyStore.requireActiveOwnerHash()
+        return withActiveOwnerDatabase(ownerKeyHash) { _, dao, activeOwnerKeyHash ->
+            dao.listAllForOwner(activeOwnerKeyHash)
+        }
+    }
 
-    private fun cleanup(ownerKeyHash: String, timestamp: Long) {
+    private fun cleanup(
+        database: PaymentCandidateDatabase,
+        dao: PaymentCandidateDao,
+        ownerKeyHash: String,
+        timestamp: Long,
+    ) {
         database.runInTransaction {
             dao.expirePending(ownerKeyHash, timestamp)
             dao.deleteExpiredTombstones(ownerKeyHash, timestamp)
@@ -473,6 +552,7 @@ internal class PaymentCandidateRepository(
 
     private inline fun <T> withPayloadFailurePurge(
         ownerKeyHash: String,
+        dao: PaymentCandidateDao,
         block: () -> T,
     ): T =
         try {

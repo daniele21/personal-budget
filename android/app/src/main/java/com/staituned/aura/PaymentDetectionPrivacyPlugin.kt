@@ -134,6 +134,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     fun getStatus(call: PluginCall) {
         try {
             val settings = settingsStore.getSettings()
+            recoverNotificationListenerIfNeeded(settings)
             call.resolve(statusJson(settings))
         } catch (_: Exception) {
             call.reject("No active secure owner.", "OWNER_REQUIRED")
@@ -169,7 +170,11 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 requestedEnabled = requestedEnabled,
                 selectedPackages = selectedPackages,
             )
-            if (!settings.requestedEnabled) candidateNotifier.cancelAll()
+            if (settings.requestedEnabled) {
+                recoverNotificationListenerIfNeeded(settings)
+            } else {
+                candidateNotifier.cancelAll()
+            }
             call.resolve(statusJson(settings))
         } catch (_: Exception) {
             call.reject("Unable to update payment-detection settings.", "SETTINGS_REJECTED")
@@ -328,6 +333,17 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 ),
             )
             JSObject().put("deletedCount", deletedCount)
+        }
+    }
+
+    private fun recoverNotificationListenerIfNeeded(
+        settings: PaymentDetectionSettings,
+    ) {
+        if (
+            settings.requestedEnabled &&
+            !PaymentDetectionListenerRuntime.isConnected()
+        ) {
+            accessController.requestRebindIfGranted()
         }
     }
 

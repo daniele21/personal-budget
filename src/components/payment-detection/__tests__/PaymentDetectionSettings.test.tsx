@@ -5,6 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PaymentDetectionSettings } from '../PaymentDetectionSettings';
 
 const mocks = vi.hoisted(() => ({
+  status: {
+    supported: true,
+    requestedEnabled: false,
+    selectedPackages: [] as string[],
+    osPermissionGranted: false,
+    listenerConnected: false,
+    auraNotificationPermissionGranted: false,
+  },
   updateSelectedApps: vi.fn(),
   setRequestedEnabled: vi.fn(),
   requestNotificationPermission: vi.fn(),
@@ -15,14 +23,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../state/PaymentDetectionProvider', () => ({
   usePaymentDetection: () => ({
-    status: {
-      supported: true,
-      requestedEnabled: false,
-      selectedPackages: [],
-      osPermissionGranted: false,
-      listenerConnected: false,
-      auraNotificationPermissionGranted: false,
-    },
+    status: mocks.status,
     supportedApps: [
       {
         id: 'aura-synthetic-source',
@@ -69,6 +70,14 @@ vi.mock('../../Toast', () => ({
 describe('PaymentDetectionSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.assign(mocks.status, {
+      supported: true,
+      requestedEnabled: false,
+      selectedPackages: [],
+      osPermissionGranted: false,
+      listenerConnected: false,
+      auraNotificationPermissionGranted: false,
+    });
     mocks.requestNotificationPermission.mockResolvedValue(true);
     mocks.openNotificationAccessSettings.mockResolvedValue(undefined);
     mocks.updateSelectedApps.mockResolvedValue(undefined);
@@ -92,6 +101,21 @@ describe('PaymentDetectionSettings', () => {
       expect(mocks.requestNotificationPermission).toHaveBeenCalledOnce();
       expect(mocks.openNotificationAccessSettings).toHaveBeenCalledOnce();
     });
+  });
+
+  it('shows reconnecting instead of active when Android access exists but the listener is disconnected', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+    });
+
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    expect(screen.getByText(/listener is reconnecting/i)).toBeInTheDocument();
   });
 
   it('keeps source selection as a separate affirmative control', async () => {

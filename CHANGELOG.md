@@ -244,6 +244,14 @@
 
 ### Fixed
 
+- Hardened Android payment-notification reliability: disconnected listeners now
+  request a system rebind when detection status is refreshed, existing installs
+  migrate to all notification filter types including silent notifications,
+  payment repositories reopen Room after logout/reset purge, and the UI no
+  longer reports detection as active while the listener is disconnected.
+- Strengthened the listener-recovery harness so process-kill and reboot checks
+  post the synthetic payment before restarting any Aura activity.
+
 - Made Safe to Spend consistently represent the configured monthly budget minus
   net monthly expenses. Recording a small income no longer replaces the monthly
   limit or causes a discontinuous zero balance and inflated usage percentage.

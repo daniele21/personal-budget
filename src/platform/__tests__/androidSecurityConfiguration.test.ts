@@ -138,6 +138,12 @@ describe('Android security configuration', () => {
     const listener = readProjectFile(
       'android/app/src/main/java/com/staituned/aura/paymentdetection/listener/AuraNotificationListenerService.kt',
     );
+    const accessController = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/listener/NotificationAccessController.kt',
+    );
+    const plugin = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/PaymentDetectionPrivacyPlugin.kt',
+    );
 
     expect(manifest).toContain(
       'android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"',
@@ -153,6 +159,16 @@ describe('Android security configuration', () => {
     expect(catalog).toContain('com.google.android.apps.walletnfcrel');
     expect(catalog).toContain('com.paypal.android.p2pmobile');
     expect(catalog.match(/packageName = "/g)).toHaveLength(4);
+    expect(manifest).not.toContain(
+      'android.service.notification.default_filter_types',
+    );
+    expect(manifest).not.toContain(
+      'android.service.notification.disabled_filter_types',
+    );
+    expect(listener).toContain('migrateNotificationFilter(');
+    expect(listener).toContain('FLAG_FILTER_TYPE_SILENT');
+    expect(accessController).toContain('requestRebindIfGranted');
+    expect(plugin).toContain('recoverNotificationListenerIfNeeded');
     expect(listener.indexOf('notification.packageName')).toBeLessThan(
       listener.indexOf('notification.notification'),
     );
@@ -198,6 +214,9 @@ describe('Android security configuration', () => {
     expect(verification).toContain("getprop', 'ro.kernel.qemu");
     expect(verification).toContain("getprop', 'ro.build.version.sdk");
     expect(verification).toContain("runAdb(['reboot']");
+    expect(verification).toContain("'am', 'kill', auraPackage");
+    expect(verification).not.toContain("'am', 'force-stop', auraPackage");
+    expect(verification).toContain('sourceActivity');
     expect(verification).toContain('disallow_listener');
     expect(verification).toContain('finally');
     expect(harness).toContain('MODE_PROBE');
