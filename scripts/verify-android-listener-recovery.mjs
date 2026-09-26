@@ -90,8 +90,20 @@ function startHarness(mode) {
 }
 
 function postSyntheticNotification() {
+  // The synthetic source is protected by a signature permission shared with
+  // Aura debug. Execute ActivityManager as Aura's debuggable UID so the test
+  // preserves that boundary without starting an Aura Activity/process first.
   runAdb(
-    ['shell', 'am', 'start', '-W', '-n', sourceActivity],
+    [
+      'shell',
+      'run-as',
+      auraPackage,
+      'am',
+      'start',
+      '-W',
+      '-n',
+      sourceActivity,
+    ],
     { quiet: true },
   );
 }
