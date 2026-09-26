@@ -3,6 +3,7 @@ name: Internal testing preflight
 on:
   push:
     branches:
+      - main
       - fix/android-payment-listener-reliability
   workflow_dispatch:
 
