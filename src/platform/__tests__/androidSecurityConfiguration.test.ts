@@ -219,6 +219,20 @@ describe('Android security configuration', () => {
     expect(verification).toContain("getprop', 'ro.kernel.qemu");
     expect(verification).toContain("getprop', 'ro.build.version.sdk");
     expect(verification).toContain("runAdb(['reboot']");
+    expect(verification).toContain("'dumpsys', 'notification'");
+    expect(verification).toContain('waitForListenerLive(');
+    expect(verification.indexOf("await waitForBoot()")).toBeLessThan(
+      verification.indexOf(
+        "await waitForListenerLive('Listener system rebind after emulator reboot')",
+      ),
+    );
+    expect(
+      verification.indexOf(
+        "await waitForListenerLive('Listener system rebind after emulator reboot')",
+      ),
+    ).toBeLessThan(
+      verification.indexOf('postSyntheticNotification();', verification.indexOf("runAdb(['reboot']")),
+    );
     expect(verification).toContain("'am', 'kill', auraPackage");
     expect(verification).not.toContain("'am', 'force-stop', auraPackage");
     expect(verification).toContain('ShellSyntheticNotificationActivity');

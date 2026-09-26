@@ -125,6 +125,32 @@ async function waitForProbe(predicate, label, attempts = 40) {
   throw new Error(`${label} did not complete.`);
 }
 
+function isListenerLive() {
+  const notificationDump = tryAdb(['shell', 'dumpsys', 'notification']);
+  const liveSectionStart = notificationDump.indexOf(
+    'Live notification listeners (',
+  );
+  if (liveSectionStart < 0) return false;
+
+  const snoozedSectionStart = notificationDump.indexOf(
+    'Snoozed notification listeners',
+    liveSectionStart,
+  );
+  const liveSection = notificationDump.slice(
+    liveSectionStart,
+    snoozedSectionStart >= 0 ? snoozedSectionStart : undefined,
+  );
+  return liveSection.includes(listenerComponent);
+}
+
+async function waitForListenerLive(label, attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (isListenerLive()) return;
+    await delay(500);
+  }
+  throw new Error(`${label} did not complete.`);
+}
+
 async function waitForBoot() {
   runAdb(['wait-for-device'], { quiet: true });
   for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -200,7 +226,7 @@ async function main() {
 
     runAdb(['reboot'], { quiet: true });
     await waitForBoot();
-    await delay(2000);
+    await waitForListenerLive('Listener system rebind after emulator reboot');
     postSyntheticNotification();
     await delay(1500);
     const afterReboot = readProbe();

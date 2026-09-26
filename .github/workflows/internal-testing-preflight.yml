@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - fix/android-payment-listener-reliability
+      - 'fix/**'
   workflow_dispatch:
 
 permissions:
