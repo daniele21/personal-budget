@@ -79,11 +79,12 @@ internal class PaymentCandidateRepository(
      * Tests may inject a fixed database to preserve explicit closed-database
      * failure coverage.
      */
+    private val applicationContext = context.applicationContext
     private val fixedDatabase = database
 
     private fun openDatabase(): PaymentCandidateDatabase =
         fixedDatabase ?: PaymentCandidateDatabaseProvider.get(
-            context.applicationContext,
+            applicationContext,
             databaseName,
         )
 
