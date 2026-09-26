@@ -242,9 +242,11 @@ jobs:
           MAPPING=android/app/build/outputs/mapping/release/mapping.txt
           test -s "${AAB}"
           test -s "${MAPPING}"
-          jarsigner -verify -strict "${AAB}"
+          VERIFY_OUTPUT="$(jarsigner -verify -verbose -certs "${AAB}" 2>&1)"
+          printf '%s\n' "${VERIFY_OUTPUT}"
+          grep -q "jar verified" <<< "${VERIFY_OUTPUT}"
           sha256sum "${AAB}" "${MAPPING}"
-          echo "CI release smoke uses synthetic Firebase and an ephemeral key; it is not uploadable to Play."
+          echo "CI release smoke uses synthetic Firebase and an ephemeral self-signed key; it is not uploadable to Play."
 
   android-emulator:
     name: Android API 36 instrumentation and listener recovery
