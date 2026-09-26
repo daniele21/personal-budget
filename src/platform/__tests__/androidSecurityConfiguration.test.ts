@@ -184,6 +184,9 @@ describe('Android security configuration', () => {
     const testSourceBuild = readProjectFile(
       'android/notification-test-source/build.gradle',
     );
+    const debugSourceManifest = readProjectFile(
+      'android/notification-test-source/src/debug/AndroidManifest.xml',
+    );
 
     expect(
       packageManifest.scripts['android:simulate:wallet-notification'],
@@ -194,6 +197,8 @@ describe('Android security configuration', () => {
     expect(simulation).toContain("uninstall', sourcePackage");
     expect(simulation).toContain('finally');
     expect(testSourceBuild).toContain('variantBuilder.buildType != "debug"');
+    expect(debugSourceManifest).toContain('ShellSyntheticNotificationActivity');
+    expect(debugSourceManifest).toContain('android:exported="true"');
   });
 
   it('keeps listener recovery verification emulator-only and redacted', () => {
@@ -216,7 +221,8 @@ describe('Android security configuration', () => {
     expect(verification).toContain("runAdb(['reboot']");
     expect(verification).toContain("'am', 'kill', auraPackage");
     expect(verification).not.toContain("'am', 'force-stop', auraPackage");
-    expect(verification).toContain('sourceActivity');
+    expect(verification).toContain('ShellSyntheticNotificationActivity');
+    expect(verification).not.toContain("'run-as',\n      auraPackage");
     expect(verification).toContain('disallow_listener');
     expect(verification).toContain('finally');
     expect(harness).toContain('MODE_PROBE');
