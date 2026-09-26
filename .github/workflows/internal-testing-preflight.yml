@@ -217,14 +217,40 @@ jobs:
         run: |
           echo "no" | avdmanager create avd --force --name aura_api_36 --package "system-images;android-36;google_apis;x86_64"
           sudo chown "${USER}" /dev/kvm || true
-          nohup emulator -avd aura_api_36 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect > /tmp/aura-emulator.log 2>&1 &
-          adb wait-for-device
-          for attempt in $(seq 1 180); do
+          nohup emulator -avd aura_api_36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/aura-emulator.log 2>&1 &
+          EMULATOR_PID=$!
+          for attempt in $(seq 1 90); do
+            if adb devices | grep -Eq '^emulator-[0-9]+[[:space:]]+device      - name: Android instrumentation
+        run: npm run android:test:instrumentation
+      - name: Listener background recovery
+        run: npm run android:verify:listener-recovery
+; then
+              break
+            fi
+            if ! kill -0 "${EMULATOR_PID}" 2>/dev/null; then
+              cat /tmp/aura-emulator.log
+              exit 1
+            fi
+            sleep 2
+          done
+          if ! adb devices | grep -Eq '^emulator-[0-9]+[[:space:]]+device      - name: Android instrumentation
+        run: npm run android:test:instrumentation
+      - name: Listener background recovery
+        run: npm run android:verify:listener-recovery
+; then
+            cat /tmp/aura-emulator.log
+            exit 1
+          fi
+          for attempt in $(seq 1 120); do
             if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
               adb shell settings put global window_animation_scale 0
               adb shell settings put global transition_animation_scale 0
               adb shell settings put global animator_duration_scale 0
               exit 0
+            fi
+            if ! kill -0 "${EMULATOR_PID}" 2>/dev/null; then
+              cat /tmp/aura-emulator.log
+              exit 1
             fi
             sleep 2
           done
