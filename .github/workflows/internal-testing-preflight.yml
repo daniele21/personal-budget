@@ -222,7 +222,11 @@ jobs:
           JSON
       - name: Start API 36 emulator
         run: |
+          export ANDROID_AVD_HOME="${HOME}/.android/avd"
+          mkdir -p "${ANDROID_AVD_HOME}"
+          echo "ANDROID_AVD_HOME=${ANDROID_AVD_HOME}" >> "${GITHUB_ENV}"
           echo "no" | avdmanager create avd --force --name aura_api_36 --package "system-images;android-36;google_apis;x86_64"
+          test -f "${ANDROID_AVD_HOME}/aura_api_36.ini"
           sudo chown "${USER}" /dev/kvm || true
           nohup emulator -avd aura_api_36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/aura-emulator.log 2>&1 &
           EMULATOR_PID=$!
