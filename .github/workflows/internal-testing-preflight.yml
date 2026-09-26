@@ -21,6 +21,14 @@ jobs:
     name: Web regression and E2E
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      VITE_FIREBASE_API_KEY: AIzaSyA1234567890abcdefghijklmnopqrstuv
+      VITE_FIREBASE_AUTH_DOMAIN: aura-ci.invalid
+      VITE_FIREBASE_PROJECT_ID: aura-ci
+      VITE_FIREBASE_STORAGE_BUCKET: aura-ci.invalid
+      VITE_FIREBASE_MESSAGING_SENDER_ID: "100000000002"
+      VITE_FIREBASE_APP_ID: "1:100000000002:web:0000000000000001"
+      VITE_FIRESTORE_DATABASE_ID: "(default)"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
