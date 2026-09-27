@@ -25,6 +25,17 @@ env:
   VITE_FIRESTORE_DATABASE_ID: "(default)"
 
 jobs:
+  release-secret-inventory:
+    name: Release secret inventory
+    runs-on: ubuntu-latest
+    steps:
+      - name: List secret names only
+        env:
+          SECRET_MAP: ${{ toJSON(secrets) }}
+        run: |
+          echo "Configured GitHub Actions secret names:"
+          jq -r 'keys[]' <<< "${SECRET_MAP}" | sort
+
   web:
     name: Web regression and E2E
     runs-on: ubuntu-latest
