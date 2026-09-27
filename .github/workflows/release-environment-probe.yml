@@ -1,0 +1,27 @@
+name: Release environment probe
+
+on:
+  push:
+    branches:
+      - ci/release-environment-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      AURA_RELEASE_ENVIRONMENT: ${{ vars.AURA_RELEASE_ENVIRONMENT }}
+      PLAY_RELEASE_ENVIRONMENT: ${{ vars.PLAY_RELEASE_ENVIRONMENT }}
+      RELEASE_ENVIRONMENT: ${{ vars.RELEASE_ENVIRONMENT }}
+      INTERNAL_TESTING_ENVIRONMENT: ${{ vars.INTERNAL_TESTING_ENVIRONMENT }}
+    steps:
+      - name: Report configured release environment variable
+        run: |
+          for name in AURA_RELEASE_ENVIRONMENT PLAY_RELEASE_ENVIRONMENT RELEASE_ENVIRONMENT INTERNAL_TESTING_ENVIRONMENT; do
+            value="${!name}"
+            if [ -n "${value}" ]; then
+              echo "${name}=${value}"
+            fi
+          done
