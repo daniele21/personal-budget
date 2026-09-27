@@ -10,6 +10,12 @@ cannot be inferred from an emulator.
 
 ## Automated Evidence — 2026-07-28
 
+The table below is historical evidence for the 2026-07-28 baseline. The
+2026-09-26 listener-reliability hardening changes listener filters/rebind,
+Room reuse after purge and the recovery verifier itself, so listener/lifecycle,
+instrumentation and affected regression gates require a new exact-HEAD run
+before they can be treated as current evidence.
+
 | Gate | Result | Evidence |
 |---|---|---|
 | TypeScript | Pass | `npm run lint` |
@@ -17,10 +23,10 @@ cannot be inferred from an emulator.
 | Production web build | Pass | Vite 6.4.3 |
 | Web/PWA E2E | Pass | 31/31 on Chromium, WebKit, mobile Chromium/WebKit and PWA after fixture/route repair |
 | Gradle unit | Pass | `:app:testDebugUnitTest` |
-| Android instrumentation | Pass | 34 tests on `Pixel_9_Pro` AVD, Android 16/API 36, including Keystore invalidation and closed-database failure |
+| Android instrumentation | Historical pass; exact-HEAD rerun required | 34 tests passed on the 2026-07-28 baseline. Current code adds a regression for reopening Room after purge and changes the listener lifecycle, so instrumentation must be rerun on the current HEAD. |
 | Android lint | Pass | 141 tasks |
 | Package visibility and notification permission | Pass, emulator | Covered by API 36 manifest/instrumentation assertions |
-| Listener and lifecycle recovery | Pass, emulator | Process recreation, rebind, reboot and revoke/regrant synthetic workflow; host verifier now waits for listener reconnection before posting after boot |
+| Listener and lifecycle recovery | Historical pass; exact-HEAD rerun required | 2026-07-28 baseline passed process recreation, rebind, reboot and revoke/regrant. The 2026-09-26 verifier now requires detection before any Aura UI restart, so prior evidence does not validate the current branch. |
 | Rule corpus | Pass, synthetic | Duplicates, semantic dedupe, absent merchant, unsupported currency, OTP, decline, cancellation, balance and promotion |
 | Owner lifecycle | Pass, engineering | Logout, owner change, reset, purge journal and encrypted Room boundary |
 | Detection network surface | Pass, structural | Native and React detection paths contain no network, Firebase, Gemini, analytics or content-log call |

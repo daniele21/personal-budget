@@ -12,7 +12,15 @@ const config = {
 };
 `;
 
+const versionProperties = `
+VERSION_CODE=12
+VERSION_NAME=1.0.9
+`;
+
 const appGradle = `
+def auraVersionFile = rootProject.file('version.properties')
+def auraVersionCode = 12
+def auraVersionName = '1.0.9'
 def auraReleaseSigningEnvironment = [
   storeFile: System.getenv("AURA_ANDROID_UPLOAD_STORE_FILE"),
 ]
@@ -20,7 +28,11 @@ def auraReleaseSigningConfigured = true
 def auraReleaseTaskRequested = true
 if (auraReleaseTaskRequested && !auraReleaseSigningConfigured) {}
 android {
-  defaultConfig { applicationId "${PRODUCTION_ANDROID_PACKAGE}" }
+  defaultConfig {
+    applicationId "${PRODUCTION_ANDROID_PACKAGE}"
+    versionCode auraVersionCode
+    versionName auraVersionName
+  }
   buildTypes {
     debug { applicationIdSuffix ".debug" }
     release {
@@ -70,6 +82,7 @@ describe('Android release readiness', () => {
       assessAndroidReleaseReadiness({
         capacitorConfig,
         appGradle,
+        versionProperties,
         debugGoogleServicesJson: googleServices(
           DEBUG_ANDROID_PACKAGE,
           debugProject,
@@ -83,11 +96,55 @@ describe('Android release readiness', () => {
     ).toEqual([]);
   });
 
+  it('rejects missing or invalid Android version metadata', () => {
+    expect(
+      assessAndroidReleaseReadiness({
+        capacitorConfig,
+        appGradle,
+        versionProperties: null,
+        debugGoogleServicesJson: googleServices(
+          DEBUG_ANDROID_PACKAGE,
+          debugProject,
+        ),
+        releaseGoogleServicesJson: googleServices(
+          PRODUCTION_ANDROID_PACKAGE,
+          productionProject,
+        ),
+        bundledWebAssets: productionWebAssets,
+      }),
+    ).toContainEqual(
+      expect.objectContaining({ code: 'ANDROID_VERSION_MISSING' }),
+    );
+
+    const findings = assessAndroidReleaseReadiness({
+      capacitorConfig,
+      appGradle,
+      versionProperties: 'VERSION_CODE=0\nVERSION_NAME=',
+      debugGoogleServicesJson: googleServices(
+        DEBUG_ANDROID_PACKAGE,
+        debugProject,
+      ),
+      releaseGoogleServicesJson: googleServices(
+        PRODUCTION_ANDROID_PACKAGE,
+        productionProject,
+      ),
+      bundledWebAssets: productionWebAssets,
+    });
+
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'ANDROID_VERSION_CODE_INVALID' }),
+        expect.objectContaining({ code: 'ANDROID_VERSION_NAME_INVALID' }),
+      ]),
+    );
+  });
+
   it('rejects Google Services configurations assigned to the wrong variant', () => {
     expect(
       assessAndroidReleaseReadiness({
         capacitorConfig,
         appGradle,
+        versionProperties,
         debugGoogleServicesJson: googleServices(
           PRODUCTION_ANDROID_PACKAGE,
           debugProject,
@@ -113,6 +170,7 @@ describe('Android release readiness', () => {
         'if (auraReleaseTaskRequested && !auraReleaseSigningConfigured) {}',
         '',
       ),
+      versionProperties,
       debugGoogleServicesJson: googleServices(
         DEBUG_ANDROID_PACKAGE,
         debugProject,
@@ -137,6 +195,7 @@ describe('Android release readiness', () => {
       assessAndroidReleaseReadiness({
         capacitorConfig,
         appGradle,
+        versionProperties,
         debugGoogleServicesJson: null,
         releaseGoogleServicesJson: null,
         bundledWebAssets: null,
@@ -152,6 +211,7 @@ describe('Android release readiness', () => {
       assessAndroidReleaseReadiness({
         capacitorConfig,
         appGradle,
+        versionProperties,
         debugGoogleServicesJson: '{invalid',
         releaseGoogleServicesJson: '{invalid',
         bundledWebAssets: productionWebAssets,
@@ -168,6 +228,7 @@ describe('Android release readiness', () => {
     const findings = assessAndroidReleaseReadiness({
       capacitorConfig,
       appGradle,
+      versionProperties,
       debugGoogleServicesJson: googleServices(
         DEBUG_ANDROID_PACKAGE,
         debugProject,
@@ -190,6 +251,7 @@ describe('Android release readiness', () => {
     const findings = assessAndroidReleaseReadiness({
       capacitorConfig,
       appGradle,
+      versionProperties,
       debugGoogleServicesJson: googleServices(
         DEBUG_ANDROID_PACKAGE,
         debugProject,
@@ -215,6 +277,7 @@ describe('Android release readiness', () => {
     const findings = assessAndroidReleaseReadiness({
       capacitorConfig,
       appGradle,
+      versionProperties,
       debugGoogleServicesJson: googleServices(
         DEBUG_ANDROID_PACKAGE,
         debugProject,

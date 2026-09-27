@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.service.notification.NotificationListenerService
 
 internal class NotificationAccessController(private val context: Context) {
     private val listenerComponent =
@@ -17,6 +18,16 @@ internal class NotificationAccessController(private val context: Context) {
         return enabled.split(':')
             .mapNotNull(ComponentName::unflattenFromString)
             .any { it == listenerComponent }
+    }
+
+    fun requestRebindIfGranted(): Boolean {
+        if (!isGranted()) return false
+        return try {
+            NotificationListenerService.requestRebind(listenerComponent)
+            true
+        } catch (_: SecurityException) {
+            false
+        }
     }
 
     fun openSettings(): Boolean {

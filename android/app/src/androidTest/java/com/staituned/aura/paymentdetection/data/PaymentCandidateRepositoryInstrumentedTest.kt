@@ -318,6 +318,34 @@ class PaymentCandidateRepositoryInstrumentedTest {
     }
 
     @Test
+    fun repositoryReopensFileBackedDatabaseAfterPurgeAndOwnerRegistration() {
+        val namespace = "candidate_reopen_${System.nanoTime()}"
+        val privacyStore = PaymentDetectionPrivacyStore(context, namespace = namespace)
+        stores += privacyStore
+        privacyStore.registerOwner("firebase-reopen-owner")
+        val repository = PaymentCandidateRepository(
+            context = context,
+            privacyStore = privacyStore,
+            databaseName = privacyStore.candidateDatabaseName,
+        )
+        repository.persist(candidate(), "before-purge")
+
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("firebase-reopen-owner")
+
+        val recreated = repository.persist(
+            candidate(amount = 4321),
+            "after-purge",
+        )
+
+        assertTrue(recreated is CandidatePersistenceResult.Created)
+        assertEquals(
+            4321L,
+            repository.get(recreated.candidateId).payload.amountMinorUnits,
+        )
+    }
+
+    @Test
     fun encryptionKeyInvalidationPurgesUnreadableCandidatePayloads() {
         val harness = harness("key_invalidation")
         harness.repository.persist(candidate(), "key-invalidation-notification")
