@@ -8,6 +8,7 @@ export const DEBUG_ANDROID_PACKAGE = 'com.staituned.aura.debug';
 export interface AndroidReleaseReadinessInput {
   capacitorConfig: string;
   appGradle: string;
+  versionProperties: string | null;
   debugGoogleServicesJson: string | null;
   releaseGoogleServicesJson: string | null;
   bundledWebAssets: string[] | null;
@@ -39,6 +40,51 @@ type GoogleServicesVariant = 'debug' | 'release';
 
 function hasPattern(source: string, pattern: RegExp): boolean {
   return pattern.test(source);
+}
+
+function validateAndroidVersionProperties(
+  source: string | null,
+): AndroidReleaseReadinessFinding[] {
+  if (source === null) {
+    return [{
+      code: 'ANDROID_VERSION_MISSING',
+      message:
+        'android/version.properties is missing; define VERSION_CODE and VERSION_NAME before building a release.',
+    }];
+  }
+
+  const values = new Map<string, string>();
+  for (const rawLine of source.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const separator = line.indexOf('=');
+    if (separator <= 0) continue;
+    values.set(
+      line.slice(0, separator).trim(),
+      line.slice(separator + 1).trim(),
+    );
+  }
+
+  const versionCode = values.get('VERSION_CODE') ?? '';
+  const versionName = values.get('VERSION_NAME') ?? '';
+  const findings: AndroidReleaseReadinessFinding[] = [];
+
+  if (!/^[1-9]\d*$/.test(versionCode)) {
+    findings.push({
+      code: 'ANDROID_VERSION_CODE_INVALID',
+      message:
+        'android/version.properties must define VERSION_CODE as a positive integer.',
+    });
+  }
+  if (!versionName) {
+    findings.push({
+      code: 'ANDROID_VERSION_NAME_INVALID',
+      message:
+        'android/version.properties must define a non-empty VERSION_NAME.',
+    });
+  }
+
+  return findings;
 }
 
 function validateGoogleServicesConfiguration(
@@ -212,6 +258,21 @@ export function assessAndroidReleaseReadiness(
       'Release resource shrinking must remain enabled.',
     ],
     [
+      /rootProject\.file\(['"]version\.properties['"]\)/,
+      'ANDROID_VERSION_FILE_WIRING',
+      'Gradle must read application version metadata from android/version.properties.',
+    ],
+    [
+      /versionCode\s+auraVersionCode/,
+      'ANDROID_VERSION_CODE_WIRING',
+      'Gradle versionCode must use the validated Android version metadata.',
+    ],
+    [
+      /versionName\s+auraVersionName/,
+      'ANDROID_VERSION_NAME_WIRING',
+      'Gradle versionName must use the validated Android version metadata.',
+    ],
+    [
       /AURA_ANDROID_UPLOAD_STORE_FILE/,
       'RELEASE_EXTERNAL_SIGNING',
       'Release signing must be supplied outside the repository.',
@@ -230,6 +291,7 @@ export function assessAndroidReleaseReadiness(
   }
 
   findings.push(
+    ...validateAndroidVersionProperties(input.versionProperties),
     ...validateGoogleServicesConfiguration(
       input.debugGoogleServicesJson,
       'debug',
@@ -295,6 +357,9 @@ async function main(): Promise<void> {
     appGradle: await readFile(
       resolve(workspace, 'android/app/build.gradle'),
       'utf8',
+    ),
+    versionProperties: await readOptionalFile(
+      resolve(workspace, 'android/version.properties'),
     ),
     debugGoogleServicesJson: await readOptionalFile(
       resolve(workspace, 'android/app/src/debug/google-services.json'),

@@ -28,7 +28,7 @@ export function PaymentCandidateInboxBanner() {
           <span className="block text-sm font-bold text-primary">
             {candidates.length} {candidates.length === 1 ? 'payment' : 'payments'} to review
           </span>
-          <span className="block text-xs text-on-surface-variant">
+          <span className="block text-xs text-on-surface">
             Confirm, edit, or ignore locally detected payments.
           </span>
         </span>

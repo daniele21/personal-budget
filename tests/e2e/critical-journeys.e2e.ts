@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { seedImportWorkspace } from './support/transactionImport';
 import {
   continueToRestore,
   exportEncryptedArchive,
@@ -69,5 +70,64 @@ test.describe('Aura critical browser journeys', () => {
     await restoreIntoEmptyWorkspace(page);
 
     await expect.poll(() => readCanonicalWorkspace(page)).toEqual(before);
+  });
+});
+
+
+test.describe('Deterministic-first import critical journey', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedImportWorkspace(page);
+  });
+
+  test('maps a localized quoted-row statement locally before review', async ({ page }) => {
+    await page.goto('/history?import=1');
+    const wizard = page.getByRole('dialog', { name: 'Import transactions' });
+    const csv = [
+      '"Data Operazione;Causale;Uscite;Entrate"',
+      '"12/09/2026;SUPERMERCATO;43,20;"',
+      '"13/09/2026;STIPENDIO;;2100,00"',
+      '"14/09/2026;RISTORANTE;31,50;"',
+    ].join('\n');
+
+    await wizard.getByLabel('Choose transaction file').setInputFiles({
+      name: 'localized-bank.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(csv),
+    });
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
+
+    await expect(wizard.getByText('Check what Aura found')).toBeVisible();
+    await expect(wizard.getByText('Data Operazione', { exact: true })).toBeVisible();
+    await expect(wizard.getByText('Causale', { exact: true })).toBeVisible();
+    await expect(wizard.getByText('Uscite = expenses · Entrate = income')).toBeVisible();
+    await expect(wizard.getByRole('progressbar', { name: 'Import progress' }))
+      .toHaveAttribute('aria-valuetext', 'Check preview, step 2 of 4');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('aura_transactions') ?? '[]'))).toHaveLength(0);
+
+    await wizard.getByRole('button', { name: 'Continue' }).click();
+    await expect(wizard.getByText('Categorize and review')).toBeVisible();
+    await expect(wizard.getByText('SUPERMERCATO', { exact: true })).toBeVisible();
+    await expect(wizard.getByText('STIPENDIO', { exact: true })).toBeVisible();
+    await expect(wizard.getByText('RISTORANTE', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('aura_transactions') ?? '[]'))).toHaveLength(0);
+
+    await wizard.getByRole('button', { name: 'Review 3 transactions' }).click();
+    await wizard.getByRole('button', { name: 'Import with 3 Uncategorized' }).click();
+    await expect(wizard.getByText('Import complete')).toBeVisible();
+
+    const canonical = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('aura_transactions') ?? '[]')
+        .map((transaction: { title: string; amount: number; type: string }) => ({
+          title: transaction.title,
+          amount: transaction.amount,
+          type: transaction.type,
+        }))
+        .sort((left: { title: string }, right: { title: string }) => left.title.localeCompare(right.title)),
+    );
+    expect(canonical).toEqual([
+      { title: 'RISTORANTE', amount: 31.5, type: 'expense' },
+      { title: 'STIPENDIO', amount: 2100, type: 'income' },
+      { title: 'SUPERMERCATO', amount: 43.2, type: 'expense' },
+    ]);
   });
 });

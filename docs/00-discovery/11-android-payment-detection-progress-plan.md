@@ -45,7 +45,7 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-08-04
+Ultimo aggiornamento: 2026-09-26
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -1487,6 +1487,7 @@ Next: prossima task verificabile
 | 2026-07-28 | M8 | Implementati provider, backlog/review e accettazione idempotente nella transazione canonica | 82 file/373 test Vitest, unit/lint/assemble Android, 32 instrumentation e simulazione end-to-end sul Pixel 9 Pro API 36 | Avviare M9 hardening senza abilitare sorgenti reali |
 | 2026-07-28 | M9 | Aggiunti signing release fail-closed, verifier production, aggiornamenti dependency compatibili, fix fixture E2E e draft runbook/QA/Data Safety | 83 file/377 test Vitest, build, Gradle unit/lint, 32 instrumentation Pixel 9 Pro API 36; release correttamente bloccata senza credenziali production | Completare E2E finale, device fisici, audit, signed build e approvazioni owner |
 | 2026-07-28 | M9/M10 | Rafforzati disclosure Play, isolamento rete/log, invalidazione Keystore, errore database e recovery post-reboot; preparato il pilot runbook redatto | 83 file/378 test Vitest, 31 E2E, 34 instrumentation test Pixel 9 Pro API 36 e recovery process/rebind/reboot/revoca verdi; review policy Google ufficiale | Chiudere solo con device fisici, audit/signing production, Play Console e owner privacy/security/release |
+| 2026-09-26 | M9 | Hardened la reliability del listener: rebind su status refresh, stato UI separato dal solo grant OS, ricezione anche delle notifiche silent, riapertura Room dopo purge e verifier che pubblica il pagamento prima di riavviare qualsiasi Activity Aura | Branch `fix/android-payment-listener-reliability`; review sorgente e diff completate. Le evidenze automatiche del 2026-07-28 sono storiche e non valgono per il nuovo HEAD | Rieseguire i gate STRONG su exact HEAD quando è disponibile automazione repository/ambiente Android e completare la matrice fisica/OEM |
 
 ## Release Evidence
 
@@ -1499,8 +1500,8 @@ La baseline M0 e le prime evidenze M1 sono registrate; le evidenze mancanti sara
 | Web production build | Passato | Build Vite inclusa in `npm run test:regression`, 2026-07-26 |
 | Web/PWA E2E | Passato | 31/31 Chromium, WebKit, mobile Chromium/WebKit e PWA dopo correzione fixture Guided Tour e route tema, 2026-07-28 |
 | Gradle unit test | Passato | `testDebugUnitTest`, incluso corpus M5 e benchmark 10.000 parsing, JDK 21/API 36, 2026-07-28 |
-| Android instrumentation | Passato | 34 test `:app:connectedDebugAndroidTest` su AVD Pixel 9 Pro Android 16/API 36, inclusi detection sintetica→Room→notifica privata, schema, bridge DTO, azioni immutabili, spoofing, cifratura, invalidazione Keystore, database chiuso, dedupe, retention, recovery, owner isolation e purge, 2026-07-28 |
-| Listener recovery | Passato | `android:verify:listener-recovery`: process recreation, rebind, reboot API 36 e revoca su AVD Pixel 9 Pro, 2026-07-28 |
+| Android instrumentation | Storico passato; rerun exact-HEAD richiesto | 34 test `:app:connectedDebugAndroidTest` passarono sul baseline 2026-07-28. Il branch 2026-09-26 aggiunge il test di riapertura Room post-purge e modifica lifecycle/filter listener, quindi l'evidenza precedente non valida il nuovo HEAD |
+| Listener recovery | Storico passato; rerun exact-HEAD richiesto | Il baseline 2026-07-28 passò process recreation/rebind/reboot/revoca. Il verifier 2026-09-26 ora richiede detection in background prima di avviare un'Activity Aura, quindi la vecchia evidenza è invalidata per il branch corrente |
 | Simulazione M7 | Passato | `android:simulate:wallet-notification`: notifica Wallet sintetica → candidato Room → proposta Aura redatta, con cleanup automatico su AVD Pixel 9 Pro, 2026-07-28 |
 | Android lint | Passato | 141 task, 2026-07-28 |
 | Android debug build | Passato | `assembleDebug`, `com.staituned.aura.debug`, min/target 36; cold start 1,571 s nel test WebView del 2026-07-26 |

@@ -186,49 +186,47 @@ async function main() {
     if (started === null) throw new Error('Analyze file action is unavailable.');
 
     await waitFor(
-      () => client.evaluate(`document.body.textContent.includes('Check what Harnex understood')`),
-      'Harnex-assisted interpretation preview',
-      240,
+      () => client.evaluate(`document.body.textContent.includes('Check what Aura found')`),
+      'deterministic mapping preview',
+      160,
     );
 
-    const interpretation = await client.evaluate(`(() => {
+    const mapping = await client.evaluate(`(() => {
       const dialog = document.querySelector('[role="dialog"]');
       const text = dialog?.textContent ?? '';
       const buttons = Array.from(dialog?.querySelectorAll('button') ?? []);
       return {
-        hasSupermarket: text.includes('SUPERMERCATO'),
-        hasSalary: text.includes('STIPENDIO'),
-        hasRestaurant: text.includes('RISTORANTE'),
-        hasCorrectAction: buttons.some((button) => button.textContent.trim() === 'Yes, this is correct' && !button.disabled),
-        hasWrongAction: buttons.some((button) => button.textContent.trim() === 'Something is wrong' && !button.disabled),
-        hasInterpretationStep: text.includes('Check interpretation'),
-        ledgerBeforeConfirm: JSON.parse(localStorage.getItem('aura_transactions') ?? '[]').length
+        hasDate: text.includes('Data Operazione'),
+        hasDescription: text.includes('Causale'),
+        hasMoney: text.includes('Uscite = expenses') && text.includes('Entrate = income'),
+        hasContinue: buttons.some((button) => button.textContent.trim() === 'Continue' && !button.disabled),
+        hasEdit: buttons.some((button) => button.textContent.trim() === 'Edit' && !button.disabled),
+        hasFourStepPreview: text.includes('Check preview') && text.includes('Step 2 of 4'),
+        ledgerBeforeContinue: JSON.parse(localStorage.getItem('aura_transactions') ?? '[]').length
       };
     })()`);
     if (
-      !interpretation?.hasSupermarket
-      || !interpretation?.hasSalary
-      || !interpretation?.hasRestaurant
-      || !interpretation?.hasCorrectAction
-      || !interpretation?.hasWrongAction
+      !mapping?.hasDate
+      || !mapping?.hasDescription
+      || !mapping?.hasMoney
+      || !mapping?.hasContinue
+      || !mapping?.hasEdit
+      || !mapping?.hasFourStepPreview
     ) {
-      throw new Error(`Harnex interpretation preview is incomplete: ${JSON.stringify(interpretation)}`);
+      throw new Error(`Deterministic mapping preview is incomplete: ${JSON.stringify(mapping)}`);
     }
-    if (!interpretation?.hasInterpretationStep) {
-      throw new Error(`Interactive interpretation step was not visible: ${JSON.stringify(interpretation)}`);
-    }
-    if (interpretation.ledgerBeforeConfirm !== 0) {
-      throw new Error('Ledger changed before explicit interpretation confirmation.');
+    if (mapping.ledgerBeforeContinue !== 0) {
+      throw new Error('Ledger changed before deterministic mapping confirmation.');
     }
 
-    const confirmed = await client.evaluate(`(() => {
+    const continued = await client.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
-        .find((candidate) => candidate.textContent.trim() === 'Yes, this is correct');
+        .find((candidate) => candidate.textContent.trim() === 'Continue');
       if (!button || button.disabled) return false;
       button.click();
       return true;
     })()`);
-    if (!confirmed) throw new Error('Interpretation confirmation action is unavailable.');
+    if (!continued) throw new Error('Deterministic mapping continue action is unavailable.');
 
     await waitFor(
       () => client.evaluate(`document.body.textContent.includes('Categorize and review')`),
@@ -320,11 +318,11 @@ async function main() {
       JSON.stringify(evidence?.canonical) !== JSON.stringify(expectedCanonical) && 'deterministic quoted-row extraction',
       !evidence?.categories?.every((category) => category === 'Food') && 'Harnex category suggestions constrained to Aura categories',
       !evidence?.metadataClean && 'canonical ledger metadata isolation',
-      evidence?.durationMs > 60_000 && 'bounded assisted import duration',
+      evidence?.durationMs > 60_000 && 'bounded deterministic-first assisted import duration',
     ].filter(Boolean);
     if (failures.length > 0) throw new Error(`Harnex assisted import verification failed: ${failures.join(', ')}`);
 
-    console.log(JSON.stringify({ status: 'PASS', interpretation, review, evidence }, null, 2));
+    console.log(JSON.stringify({ status: 'PASS', mapping, review, evidence }, null, 2));
   } finally {
     client.close();
   }

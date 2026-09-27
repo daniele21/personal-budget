@@ -83,6 +83,13 @@ class AuraNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        migrateNotificationFilter(
+            FLAG_FILTER_TYPE_CONVERSATIONS or
+                FLAG_FILTER_TYPE_ALERTING or
+                FLAG_FILTER_TYPE_SILENT or
+                FLAG_FILTER_TYPE_ONGOING,
+            emptyList(),
+        )
         PaymentDetectionListenerRuntime.markConnected()
     }
 

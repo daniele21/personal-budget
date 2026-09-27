@@ -1,6 +1,6 @@
 # ADR 0009: Interactive Harnex Import Interpretation
 
-- Status: Accepted
+- Status: Superseded for the canonical source-understanding flow by [ADR 0010](./0010-aura-deterministic-first-import-v2.md)
 - Date: 2026-09-15
 - Relates to: ADR 0002, ADR 0006, ADR 0008
 - Supersedes: the candidate-selection-only schema-understanding boundary in ADR 0008. The no-cloud, local-first, user-review and verified-commit invariants remain in force.

@@ -59,7 +59,7 @@ const profile = profileSpreadsheet({
     name: 'CSV',
     state: 'visible',
     rows: [
-      { rowNumber: 1, cells: ['Booking Date', 'Details', 'Amount'] },
+      { rowNumber: 1, cells: ['Column A', 'Column B', 'Column C'] },
       { rowNumber: 2, cells: ['2026-09-01', 'Synthetic Grocery', '-42.00'] },
       { rowNumber: 3, cells: ['2026-09-02', 'Synthetic Salary', '2200.00'] },
     ],
@@ -116,7 +116,7 @@ function preparedImport(): PreparedTransactionImport {
 function chooseCompleteMapping(): void {
   fireEvent.change(screen.getByLabelText('Transaction date'), { target: { value: dateCandidate.id } });
   fireEvent.change(screen.getByLabelText('Amount'), { target: { value: amountCandidate.id } });
-  fireEvent.click(screen.getByRole('checkbox', { name: /Details/ }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /Column B/ }));
 }
 
 describe('ImportWizardDialog Import V2 manual flow', () => {

@@ -1,6 +1,5 @@
 import { readLocalSpreadsheetFile } from '../../data/import/spreadsheetFileReader';
 import { readSpreadsheetProfile } from '../../data/import/spreadsheetProfileReader';
-import { readRawImportV2Document } from '../../data/import/rawImportV2DocumentReader';
 import {
   validateStructuredImport,
   type ImportIssue,
@@ -8,7 +7,7 @@ import {
   type RawStructuredImportRow,
   type StructuredImportValidationResult,
 } from '../../domain/import';
-import type { ImportV2RawDocument, SpreadsheetProfile } from '../../domain/import/v2';
+import type { SpreadsheetProfile } from '../../domain/import/v2';
 import {
   beginImportV2DiagnosticAttempt,
   recordImportV2Diagnostic,
@@ -18,7 +17,7 @@ import { isAuraPortableArchive } from '../archive/archiveReader';
 export type TransactionImportFileReadResult =
   | { kind: 'aura-archive' }
   | { kind: 'aura-legacy-csv'; rawRows: string[][] }
-  | { kind: 'mapping-required'; profile: SpreadsheetProfile; rawDocument?: ImportV2RawDocument }
+  | { kind: 'mapping-required'; profile: SpreadsheetProfile }
   | { kind: 'structured'; sheetName: string; validation: StructuredImportValidationResult }
   | { kind: 'rejected'; issues: ImportIssue[] };
 
@@ -77,9 +76,9 @@ function sourceKindHint(file: File): 'csv' | 'xlsx' | 'unknown' {
 /**
  * Classifies archive, legacy Aura CSV and deterministic V1 content in that
  * order. Only a V1-blocked supported spreadsheet continues to V2. For that
- * path Aura keeps both the legacy profile (manual fallback) and, when the same
- * technical gates allow it, a bounded source-shaped document for Harnex plan
- * interpretation. No persistence or provider operation is reachable here.
+ * path Aura builds the bounded local profile used first for deterministic
+ * semantic mapping and, only when that is unresolved, optional Harnex/manual
+ * mapping. No persistence or provider operation is reachable here.
  */
 export async function readTransactionImportFile(
   file: File,
@@ -106,19 +105,15 @@ export async function readTransactionImportFile(
   }
 
   const attemptId = beginImportV2DiagnosticAttempt(sourceKindHint(file));
-  const [profiled, raw] = await Promise.all([
-    readSpreadsheetProfile(file),
-    readRawImportV2Document(file),
-  ]);
+  const profiled = await readSpreadsheetProfile(file);
   if (profiled.kind === 'profiled') {
     recordImportV2Diagnostic('file-route', 'mapping-required', {
       sourceKind: profiled.profile.sourceKind,
-      reasonCode: raw.kind === 'read' ? 'raw-document-ready' : 'raw-document-unavailable',
+      reasonCode: 'profile-ready',
     }, attemptId);
     return {
       kind: 'mapping-required',
       profile: profiled.profile,
-      ...(raw.kind === 'read' ? { rawDocument: raw.document } : {}),
     };
   }
 
