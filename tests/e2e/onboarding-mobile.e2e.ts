@@ -19,6 +19,14 @@ test.describe('Aura first-run mobile accessibility', () => {
     await page.goto('/');
 
     const startDialog = page.getByRole('dialog', { name: 'How would you like to start?' });
+    const continueOffline = page.getByRole('button', { name: 'Continue offline' });
+    const firstRunGate = await Promise.race([
+      startDialog.waitFor({ state: 'visible' }).then(() => 'start' as const),
+      continueOffline.waitFor({ state: 'visible' }).then(() => 'offline' as const),
+    ]);
+    if (firstRunGate === 'offline') {
+      await continueOffline.click();
+    }
     await expect(startDialog).toBeVisible();
     await expect(startDialog.locator(':scope > div')).toHaveCSS('opacity', '1');
     expect(await page.locator('[aria-modal="true"]').count()).toBe(1);
