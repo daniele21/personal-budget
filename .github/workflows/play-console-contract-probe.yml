@@ -1,0 +1,48 @@
+name: Play Console contract probe
+
+on:
+  push:
+    branches:
+      - ci/play-console-contract-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    environment:
+      name: play-console
+      deployment: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify protected release contract presence
+        env:
+          HAS_VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY != '' }}
+          HAS_VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN != '' }}
+          HAS_VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID != '' }}
+          HAS_VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET != '' }}
+          HAS_VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID != '' }}
+          HAS_VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID != '' }}
+          HAS_VITE_FIRESTORE_DATABASE_ID: ${{ vars.VITE_FIRESTORE_DATABASE_ID != '' }}
+          HAS_AURA_ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.AURA_ANDROID_UPLOAD_STORE_PASSWORD != '' }}
+          HAS_AURA_ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.AURA_ANDROID_UPLOAD_KEY_ALIAS != '' }}
+          HAS_AURA_ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.AURA_ANDROID_UPLOAD_KEY_PASSWORD != '' }}
+          HAS_AURA_ANDROID_RELEASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_RELEASE_GOOGLE_SERVICES_JSON_B64 != '' }}
+          HAS_AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64: ${{ secrets.AURA_ANDROID_CI_GOOGLE_SERVICES_JSON_B64 != '' }}
+          HAS_AURA_ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.AURA_ANDROID_UPLOAD_KEYSTORE_B64 != '' }}
+          HAS_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        run: |
+          set -euo pipefail
+          missing=0
+          while IFS='=' read -r name value; do
+            if [[ "$name" == HAS_* ]]; then
+              label="${name#HAS_}"
+              if [[ "$value" == "true" ]]; then
+                echo "$label=present"
+              else
+                echo "$label=missing"
+                missing=1
+              fi
+            fi
+          done < <(env | grep '^HAS_' | sort)
+          exit "$missing"
