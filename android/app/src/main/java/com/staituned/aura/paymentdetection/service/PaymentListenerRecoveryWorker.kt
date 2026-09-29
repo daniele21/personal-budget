@@ -58,6 +58,31 @@ object PaymentListenerRecoveryScheduler {
     private const val IMMEDIATE_WORK =
         "aura-payment-listener-recovery-immediate-v1"
 
+    /**
+     * Keeps recovery work aligned with the persisted user choice. Paused,
+     * logged-out and purged states do not retain a periodic wakeup.
+     */
+    @JvmStatic
+    fun sync(context: Context) {
+        val appContext = context.applicationContext
+        val enabled = try {
+            val privacyStore = PaymentDetectionPrivacyStore(appContext)
+            privacyStore.hasActiveOwner() &&
+                PaymentDetectionSettingsStore(
+                    appContext,
+                    privacyStore,
+                ).getSettings().requestedEnabled
+        } catch (_: RuntimeException) {
+            false
+        }
+        if (!enabled) {
+            cancel(appContext)
+            return
+        }
+        schedule(appContext)
+        runSoon(appContext)
+    }
+
     @JvmStatic
     fun schedule(context: Context) {
         val work = PeriodicWorkRequestBuilder<PaymentListenerRecoveryWorker>(
@@ -79,5 +104,13 @@ object PaymentListenerRecoveryScheduler {
             ExistingWorkPolicy.REPLACE,
             work,
         )
+    }
+
+    @JvmStatic
+    fun cancel(context: Context) {
+        WorkManager.getInstance(context.applicationContext).apply {
+            cancelUniqueWork(PERIODIC_WORK)
+            cancelUniqueWork(IMMEDIATE_WORK)
+        }
     }
 }
