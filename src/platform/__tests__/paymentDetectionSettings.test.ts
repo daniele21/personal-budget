@@ -5,6 +5,7 @@ const nativePlugin = vi.hoisted(() => ({
   listSupportedApps: vi.fn(),
   updateSettings: vi.fn(),
   openNotificationAccessSettings: vi.fn(),
+  openPaymentAlertSettings: vi.fn(),
   requestAuraNotificationPermission: vi.fn(),
 }));
 
@@ -34,6 +35,7 @@ describe('paymentDetectionSettings', () => {
       osPermissionGranted: false,
       listenerConnected: false,
       auraNotificationPermissionGranted: false,
+      candidateNotificationsEnabled: false,
       selectedPackages: ['com.staituned.aura.syntheticnotifications'],
     });
 
@@ -58,6 +60,7 @@ describe('paymentDetectionSettings', () => {
       osPermissionGranted: true,
       listenerConnected: true,
       auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
       selectedPackages: ['com.staituned.aura.syntheticnotifications'],
     });
 
