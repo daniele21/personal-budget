@@ -79,6 +79,29 @@ Trust boundaries:
 Excluded by design: OTPs, balances, card/account identifiers, raw notification
 strings, Firebase/Google tokens, email, icons, images, actions and remote views.
 
+## Listener Recovery And Missed-Notification Reconciliation
+
+Aura does not rely on the React/WebView lifecycle to keep the Android listener
+healthy. A native WorkManager watchdog runs only against metadata and asks
+Android to rebind the system listener when all of these are true: an owner
+exists, detection is user-enabled, notification-listener access is granted,
+and the listener is not currently connected.
+
+The owner-scoped settings store keeps a monotonic recovery watermark. Enabling
+detection or changing selected sources starts a new watermark at that user
+action, so an upgrade or newly selected source does not retroactively import
+older tray content. After a successful reconnect, the listener examines at most
+128 currently active notifications newer than the watermark and no older than
+the existing 14-day pending-candidate horizon. Package and user-selection gates
+execute before notification extras are read. Successful deterministic
+processing advances the watermark; failed processing does not. Existing
+technical fingerprints make replay idempotent.
+
+The payment-alert notification channel is a separate delivery surface from
+listener access. Aura exposes whether that channel is blocked and can open the
+channel-specific Android settings. Blocking the Aura channel does not disable
+candidate detection or weaken storage/bridge controls.
+
 ## Owner Isolation And Purge
 
 The Firebase UID is never stored directly in native payment-detection storage.
