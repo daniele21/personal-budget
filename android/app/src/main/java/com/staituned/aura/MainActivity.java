@@ -17,14 +17,13 @@ public class MainActivity extends BridgeActivity {
         bridge.setWebViewClient(new AuraBridgeWebViewClient(bridge));
         CandidateCleanupScheduler.schedule(this);
         CandidateCleanupScheduler.runSoon(this);
-        PaymentListenerRecoveryScheduler.schedule(this);
-        PaymentListenerRecoveryScheduler.runSoon(this);
+        PaymentListenerRecoveryScheduler.sync(this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         CandidateCleanupScheduler.runSoon(this);
-        PaymentListenerRecoveryScheduler.runSoon(this);
+        PaymentListenerRecoveryScheduler.sync(this);
     }
 }
