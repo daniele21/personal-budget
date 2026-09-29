@@ -108,6 +108,11 @@ Navigation away, back press, permission denial, or closing Aura does not count a
 9. Aura persists only a structured candidate if the match tier permits it.
 10. Exact-tier candidates may trigger a private Aura notification.
 11. Review-tier candidates appear only in the in-app queue.
+12. A native watchdog retries listener binding while detection remains enabled.
+13. After a reconnect, Aura replays only bounded active notifications newer
+    than the local recovery watermark through the same package gate and
+    deterministic rule engine; existing fingerprints keep the replay
+    idempotent.
 
 ### Review
 
@@ -282,6 +287,13 @@ No bank package, card information, account information, or raw bank text appears
 ## Error Behavior
 
 - Permission missing: detection unavailable; existing local queue remains manageable.
+- Listener disconnected with permission still granted: report `Reconnecting`,
+  request an immediate rebind, and retry through the native background watchdog.
+- Payment posted during a listener blackout: reconcile bounded active
+  notifications on the next successful connection without bypassing the
+  package/user-selection gate.
+- Aura payment-alert channel blocked: keep candidate detection operational,
+  report `Alerts blocked`, and open the channel-specific Android settings.
 - Database failure: no Aura notification and no crash loop.
 - Invalid rule: disable that rule and continue safely.
 - Missing amount: ignore.
@@ -328,7 +340,11 @@ The MVP is acceptable when:
 17. Pending candidates do not enter backup or archive.
 18. Lock screen is redacted by default.
 19. Network and logcat leakage checks pass.
-20. Physical-device, accessibility, privacy, security, and Play release gates pass.
+20. A selected synthetic payment posted while the listener is disconnected is
+    recovered after reconnect and is not duplicated if it was already observed.
+21. The UI distinguishes listener health from a blocked Aura payment-alert
+    channel and offers the appropriate Android repair surface.
+22. Physical-device, accessibility, privacy, security, and Play release gates pass.
 
 ## Pilot Gate
 
