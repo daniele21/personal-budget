@@ -269,7 +269,10 @@ export function PaymentDetectionSettings() {
         </Button>
         <Button
           variant="secondary"
-          onClick={() => setShowDisclosure(true)}
+          onClick={() => {
+            if (accessGranted) void handleRepairAccess();
+            else setShowDisclosure(true);
+          }}
           disabled={busy}
           fullWidth
         >
