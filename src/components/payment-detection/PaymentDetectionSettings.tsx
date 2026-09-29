@@ -21,6 +21,7 @@ export function PaymentDetectionSettings() {
     setRequestedEnabled,
     requestNotificationPermission,
     openNotificationAccessSettings,
+    openPaymentAlertSettings,
     deleteAllCandidates,
   } = usePaymentDetection();
   const { toast } = useToast();
@@ -33,10 +34,15 @@ export function PaymentDetectionSettings() {
   const installedApps = supportedApps.filter((app) => app.installed);
   const accessGranted = status.osPermissionGranted;
   const listenerReady = status.listenerConnected;
+  const alertsReady =
+    status.auraNotificationPermissionGranted &&
+    status.candidateNotificationsEnabled;
   const enabled =
     status.requestedEnabled && accessGranted && listenerReady;
   const detectionStateLabel = enabled
-    ? 'Active'
+    ? alertsReady
+      ? 'Active'
+      : 'Alerts blocked'
     : status.requestedEnabled
       ? accessGranted
         ? 'Reconnecting'
@@ -52,6 +58,31 @@ export function PaymentDetectionSettings() {
       await openNotificationAccessSettings();
     } catch {
       toast('Android notification access could not be opened.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRepairAccess = async () => {
+    setBusy(true);
+    try {
+      await openNotificationAccessSettings();
+    } catch {
+      toast('Android notification access could not be opened.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenAlertSettings = async () => {
+    setBusy(true);
+    try {
+      if (!status.auraNotificationPermissionGranted) {
+        await requestNotificationPermission();
+      }
+      await openPaymentAlertSettings();
+    } catch {
+      toast('Aura payment alert settings could not be opened.', 'error');
     } finally {
       setBusy(false);
     }
@@ -130,13 +161,52 @@ export function PaymentDetectionSettings() {
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
               {accessGranted && !listenerReady
-                ? 'Android access is granted, but the listener is reconnecting. Aura retries the system binding when the app resumes.'
+                ? 'Android access is granted, but the listener is reconnecting. Aura retries immediately and also uses a native background watchdog.'
                 : 'Android grants access to notifications generally. Aura filters locally and reads content only from supported apps you select.'}
             </p>
+            {status.requestedEnabled && accessGranted && !listenerReady && (
+              <button
+                type="button"
+                onClick={() => void handleRepairAccess()}
+                disabled={busy}
+                className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50"
+              >
+                Repair Android access
+              </button>
+            )}
           </div>
           <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
             accessGranted ? 'bg-secondary' : 'bg-tertiary'
           }`} aria-label={accessGranted ? 'Granted' : 'Not granted'} />
+        </div>
+
+        <div className="flex items-start gap-3 p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <BellRing className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-on-surface">
+              Aura payment alerts
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
+              {alertsReady
+                ? 'Aura can show a local alert when an exact payment candidate is detected.'
+                : 'Android is blocking Aura payment alerts. Detection can still create pending candidates, but no Aura alert will appear.'}
+            </p>
+            {!alertsReady && (
+              <button
+                type="button"
+                onClick={() => void handleOpenAlertSettings()}
+                disabled={busy}
+                className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50"
+              >
+                Open payment alert settings
+              </button>
+            )}
+          </div>
+          <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+            alertsReady ? 'bg-secondary' : 'bg-tertiary'
+          }`} aria-label={alertsReady ? 'Payment alerts enabled' : 'Payment alerts blocked'} />
         </div>
 
         <div className="p-4">
@@ -199,7 +269,10 @@ export function PaymentDetectionSettings() {
         </Button>
         <Button
           variant="secondary"
-          onClick={() => setShowDisclosure(true)}
+          onClick={() => {
+            if (accessGranted) void handleRepairAccess();
+            else setShowDisclosure(true);
+          }}
           disabled={busy}
           fullWidth
         >

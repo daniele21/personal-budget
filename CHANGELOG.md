@@ -244,6 +244,12 @@
 
 ### Fixed
 
+- Added a native self-healing path for Android payment detection: a periodic
+  listener watchdog retries system binding without depending on the WebView,
+  reconnects replay bounded active selected notifications from a monotonic
+  recovery watermark, and the settings UI now distinguishes a disconnected
+  listener from a blocked Aura payment-alert channel with dedicated repair
+  actions.
 - Hardened Android payment-notification reliability: disconnected listeners now
   request a system rebind when detection status is refreshed, existing installs
   migrate to all notification filter types including silent notifications,

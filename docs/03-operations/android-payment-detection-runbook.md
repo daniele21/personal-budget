@@ -122,20 +122,29 @@ Safe evidence includes:
 
 If detection is unavailable:
 
-Aura treats Android notification-access permission and the live listener
-connection as separate states. When access remains granted but the listener is
-disconnected, the in-app status shows `Reconnecting` and a status refresh asks
-Android to rebind the listener. The listener accepts alerting and silent
-notification types; package and user-selection gates still run before extras
-are read.
+Aura treats Android notification-access permission, the live listener
+connection, and Aura's payment-alert channel as separate states. When access
+remains granted but the listener is disconnected, the in-app status shows
+`Reconnecting`, requests an immediate rebind, and a native WorkManager watchdog
+retries the system binding periodically while detection remains enabled.
+
+On reconnect, Aura scans only currently active notifications that are newer
+than its owner-scoped recovery watermark (capped to the existing 14-day
+candidate horizon and 128 notifications). Package and user-selection checks
+still run before title/text/bigText are read. Notifications already processed
+are suppressed by the existing technical fingerprint.
 
 1. confirm the user is authenticated;
 2. inspect the in-app feature state;
-3. confirm notification access in Android settings;
-4. confirm the supported app is selected;
-5. run the synthetic source;
-6. reconcile from the owner-scoped Room snapshot on app resume;
-7. run listener recovery only on the test AVD.
+3. if it remains `Reconnecting`, use **Repair Android access** and toggle Aura
+   off/on once in Android notification-access settings;
+4. confirm the supported payment app is selected;
+5. confirm **Aura payment alerts** is enabled; if blocked, open the dedicated
+   Android channel settings from Aura;
+6. run the synthetic source;
+7. verify a payment posted while the listener is revoked is recovered after the
+   listener is granted again;
+8. run listener recovery only on the test AVD.
 
 Do not enable WebView debugging or dynamic native content logs in a release
 artifact. Do not export the candidate database.

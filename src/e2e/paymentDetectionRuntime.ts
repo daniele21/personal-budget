@@ -30,6 +30,7 @@ let status: NativePaymentDetectionStatus = {
   osPermissionGranted: true,
   listenerConnected: true,
   auraNotificationPermissionGranted: true,
+  candidateNotificationsEnabled: true,
 };
 
 function candidate(
@@ -98,6 +99,7 @@ export const paymentDetection = {
     return { granted: true };
   },
   async openNotificationAccessSettings(): Promise<void> {},
+  async openPaymentAlertSettings(): Promise<void> {},
   async deleteAllCandidates(): Promise<{ deletedCount: number }> {
     const deletedCount = candidates.length;
     candidates = [];

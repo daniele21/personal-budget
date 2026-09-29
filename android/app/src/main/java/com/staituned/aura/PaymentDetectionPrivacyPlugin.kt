@@ -29,6 +29,7 @@ import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryScheduler
 
 @CapacitorPlugin(
     name = "PaymentDetection",
@@ -86,6 +87,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         try {
             candidateNotifier.cancelAll()
             privacyStore.registerOwner(firebaseUid)
+            PaymentListenerRecoveryScheduler.sync(context)
             call.resolve()
         } catch (_: Exception) {
             call.reject(
@@ -105,6 +107,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         try {
             candidateNotifier.cancelAll()
             privacyStore.purge(reason)
+            PaymentListenerRecoveryScheduler.cancel(context)
             call.resolve()
         } catch (_: Exception) {
             call.reject("Unable to clear secure native storage.", "PURGE_FAILED")
@@ -171,8 +174,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 selectedPackages = selectedPackages,
             )
             if (settings.requestedEnabled) {
+                PaymentListenerRecoveryScheduler.sync(context)
                 recoverNotificationListenerIfNeeded(settings)
             } else {
+                PaymentListenerRecoveryScheduler.cancel(context)
                 candidateNotifier.cancelAll()
             }
             call.resolve(statusJson(settings))
@@ -187,6 +192,15 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             call.resolve()
         } else {
             call.reject("Notification access settings unavailable.", "SETTINGS_UNAVAILABLE")
+        }
+    }
+
+    @PluginMethod
+    fun openPaymentAlertSettings(call: PluginCall) {
+        if (candidateNotifier.openCandidateAlertSettings()) {
+            call.resolve()
+        } else {
+            call.reject("Payment alert settings unavailable.", "SETTINGS_UNAVAILABLE")
         }
     }
 
@@ -344,6 +358,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             !PaymentDetectionListenerRuntime.isConnected()
         ) {
             accessController.requestRebindIfGranted()
+            PaymentListenerRecoveryScheduler.sync(context)
         }
     }
 
@@ -355,6 +370,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 "auraNotificationPermissionGranted",
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
                     PackageManager.PERMISSION_GRANTED,
+            )
+            put(
+                "candidateNotificationsEnabled",
+                candidateNotifier.areCandidateAlertsEnabled(),
             )
         }
 
@@ -373,6 +392,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 "auraNotificationPermissionGranted",
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
                     PackageManager.PERMISSION_GRANTED,
+            )
+            put(
+                "candidateNotificationsEnabled",
+                candidateNotifier.areCandidateAlertsEnabled(),
             )
         }
 

@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   updateSettings: vi.fn(),
   requestAuraNotificationPermission: vi.fn(),
   openNotificationAccessSettings: vi.fn(),
+  openPaymentAlertSettings: vi.fn(),
   deleteAllCandidates: vi.fn(),
 }));
 
@@ -55,6 +56,7 @@ vi.mock('../../platform/paymentDetection', () => ({
     updateSettings: mocks.updateSettings,
     requestAuraNotificationPermission: mocks.requestAuraNotificationPermission,
     openNotificationAccessSettings: mocks.openNotificationAccessSettings,
+    openPaymentAlertSettings: mocks.openPaymentAlertSettings,
     deleteAllCandidates: mocks.deleteAllCandidates,
   },
   subscribeToPaymentCandidates: vi.fn(async (
@@ -144,6 +146,7 @@ describe('PaymentDetectionProvider', () => {
       osPermissionGranted: true,
       listenerConnected: true,
       auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
     });
     mocks.listSupportedApps.mockResolvedValue({ apps: [] });
     mocks.listCandidates.mockResolvedValue([candidate]);

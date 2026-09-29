@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.staituned.aura.MainActivity
 import com.staituned.aura.R
@@ -26,6 +27,7 @@ internal class PaymentCandidateNotifier(private val context: Context) {
         }
         return runCatching {
             ensureChannel()
+            if (!areCandidateAlertsEnabled()) return false
             notificationManager.notify(
                 candidateId,
                 PAYMENT_CANDIDATE_NOTIFICATION_ID,
@@ -33,6 +35,35 @@ internal class PaymentCandidateNotifier(private val context: Context) {
             )
             true
         }.getOrDefault(false)
+    }
+
+    fun areCandidateAlertsEnabled(): Boolean {
+        if (
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+        val channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+        return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    fun openCandidateAlertSettings(): Boolean {
+        ensureChannel()
+        val channelIntent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, CHANNEL_ID)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val appIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent = when {
+            channelIntent.resolveActivity(context.packageManager) != null -> channelIntent
+            appIntent.resolveActivity(context.packageManager) != null -> appIntent
+            else -> return false
+        }
+        context.startActivity(intent)
+        return true
     }
 
     fun cancel(candidateId: String) {

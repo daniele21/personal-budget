@@ -45,7 +45,7 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-09-26
+Ultimo aggiornamento: 2026-09-30
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -1488,6 +1488,7 @@ Next: prossima task verificabile
 | 2026-07-28 | M9 | Aggiunti signing release fail-closed, verifier production, aggiornamenti dependency compatibili, fix fixture E2E e draft runbook/QA/Data Safety | 83 file/377 test Vitest, build, Gradle unit/lint, 32 instrumentation Pixel 9 Pro API 36; release correttamente bloccata senza credenziali production | Completare E2E finale, device fisici, audit, signed build e approvazioni owner |
 | 2026-07-28 | M9/M10 | Rafforzati disclosure Play, isolamento rete/log, invalidazione Keystore, errore database e recovery post-reboot; preparato il pilot runbook redatto | 83 file/378 test Vitest, 31 E2E, 34 instrumentation test Pixel 9 Pro API 36 e recovery process/rebind/reboot/revoca verdi; review policy Google ufficiale | Chiudere solo con device fisici, audit/signing production, Play Console e owner privacy/security/release |
 | 2026-09-26 | M9 | Hardened la reliability del listener: rebind su status refresh, stato UI separato dal solo grant OS, ricezione anche delle notifiche silent, riapertura Room dopo purge e verifier che pubblica il pagamento prima di riavviare qualsiasi Activity Aura | Branch `fix/android-payment-listener-reliability`; review sorgente e diff completate. Le evidenze automatiche del 2026-07-28 sono storiche e non valgono per il nuovo HEAD | Rieseguire i gate STRONG su exact HEAD quando è disponibile automazione repository/ambiente Android e completare la matrice fisica/OEM |
+| 2026-09-30 | M9 | Secondo hardening dopo blackout reale post-update: watchdog WorkManager nativo, watermark owner-scoped, replay bounded delle active notifications al reconnect, stato separato del canale Aura e azioni di repair Android | Branch `fix/android-payment-listener-self-healing`; test instrumentation aggiunge pagamento durante listener revocato → reconnect → candidate, verifier host aggiunge reconciliation blackout | Completare STRONG exact-HEAD e poi validare su device fisico/OEM con un intervallo reale in background |
 
 ## Release Evidence
 

@@ -4,6 +4,7 @@ import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
 import com.staituned.aura.paymentdetection.service.CandidateCleanupScheduler;
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryScheduler;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -16,11 +17,13 @@ public class MainActivity extends BridgeActivity {
         bridge.setWebViewClient(new AuraBridgeWebViewClient(bridge));
         CandidateCleanupScheduler.schedule(this);
         CandidateCleanupScheduler.runSoon(this);
+        PaymentListenerRecoveryScheduler.sync(this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         CandidateCleanupScheduler.runSoon(this);
+        PaymentListenerRecoveryScheduler.sync(this);
     }
 }

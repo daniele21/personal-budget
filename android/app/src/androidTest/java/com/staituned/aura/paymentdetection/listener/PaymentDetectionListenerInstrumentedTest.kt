@@ -15,6 +15,7 @@ import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -57,6 +58,103 @@ class PaymentDetectionListenerInstrumentedTest {
 
         privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
         assertFalse(settingsStore.isProcessingAllowed(SYNTHETIC_PACKAGE))
+    }
+
+    @Test
+    fun recoveryBaselineStartsAtEnableAndAdvancesMonotonically() {
+        val namespace = "payment_detection_recovery_baseline_instrumentation"
+        var clock = 1_800_000_000_000L
+        val privacyStore = PaymentDetectionPrivacyStore(
+            context = context,
+            namespace = namespace,
+        )
+        val settingsStore = PaymentDetectionSettingsStore(
+            context = context,
+            privacyStore = privacyStore,
+            namespace = namespace,
+            now = { clock },
+        )
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("synthetic-recovery-owner")
+
+        settingsStore.updateSettings(
+            requestedEnabled = true,
+            selectedPackages = setOf(SYNTHETIC_PACKAGE),
+        )
+        assertEquals(clock, settingsStore.recoveryBaselineAt())
+
+        clock += 500L
+        settingsStore.markNotificationObserved(clock)
+        assertEquals(clock, settingsStore.recoveryBaselineAt())
+
+        settingsStore.markNotificationObserved(clock - 250L)
+        assertEquals(clock, settingsStore.recoveryBaselineAt())
+
+        settingsStore.updateSettings(
+            requestedEnabled = false,
+            selectedPackages = setOf(SYNTHETIC_PACKAGE),
+        )
+        assertNull(settingsStore.recoveryBaselineAt())
+        privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
+    }
+
+    @Test
+    fun reconnectReconcilesSelectedPaymentPostedDuringListenerBlackout() {
+        val component = ComponentName(
+            context,
+            AuraNotificationListenerService::class.java,
+        ).flattenToString()
+        val privacyStore = PaymentDetectionPrivacyStore(context)
+        val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("synthetic-reconnect-owner")
+        settingsStore.updateSettings(true, setOf(SYNTHETIC_PACKAGE))
+        PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
+
+        try {
+            shell(
+                "pm grant ${context.packageName} " +
+                    "android.permission.POST_NOTIFICATIONS",
+            )
+            shell(
+                "pm grant $SYNTHETIC_PACKAGE " +
+                    "android.permission.POST_NOTIFICATIONS",
+            )
+            shell("cmd notification disallow_listener $component")
+            Thread.sleep(300)
+
+            context.startActivity(
+                Intent()
+                    .setComponent(
+                        ComponentName(
+                            SYNTHETIC_PACKAGE,
+                            "com.staituned.aura.testsource.SyntheticNotificationActivity",
+                        ),
+                    )
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            Thread.sleep(500)
+            assertEquals(0, PaymentDetectionListenerRuntime.acceptedEnvelopeCount())
+
+            shell("cmd notification allow_listener $component")
+            waitUntil("listener reconnect") {
+                PaymentDetectionListenerRuntime.isConnected()
+            }
+            waitUntil("reconciled exact match") {
+                PaymentDetectionListenerRuntime.detectedCount(
+                    PaymentMatchTier.EXACT,
+                ) >= 1
+            }
+            waitUntil("reconciled candidate persistence") {
+                PaymentDetectionListenerRuntime.persistedCandidateCount() >= 1
+            }
+            assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
+        } finally {
+            shell("cmd notification disallow_listener $component")
+            shell("am force-stop $SYNTHETIC_PACKAGE")
+            PaymentCandidateNotifier(context).cancelAll()
+            privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
+        }
     }
 
     @Test

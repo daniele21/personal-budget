@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
     osPermissionGranted: false,
     listenerConnected: false,
     auraNotificationPermissionGranted: false,
+    candidateNotificationsEnabled: false,
   },
   updateSelectedApps: vi.fn(),
   setRequestedEnabled: vi.fn(),
   requestNotificationPermission: vi.fn(),
   openNotificationAccessSettings: vi.fn(),
+  openPaymentAlertSettings: vi.fn(),
   deleteAllCandidates: vi.fn(),
   toast: vi.fn(),
 }));
@@ -59,6 +61,7 @@ vi.mock('../../../state/PaymentDetectionProvider', () => ({
     setRequestedEnabled: mocks.setRequestedEnabled,
     requestNotificationPermission: mocks.requestNotificationPermission,
     openNotificationAccessSettings: mocks.openNotificationAccessSettings,
+    openPaymentAlertSettings: mocks.openPaymentAlertSettings,
     deleteAllCandidates: mocks.deleteAllCandidates,
   }),
 }));
@@ -77,9 +80,11 @@ describe('PaymentDetectionSettings', () => {
       osPermissionGranted: false,
       listenerConnected: false,
       auraNotificationPermissionGranted: false,
+      candidateNotificationsEnabled: false,
     });
     mocks.requestNotificationPermission.mockResolvedValue(true);
     mocks.openNotificationAccessSettings.mockResolvedValue(undefined);
+    mocks.openPaymentAlertSettings.mockResolvedValue(undefined);
     mocks.updateSelectedApps.mockResolvedValue(undefined);
   });
 
@@ -109,6 +114,8 @@ describe('PaymentDetectionSettings', () => {
       selectedPackages: ['com.google.android.apps.walletnfcrel'],
       osPermissionGranted: true,
       listenerConnected: false,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
     });
 
     render(<PaymentDetectionSettings />);
@@ -116,6 +123,42 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText('Reconnecting')).toBeInTheDocument();
     expect(screen.queryByText('Active')).not.toBeInTheDocument();
     expect(screen.getByText(/listener is reconnecting/i)).toBeInTheDocument();
+  });
+
+  it('surfaces a blocked Aura payment-alert channel separately from listener health', async () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: true,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: false,
+    });
+    const user = userEvent.setup();
+
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('Alerts blocked')).toBeInTheDocument();
+    expect(screen.getByText(/no Aura alert will appear/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Open payment alert settings' }));
+    expect(mocks.openPaymentAlertSettings).toHaveBeenCalledOnce();
+  });
+
+  it('offers Android access repair while a granted listener is reconnecting', async () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+    });
+    const user = userEvent.setup();
+
+    render(<PaymentDetectionSettings />);
+    await user.click(screen.getByRole('button', { name: 'Repair Android access' }));
+
+    expect(mocks.openNotificationAccessSettings).toHaveBeenCalledOnce();
   });
 
   it('keeps source selection as a separate affirmative control', async () => {

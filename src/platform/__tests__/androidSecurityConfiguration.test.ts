@@ -144,6 +144,15 @@ describe('Android security configuration', () => {
     const plugin = readProjectFile(
       'android/app/src/main/java/com/staituned/aura/PaymentDetectionPrivacyPlugin.kt',
     );
+    const recoveryWorker = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/service/PaymentListenerRecoveryWorker.kt',
+    );
+    const notifier = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/notification/PaymentCandidateNotifier.kt',
+    );
+    const mainActivity = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/MainActivity.java',
+    );
 
     expect(manifest).toContain(
       'android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"',
@@ -169,6 +178,25 @@ describe('Android security configuration', () => {
     expect(listener).toContain('FLAG_FILTER_TYPE_SILENT');
     expect(accessController).toContain('requestRebindIfGranted');
     expect(plugin).toContain('recoverNotificationListenerIfNeeded');
+    expect(plugin).toContain('candidateNotificationsEnabled');
+    expect(plugin).toContain('openPaymentAlertSettings');
+    expect(recoveryWorker).toContain('PeriodicWorkRequestBuilder<PaymentListenerRecoveryWorker>');
+    expect(recoveryWorker).toContain('15,');
+    expect(recoveryWorker).toContain('TimeUnit.MINUTES');
+    expect(recoveryWorker).toContain('settings.requestedEnabled');
+    expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.isConnected()');
+    expect(recoveryWorker).toContain('requestRebindIfGranted()');
+    expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.sync(this)');
+    expect(recoveryWorker).toContain('fun sync(context: Context)');
+    expect(recoveryWorker).toContain('fun cancel(context: Context)');
+    expect(recoveryWorker).toContain('cancelUniqueWork(PERIODIC_WORK)');
+    expect(listener).toContain('activeNotifications.toList()');
+    expect(listener).toContain('recoveryBaselineAt()');
+    expect(listener).toContain('markNotificationObserved');
+    expect(listener).toContain('MAX_RECOVERY_NOTIFICATIONS');
+    expect(notifier).toContain('getNotificationChannel(CHANNEL_ID)');
+    expect(notifier).toContain('NotificationManager.IMPORTANCE_NONE');
+    expect(notifier).toContain('ACTION_CHANNEL_NOTIFICATION_SETTINGS');
     expect(listener.indexOf('notification.packageName')).toBeLessThan(
       listener.indexOf('notification.notification'),
     );
@@ -233,6 +261,8 @@ describe('Android security configuration', () => {
     ).toBeLessThan(
       verification.indexOf('postSyntheticNotification();', verification.indexOf("runAdb(['reboot']")),
     );
+    expect(verification).toContain('waitForListenerNotLive');
+    expect(verification).toContain('Missed active payment reconciliation: PASS');
     expect(verification).toContain("'am', 'kill', auraPackage");
     expect(verification).not.toContain("'am', 'force-stop', auraPackage");
     expect(verification).toContain('ShellSyntheticNotificationActivity');

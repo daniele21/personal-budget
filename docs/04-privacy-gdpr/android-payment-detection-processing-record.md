@@ -60,6 +60,22 @@ Prohibited purposes:
 
 The possibility of incidental third-party data strengthens the requirement to exclude transfers, free-form messages, SMS, and unsupported notifications.
 
+## Listener Recovery Processing
+
+Listener self-healing does not add a network recipient, analytics path, or
+remote processor. A native background worker reads only owner/detection state
+and Android listener-grant/connection metadata before requesting a system
+rebind.
+
+When the listener reconnects, Aura may re-evaluate currently active
+notifications that are newer than its local recovery watermark, capped to 128
+items and the existing 14-day pending-candidate horizon. Source package and
+user selection are checked before title/text/bigText are accessed. Raw strings
+remain in memory for deterministic parsing only and are not persisted, logged,
+bridged, transmitted, or added to backup. Enabling detection or changing
+selected sources resets the watermark to the time of that affirmative action,
+preventing retroactive processing of older notification-tray content.
+
 ## Data Categories
 
 ### Ephemeral Input

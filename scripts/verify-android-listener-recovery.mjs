@@ -151,6 +151,14 @@ async function waitForListenerLive(label, attempts = 60) {
   throw new Error(`${label} did not complete.`);
 }
 
+async function waitForListenerNotLive(label, attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (!isListenerLive()) return;
+    await delay(500);
+  }
+  throw new Error(`${label} did not complete.`);
+}
+
 async function waitForBoot() {
   runAdb(['wait-for-device'], { quiet: true });
   for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -211,6 +219,32 @@ async function main() {
       'Initial exact detection',
     );
     console.log('Initial listener detection: PASS');
+
+    const beforeBlackout = readProbe();
+    runAdb([
+      'shell',
+      'cmd',
+      'notification',
+      'disallow_listener',
+      listenerComponent,
+    ]);
+    await waitForListenerNotLive('Listener blackout setup');
+    postSyntheticNotification();
+    await delay(750);
+    runAdb([
+      'shell',
+      'cmd',
+      'notification',
+      'allow_listener',
+      listenerComponent,
+    ]);
+    await waitForListenerLive('Listener reconnect after missed notification');
+    await waitForProbe(
+      (probe) => Number(probe.exact) > Number(beforeBlackout.exact),
+      'Missed active notification reconciliation',
+      80,
+    );
+    console.log('Missed active payment reconciliation: PASS');
 
     runAdb(['shell', 'am', 'kill', auraPackage], { quiet: true });
     await delay(2000);
