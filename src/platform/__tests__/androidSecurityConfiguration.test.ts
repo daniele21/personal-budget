@@ -186,8 +186,10 @@ describe('Android security configuration', () => {
     expect(recoveryWorker).toContain('settings.requestedEnabled');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.isConnected()');
     expect(recoveryWorker).toContain('requestRebindIfGranted()');
-    expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.schedule(this)');
-    expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.runSoon(this)');
+    expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.sync(this)');
+    expect(recoveryWorker).toContain('fun sync(context: Context)');
+    expect(recoveryWorker).toContain('fun cancel(context: Context)');
+    expect(recoveryWorker).toContain('cancelUniqueWork(PERIODIC_WORK)');
     expect(listener).toContain('activeNotifications.toList()');
     expect(listener).toContain('recoveryBaselineAt()');
     expect(listener).toContain('markNotificationObserved');
