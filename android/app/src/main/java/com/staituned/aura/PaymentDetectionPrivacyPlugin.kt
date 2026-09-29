@@ -29,6 +29,7 @@ import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryScheduler
 
 @CapacitorPlugin(
     name = "PaymentDetection",
@@ -171,6 +172,8 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 selectedPackages = selectedPackages,
             )
             if (settings.requestedEnabled) {
+                PaymentListenerRecoveryScheduler.schedule(context)
+                PaymentListenerRecoveryScheduler.runSoon(context)
                 recoverNotificationListenerIfNeeded(settings)
             } else {
                 candidateNotifier.cancelAll()
@@ -187,6 +190,15 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             call.resolve()
         } else {
             call.reject("Notification access settings unavailable.", "SETTINGS_UNAVAILABLE")
+        }
+    }
+
+    @PluginMethod
+    fun openPaymentAlertSettings(call: PluginCall) {
+        if (candidateNotifier.openCandidateAlertSettings()) {
+            call.resolve()
+        } else {
+            call.reject("Payment alert settings unavailable.", "SETTINGS_UNAVAILABLE")
         }
     }
 
@@ -344,6 +356,8 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             !PaymentDetectionListenerRuntime.isConnected()
         ) {
             accessController.requestRebindIfGranted()
+            PaymentListenerRecoveryScheduler.schedule(context)
+            PaymentListenerRecoveryScheduler.runSoon(context)
         }
     }
 
@@ -355,6 +369,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 "auraNotificationPermissionGranted",
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
                     PackageManager.PERMISSION_GRANTED,
+            )
+            put(
+                "candidateNotificationsEnabled",
+                candidateNotifier.areCandidateAlertsEnabled(),
             )
         }
 
@@ -373,6 +391,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 "auraNotificationPermissionGranted",
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
                     PackageManager.PERMISSION_GRANTED,
+            )
+            put(
+                "candidateNotificationsEnabled",
+                candidateNotifier.areCandidateAlertsEnabled(),
             )
         }
 
