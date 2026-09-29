@@ -87,6 +87,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         try {
             candidateNotifier.cancelAll()
             privacyStore.registerOwner(firebaseUid)
+            PaymentListenerRecoveryScheduler.sync(context)
             call.resolve()
         } catch (_: Exception) {
             call.reject(
@@ -106,6 +107,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         try {
             candidateNotifier.cancelAll()
             privacyStore.purge(reason)
+            PaymentListenerRecoveryScheduler.cancel(context)
             call.resolve()
         } catch (_: Exception) {
             call.reject("Unable to clear secure native storage.", "PURGE_FAILED")
@@ -172,10 +174,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 selectedPackages = selectedPackages,
             )
             if (settings.requestedEnabled) {
-                PaymentListenerRecoveryScheduler.schedule(context)
-                PaymentListenerRecoveryScheduler.runSoon(context)
+                PaymentListenerRecoveryScheduler.sync(context)
                 recoverNotificationListenerIfNeeded(settings)
             } else {
+                PaymentListenerRecoveryScheduler.cancel(context)
                 candidateNotifier.cancelAll()
             }
             call.resolve(statusJson(settings))
@@ -356,8 +358,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             !PaymentDetectionListenerRuntime.isConnected()
         ) {
             accessController.requestRebindIfGranted()
-            PaymentListenerRecoveryScheduler.schedule(context)
-            PaymentListenerRecoveryScheduler.runSoon(context)
+            PaymentListenerRecoveryScheduler.sync(context)
         }
     }
 
