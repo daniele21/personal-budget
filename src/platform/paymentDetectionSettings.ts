@@ -26,6 +26,10 @@ export const paymentDetectionSettings = {
     await paymentDetection.openNotificationAccessSettings();
   },
 
+  async openPaymentAlertSettings(): Promise<void> {
+    await paymentDetection.openPaymentAlertSettings();
+  },
+
   async requestAuraNotificationPermission(): Promise<{ granted: boolean }> {
     return await paymentDetection.requestAuraNotificationPermission();
   },
