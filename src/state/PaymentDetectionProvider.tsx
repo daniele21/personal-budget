@@ -57,6 +57,7 @@ interface PaymentDetectionContextValue {
   setRequestedEnabled: (enabled: boolean) => Promise<void>;
   requestNotificationPermission: () => Promise<boolean>;
   openNotificationAccessSettings: () => Promise<void>;
+  openPaymentAlertSettings: () => Promise<void>;
   deleteAllCandidates: () => Promise<number>;
 }
 
@@ -345,6 +346,10 @@ export function PaymentDetectionProvider({
     await paymentDetection.openNotificationAccessSettings();
   }, []);
 
+  const openPaymentAlertSettings = useCallback(async () => {
+    await paymentDetection.openPaymentAlertSettings();
+  }, []);
+
   const deleteAllCandidates = useCallback(async () => {
     const result = await paymentDetection.deleteAllCandidates();
     setCandidates([]);
@@ -382,6 +387,7 @@ export function PaymentDetectionProvider({
     setRequestedEnabled,
     requestNotificationPermission,
     openNotificationAccessSettings,
+    openPaymentAlertSettings,
     deleteAllCandidates,
   }), [
     availability,
@@ -401,6 +407,7 @@ export function PaymentDetectionProvider({
     setRequestedEnabled,
     requestNotificationPermission,
     openNotificationAccessSettings,
+    openPaymentAlertSettings,
     deleteAllCandidates,
   ]);
 
