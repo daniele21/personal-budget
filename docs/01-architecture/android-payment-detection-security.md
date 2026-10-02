@@ -72,6 +72,7 @@ Trust boundaries:
 | Phase | Data | Persistence | Deletion |
 |---|---|---|---|
 | M3 owner registration | Firebase UID, transient bridge input | UID is HMAC-SHA256 transformed; only the owner hash is stored | Logout, owner change, local reset, total deletion |
+| Listener migration safety | Boolean that the V2 Android listener grant has been observed; no owner or notification content | Private device-local preference, excluded from backup | App-data clear/uninstall; intentionally survives owner purge so Aura never silently falls back to the legacy listener after a V2 revocation |
 | M5 synthetic parsing | Internal source ID, bounded title/text/bigText and post time | Raw strings remain in memory only; only redacted process counters survive the call | References discarded after parsing; debug recovery probe removed during cleanup |
 | M6-M7 candidate | Amount, EUR currency, optional merchant, timestamps and workflow metadata; minimized M7 bridge snapshot | Entire structured payload encrypted with AES-GCM in the private Room database; bridge values remain in process memory | 14-day pending retention, immediate payload deletion on ignore/accept, bounded tombstone retention, reset, logout, owner change or deletion |
 | Confirmed transaction | User-reviewed normal transaction fields | Canonical React `AppData` | Existing Aura controls |
