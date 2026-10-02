@@ -51,7 +51,8 @@ internal class PaymentListenerRecoveryCoordinator(
             }
 
             val accessController = NotificationAccessController(appContext)
-            val generation = accessController.effectiveGeneration()
+            val access = accessController.synchronizeComponentLifecycle()
+            val generation = access.effectiveGeneration
                 ?: return PaymentListenerRecoveryResult.NO_ACCESS
 
             PaymentDetectionListenerRuntime.armHealthHeartbeat(generation)
