@@ -168,6 +168,10 @@ class PaymentDetectionListenerInstrumentedTest {
                 )
             }
 
+            val beforeRepairEpoch =
+                PaymentDetectionListenerRuntime.connectionEpoch(
+                    PaymentListenerGeneration.CURRENT,
+                )
             PaymentDetectionListenerRuntime.suppressNextPostedCallbackForTest()
             postSyntheticNotification()
             Thread.sleep(500)
@@ -180,7 +184,7 @@ class PaymentDetectionListenerInstrumentedTest {
             assertEquals(0, PaymentDetectionListenerRuntime.acceptedEnvelopeCount())
 
             assertEquals(
-                PaymentListenerRecoveryResult.RECONCILED,
+                PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
                 PaymentListenerRecoveryCoordinator(context).recoverNow(),
             )
             waitUntil("health-probe exact recovery") {
@@ -190,6 +194,11 @@ class PaymentDetectionListenerInstrumentedTest {
             }
             waitUntil("health-probe candidate persistence") {
                 PaymentDetectionListenerRuntime.persistedCandidateCount() >= 1
+            }
+            waitUntil("fresh V2 binding after missed callback") {
+                PaymentDetectionListenerRuntime.connectionEpoch(
+                    PaymentListenerGeneration.CURRENT,
+                ) > beforeRepairEpoch
             }
             assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
         } finally {
