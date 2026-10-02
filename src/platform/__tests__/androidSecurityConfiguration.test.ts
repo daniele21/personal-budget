@@ -202,6 +202,9 @@ describe('Android security configuration', () => {
     expect(listener).not.toContain('markNotificationObserved');
     expect(accessController).toContain('forceRebindIfGranted');
     expect(accessController).toContain('NotificationListenerService.requestUnbind');
+    expect(accessController).toContain('setComponentEnabledSetting');
+    expect(accessController).toContain('COMPONENT_ENABLED_STATE_DISABLED');
+    expect(accessController).toContain('synchronizeComponentLifecycle');
     expect(accessController).toContain('AuraNotificationListenerServiceV2::class.java');
     expect(accessController).toContain('migrationRequired');
     expect(plugin).toContain('recoverNotificationListenerIfNeeded');
@@ -213,6 +216,7 @@ describe('Android security configuration', () => {
     expect(recoveryWorker).toContain('15,');
     expect(recoveryWorker).toContain('TimeUnit.MINUTES');
     expect(recoveryWorker).toContain('settings.requestedEnabled');
+    expect(recoveryWorker).toContain('synchronizeComponentLifecycle');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.armHealthHeartbeat');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.probeAndReconcile');
     expect(recoveryWorker).toContain('forceRebindIfGranted()');
@@ -298,7 +302,9 @@ describe('Android security configuration', () => {
     expect(verification).toContain('waitForListenerNotLive');
     expect(verification).toContain('Missed active payment reconciliation: PASS');
     expect(verification).toContain('AuraNotificationListenerServiceV2');
-    expect(verification).toContain('V2 owns the live listener path: PASS');
+    expect(verification).toContain('liveListenerSection');
+    expect(verification).toContain('waitForComponentNotLive');
+    expect(verification).toContain('V2 exclusively owns the live listener path: PASS');
     expect(verification).toContain("'am', 'kill', auraPackage");
     expect(verification).not.toContain("'am', 'force-stop', auraPackage");
     expect(verification).toContain('ShellSyntheticNotificationActivity');
