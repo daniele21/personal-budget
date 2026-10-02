@@ -246,7 +246,13 @@ class PaymentDetectionListenerInstrumentedTest {
             context,
             "payment_listener_access_migration_test",
         )
+        val privacyStore = PaymentDetectionPrivacyStore(context)
+        val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
         resetListenerGrants()
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("synthetic-listener-migration-owner")
+        settingsStore.updateSettings(true, setOf(SYNTHETIC_PACKAGE))
+        PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
         context.getSharedPreferences(
             "aura_payment_listener_access",
             android.content.Context.MODE_PRIVATE,
@@ -254,6 +260,7 @@ class PaymentDetectionListenerInstrumentedTest {
         shell("pm enable $legacy")
 
         try {
+            grantNotificationPermissions()
             shell("cmd notification allow_listener $legacy")
             waitUntil("legacy grant") {
                 controller.state().legacyGranted
@@ -289,8 +296,28 @@ class PaymentDetectionListenerInstrumentedTest {
                     PaymentListenerGeneration.LEGACY,
                 )
             }
+
+            postSyntheticNotification()
+            waitUntil("single V2 callback after migration") {
+                PaymentDetectionListenerRuntime.acceptedEnvelopeCount() >= 1
+            }
+            waitUntil("single V2 exact match after migration") {
+                PaymentDetectionListenerRuntime.detectedCount(
+                    PaymentMatchTier.EXACT,
+                ) >= 1
+            }
+            Thread.sleep(500)
+            assertEquals(1, PaymentDetectionListenerRuntime.acceptedEnvelopeCount())
+            assertEquals(
+                1,
+                PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.EXACT),
+            )
+            assertEquals(1, PaymentDetectionListenerRuntime.persistedCandidateCount())
         } finally {
             resetListenerGrants()
+            shell("am force-stop $SYNTHETIC_PACKAGE")
+            PaymentCandidateNotifier(context).cancelAll()
+            privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
         }
     }
 
