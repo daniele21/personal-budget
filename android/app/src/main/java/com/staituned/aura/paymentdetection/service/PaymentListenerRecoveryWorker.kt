@@ -52,6 +52,11 @@ internal class PaymentListenerRecoveryCoordinator(
 
             val accessController = NotificationAccessController(appContext)
             val access = accessController.synchronizeComponentLifecycle()
+            if (access.currentGrantObservedBefore) {
+                PaymentDetectionListenerRuntime.retireBinding(
+                    com.staituned.aura.paymentdetection.listener.PaymentListenerGeneration.LEGACY,
+                )
+            }
             val generation = access.effectiveGeneration
                 ?: return PaymentListenerRecoveryResult.NO_ACCESS
 
