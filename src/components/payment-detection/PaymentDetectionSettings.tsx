@@ -21,6 +21,7 @@ export function PaymentDetectionSettings() {
     setRequestedEnabled,
     requestNotificationPermission,
     openNotificationAccessSettings,
+    repairNotificationListener,
     openPaymentAlertSettings,
     deleteAllCandidates,
   } = usePaymentDetection();
@@ -34,20 +35,25 @@ export function PaymentDetectionSettings() {
   const installedApps = supportedApps.filter((app) => app.installed);
   const accessGranted = status.osPermissionGranted;
   const listenerReady = status.listenerConnected;
+  const upgradeRequired = status.listenerAccessUpgradeRequired;
   const alertsReady =
     status.auraNotificationPermissionGranted &&
     status.candidateNotificationsEnabled;
   const enabled =
     status.requestedEnabled && accessGranted && listenerReady;
-  const detectionStateLabel = enabled
-    ? alertsReady
-      ? 'Active'
-      : 'Alerts blocked'
-    : status.requestedEnabled
-      ? accessGranted
-        ? 'Reconnecting'
-        : 'Access missing'
-      : 'Paused';
+  const fullyOperational =
+    enabled && !upgradeRequired && alertsReady;
+  const detectionStateLabel = upgradeRequired && status.requestedEnabled
+    ? 'Access upgrade needed'
+    : enabled
+      ? alertsReady
+        ? 'Active'
+        : 'Alerts blocked'
+      : status.requestedEnabled
+        ? accessGranted
+          ? 'Reconnecting'
+          : 'Access missing'
+        : 'Paused';
 
   const handleDisclosureAccepted = async () => {
     setBusy(true);
@@ -69,6 +75,23 @@ export function PaymentDetectionSettings() {
       await openNotificationAccessSettings();
     } catch {
       toast('Android notification access could not be opened.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRepairListener = async () => {
+    setBusy(true);
+    try {
+      await repairNotificationListener();
+      toast(
+        upgradeRequired
+          ? 'Enable Aura payment detection in Android settings to finish the one-time listener upgrade.'
+          : 'Listener repair requested.',
+        'success',
+      );
+    } catch {
+      toast('Aura could not repair the Android notification listener.', 'error');
     } finally {
       setBusy(false);
     }
@@ -141,7 +164,7 @@ export function PaymentDetectionSettings() {
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-micro font-extrabold ${
-            enabled
+            fullyOperational
               ? 'bg-secondary/10 text-secondary'
               : 'bg-surface-container-high text-on-surface-variant'
           }`}
@@ -160,18 +183,24 @@ export function PaymentDetectionSettings() {
               Android notification access
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
-              {accessGranted && !listenerReady
-                ? 'Android access is granted, but the listener is reconnecting. Aura retries immediately and also uses a native background watchdog.'
-                : 'Android grants access to notifications generally. Aura filters locally and reads content only from supported apps you select.'}
+              {upgradeRequired
+                ? 'This install still uses Aura’s legacy Android listener. Upgrade once to the new listener so Android starts from a fresh all-notification filter instead of carrying forward older alerting-only settings.'
+                : accessGranted && !listenerReady
+                  ? 'Android access is granted, but the listener is reconnecting. Aura probes the live listener, reconciles active selected notifications, and forces a rebind if that probe fails.'
+                  : 'Android grants access to notifications generally. Aura filters locally and reads content only from supported apps you select.'}
             </p>
-            {status.requestedEnabled && accessGranted && !listenerReady && (
+            {status.requestedEnabled && accessGranted && (
               <button
                 type="button"
-                onClick={() => void handleRepairAccess()}
+                onClick={() => void handleRepairListener()}
                 disabled={busy}
                 className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50"
               >
-                Repair Android access
+                {upgradeRequired
+                  ? 'Upgrade Android access'
+                  : listenerReady
+                    ? 'Repair listener'
+                    : 'Repair listener now'}
               </button>
             )}
           </div>
