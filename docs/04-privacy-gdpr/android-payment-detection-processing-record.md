@@ -76,10 +76,11 @@ notifications from explicitly selected supported packages inside the existing
 14-day candidate horizon and the user's stable recovery window. Package and
 selection checks occur before title/text/bigText are accessed. Raw strings
 remain in memory for deterministic parsing only and are not persisted, logged,
-bridged, transmitted, or added to backup. A bounded in-memory set of technical
-notification keys prevents repeated heartbeat probes from re-reading
-notifications that already completed processing during the same live binding;
-repository fingerprints preserve idempotency across process/rebind boundaries.
+bridged, transmitted, or added to backup. A bounded in-memory map of technical notification keys and latest processed
+post times prevents repeated heartbeat probes from re-reading the same
+notification version during one live binding while allowing a newer in-place
+update of that key to be reconciled; repository fingerprints preserve
+idempotency across process/rebind boundaries.
 Enabling detection or changing selected sources resets the recovery-window start to that affirmative action;
 observing newer callbacks does not advance it past a potentially missed older
 payment.

@@ -106,11 +106,12 @@ existing 14-day pending-candidate horizon.
 The active snapshot is filtered by source package and explicit user selection
 before extras are read and before the 128-item cap is applied. Aura takes the
 newest selected notifications first, then processes them in posting order.
-During one live binding, a bounded in-memory set of 512 technical notification
-keys prevents the one-minute heartbeat from repeatedly re-reading content that
-already completed deterministic processing. Existing repository fingerprints
-remain the cross-process/rebind idempotency boundary; raw notification strings
-remain parsing-only memory.
+During one live binding, a bounded in-memory map of 512 technical notification
+keys to their latest processed post time prevents the one-minute heartbeat from
+re-reading the same notification version while still allowing a newer in-place
+update of the same Android notification key to be reconciled. Existing
+repository fingerprints remain the cross-process/rebind idempotency boundary;
+raw notification strings remain parsing-only memory.
 
 Android's notification-listener filters are OS-owned and migration APIs are
 one-shot. To avoid inheriting the old alerting-only filter state, Aura declares

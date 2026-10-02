@@ -198,6 +198,7 @@ describe('Android security configuration', () => {
     expect(listener).toContain('HEALTH_HEARTBEAT_INTERVAL_MS = 60_000L');
     expect(listener).toContain('wasNotificationProcessed');
     expect(listener).toContain('markNotificationProcessed');
+    expect(listener).toContain('it.postTime');
     expect(listener).not.toContain('markNotificationObserved');
     expect(accessController).toContain('forceRebindIfGranted');
     expect(accessController).toContain('NotificationListenerService.requestUnbind');
@@ -219,6 +220,7 @@ describe('Android security configuration', () => {
     expect(recoveryWorker).toContain('RECONCILED_AND_REBIND_REQUESTED');
     expect(recoveryWorker).not.toContain('PaymentDetectionListenerRuntime.isConnected()');
     expect(gate).toContain('?.shutdown()');
+    expect(gate).toContain('RejectedExecutionException');
     expect(gate).not.toContain('shutdownNow()');
     expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.sync(this)');
     expect(recoveryWorker).toContain('fun sync(context: Context)');
