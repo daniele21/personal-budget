@@ -12,8 +12,11 @@ const sourcePackage = 'com.staituned.aura.syntheticnotifications';
 const sourceActivity =
   `${sourcePackage}/com.staituned.aura.testsource.ShellSyntheticNotificationActivity`;
 const listenerClass =
+  'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerServiceV2';
+const legacyListenerClass =
   'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerService';
 const listenerComponent = `${auraPackage}/${listenerClass}`;
+const legacyListenerComponent = `${auraPackage}/${legacyListenerClass}`;
 const setupComponent =
   `${auraPackage}/com.staituned.aura.SyntheticPaymentDetectionSetupActivity`;
 const auraApk = 'android/app/build/outputs/apk/debug/app-debug.apk';
@@ -183,6 +186,7 @@ function cleanup() {
     // Cleanup is deliberately idempotent.
   }
   tryAdb(['shell', 'cmd', 'notification', 'disallow_listener', listenerComponent]);
+  tryAdb(['shell', 'cmd', 'notification', 'disallow_listener', legacyListenerComponent]);
   tryAdb(['uninstall', sourcePackage]);
 }
 
@@ -218,7 +222,13 @@ async function main() {
       (probe) => Number(probe.exact) >= 1,
       'Initial exact detection',
     );
-    console.log('Initial listener detection: PASS');
+    console.log('Initial V2 listener detection: PASS');
+
+    const legacyDump = tryAdb(['shell', 'dumpsys', 'notification']);
+    if (legacyDump.includes(legacyListenerComponent)) {
+      throw new Error('Legacy listener remained live after V2 activation.');
+    }
+    console.log('V2 owns the live listener path: PASS');
 
     const beforeBlackout = readProbe();
     runAdb([
