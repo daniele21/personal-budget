@@ -19,6 +19,7 @@ internal enum class PaymentListenerRecoveryResult {
     DISABLED,
     NO_ACCESS,
     RECONCILED,
+    RECONCILED_AND_REBIND_REQUESTED,
     REBIND_REQUESTED,
     FAILED,
 }
@@ -58,6 +59,13 @@ internal class PaymentListenerRecoveryCoordinator(
             ) {
                 PaymentListenerProbeResult.HEALTHY ->
                     PaymentListenerRecoveryResult.RECONCILED
+                PaymentListenerProbeResult.MISSED_CALLBACK_RECOVERED -> {
+                    if (accessController.forceRebindIfGranted()) {
+                        PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED
+                    } else {
+                        PaymentListenerRecoveryResult.FAILED
+                    }
+                }
                 PaymentListenerProbeResult.UNAVAILABLE,
                 PaymentListenerProbeResult.FAILED -> {
                     if (accessController.forceRebindIfGranted()) {
