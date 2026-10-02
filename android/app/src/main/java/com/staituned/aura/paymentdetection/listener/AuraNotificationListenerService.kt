@@ -19,7 +19,7 @@ import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 abstract class BaseAuraNotificationListenerService :
     NotificationListenerService(),
@@ -95,9 +95,14 @@ abstract class BaseAuraNotificationListenerService :
 
     override fun onNotificationPosted(notification: StatusBarNotification) {
         if (!isEffectiveListener()) return
+        if (!settingsStore.isProcessingAllowed(notification.packageName)) return
         if (PaymentDetectionListenerRuntime.consumeSuppressedPostedCallbackForTest()) {
             return
         }
+        PaymentDetectionListenerRuntime.markSelectedPostedCallback(
+            generation,
+            notification.postTime,
+        )
         enqueueNotification(notification)
     }
 
@@ -120,14 +125,18 @@ abstract class BaseAuraNotificationListenerService :
      * the listener can still talk to NotificationManager and also recovers any
      * callback that the OS/OEM failed to deliver.
      */
-    override fun probeAndReconcile(): Boolean {
-        if (!isEffectiveListener()) return false
+    override fun probeAndReconcile(): PaymentListenerEndpointProbeResult {
+        if (!isEffectiveListener()) {
+            return PaymentListenerEndpointProbeResult.FAILED
+        }
         if (Looper.myLooper() == Looper.getMainLooper()) {
             return reconcileActiveNotifications()
         }
 
         val completed = CountDownLatch(1)
-        val result = AtomicBoolean(false)
+        val result = AtomicReference(
+            PaymentListenerEndpointProbeResult.FAILED,
+        )
         mainHandler.post {
             try {
                 result.set(reconcileActiveNotifications())
@@ -135,8 +144,10 @@ abstract class BaseAuraNotificationListenerService :
                 completed.countDown()
             }
         }
-        return completed.await(HEALTH_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS) &&
-            result.get()
+        if (!completed.await(HEALTH_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            return PaymentListenerEndpointProbeResult.FAILED
+        }
+        return result.get()
     }
 
     private fun isEffectiveListener(): Boolean =
@@ -205,33 +216,50 @@ abstract class BaseAuraNotificationListenerService :
         }
     }
 
-    private fun reconcileActiveNotifications(): Boolean {
+    private fun reconcileActiveNotifications(): PaymentListenerEndpointProbeResult {
         val windowStartedAt = try {
             settingsStore.recoveryWindowStartedAt()
         } catch (_: RuntimeException) {
             null
-        } ?: return true
+        } ?: return PaymentListenerEndpointProbeResult.HEALTHY
 
         val now = System.currentTimeMillis()
         val floor = maxOf(windowStartedAt, now - MAX_RECOVERY_LOOKBACK_MS)
         val notifications = try {
             activeNotifications.toList()
         } catch (_: RuntimeException) {
-            return false
+            return PaymentListenerEndpointProbeResult.FAILED
         }
 
         // Package and user-selection checks use only StatusBarNotification
         // metadata and happen before the bounded cap and before extras access.
         // Prefer the newest selected notifications so unrelated tray volume can
         // never push a fresh payment out of the recovery window.
-        notifications.asSequence()
+        val selectedNotifications = notifications.asSequence()
             .filter { it.postTime in floor..(now + MAX_CLOCK_SKEW_MS) }
             .filter { settingsStore.isProcessingAllowed(it.packageName) }
             .sortedByDescending { it.postTime }
             .take(MAX_RECOVERY_NOTIFICATIONS)
+            .toList()
+
+        val newestSelectedPostTime =
+            selectedNotifications.maxOfOrNull { it.postTime }
+        val missedCallbackRecovered =
+            newestSelectedPostTime != null &&
+                PaymentDetectionListenerRuntime.hasEvidenceOfMissedSelectedCallback(
+                    generation,
+                    newestSelectedPostTime,
+                )
+
+        selectedNotifications
             .sortedBy { it.postTime }
             .forEach(::enqueueNotification)
-        return true
+
+        return if (missedCallbackRecovered) {
+            PaymentListenerEndpointProbeResult.MISSED_CALLBACK_RECOVERED
+        } else {
+            PaymentListenerEndpointProbeResult.HEALTHY
+        }
     }
 
     companion object {
