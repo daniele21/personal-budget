@@ -45,7 +45,7 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-09-30
+Ultimo aggiornamento: 2026-10-02
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -1383,7 +1383,7 @@ Vietato:
 | R-008 | Login Google fallisce in WebView | Bassa | Alta | configurazione OAuth debug verificata e bridge Credential Manager invocato su API 36; resta prova end-to-end su provider/account Google reale | Android | Mitigazione in corso |
 | R-009 | Play Store considera disclosure insufficiente | Media | Alta | prominent disclosure, review pre-release | Privacy/Release | Aperto |
 | R-010 | Lock screen espone spese | Media | Alta | private/public redacted notification | UX/Security | Aperto |
-| R-011 | OEM termina o limita il listener | Media | Media | device matrix, stato visibile, recovery | QA/Android | Aperto |
+| R-011 | OEM termina, limita o lascia zombie il listener; filtri OS legacy possono sopravvivere agli update | Media | Alta | health probe + active reconciliation anche da connected, force rebind, listener V2 con fresh filter defaults, device matrix | QA/Android | Aperto |
 | R-012 | PWA regredisce dopo Capacitor | Media | Alta | adapter e web regression gate | React/QA | Aperto |
 | R-013 | Fixture contengono dati reali | Media | Critica | synthetic-first, redaction review | Privacy/QA | Aperto |
 | R-014 | Scope entrate diventa ambiguo | Alta | Media | pagamenti EUR soltanto nel pilot | Product | Aperto |
@@ -1489,6 +1489,7 @@ Next: prossima task verificabile
 | 2026-07-28 | M9/M10 | Rafforzati disclosure Play, isolamento rete/log, invalidazione Keystore, errore database e recovery post-reboot; preparato il pilot runbook redatto | 83 file/378 test Vitest, 31 E2E, 34 instrumentation test Pixel 9 Pro API 36 e recovery process/rebind/reboot/revoca verdi; review policy Google ufficiale | Chiudere solo con device fisici, audit/signing production, Play Console e owner privacy/security/release |
 | 2026-09-26 | M9 | Hardened la reliability del listener: rebind su status refresh, stato UI separato dal solo grant OS, ricezione anche delle notifiche silent, riapertura Room dopo purge e verifier che pubblica il pagamento prima di riavviare qualsiasi Activity Aura | Branch `fix/android-payment-listener-reliability`; review sorgente e diff completate. Le evidenze automatiche del 2026-07-28 sono storiche e non valgono per il nuovo HEAD | Rieseguire i gate STRONG su exact HEAD quando è disponibile automazione repository/ambiente Android e completare la matrice fisica/OEM |
 | 2026-09-30 | M9 | Secondo hardening dopo blackout reale post-update: watchdog WorkManager nativo, watermark owner-scoped, replay bounded delle active notifications al reconnect, stato separato del canale Aura e azioni di repair Android | Branch `fix/android-payment-listener-self-healing`; test instrumentation aggiunge pagamento durante listener revocato → reconnect → candidate, verifier host aggiunge reconciliation blackout | Completare STRONG exact-HEAD e poi validare su device fisico/OEM con un intervallo reale in background |
+| 2026-10-02 | M9 | Terzo hardening guidato da failure fisica ripetuta: separato `connected` da `healthy`, probe periodico delle active notifications anche senza reconnect, force unbind/rebind su probe fallito, finestra recovery stabile, cap applicato solo dopo package selection e nuovo listener V2 per azzerare i filtri OS legacy | Branch `fix/android-payment-listener-health-v2`; instrumentation riproduce callback perso con listener ancora connected e verifica recovery via health probe; migrazione V2 è esplicita e non fa fallback legacy dopo il primo grant | Rieseguire STRONG exact-HEAD, poi pubblicare Internal Testing e validare sul device reale per più giorni senza reinstall/revoke manuale |
 
 ## Release Evidence
 
