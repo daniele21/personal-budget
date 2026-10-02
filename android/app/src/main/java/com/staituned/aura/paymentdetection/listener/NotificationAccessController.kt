@@ -28,9 +28,12 @@ internal data class NotificationListenerAccessState(
         }
 }
 
-internal class NotificationAccessController(private val context: Context) {
+internal class NotificationAccessController(
+    private val context: Context,
+    namespace: String = "payment_listener_access",
+) {
     private val preferences = context.getSharedPreferences(
-        "aura_payment_listener_access",
+        "aura_${namespace}",
         Context.MODE_PRIVATE,
     )
     private val currentListenerComponent =
