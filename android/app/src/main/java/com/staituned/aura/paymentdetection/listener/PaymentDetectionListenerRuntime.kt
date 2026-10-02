@@ -11,16 +11,23 @@ enum class PaymentListenerGeneration {
     CURRENT,
 }
 
+enum class PaymentListenerEndpointProbeResult {
+    HEALTHY,
+    MISSED_CALLBACK_RECOVERED,
+    FAILED,
+}
+
 interface PaymentListenerHealthEndpoint {
     /**
      * Verifies that NotificationManager operations still work and replays a
      * bounded active-notification snapshot through the normal privacy gate.
      */
-    fun probeAndReconcile(): Boolean
+    fun probeAndReconcile(): PaymentListenerEndpointProbeResult
 }
 
 internal enum class PaymentListenerProbeResult {
     HEALTHY,
+    MISSED_CALLBACK_RECOVERED,
     UNAVAILABLE,
     FAILED,
 }
@@ -32,6 +39,9 @@ internal object PaymentDetectionListenerRuntime {
     >()
     private val legacyConnectionEpoch = AtomicInteger(0)
     private val currentConnectionEpoch = AtomicInteger(0)
+    private val connectionStartedAt = mutableMapOf<PaymentListenerGeneration, Long>()
+    private val latestSelectedCallbackPostTime =
+        mutableMapOf<PaymentListenerGeneration, Long>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
     private val acceptedEnvelopes = AtomicInteger(0)
@@ -47,6 +57,8 @@ internal object PaymentDetectionListenerRuntime {
         endpoint: PaymentListenerHealthEndpoint,
     ) {
         endpoints[generation] = WeakReference(endpoint)
+        connectionStartedAt[generation] = System.currentTimeMillis()
+        latestSelectedCallbackPostTime[generation] = 0L
         connectionCounter(generation).incrementAndGet()
     }
 
@@ -58,6 +70,8 @@ internal object PaymentDetectionListenerRuntime {
         val registered = endpoints[generation]?.get()
         if (registered == null || registered === endpoint) {
             endpoints.remove(generation)
+            connectionStartedAt.remove(generation)
+            latestSelectedCallbackPostTime.remove(generation)
         }
     }
 
@@ -88,14 +102,39 @@ internal object PaymentDetectionListenerRuntime {
         } ?: return PaymentListenerProbeResult.UNAVAILABLE
 
         return try {
-            if (endpoint.probeAndReconcile()) {
-                PaymentListenerProbeResult.HEALTHY
-            } else {
-                PaymentListenerProbeResult.FAILED
+            when (endpoint.probeAndReconcile()) {
+                PaymentListenerEndpointProbeResult.HEALTHY ->
+                    PaymentListenerProbeResult.HEALTHY
+                PaymentListenerEndpointProbeResult.MISSED_CALLBACK_RECOVERED ->
+                    PaymentListenerProbeResult.MISSED_CALLBACK_RECOVERED
+                PaymentListenerEndpointProbeResult.FAILED ->
+                    PaymentListenerProbeResult.FAILED
             }
         } catch (_: RuntimeException) {
             PaymentListenerProbeResult.FAILED
         }
+    }
+
+    @Synchronized
+    fun markSelectedPostedCallback(
+        generation: PaymentListenerGeneration,
+        postedAtEpochMillis: Long,
+    ) {
+        val current = latestSelectedCallbackPostTime[generation] ?: 0L
+        if (postedAtEpochMillis > current) {
+            latestSelectedCallbackPostTime[generation] = postedAtEpochMillis
+        }
+    }
+
+    @Synchronized
+    fun hasEvidenceOfMissedSelectedCallback(
+        generation: PaymentListenerGeneration,
+        newestActivePostTime: Long,
+    ): Boolean {
+        val connectedAt = connectionStartedAt[generation] ?: return false
+        val latestCallback = latestSelectedCallbackPostTime[generation] ?: 0L
+        return newestActivePostTime > connectedAt &&
+            newestActivePostTime > latestCallback
     }
 
     /**
