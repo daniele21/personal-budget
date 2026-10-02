@@ -195,6 +195,9 @@ describe('Android security configuration', () => {
     expect(listener).toContain('MAX_RECOVERY_NOTIFICATIONS');
     expect(listener).toContain('hasEvidenceOfMissedSelectedCallback');
     expect(listener).toContain('MISSED_CALLBACK_RECOVERED');
+    expect(listener).toContain('HEALTH_HEARTBEAT_INTERVAL_MS = 60_000L');
+    expect(listener).toContain('wasNotificationProcessed');
+    expect(listener).toContain('markNotificationProcessed');
     expect(listener).not.toContain('markNotificationObserved');
     expect(accessController).toContain('forceRebindIfGranted');
     expect(accessController).toContain('NotificationListenerService.requestUnbind');
@@ -209,6 +212,7 @@ describe('Android security configuration', () => {
     expect(recoveryWorker).toContain('15,');
     expect(recoveryWorker).toContain('TimeUnit.MINUTES');
     expect(recoveryWorker).toContain('settings.requestedEnabled');
+    expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.armHealthHeartbeat');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.probeAndReconcile');
     expect(recoveryWorker).toContain('forceRebindIfGranted()');
     expect(recoveryWorker).toContain('PaymentListenerProbeResult.MISSED_CALLBACK_RECOVERED');
