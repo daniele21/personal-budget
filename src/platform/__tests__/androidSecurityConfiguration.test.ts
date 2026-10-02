@@ -239,6 +239,8 @@ describe('Android security configuration', () => {
     expect(simulation).toContain("getprop', 'ro.kernel.qemu");
     expect(simulation).toContain('ANDROID_SERIAL');
     expect(simulation).toContain('disallow_listener');
+    expect(simulation).toContain('AuraNotificationListenerServiceV2');
+    expect(simulation).toContain('legacyListenerComponent');
     expect(simulation).toContain("uninstall', sourcePackage");
     expect(simulation).toContain('finally');
     expect(testSourceBuild).toContain('variantBuilder.buildType != "debug"');
