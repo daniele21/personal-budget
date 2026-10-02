@@ -647,7 +647,11 @@ Task:
 - [x] Verificare CSP e superfici XSS rilevanti per le API bridge.
 - [x] Assicurare che il bridge non esponga testo grezzo.
 - [x] Assicurare che service e receiver Aura non necessari siano `exported=false`.
-- [x] Verificare che il solo `NotificationListenerService` bindabile dal sistema sia protetto da `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` e non esponga azioni applicative.
+- [x] Verificare che gli unici componenti `NotificationListenerService`
+  bindabili dal sistema siano i listener payment-detection V1/V2, entrambi
+  `exported=false`, protetti da
+  `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` e senza azioni
+  applicative; V1 resta solo come fallback di migrazione per grant esistenti.
 - [ ] Usare PendingIntent immutable quando possibile.
 - [x] Usare ID candidato non prevedibili.
 - [x] Definire cifratura AES-GCM dell'intero payload strutturato, incluso il merchant.
@@ -731,9 +735,13 @@ Task:
 
 Evidenze M4 al 2026-07-28:
 
-- manifest installato: unico service Aura
-  `AuraNotificationListenerService`, `exported=false`, protetto da
-  `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`, senza azioni custom;
+- manifest installato: il baseline M4 originario usava un unico
+  `AuraNotificationListenerService`; dal hardening V2 del 2026-10-02 il
+  manifest mantiene V1 solo come fallback di migrazione e aggiunge
+  `AuraNotificationListenerServiceV2` come listener corrente, entrambi
+  `exported=false`, protetti da
+  `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` e senza azioni
+  applicative custom;
 - plugin first-party espone stato OS, stato richiesto, connessione listener,
   permesso `POST_NOTIFICATIONS`, apertura settings con fallback, catalogo
   installato e aggiornamento selezione validato;
