@@ -79,8 +79,9 @@ abstract class BaseAuraNotificationListenerService :
         // listeners cannot race the same callback path.
         if (
             generation == PaymentListenerGeneration.LEGACY &&
-            accessController.isCurrentGranted()
+            accessController.state().currentGrantObservedBefore
         ) {
+            accessController.retireLegacyComponentIfCurrentOwned()
             requestUnbind()
             return
         }
@@ -99,7 +100,7 @@ abstract class BaseAuraNotificationListenerService :
 
         PaymentDetectionListenerRuntime.register(generation, this)
         if (generation == PaymentListenerGeneration.CURRENT) {
-            accessController.requestLegacyUnbindIfCurrentGranted()
+            accessController.retireLegacyComponentIfCurrentOwned()
         }
         reconcileActiveNotifications()
         armHealthHeartbeat()
