@@ -27,8 +27,8 @@ import com.staituned.aura.paymentdetection.events.PaymentCandidateChange
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChangeReason
 import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
-import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryCoordinator
 import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryScheduler
 
 @CapacitorPlugin(
@@ -196,6 +196,33 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun repairNotificationListener(call: PluginCall) {
+        try {
+            val access = accessController.state()
+            if (!access.currentGranted) {
+                if (accessController.openSettings()) {
+                    call.resolve(notificationAccessJson())
+                } else {
+                    call.reject(
+                        "Notification access settings unavailable.",
+                        "SETTINGS_UNAVAILABLE",
+                    )
+                }
+                return
+            }
+
+            if (!accessController.forceRebindIfGranted()) {
+                call.reject("Notification listener repair failed.", "LISTENER_REPAIR_FAILED")
+                return
+            }
+            PaymentListenerRecoveryScheduler.runSoon(context)
+            call.resolve(notificationAccessJson())
+        } catch (_: Exception) {
+            call.reject("Notification listener repair failed.", "LISTENER_REPAIR_FAILED")
+        }
+    }
+
+    @PluginMethod
     fun openPaymentAlertSettings(call: PluginCall) {
         if (candidateNotifier.openCandidateAlertSettings()) {
             call.resolve()
@@ -353,19 +380,22 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     private fun recoverNotificationListenerIfNeeded(
         settings: PaymentDetectionSettings,
     ) {
-        if (
-            settings.requestedEnabled &&
-            !PaymentDetectionListenerRuntime.isConnected()
-        ) {
-            accessController.requestRebindIfGranted()
-            PaymentListenerRecoveryScheduler.sync(context)
-        }
+        if (!settings.requestedEnabled) return
+        PaymentListenerRecoveryCoordinator(context).recoverNow()
+        PaymentListenerRecoveryScheduler.sync(context)
     }
 
     private fun notificationAccessJson(): JSObject =
         JSObject().apply {
             put("osPermissionGranted", accessController.isGranted())
-            put("listenerConnected", PaymentDetectionListenerRuntime.isConnected())
+            put(
+                "listenerConnected",
+                accessController.isEffectiveListenerConnected(),
+            )
+            put(
+                "listenerAccessUpgradeRequired",
+                accessController.migrationRequired(),
+            )
             put(
                 "auraNotificationPermissionGranted",
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
@@ -387,7 +417,14 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         settingsJson(settings).apply {
             put("supported", true)
             put("osPermissionGranted", accessController.isGranted())
-            put("listenerConnected", PaymentDetectionListenerRuntime.isConnected())
+            put(
+                "listenerConnected",
+                accessController.isEffectiveListenerConnected(),
+            )
+            put(
+                "listenerAccessUpgradeRequired",
+                accessController.migrationRequired(),
+            )
             put(
                 "auraNotificationPermissionGranted",
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
