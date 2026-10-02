@@ -12,56 +12,91 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
+import com.staituned.aura.paymentdetection.listener.PaymentListenerProbeResult
 import java.util.concurrent.TimeUnit
 
+internal enum class PaymentListenerRecoveryResult {
+    DISABLED,
+    NO_ACCESS,
+    RECONCILED,
+    REBIND_REQUESTED,
+    FAILED,
+}
+
 /**
- * Native watchdog for the system NotificationListenerService binding.
- *
- * WorkManager survives normal app-process death. The worker reads no
- * notification content: it only checks the user's persisted enable state,
- * Android's listener grant and the in-process connection flag, then asks
- * Android to rebind when necessary.
+ * Single owner for listener health decisions. Unlike the 1.0.15 watchdog, a
+ * "connected" bit is not enough: every recovery pass probes the live service
+ * and reconciles a bounded active-notification snapshot. A missing/failed probe
+ * triggers a deliberate unbind/rebind cycle.
  */
-class PaymentListenerRecoveryWorker(
-    appContext: Context,
-    workerParameters: WorkerParameters,
-) : Worker(appContext, workerParameters) {
-    override fun doWork(): Result {
-        val privacyStore = PaymentDetectionPrivacyStore(applicationContext)
-        if (!privacyStore.hasActiveOwner()) return Result.success()
+internal class PaymentListenerRecoveryCoordinator(
+    context: Context,
+) {
+    private val appContext = context.applicationContext
+
+    fun recoverNow(): PaymentListenerRecoveryResult {
+        val privacyStore = PaymentDetectionPrivacyStore(appContext)
+        if (!privacyStore.hasActiveOwner()) {
+            return PaymentListenerRecoveryResult.DISABLED
+        }
 
         return try {
             val settings = PaymentDetectionSettingsStore(
-                applicationContext,
+                appContext,
                 privacyStore,
             ).getSettings()
-            if (!settings.requestedEnabled) return Result.success()
+            if (!settings.requestedEnabled) {
+                return PaymentListenerRecoveryResult.DISABLED
+            }
 
-            val accessController = NotificationAccessController(applicationContext)
-            if (!accessController.isGranted()) return Result.success()
-            if (PaymentDetectionListenerRuntime.isConnected()) return Result.success()
+            val accessController = NotificationAccessController(appContext)
+            val generation = accessController.effectiveGeneration()
+                ?: return PaymentListenerRecoveryResult.NO_ACCESS
 
-            if (accessController.requestRebindIfGranted()) {
-                Result.success()
-            } else {
-                Result.retry()
+            when (
+                PaymentDetectionListenerRuntime.probeAndReconcile(generation)
+            ) {
+                PaymentListenerProbeResult.HEALTHY ->
+                    PaymentListenerRecoveryResult.RECONCILED
+                PaymentListenerProbeResult.UNAVAILABLE,
+                PaymentListenerProbeResult.FAILED,
+                -> {
+                    if (accessController.forceRebindIfGranted()) {
+                        PaymentListenerRecoveryResult.REBIND_REQUESTED
+                    } else {
+                        PaymentListenerRecoveryResult.FAILED
+                    }
+                }
             }
         } catch (_: RuntimeException) {
-            Result.retry()
+            PaymentListenerRecoveryResult.FAILED
         }
     }
 }
 
+class PaymentListenerRecoveryWorker(
+    appContext: Context,
+    workerParameters: WorkerParameters,
+) : Worker(appContext, workerParameters) {
+    override fun doWork(): Result =
+        when (
+            PaymentListenerRecoveryCoordinator(applicationContext).recoverNow()
+        ) {
+            PaymentListenerRecoveryResult.FAILED -> Result.retry()
+            else -> Result.success()
+        }
+}
+
 object PaymentListenerRecoveryScheduler {
     private const val PERIODIC_WORK =
-        "aura-payment-listener-recovery-periodic-v1"
+        "aura-payment-listener-recovery-periodic-v2"
     private const val IMMEDIATE_WORK =
+        "aura-payment-listener-recovery-immediate-v2"
+    private const val LEGACY_PERIODIC_WORK =
+        "aura-payment-listener-recovery-periodic-v1"
+    private const val LEGACY_IMMEDIATE_WORK =
         "aura-payment-listener-recovery-immediate-v1"
 
-    /**
-     * Keeps recovery work aligned with the persisted user choice. Paused,
-     * logged-out and purged states do not retain a periodic wakeup.
-     */
     @JvmStatic
     fun sync(context: Context) {
         val appContext = context.applicationContext
@@ -75,6 +110,7 @@ object PaymentListenerRecoveryScheduler {
         } catch (_: RuntimeException) {
             false
         }
+        cancelLegacy(appContext)
         if (!enabled) {
             cancel(appContext)
             return
@@ -111,6 +147,13 @@ object PaymentListenerRecoveryScheduler {
         WorkManager.getInstance(context.applicationContext).apply {
             cancelUniqueWork(PERIODIC_WORK)
             cancelUniqueWork(IMMEDIATE_WORK)
+        }
+    }
+
+    private fun cancelLegacy(context: Context) {
+        WorkManager.getInstance(context.applicationContext).apply {
+            cancelUniqueWork(LEGACY_PERIODIC_WORK)
+            cancelUniqueWork(LEGACY_IMMEDIATE_WORK)
         }
     }
 }

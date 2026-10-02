@@ -1,13 +1,40 @@
 package com.staituned.aura.paymentdetection.listener
 
+import com.staituned.aura.BuildConfig
 import com.staituned.aura.paymentdetection.data.CandidatePersistenceResult
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
-import java.util.concurrent.atomic.AtomicBoolean
+import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
 
+enum class PaymentListenerGeneration {
+    LEGACY,
+    CURRENT,
+}
+
+interface PaymentListenerHealthEndpoint {
+    /**
+     * Verifies that NotificationManager operations still work and replays a
+     * bounded active-notification snapshot through the normal privacy gate.
+     */
+    fun probeAndReconcile(): Boolean
+}
+
+internal enum class PaymentListenerProbeResult {
+    HEALTHY,
+    UNAVAILABLE,
+    FAILED,
+}
+
 internal object PaymentDetectionListenerRuntime {
-    private val connected = AtomicBoolean(false)
+    private val endpoints = mutableMapOf<
+        PaymentListenerGeneration,
+        WeakReference<PaymentListenerHealthEndpoint>,
+    >()
+    private val legacyConnectionEpoch = AtomicInteger(0)
+    private val currentConnectionEpoch = AtomicInteger(0)
+    private val suppressedPostedCallbacksForTest = AtomicInteger(0)
+
     private val acceptedEnvelopes = AtomicInteger(0)
     private val exactMatches = AtomicInteger(0)
     private val reviewMatches = AtomicInteger(0)
@@ -15,14 +42,89 @@ internal object PaymentDetectionListenerRuntime {
     private val persistedCandidates = AtomicInteger(0)
     private val persistenceFailures = AtomicInteger(0)
 
-    fun isConnected(): Boolean = connected.get()
-
-    fun markConnected() {
-        connected.set(true)
+    @Synchronized
+    fun register(
+        generation: PaymentListenerGeneration,
+        endpoint: PaymentListenerHealthEndpoint,
+    ) {
+        endpoints[generation] = WeakReference(endpoint)
+        connectionCounter(generation).incrementAndGet()
     }
 
-    fun markDisconnected() {
-        connected.set(false)
+    @Synchronized
+    fun unregister(
+        generation: PaymentListenerGeneration,
+        endpoint: PaymentListenerHealthEndpoint,
+    ) {
+        val registered = endpoints[generation]?.get()
+        if (registered == null || registered === endpoint) {
+            endpoints.remove(generation)
+        }
+    }
+
+    @Synchronized
+    fun isConnected(generation: PaymentListenerGeneration): Boolean {
+        val endpoint = endpoints[generation]?.get()
+        if (endpoint == null) {
+            endpoints.remove(generation)
+            return false
+        }
+        return true
+    }
+
+    fun isConnected(): Boolean =
+        isConnected(PaymentListenerGeneration.CURRENT) ||
+            isConnected(PaymentListenerGeneration.LEGACY)
+
+    fun connectionEpoch(generation: PaymentListenerGeneration): Int =
+        connectionCounter(generation).get()
+
+    fun probeAndReconcile(
+        generation: PaymentListenerGeneration,
+    ): PaymentListenerProbeResult {
+        val endpoint = synchronized(this) {
+            endpoints[generation]?.get().also {
+                if (it == null) endpoints.remove(generation)
+            }
+        } ?: return PaymentListenerProbeResult.UNAVAILABLE
+
+        return try {
+            if (endpoint.probeAndReconcile()) {
+                PaymentListenerProbeResult.HEALTHY
+            } else {
+                PaymentListenerProbeResult.FAILED
+            }
+        } catch (_: RuntimeException) {
+            PaymentListenerProbeResult.FAILED
+        }
+    }
+
+    /**
+     * Debug instrumentation can emulate the real-device failure mode where the
+     * listener remains connected but one posted callback is never delivered.
+     * BuildConfig.DEBUG is a compile-time false constant in release builds.
+     */
+    fun suppressNextPostedCallbackForTest() {
+        check(BuildConfig.DEBUG) {
+            "Listener callback suppression is debug-only."
+        }
+        suppressedPostedCallbacksForTest.incrementAndGet()
+    }
+
+    fun consumeSuppressedPostedCallbackForTest(): Boolean {
+        if (!BuildConfig.DEBUG) return false
+        while (true) {
+            val current = suppressedPostedCallbacksForTest.get()
+            if (current <= 0) return false
+            if (
+                suppressedPostedCallbacksForTest.compareAndSet(
+                    current,
+                    current - 1,
+                )
+            ) {
+                return true
+            }
+        }
     }
 
     fun acceptedEnvelopeCount(): Int = acceptedEnvelopes.get()
@@ -67,5 +169,14 @@ internal object PaymentDetectionListenerRuntime {
         ignoredMatches.set(0)
         persistedCandidates.set(0)
         persistenceFailures.set(0)
+        suppressedPostedCallbacksForTest.set(0)
     }
+
+    private fun connectionCounter(
+        generation: PaymentListenerGeneration,
+    ): AtomicInteger =
+        when (generation) {
+            PaymentListenerGeneration.LEGACY -> legacyConnectionEpoch
+            PaymentListenerGeneration.CURRENT -> currentConnectionEpoch
+        }
 }
