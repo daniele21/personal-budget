@@ -43,8 +43,8 @@ internal object PaymentDetectionListenerRuntime {
     private val connectionStartedAt = mutableMapOf<PaymentListenerGeneration, Long>()
     private val latestSelectedCallbackPostTime =
         mutableMapOf<PaymentListenerGeneration, Long>()
-    private val processedNotificationKeys =
-        mutableMapOf<PaymentListenerGeneration, LinkedHashSet<String>>()
+    private val processedNotificationVersions =
+        mutableMapOf<PaymentListenerGeneration, LinkedHashMap<String, Long>>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
     private val acceptedEnvelopes = AtomicInteger(0)
@@ -62,7 +62,7 @@ internal object PaymentDetectionListenerRuntime {
         endpoints[generation] = WeakReference(endpoint)
         connectionStartedAt[generation] = System.currentTimeMillis()
         latestSelectedCallbackPostTime[generation] = 0L
-        processedNotificationKeys[generation] = linkedSetOf()
+        processedNotificationVersions[generation] = linkedMapOf()
         connectionCounter(generation).incrementAndGet()
     }
 
@@ -154,22 +154,25 @@ internal object PaymentDetectionListenerRuntime {
     fun wasNotificationProcessed(
         generation: PaymentListenerGeneration,
         notificationKey: String,
+        postedAtEpochMillis: Long,
     ): Boolean =
-        processedNotificationKeys[generation]?.contains(notificationKey) == true
+        (processedNotificationVersions[generation]?.get(notificationKey) ?: Long.MIN_VALUE) >=
+            postedAtEpochMillis
 
     @Synchronized
     fun markNotificationProcessed(
         generation: PaymentListenerGeneration,
         notificationKey: String,
+        postedAtEpochMillis: Long,
     ) {
-        val keys = processedNotificationKeys.getOrPut(generation) {
-            linkedSetOf()
+        val versions = processedNotificationVersions.getOrPut(generation) {
+            linkedMapOf()
         }
-        keys.remove(notificationKey)
-        keys.add(notificationKey)
-        while (keys.size > MAX_TRACKED_NOTIFICATION_KEYS) {
-            val oldest = keys.firstOrNull() ?: break
-            keys.remove(oldest)
+        val previous = versions.remove(notificationKey) ?: Long.MIN_VALUE
+        versions[notificationKey] = maxOf(previous, postedAtEpochMillis)
+        while (versions.size > MAX_TRACKED_NOTIFICATION_KEYS) {
+            val oldest = versions.keys.firstOrNull() ?: break
+            versions.remove(oldest)
         }
     }
 
