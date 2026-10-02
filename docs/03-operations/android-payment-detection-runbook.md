@@ -137,9 +137,11 @@ all-notification filter defaults. Once V2 has been granted, revoking it stops
 Aura rather than silently falling back to the old component.
 
 If the UI shows **Active** but a real payment is missed, use **Repair listener**.
-That forces a V2 binding cycle even though Android still reports the grant. On
-the next foreground refresh or WorkManager pass, Aura also reconciles active
-selected notifications without waiting for a disconnect callback.
+That forces a V2 binding cycle even though Android still reports the grant.
+Aura also performs a best-effort one-minute health heartbeat while the bound
+listener process is alive, plus foreground and WorkManager probes, so active
+selected notifications can be reconciled without waiting for a disconnect
+callback. A confirmed missed callback triggers a fresh binding automatically.
 
 The reconciliation window is capped to 14 days and 128 of the newest selected
 notifications. Package and user-selection checks run before title/text/bigText
