@@ -9,22 +9,30 @@ import android.service.notification.NotificationListenerService
 internal data class NotificationListenerAccessState(
     val currentGranted: Boolean,
     val legacyGranted: Boolean,
+    val currentGrantObservedBefore: Boolean,
 ) {
+    private val legacyFallbackAllowed: Boolean
+        get() = legacyGranted && !currentGrantObservedBefore
+
     val anyGranted: Boolean
-        get() = currentGranted || legacyGranted
+        get() = currentGranted || legacyFallbackAllowed
 
     val migrationRequired: Boolean
-        get() = legacyGranted && !currentGranted
+        get() = legacyFallbackAllowed && !currentGranted
 
     val effectiveGeneration: PaymentListenerGeneration?
         get() = when {
             currentGranted -> PaymentListenerGeneration.CURRENT
-            legacyGranted -> PaymentListenerGeneration.LEGACY
+            legacyFallbackAllowed -> PaymentListenerGeneration.LEGACY
             else -> null
         }
 }
 
 internal class NotificationAccessController(private val context: Context) {
+    private val preferences = context.getSharedPreferences(
+        "aura_payment_listener_access",
+        Context.MODE_PRIVATE,
+    )
     private val currentListenerComponent =
         ComponentName(context, AuraNotificationListenerServiceV2::class.java)
     private val legacyListenerComponent =
@@ -32,9 +40,18 @@ internal class NotificationAccessController(private val context: Context) {
 
     fun state(): NotificationListenerAccessState {
         val enabled = enabledListenerComponents()
+        val currentGranted = currentListenerComponent in enabled
+        val observedBefore =
+            preferences.getBoolean(CURRENT_GRANT_OBSERVED, false)
+        if (currentGranted && !observedBefore) {
+            preferences.edit()
+                .putBoolean(CURRENT_GRANT_OBSERVED, true)
+                .apply()
+        }
         return NotificationListenerAccessState(
-            currentGranted = currentListenerComponent in enabled,
+            currentGranted = currentGranted,
             legacyGranted = legacyListenerComponent in enabled,
+            currentGrantObservedBefore = observedBefore || currentGranted,
         )
     }
 
@@ -134,5 +151,7 @@ internal class NotificationAccessController(private val context: Context) {
     companion object {
         private const val ENABLED_NOTIFICATION_LISTENERS =
             "enabled_notification_listeners"
+        private const val CURRENT_GRANT_OBSERVED =
+            "current_v2_grant_observed"
     }
 }
