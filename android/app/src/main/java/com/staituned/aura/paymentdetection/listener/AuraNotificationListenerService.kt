@@ -100,6 +100,9 @@ abstract class BaseAuraNotificationListenerService :
 
         PaymentDetectionListenerRuntime.register(generation, this)
         if (generation == PaymentListenerGeneration.CURRENT) {
+            PaymentDetectionListenerRuntime.retireBinding(
+                PaymentListenerGeneration.LEGACY,
+            )
             accessController.retireLegacyComponentIfCurrentOwned()
         }
         reconcileActiveNotifications()
@@ -145,6 +148,19 @@ abstract class BaseAuraNotificationListenerService :
     override fun armHealthHeartbeat() {
         mainHandler.removeCallbacks(healthHeartbeat)
         mainHandler.postDelayed(healthHeartbeat, HEALTH_HEARTBEAT_INTERVAL_MS)
+    }
+
+    override fun retireBinding() {
+        val retire = Runnable {
+            mainHandler.removeCallbacks(healthHeartbeat)
+            PaymentDetectionListenerRuntime.unregister(generation, this)
+            requestUnbind()
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            retire.run()
+        } else {
+            mainHandler.post(retire)
+        }
     }
 
     /**
