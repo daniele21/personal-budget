@@ -244,6 +244,7 @@ abstract class BaseAuraNotificationListenerService :
         PaymentDetectionListenerRuntime.markNotificationProcessed(
             generation,
             envelope.notificationKey,
+            envelope.postedAtEpochMillis,
         )
     }
 
@@ -273,6 +274,7 @@ abstract class BaseAuraNotificationListenerService :
                 !PaymentDetectionListenerRuntime.wasNotificationProcessed(
                     generation,
                     it.key,
+                    it.postTime,
                 )
             }
             .sortedByDescending { it.postTime }
