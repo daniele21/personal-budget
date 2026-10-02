@@ -42,6 +42,8 @@ internal object PaymentDetectionListenerRuntime {
     private val connectionStartedAt = mutableMapOf<PaymentListenerGeneration, Long>()
     private val latestSelectedCallbackPostTime =
         mutableMapOf<PaymentListenerGeneration, Long>()
+    private val processedNotificationKeys =
+        mutableMapOf<PaymentListenerGeneration, LinkedHashSet<String>>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
     private val acceptedEnvelopes = AtomicInteger(0)
@@ -59,6 +61,7 @@ internal object PaymentDetectionListenerRuntime {
         endpoints[generation] = WeakReference(endpoint)
         connectionStartedAt[generation] = System.currentTimeMillis()
         latestSelectedCallbackPostTime[generation] = 0L
+        processedNotificationKeys[generation] = linkedSetOf()
         connectionCounter(generation).incrementAndGet()
     }
 
@@ -137,6 +140,29 @@ internal object PaymentDetectionListenerRuntime {
             newestActivePostTime > latestCallback
     }
 
+    @Synchronized
+    fun wasNotificationProcessed(
+        generation: PaymentListenerGeneration,
+        notificationKey: String,
+    ): Boolean =
+        processedNotificationKeys[generation]?.contains(notificationKey) == true
+
+    @Synchronized
+    fun markNotificationProcessed(
+        generation: PaymentListenerGeneration,
+        notificationKey: String,
+    ) {
+        val keys = processedNotificationKeys.getOrPut(generation) {
+            linkedSetOf()
+        }
+        keys.remove(notificationKey)
+        keys.add(notificationKey)
+        while (keys.size > MAX_TRACKED_NOTIFICATION_KEYS) {
+            val oldest = keys.firstOrNull() ?: break
+            keys.remove(oldest)
+        }
+    }
+
     /**
      * Instrumentation can emulate the real-device failure mode where the
      * listener remains connected but one posted callback is never delivered.
@@ -206,6 +232,8 @@ internal object PaymentDetectionListenerRuntime {
         persistenceFailures.set(0)
         suppressedPostedCallbacksForTest.set(0)
     }
+
+    private const val MAX_TRACKED_NOTIFICATION_KEYS = 512
 
     private fun connectionCounter(
         generation: PaymentListenerGeneration,
