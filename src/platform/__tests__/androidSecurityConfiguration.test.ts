@@ -160,6 +160,9 @@ describe('Android security configuration', () => {
     expect(manifest).toContain(
       'android:name=".paymentdetection.listener.AuraNotificationListenerService"',
     );
+    expect(manifest).toContain(
+      'android:name=".paymentdetection.listener.AuraNotificationListenerServiceV2"',
+    );
     expect(manifest).not.toContain('QUERY_ALL_PACKAGES');
     expect(manifest).not.toContain('android.permission.READ_SMS');
     expect(manifest).not.toContain('android.permission.BIND_ACCESSIBILITY_SERVICE');
@@ -168,32 +171,46 @@ describe('Android security configuration', () => {
     expect(catalog).toContain('com.google.android.apps.walletnfcrel');
     expect(catalog).toContain('com.paypal.android.p2pmobile');
     expect(catalog.match(/packageName = "/g)).toHaveLength(4);
-    expect(manifest).not.toContain(
+    expect(manifest).toContain(
       'android.service.notification.default_filter_types',
+    );
+    expect(manifest).toContain(
+      'android:value="conversations|alerting|silent|ongoing"',
     );
     expect(manifest).not.toContain(
       'android.service.notification.disabled_filter_types',
     );
     expect(listener).toContain('migrateNotificationFilter(');
     expect(listener).toContain('FLAG_FILTER_TYPE_SILENT');
-    expect(accessController).toContain('requestRebindIfGranted');
+    expect(listener).toContain('PaymentListenerGeneration.LEGACY');
+    expect(listener).toContain('PaymentListenerGeneration.CURRENT');
+    expect(listener).toContain('probeAndReconcile()');
+    expect(listener).toContain('activeNotifications.toList()');
+    expect(listener).toContain('recoveryWindowStartedAt()');
+    expect(listener).toContain('.filter { settingsStore.isProcessingAllowed(it.packageName) }');
+    expect(listener).toContain('.sortedByDescending { it.postTime }');
+    expect(listener).toContain('MAX_RECOVERY_NOTIFICATIONS');
+    expect(listener).not.toContain('markNotificationObserved');
+    expect(accessController).toContain('forceRebindIfGranted');
+    expect(accessController).toContain('NotificationListenerService.requestUnbind');
+    expect(accessController).toContain('AuraNotificationListenerServiceV2::class.java');
+    expect(accessController).toContain('migrationRequired');
     expect(plugin).toContain('recoverNotificationListenerIfNeeded');
+    expect(plugin).toContain('repairNotificationListener');
+    expect(plugin).toContain('listenerAccessUpgradeRequired');
     expect(plugin).toContain('candidateNotificationsEnabled');
     expect(plugin).toContain('openPaymentAlertSettings');
     expect(recoveryWorker).toContain('PeriodicWorkRequestBuilder<PaymentListenerRecoveryWorker>');
     expect(recoveryWorker).toContain('15,');
     expect(recoveryWorker).toContain('TimeUnit.MINUTES');
     expect(recoveryWorker).toContain('settings.requestedEnabled');
-    expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.isConnected()');
-    expect(recoveryWorker).toContain('requestRebindIfGranted()');
+    expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.probeAndReconcile');
+    expect(recoveryWorker).toContain('forceRebindIfGranted()');
+    expect(recoveryWorker).not.toContain('PaymentDetectionListenerRuntime.isConnected()');
     expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.sync(this)');
     expect(recoveryWorker).toContain('fun sync(context: Context)');
     expect(recoveryWorker).toContain('fun cancel(context: Context)');
     expect(recoveryWorker).toContain('cancelUniqueWork(PERIODIC_WORK)');
-    expect(listener).toContain('activeNotifications.toList()');
-    expect(listener).toContain('recoveryBaselineAt()');
-    expect(listener).toContain('markNotificationObserved');
-    expect(listener).toContain('MAX_RECOVERY_NOTIFICATIONS');
     expect(notifier).toContain('getNotificationChannel(CHANNEL_ID)');
     expect(notifier).toContain('NotificationManager.IMPORTANCE_NONE');
     expect(notifier).toContain('ACTION_CHANNEL_NOTIFICATION_SETTINGS');
@@ -263,6 +280,8 @@ describe('Android security configuration', () => {
     );
     expect(verification).toContain('waitForListenerNotLive');
     expect(verification).toContain('Missed active payment reconciliation: PASS');
+    expect(verification).toContain('AuraNotificationListenerServiceV2');
+    expect(verification).toContain('V2 owns the live listener path: PASS');
     expect(verification).toContain("'am', 'kill', auraPackage");
     expect(verification).not.toContain("'am', 'force-stop', auraPackage");
     expect(verification).toContain('ShellSyntheticNotificationActivity');
