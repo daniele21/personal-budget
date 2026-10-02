@@ -144,6 +144,7 @@ The user must explicitly confirm before keeping a possible duplicate.
 | Raw input | Process memory during parsing | Never |
 | Candidate payload | Private Room database | Excluded from Aura and Android backup |
 | Selected-app settings | Private native preferences | Excluded from Android backup |
+| Listener V2 migration marker | Private native preference containing one boolean only | Excluded from Android backup |
 | Keystore key | Android Keystore | Not exported |
 | Tombstone | Private Room database | Excluded from all backup |
 | Confirmed transaction | Canonical Aura AppData | Existing local/archive/opt-in encrypted cloud rules |
@@ -168,6 +169,7 @@ No new subprocessor is introduced by the approved design. Google Play distributi
 | Ignored tombstone | 7 days |
 | Accepted/edited payload | Deleted after verified transaction commit |
 | Accepted/edited tombstone | 30 days |
+| Listener V2 migration marker | Device-local until app-data clear/uninstall; intentionally not owner-scoped because it prevents legacy fallback after V2 access was once granted |
 | Failed acceptance | Until deterministic recovery completes |
 | Selected-app settings | Until disable, logout, owner change, or reset as applicable |
 
