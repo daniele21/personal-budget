@@ -24,6 +24,7 @@ interface PaymentListenerHealthEndpoint {
      */
     fun probeAndReconcile(): PaymentListenerEndpointProbeResult
     fun armHealthHeartbeat()
+    fun retireBinding()
 }
 
 internal enum class PaymentListenerProbeResult {
@@ -103,6 +104,15 @@ internal object PaymentDetectionListenerRuntime {
             }
         } ?: return
         endpoint.armHealthHeartbeat()
+    }
+
+    fun retireBinding(generation: PaymentListenerGeneration) {
+        val endpoint = synchronized(this) {
+            endpoints[generation]?.get().also {
+                if (it == null) endpoints.remove(generation)
+            }
+        } ?: return
+        endpoint.retireBinding()
     }
 
     fun probeAndReconcile(
