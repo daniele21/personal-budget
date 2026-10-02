@@ -232,7 +232,10 @@ class PaymentDetectionListenerInstrumentedTest {
     fun legacyGrantIsDetectedUntilV2AccessIsGranted() {
         val legacy = legacyComponent()
         val current = currentComponent()
-        val controller = NotificationAccessController(context)
+        val controller = NotificationAccessController(
+            context,
+            "payment_listener_access_migration_test",
+        )
         resetListenerGrants()
 
         try {
