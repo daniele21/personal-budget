@@ -128,22 +128,29 @@ async function waitForProbe(predicate, label, attempts = 40) {
   throw new Error(`${label} did not complete.`);
 }
 
-function isListenerLive() {
+function liveListenerSection() {
   const notificationDump = tryAdb(['shell', 'dumpsys', 'notification']);
   const liveSectionStart = notificationDump.indexOf(
     'Live notification listeners (',
   );
-  if (liveSectionStart < 0) return false;
+  if (liveSectionStart < 0) return '';
 
   const snoozedSectionStart = notificationDump.indexOf(
     'Snoozed notification listeners',
     liveSectionStart,
   );
-  const liveSection = notificationDump.slice(
+  return notificationDump.slice(
     liveSectionStart,
     snoozedSectionStart >= 0 ? snoozedSectionStart : undefined,
   );
-  return liveSection.includes(listenerComponent);
+}
+
+function isListenerComponentLive(component) {
+  return liveListenerSection().includes(component);
+}
+
+function isListenerLive() {
+  return isListenerComponentLive(listenerComponent);
 }
 
 async function waitForListenerLive(label, attempts = 60) {
@@ -157,6 +164,14 @@ async function waitForListenerLive(label, attempts = 60) {
 async function waitForListenerNotLive(label, attempts = 60) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (!isListenerLive()) return;
+    await delay(500);
+  }
+  throw new Error(`${label} did not complete.`);
+}
+
+async function waitForComponentNotLive(component, label, attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (!isListenerComponentLive(component)) return;
     await delay(500);
   }
   throw new Error(`${label} did not complete.`);
@@ -224,11 +239,12 @@ async function main() {
     );
     console.log('Initial V2 listener detection: PASS');
 
-    const legacyDump = tryAdb(['shell', 'dumpsys', 'notification']);
-    if (legacyDump.includes(legacyListenerComponent)) {
-      throw new Error('Legacy listener remained live after V2 activation.');
-    }
-    console.log('V2 owns the live listener path: PASS');
+    await waitForComponentNotLive(
+      legacyListenerComponent,
+      'Legacy listener retirement after V2 activation',
+      20,
+    );
+    console.log('V2 exclusively owns the live listener path: PASS');
 
     const beforeBlackout = readProbe();
     runAdb([
