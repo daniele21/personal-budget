@@ -210,17 +210,21 @@ release gate.
 | Spoofed deep link leaks financial data | Exact scheme/host/path validation, opaque IDs, no query/fragment or financial URL values, immutable intents | Physical task-stack QA |
 | Backup or device transfer exports data | `allowBackup=false` plus exhaustive exclusion rules | OEM physical transfer test |
 | Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge and Room schema; M5-M7 emit no content logs | M9 physical logcat test |
-| Exported component accepts app actions | Listener, FileProvider, and candidate-action receiver are non-exported; listener is protected by the system bind permission | Recheck every manifest change |
+| Exported component accepts app actions | Both listener component identities, FileProvider, and candidate-action receiver are non-exported; both listeners are protected by the system bind permission | Recheck every manifest change |
 | Unsupported notification is inspected | Package/selection gate executes before the deferred extras extractor | Real-source review remains prohibited |
 | Regex denial of service blocks listener | Bounded NFKC input, precompiled static patterns, unsafe-pattern rejection and parsing benchmark | Repeat for every approved real-source rule |
 | Card/account identifier becomes merchant | Identifier-like merchant values are dropped and negative fixture coverage excludes security/account contexts | Revalidate against every approved real-source corpus |
 
 ## Controls Required In Later Milestones
 
-M4 declares only the non-exported system-bound listener with
-`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` and package/selection
-checks before extras. Its catalog currently
-contains only the separate signature-protected synthetic test APK. M5 applies
+M4 exposes only payment-detection listener components through the system
+notification-listener binding surface. During the V2 migration there are two
+non-exported component identities, both protected by
+`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`: the original
+component is a temporary existing-grant fallback and V2 is the current
+component. No application intent action is exported, and both paths keep
+package/selection checks before extras. The catalog currently contains only the
+separate signature-protected synthetic test APK. M5 applies
 negative rules before exact/review rules, supports EUR only, and releases raw
 strings after evaluation. M6 persists only encrypted structured payload, keyed
 fingerprints and bounded workflow metadata; migration failure has no
