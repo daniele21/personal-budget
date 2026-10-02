@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -246,6 +247,11 @@ class PaymentDetectionListenerInstrumentedTest {
             "payment_listener_access_migration_test",
         )
         resetListenerGrants()
+        context.getSharedPreferences(
+            "aura_payment_listener_access",
+            android.content.Context.MODE_PRIVATE,
+        ).edit().clear().commit()
+        shell("pm enable $legacy")
 
         try {
             shell("cmd notification allow_listener $legacy")
@@ -270,6 +276,19 @@ class PaymentDetectionListenerInstrumentedTest {
                 PaymentListenerGeneration.CURRENT,
                 controller.effectiveGeneration(),
             )
+            waitUntil("legacy component retirement") {
+                context.packageManager.getComponentEnabledSetting(
+                    ComponentName(
+                        context,
+                        AuraNotificationListenerService::class.java,
+                    ),
+                ) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+            waitUntil("legacy runtime retirement") {
+                !PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.LEGACY,
+                )
+            }
         } finally {
             resetListenerGrants()
         }
