@@ -23,6 +23,7 @@ interface PaymentListenerHealthEndpoint {
      * bounded active-notification snapshot through the normal privacy gate.
      */
     fun probeAndReconcile(): PaymentListenerEndpointProbeResult
+    fun armHealthHeartbeat()
 }
 
 internal enum class PaymentListenerProbeResult {
@@ -94,6 +95,15 @@ internal object PaymentDetectionListenerRuntime {
 
     fun connectionEpoch(generation: PaymentListenerGeneration): Int =
         connectionCounter(generation).get()
+
+    fun armHealthHeartbeat(generation: PaymentListenerGeneration) {
+        val endpoint = synchronized(this) {
+            endpoints[generation]?.get().also {
+                if (it == null) endpoints.remove(generation)
+            }
+        } ?: return
+        endpoint.armHealthHeartbeat()
+    }
 
     fun probeAndReconcile(
         generation: PaymentListenerGeneration,
