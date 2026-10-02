@@ -54,6 +54,7 @@ internal class PaymentListenerRecoveryCoordinator(
             val generation = accessController.effectiveGeneration()
                 ?: return PaymentListenerRecoveryResult.NO_ACCESS
 
+            PaymentDetectionListenerRuntime.armHealthHeartbeat(generation)
             when (
                 PaymentDetectionListenerRuntime.probeAndReconcile(generation)
             ) {
