@@ -59,8 +59,7 @@ internal class PaymentListenerRecoveryCoordinator(
                 PaymentListenerProbeResult.HEALTHY ->
                     PaymentListenerRecoveryResult.RECONCILED
                 PaymentListenerProbeResult.UNAVAILABLE,
-                PaymentListenerProbeResult.FAILED,
-                -> {
+                PaymentListenerProbeResult.FAILED -> {
                     if (accessController.forceRebindIfGranted()) {
                         PaymentListenerRecoveryResult.REBIND_REQUESTED
                     } else {
