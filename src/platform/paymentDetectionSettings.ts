@@ -26,6 +26,10 @@ export const paymentDetectionSettings = {
     await paymentDetection.openNotificationAccessSettings();
   },
 
+  async repairNotificationListener(): Promise<void> {
+    await paymentDetection.repairNotificationListener();
+  },
+
   async openPaymentAlertSettings(): Promise<void> {
     await paymentDetection.openPaymentAlertSettings();
   },
