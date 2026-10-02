@@ -62,6 +62,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         privacyStore = PaymentDetectionPrivacyStore(context)
         settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
         accessController = NotificationAccessController(context)
+        accessController.synchronizeComponentLifecycle()
         candidateRepository = PaymentCandidateRepository(context, privacyStore)
         candidateNotifier = PaymentCandidateNotifier(context)
         PaymentCandidateEventBus.addListener(candidateChangeListener)
