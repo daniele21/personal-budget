@@ -13,6 +13,7 @@ export interface NativePaymentDetectionSettings {
 export interface NativeNotificationAccessStatus {
   osPermissionGranted: boolean;
   listenerConnected: boolean;
+  listenerAccessUpgradeRequired: boolean;
   auraNotificationPermissionGranted: boolean;
   candidateNotificationsEnabled: boolean;
 }
@@ -72,6 +73,7 @@ interface NativePaymentDetectionPlugin {
   listSupportedApps(): Promise<{ apps: NativeSupportedPaymentApp[] }>;
   updateSettings(options: NativePaymentDetectionSettings): Promise<NativePaymentDetectionStatus>;
   openNotificationAccessSettings(): Promise<void>;
+  repairNotificationListener(): Promise<NativeNotificationAccessStatus>;
   openPaymentAlertSettings(): Promise<void>;
   requestAuraNotificationPermission(): Promise<{ granted: boolean }>;
   listCandidates(): Promise<{ candidates: unknown[] }>;
@@ -266,6 +268,10 @@ export const paymentDetection = {
 
   async openNotificationAccessSettings(): Promise<void> {
     await requireAndroidPlugin().openNotificationAccessSettings();
+  },
+
+  async repairNotificationListener(): Promise<NativeNotificationAccessStatus> {
+    return await requireAndroidPlugin().repairNotificationListener();
   },
 
   async openPaymentAlertSettings(): Promise<void> {

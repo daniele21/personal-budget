@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   updateSettings: vi.fn(),
   requestAuraNotificationPermission: vi.fn(),
   openNotificationAccessSettings: vi.fn(),
+  repairNotificationListener: vi.fn(),
   openPaymentAlertSettings: vi.fn(),
   deleteAllCandidates: vi.fn(),
 }));
@@ -56,6 +57,7 @@ vi.mock('../../platform/paymentDetection', () => ({
     updateSettings: mocks.updateSettings,
     requestAuraNotificationPermission: mocks.requestAuraNotificationPermission,
     openNotificationAccessSettings: mocks.openNotificationAccessSettings,
+    repairNotificationListener: mocks.repairNotificationListener,
     openPaymentAlertSettings: mocks.openPaymentAlertSettings,
     deleteAllCandidates: mocks.deleteAllCandidates,
   },
@@ -145,6 +147,7 @@ describe('PaymentDetectionProvider', () => {
       selectedPackages: ['com.staituned.aura.syntheticnotifications'],
       osPermissionGranted: true,
       listenerConnected: true,
+      listenerAccessUpgradeRequired: false,
       auraNotificationPermissionGranted: true,
       candidateNotificationsEnabled: true,
     });

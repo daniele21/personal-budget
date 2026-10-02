@@ -47,18 +47,20 @@ internal class PaymentDetectionSettingsStore(
         val editor = preferences.edit()
             .putBoolean(REQUESTED_ENABLED, requestedEnabled)
             .putStringSet(SELECTED_PACKAGES, selectedPackages)
+            .remove(LEGACY_RECOVERY_BASELINE_AT)
 
         if (!requestedEnabled) {
-            editor.remove(RECOVERY_BASELINE_AT)
+            editor.remove(RECOVERY_WINDOW_STARTED_AT)
         } else if (
             !wasEnabled ||
             previousPackages != selectedPackages ||
-            !preferences.contains(RECOVERY_BASELINE_AT)
+            !preferences.contains(RECOVERY_WINDOW_STARTED_AT)
         ) {
-            // The recovery window starts at the user's latest affirmative
-            // enable/source-selection boundary. This prevents reconnect scans
-            // from importing notifications that predate the user's choice.
-            editor.putLong(RECOVERY_BASELINE_AT, now())
+            // Recovery begins at the latest affirmative enable/source-selection
+            // boundary. The window does not advance after callbacks: replay is
+            // intentionally idempotent through the technical fingerprint so an
+            // out-of-order or missed callback cannot move past an older payment.
+            editor.putLong(RECOVERY_WINDOW_STARTED_AT, now())
         }
 
         check(editor.commit()) {
@@ -68,43 +70,33 @@ internal class PaymentDetectionSettingsStore(
     }
 
     /**
-     * Returns the lower bound for reconnect reconciliation.
+     * Lower bound for active-notification reconciliation.
      *
-     * Existing installs created before this field existed are initialized to
-     * "now" on first access, so upgrading never retroactively processes old
-     * notification-tray content.
+     * Existing 1.0.15 installs may have a monotonic legacy watermark. That
+     * value is already inside the user's enabled period, so it is safe to use
+     * once as the start of the stable V2 recovery window. Older installs with
+     * no recovery metadata start at "now" and never retroactively inspect tray
+     * content that predates this migration.
      */
     @Synchronized
-    fun recoveryBaselineAt(): Long? {
+    fun recoveryWindowStartedAt(): Long? {
         privacyStore.requireActiveOwnerHash()
         if (!preferences.getBoolean(REQUESTED_ENABLED, false)) return null
-        val existing = preferences.getLong(RECOVERY_BASELINE_AT, 0L)
+
+        val existing = preferences.getLong(RECOVERY_WINDOW_STARTED_AT, 0L)
         if (existing > 0L) return existing
 
-        val baseline = now()
-        check(preferences.edit().putLong(RECOVERY_BASELINE_AT, baseline).commit()) {
-            "Unable to persist listener recovery baseline."
+        val legacy = preferences.getLong(LEGACY_RECOVERY_BASELINE_AT, 0L)
+        val startedAt = legacy.takeIf { it > 0L }?.coerceAtMost(now()) ?: now()
+        check(
+            preferences.edit()
+                .putLong(RECOVERY_WINDOW_STARTED_AT, startedAt)
+                .remove(LEGACY_RECOVERY_BASELINE_AT)
+                .commit(),
+        ) {
+            "Unable to persist listener recovery window."
         }
-        return baseline
-    }
-
-    /**
-     * Advances the recovery watermark only after a selected notification has
-     * passed extraction/evaluation/persistence without throwing. A reconnect
-     * can therefore replay notifications posted after the last safe point.
-     */
-    @Synchronized
-    fun markNotificationObserved(postedAtEpochMillis: Long) {
-        privacyStore.requireActiveOwnerHash()
-        if (!preferences.getBoolean(REQUESTED_ENABLED, false)) return
-        if (postedAtEpochMillis <= 0L) return
-
-        val bounded = postedAtEpochMillis.coerceAtMost(now())
-        val current = preferences.getLong(RECOVERY_BASELINE_AT, 0L)
-        if (bounded <= current) return
-        check(preferences.edit().putLong(RECOVERY_BASELINE_AT, bounded).commit()) {
-            "Unable to advance listener recovery baseline."
-        }
+        return startedAt
     }
 
     fun isProcessingAllowed(packageName: String): Boolean {
@@ -124,6 +116,9 @@ internal class PaymentDetectionSettingsStore(
         internal const val PREFERENCES_SUFFIX = "_settings"
         private const val REQUESTED_ENABLED = "requested_enabled"
         private const val SELECTED_PACKAGES = "selected_packages"
-        private const val RECOVERY_BASELINE_AT = "listener_recovery_baseline_at"
+        private const val RECOVERY_WINDOW_STARTED_AT =
+            "listener_recovery_window_started_at_v2"
+        private const val LEGACY_RECOVERY_BASELINE_AT =
+            "listener_recovery_baseline_at"
     }
 }

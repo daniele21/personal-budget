@@ -122,29 +122,49 @@ Safe evidence includes:
 
 If detection is unavailable:
 
-Aura treats Android notification-access permission, the live listener
-connection, and Aura's payment-alert channel as separate states. When access
-remains granted but the listener is disconnected, the in-app status shows
-`Reconnecting`, requests an immediate rebind, and a native WorkManager watchdog
-retries the system binding periodically while detection remains enabled.
+Aura treats Android notification-access permission, the effective listener
+connection, listener-component generation, and Aura's payment-alert channel as
+separate states. The recovery worker no longer trusts `listenerConnected=true`
+by itself: every pass probes the live listener and reconciles a bounded active
+snapshot. If the probe is absent or fails, Aura cycles the effective component
+with Android's unbind/rebind APIs.
 
-On reconnect, Aura scans only currently active notifications that are newer
-than its owner-scoped recovery watermark (capped to the existing 14-day
-candidate horizon and 128 notifications). Package and user-selection checks
-still run before title/text/bigText are read. Notifications already processed
-are suppressed by the existing technical fingerprint.
+If the UI shows **Access upgrade needed**, the install still has only the
+original listener component grant. Use **Upgrade Android access** and enable
+**Aura payment detection** (not the entry marked legacy) in Android settings.
+This is a one-time migration to a new component identity with fresh
+all-notification filter defaults. Once V2 has been granted, Aura requests
+legacy unbind and disables the legacy component locally; revoking V2 then stops
+Aura rather than silently falling back to the old component. Android teardown
+is asynchronous, so diagnostics must inspect the actual **Live notification
+listeners** section rather than treating any historical component mention in
+`dumpsys notification` as a live binding.
+
+If the UI shows **Active** but a real payment is missed, use **Repair listener**.
+That forces a V2 binding cycle even though Android still reports the grant.
+Aura also performs a best-effort one-minute health heartbeat while the bound
+listener process is alive, plus foreground and WorkManager probes, so active
+selected notifications can be reconciled without waiting for a disconnect
+callback. A confirmed missed callback triggers a fresh binding automatically.
+
+The reconciliation window is capped to 14 days and 128 of the newest selected
+notifications. Package and user-selection checks run before title/text/bigText
+are read and before the 128-item cap. Existing technical fingerprints suppress
+replay duplicates.
 
 1. confirm the user is authenticated;
-2. inspect the in-app feature state;
-3. if it remains `Reconnecting`, use **Repair Android access** and toggle Aura
-   off/on once in Android notification-access settings;
-4. confirm the supported payment app is selected;
-5. confirm **Aura payment alerts** is enabled; if blocked, open the dedicated
+2. inspect whether the state is **Access upgrade needed**, **Reconnecting**,
+   **Active**, or **Alerts blocked**;
+3. complete the one-time V2 access upgrade if requested;
+4. if the listener is reconnecting or appears stale while still Active, use
+   **Repair listener**;
+5. confirm the supported payment app is selected;
+6. confirm **Aura payment alerts** is enabled; if blocked, open the dedicated
    Android channel settings from Aura;
-6. run the synthetic source;
-7. verify a payment posted while the listener is revoked is recovered after the
-   listener is granted again;
-8. run listener recovery only on the test AVD.
+7. run the synthetic source;
+8. verify both failure modes on the test AVD: disconnected blackout recovery and
+   connected-listener missed-callback recovery;
+9. run listener recovery only on the test AVD.
 
 Do not enable WebView debugging or dynamic native content logs in a release
 artifact. Do not export the candidate database.

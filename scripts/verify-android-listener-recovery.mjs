@@ -12,8 +12,11 @@ const sourcePackage = 'com.staituned.aura.syntheticnotifications';
 const sourceActivity =
   `${sourcePackage}/com.staituned.aura.testsource.ShellSyntheticNotificationActivity`;
 const listenerClass =
+  'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerServiceV2';
+const legacyListenerClass =
   'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerService';
 const listenerComponent = `${auraPackage}/${listenerClass}`;
+const legacyListenerComponent = `${auraPackage}/${legacyListenerClass}`;
 const setupComponent =
   `${auraPackage}/com.staituned.aura.SyntheticPaymentDetectionSetupActivity`;
 const auraApk = 'android/app/build/outputs/apk/debug/app-debug.apk';
@@ -125,22 +128,29 @@ async function waitForProbe(predicate, label, attempts = 40) {
   throw new Error(`${label} did not complete.`);
 }
 
-function isListenerLive() {
+function liveListenerSection() {
   const notificationDump = tryAdb(['shell', 'dumpsys', 'notification']);
   const liveSectionStart = notificationDump.indexOf(
     'Live notification listeners (',
   );
-  if (liveSectionStart < 0) return false;
+  if (liveSectionStart < 0) return '';
 
   const snoozedSectionStart = notificationDump.indexOf(
     'Snoozed notification listeners',
     liveSectionStart,
   );
-  const liveSection = notificationDump.slice(
+  return notificationDump.slice(
     liveSectionStart,
     snoozedSectionStart >= 0 ? snoozedSectionStart : undefined,
   );
-  return liveSection.includes(listenerComponent);
+}
+
+function isListenerComponentLive(component) {
+  return liveListenerSection().includes(component);
+}
+
+function isListenerLive() {
+  return isListenerComponentLive(listenerComponent);
 }
 
 async function waitForListenerLive(label, attempts = 60) {
@@ -183,6 +193,7 @@ function cleanup() {
     // Cleanup is deliberately idempotent.
   }
   tryAdb(['shell', 'cmd', 'notification', 'disallow_listener', listenerComponent]);
+  tryAdb(['shell', 'cmd', 'notification', 'disallow_listener', legacyListenerComponent]);
   tryAdb(['uninstall', sourcePackage]);
 }
 
@@ -218,7 +229,16 @@ async function main() {
       (probe) => Number(probe.exact) >= 1,
       'Initial exact detection',
     );
-    console.log('Initial listener detection: PASS');
+    console.log('Initial V2 listener detection: PASS');
+
+    const ownershipProbe = readProbe();
+    if (
+      ownershipProbe.currentConnected !== 'true' ||
+      ownershipProbe.legacyConnected === 'true'
+    ) {
+      throw new Error('V2 did not exclusively own Aura runtime listener processing.');
+    }
+    console.log('V2 exclusively owns Aura runtime listener processing: PASS');
 
     const beforeBlackout = readProbe();
     runAdb([

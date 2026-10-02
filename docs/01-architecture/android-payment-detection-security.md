@@ -72,6 +72,7 @@ Trust boundaries:
 | Phase | Data | Persistence | Deletion |
 |---|---|---|---|
 | M3 owner registration | Firebase UID, transient bridge input | UID is HMAC-SHA256 transformed; only the owner hash is stored | Logout, owner change, local reset, total deletion |
+| Listener migration safety | Boolean that the V2 Android listener grant has been observed; no owner or notification content | Private device-local preference, excluded from backup | App-data clear/uninstall; intentionally survives owner purge so Aura never silently falls back to the legacy listener after a V2 revocation |
 | M5 synthetic parsing | Internal source ID, bounded title/text/bigText and post time | Raw strings remain in memory only; only redacted process counters survive the call | References discarded after parsing; debug recovery probe removed during cleanup |
 | M6-M7 candidate | Amount, EUR currency, optional merchant, timestamps and workflow metadata; minimized M7 bridge snapshot | Entire structured payload encrypted with AES-GCM in the private Room database; bridge values remain in process memory | 14-day pending retention, immediate payload deletion on ignore/accept, bounded tombstone retention, reset, logout, owner change or deletion |
 | Confirmed transaction | User-reviewed normal transaction fields | Canonical React `AppData` | Existing Aura controls |
@@ -81,21 +82,48 @@ strings, Firebase/Google tokens, email, icons, images, actions and remote views.
 
 ## Listener Recovery And Missed-Notification Reconciliation
 
-Aura does not rely on the React/WebView lifecycle to keep the Android listener
-healthy. A native WorkManager watchdog runs only against metadata and asks
-Android to rebind the system listener when all of these are true: an owner
-exists, detection is user-enabled, notification-listener access is granted,
-and the listener is not currently connected.
+Aura does not treat the last `onListenerConnected` callback as proof of
+continued health. While detection remains enabled, one native recovery
+coordinator is driven by foreground status refreshes, the WorkManager fallback,
+and a best-effort one-minute in-process heartbeat while the system-bound
+listener process remains alive. The heartbeat holds no wake lock; WorkManager
+remains the process-recreation fallback. The coordinator asks the effective
+listener endpoint to perform a bounded `getActiveNotifications()` snapshot. A
+successful snapshot both proves that the service can still talk to Android's
+notification manager and replays any selected active notification whose posted
+callback was missed. If the endpoint is absent or the snapshot fails, the
+coordinator deliberately cycles that exact component with
+`requestUnbind(ComponentName)` followed by `requestRebind(ComponentName)`.
 
-The owner-scoped settings store keeps a monotonic recovery watermark. Enabling
-detection or changing selected sources starts a new watermark at that user
-action, so an upgrade or newly selected source does not retroactively import
-older tray content. After a successful reconnect, the listener examines at most
-128 currently active notifications newer than the watermark and no older than
-the existing 14-day pending-candidate horizon. Package and user-selection gates
-execute before notification extras are read. Successful deterministic
-processing advances the watermark; failed processing does not. Existing
-technical fingerprints make replay idempotent.
+Recovery uses a stable owner-scoped window that starts at the latest
+enable/source-selection boundary and never advances merely because a callback
+was observed. This avoids skipping an older missed payment when a newer
+notification callback arrives first. Upgraded 1.0.15 installs may seed the new
+window once from the previous watermark because that timestamp already lies
+inside the user's enabled period. The effective floor is still capped to the
+existing 14-day pending-candidate horizon.
+
+The active snapshot is filtered by source package and explicit user selection
+before extras are read and before the 128-item cap is applied. Aura takes the
+newest selected notifications first, then processes them in posting order.
+During one live binding, a bounded in-memory map of 512 technical notification
+keys to their latest processed post time prevents the one-minute heartbeat from
+re-reading the same notification version while still allowing a newer in-place
+update of the same Android notification key to be reconciled. Existing
+repository fingerprints remain the cross-process/rebind idempotency boundary;
+raw notification strings remain parsing-only memory.
+
+Android's notification-listener filters are OS-owned and migration APIs are
+one-shot. To avoid inheriting the old alerting-only filter state, Aura declares
+a new `AuraNotificationListenerServiceV2` component whose manifest defaults
+include conversations, alerting, silent, and ongoing notifications. The
+original component remains only as a temporary fallback for installs that
+already granted it. The bridge exposes a one-time access-upgrade state; once V2
+has ever been granted on the device, Aura requests legacy unbind, disables the
+legacy component through PackageManager, and will not silently fall back to it
+if V2 is later revoked. Runtime generation gating remains authoritative during
+asynchronous Android teardown, so a late legacy callback cannot reach extras or
+candidate persistence.
 
 The payment-alert notification channel is a separate delivery surface from
 listener access. Aura exposes whether that channel is blocked and can open the
@@ -192,17 +220,23 @@ release gate.
 | Spoofed deep link leaks financial data | Exact scheme/host/path validation, opaque IDs, no query/fragment or financial URL values, immutable intents | Physical task-stack QA |
 | Backup or device transfer exports data | `allowBackup=false` plus exhaustive exclusion rules | OEM physical transfer test |
 | Logs or crashes capture candidate fields | Release log stripping; no crash SDK; raw fields absent from bridge and Room schema; M5-M7 emit no content logs | M9 physical logcat test |
-| Exported component accepts app actions | Listener, FileProvider, and candidate-action receiver are non-exported; listener is protected by the system bind permission | Recheck every manifest change |
+| Exported component accepts app actions | Both listener component identities, FileProvider, and candidate-action receiver are non-exported; both listeners are protected by the system bind permission | Recheck every manifest change |
 | Unsupported notification is inspected | Package/selection gate executes before the deferred extras extractor | Real-source review remains prohibited |
 | Regex denial of service blocks listener | Bounded NFKC input, precompiled static patterns, unsafe-pattern rejection and parsing benchmark | Repeat for every approved real-source rule |
 | Card/account identifier becomes merchant | Identifier-like merchant values are dropped and negative fixture coverage excludes security/account contexts | Revalidate against every approved real-source corpus |
 
 ## Controls Required In Later Milestones
 
-M4 declares only the non-exported system-bound listener with
-`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE` and package/selection
-checks before extras. Its catalog currently
-contains only the separate signature-protected synthetic test APK. M5 applies
+M4 exposes only payment-detection listener components through the system
+notification-listener binding surface. During the V2 migration there are two
+non-exported component identities, both protected by
+`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`: the original
+component is a temporary existing-grant fallback and V2 is the current
+component. Once V2 ownership is established, the legacy component is disabled
+locally and any still-live legacy instance is inert until system teardown. No
+application intent action is exported, and both paths keep package/selection
+checks before extras. The catalog currently contains only the
+separate signature-protected synthetic test APK. M5 applies
 negative rules before exact/review rules, supports EUR only, and releases raw
 strings after evaluation. M6 persists only encrypted structured payload, keyed
 fingerprints and bounded workflow metadata; migration failure has no

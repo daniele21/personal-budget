@@ -63,18 +63,35 @@ The possibility of incidental third-party data strengthens the requirement to ex
 ## Listener Recovery Processing
 
 Listener self-healing does not add a network recipient, analytics path, or
-remote processor. A native background worker reads only owner/detection state
-and Android listener-grant/connection metadata before requesting a system
-rebind.
+remote processor. Native recovery reads owner/detection state, Android
+listener-grant metadata, and in-process listener-health metadata. Recovery runs
+from foreground refreshes, the WorkManager fallback, and a best-effort
+one-minute in-process heartbeat while the system-bound listener remains alive;
+the heartbeat holds no wake lock. When a live endpoint exists Aura asks Android
+for the currently active notification snapshot; otherwise it requests a system
+binding repair.
 
-When the listener reconnects, Aura may re-evaluate currently active
-notifications that are newer than its local recovery watermark, capped to 128
-items and the existing 14-day pending-candidate horizon. Source package and
-user selection are checked before title/text/bigText are accessed. Raw strings
+Recovery may re-evaluate at most 128 of the newest currently active
+notifications from explicitly selected supported packages inside the existing
+14-day candidate horizon and the user's stable recovery window. Package and
+selection checks occur before title/text/bigText are accessed. Raw strings
 remain in memory for deterministic parsing only and are not persisted, logged,
-bridged, transmitted, or added to backup. Enabling detection or changing
-selected sources resets the watermark to the time of that affirmative action,
-preventing retroactive processing of older notification-tray content.
+bridged, transmitted, or added to backup. A bounded in-memory map of technical notification keys and latest processed
+post times prevents repeated heartbeat probes from re-reading the same
+notification version during one live binding while allowing a newer in-place
+update of that key to be reconciled; repository fingerprints preserve
+idempotency across process/rebind boundaries.
+Enabling detection or changing selected sources resets the recovery-window start to that affirmative action;
+observing newer callbacks does not advance it past a potentially missed older
+payment.
+
+Existing installs can temporarily retain the original Android listener grant.
+Aura exposes this as a one-time V2 access upgrade because Android owns listener
+filter state and may keep historical alerting-only defaults. Granting the V2
+component creates a fresh listener identity with all supported filter types.
+After V2 ownership is observed, Aura disables the legacy component and rejects
+late legacy callbacks through the effective-generation gate; it does not
+transfer or broaden access silently.
 
 ## Data Categories
 
@@ -136,6 +153,7 @@ The user must explicitly confirm before keeping a possible duplicate.
 | Raw input | Process memory during parsing | Never |
 | Candidate payload | Private Room database | Excluded from Aura and Android backup |
 | Selected-app settings | Private native preferences | Excluded from Android backup |
+| Listener V2 migration marker | Private native preference containing one boolean only | Excluded from Android backup |
 | Keystore key | Android Keystore | Not exported |
 | Tombstone | Private Room database | Excluded from all backup |
 | Confirmed transaction | Canonical Aura AppData | Existing local/archive/opt-in encrypted cloud rules |
@@ -160,6 +178,7 @@ No new subprocessor is introduced by the approved design. Google Play distributi
 | Ignored tombstone | 7 days |
 | Accepted/edited payload | Deleted after verified transaction commit |
 | Accepted/edited tombstone | 30 days |
+| Listener V2 migration marker | Device-local until app-data clear/uninstall; intentionally not owner-scoped because it prevents legacy fallback after V2 access was once granted |
 | Failed acceptance | Until deterministic recovery completes |
 | Selected-app settings | Until disable, logout, owner change, or reset as applicable |
 

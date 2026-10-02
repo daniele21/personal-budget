@@ -11,6 +11,9 @@ const auraPackage = 'com.staituned.aura.debug';
 const sourcePackage = 'com.staituned.aura.syntheticnotifications';
 const listenerComponent =
   `${auraPackage}/` +
+  'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerServiceV2';
+const legacyListenerComponent =
+  `${auraPackage}/` +
   'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerService';
 const setupComponent =
   `${auraPackage}/com.staituned.aura.SyntheticPaymentDetectionSetupActivity`;
@@ -80,6 +83,7 @@ function cleanup() {
     'cleanup',
   ]);
   tryAdb(['shell', 'cmd', 'notification', 'disallow_listener', listenerComponent]);
+  tryAdb(['shell', 'cmd', 'notification', 'disallow_listener', legacyListenerComponent]);
   tryAdb(['uninstall', sourcePackage]);
 }
 

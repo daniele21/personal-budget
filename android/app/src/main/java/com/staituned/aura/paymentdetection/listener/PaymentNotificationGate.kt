@@ -3,6 +3,7 @@ package com.staituned.aura.paymentdetection.listener
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * The package and user-selection gates execute before the deferred extractor.
@@ -19,16 +20,26 @@ internal class PaymentNotificationGate(
         extract: () -> PaymentNotificationEnvelope,
     ) {
         if (!isProcessingAllowed(packageName)) return
-        executor.execute {
-            try {
-                sink(packageName, extract())
-            } catch (_: RuntimeException) {
-                onFailure()
+        try {
+            executor.execute {
+                try {
+                    sink(packageName, extract())
+                } catch (_: RuntimeException) {
+                    onFailure()
+                }
             }
+        } catch (_: RejectedExecutionException) {
+            // A system rebind can race one final callback with service teardown.
+            // New work is intentionally ignored after close; already accepted
+            // work continues through the graceful executor shutdown.
         }
     }
 
     fun close() {
-        (executor as? ExecutorService)?.shutdownNow()
+        // Do not discard callbacks that already passed the package/user gate.
+        // A listener health repair may destroy the old service immediately
+        // after reconciliation enqueues work; graceful shutdown lets those
+        // bounded tasks finish while rejecting new work.
+        (executor as? ExecutorService)?.shutdown()
     }
 }

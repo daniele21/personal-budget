@@ -29,6 +29,7 @@ let status: NativePaymentDetectionStatus = {
   selectedPackages: apps.map((item) => item.packageName),
   osPermissionGranted: true,
   listenerConnected: true,
+  listenerAccessUpgradeRequired: false,
   auraNotificationPermissionGranted: true,
   candidateNotificationsEnabled: true,
 };
@@ -99,6 +100,7 @@ export const paymentDetection = {
     return { granted: true };
   },
   async openNotificationAccessSettings(): Promise<void> {},
+  async repairNotificationListener(): Promise<void> {},
   async openPaymentAlertSettings(): Promise<void> {},
   async deleteAllCandidates(): Promise<{ deletedCount: number }> {
     const deletedCount = candidates.length;

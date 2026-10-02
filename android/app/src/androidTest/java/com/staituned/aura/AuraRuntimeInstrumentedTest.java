@@ -76,6 +76,7 @@ public class AuraRuntimeInstrumentedTest {
                 android.content.pm.PackageManager.GET_SERVICES
                     | android.content.pm.PackageManager.GET_RECEIVERS
                     | android.content.pm.PackageManager.GET_PROVIDERS
+                    | android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS
             )
         );
 
@@ -85,21 +86,34 @@ public class AuraRuntimeInstrumentedTest {
                 .filter(service -> service.name.startsWith("com.staituned.aura."))
                 .toArray(android.content.pm.ServiceInfo[]::new);
         assertEquals(
-            "Only the M4 notification listener may be Aura-owned.",
-            1,
+            "Only the legacy/current payment listeners may be Aura-owned services.",
+            2,
             auraServices.length
         );
+        java.util.Set<String> serviceNames =
+            java.util.Arrays.stream(auraServices)
+                .map(service -> service.name)
+                .collect(java.util.stream.Collectors.toSet());
         assertTrue(
-            auraServices[0].name.endsWith("AuraNotificationListenerService")
+            serviceNames.contains(
+                "com.staituned.aura.paymentdetection.listener.AuraNotificationListenerService"
+            )
         );
-        assertFalse(
-            "The system-bound listener must not be exported.",
-            auraServices[0].exported
+        assertTrue(
+            serviceNames.contains(
+                "com.staituned.aura.paymentdetection.listener.AuraNotificationListenerServiceV2"
+            )
         );
-        assertEquals(
-            "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
-            auraServices[0].permission
-        );
+        for (android.content.pm.ServiceInfo service : auraServices) {
+            assertFalse(
+                "System-bound payment listeners must not be exported.",
+                service.exported
+            );
+            assertEquals(
+                "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
+                service.permission
+            );
+        }
         assertFalse(
             "M3 must not introduce an exported Aura-owned receiver.",
             packageInfo.receivers != null

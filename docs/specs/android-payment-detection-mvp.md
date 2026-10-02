@@ -108,11 +108,22 @@ Navigation away, back press, permission denial, or closing Aura does not count a
 9. Aura persists only a structured candidate if the match tier permits it.
 10. Exact-tier candidates may trigger a private Aura notification.
 11. Review-tier candidates appear only in the in-app queue.
-12. A native watchdog retries listener binding while detection remains enabled.
-13. After a reconnect, Aura replays only bounded active notifications newer
-    than the local recovery watermark through the same package gate and
-    deterministic rule engine; existing fingerprints keep the replay
-    idempotent.
+12. A native watchdog probes the effective listener while detection remains
+    enabled instead of trusting only the last `onListenerConnected` callback.
+13. Every successful probe reconciles a bounded snapshot of the newest active
+    notifications from explicitly selected supported packages through the same
+    package gate and deterministic rule engine. Existing technical fingerprints
+    keep repeated probes idempotent.
+14. If the health probe is unavailable or fails, Aura deliberately cycles the
+    effective listener binding with Android's unbind/rebind APIs.
+15. Existing installs that still hold the original listener component grant are
+    treated as legacy. Aura keeps that component only as a temporary fallback
+    and asks the user once to grant the V2 component, whose fresh Android
+    component identity declares alerting, silent, conversation, and ongoing
+    notification types from first grant. After V2 ownership is observed Aura
+    requests legacy unbind and disables the legacy component at PackageManager
+    level, while runtime generation gating keeps any late legacy callback inert
+    until Android finishes teardown.
 
 ### Review
 
@@ -287,11 +298,18 @@ No bank package, card information, account information, or raw bank text appears
 ## Error Behavior
 
 - Permission missing: detection unavailable; existing local queue remains manageable.
-- Listener disconnected with permission still granted: report `Reconnecting`,
-  request an immediate rebind, and retry through the native background watchdog.
+- Listener disconnected with permission still granted: report `Reconnecting`
+  and let the native recovery coordinator force a binding cycle if the live
+  endpoint cannot be probed.
+- Listener still reported connected but a posted callback is missed: the next
+  resume/worker health probe reconciles active selected notifications even
+  without a new `onListenerConnected` callback.
 - Payment posted during a listener blackout: reconcile bounded active
   notifications on the next successful connection without bypassing the
   package/user-selection gate.
+- Legacy listener grant from an older Aura build: keep detection available as a
+  temporary fallback, report `Access upgrade needed`, and require a one-time
+  grant of the V2 listener component before the install is considered healthy.
 - Aura payment-alert channel blocked: keep candidate detection operational,
   report `Alerts blocked`, and open the channel-specific Android settings.
 - Database failure: no Aura notification and no crash loop.
@@ -342,9 +360,18 @@ The MVP is acceptable when:
 19. Network and logcat leakage checks pass.
 20. A selected synthetic payment posted while the listener is disconnected is
     recovered after reconnect and is not duplicated if it was already observed.
-21. The UI distinguishes listener health from a blocked Aura payment-alert
-    channel and offers the appropriate Android repair surface.
-22. Physical-device, accessibility, privacy, security, and Play release gates pass.
+21. A selected synthetic payment whose posted callback is deliberately dropped
+    while the listener remains connected is recovered by a health probe without
+    relaunching Aura.
+22. A forced repair cycles the current listener component and produces a fresh
+    connection epoch.
+23. An install with only the legacy listener grant is surfaced as requiring a
+    one-time V2 access upgrade; after V2 has ever been granted, Aura disables
+    the legacy component, rejects late legacy callbacks, and never silently
+    falls back to it if V2 is later revoked.
+24. The UI distinguishes listener health, listener-access migration, and a
+    blocked Aura payment-alert channel and offers the appropriate repair surface.
+25. Physical-device, accessibility, privacy, security, and Play release gates pass.
 
 ## Pilot Gate
 

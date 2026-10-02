@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     selectedPackages: [] as string[],
     osPermissionGranted: false,
     listenerConnected: false,
+    listenerAccessUpgradeRequired: false,
     auraNotificationPermissionGranted: false,
     candidateNotificationsEnabled: false,
   },
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   setRequestedEnabled: vi.fn(),
   requestNotificationPermission: vi.fn(),
   openNotificationAccessSettings: vi.fn(),
+  repairNotificationListener: vi.fn(),
   openPaymentAlertSettings: vi.fn(),
   deleteAllCandidates: vi.fn(),
   toast: vi.fn(),
@@ -61,6 +63,7 @@ vi.mock('../../../state/PaymentDetectionProvider', () => ({
     setRequestedEnabled: mocks.setRequestedEnabled,
     requestNotificationPermission: mocks.requestNotificationPermission,
     openNotificationAccessSettings: mocks.openNotificationAccessSettings,
+    repairNotificationListener: mocks.repairNotificationListener,
     openPaymentAlertSettings: mocks.openPaymentAlertSettings,
     deleteAllCandidates: mocks.deleteAllCandidates,
   }),
@@ -79,11 +82,13 @@ describe('PaymentDetectionSettings', () => {
       selectedPackages: [],
       osPermissionGranted: false,
       listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
       auraNotificationPermissionGranted: false,
       candidateNotificationsEnabled: false,
     });
     mocks.requestNotificationPermission.mockResolvedValue(true);
     mocks.openNotificationAccessSettings.mockResolvedValue(undefined);
+    mocks.repairNotificationListener.mockResolvedValue(undefined);
     mocks.openPaymentAlertSettings.mockResolvedValue(undefined);
     mocks.updateSelectedApps.mockResolvedValue(undefined);
   });
@@ -156,9 +161,49 @@ describe('PaymentDetectionSettings', () => {
     const user = userEvent.setup();
 
     render(<PaymentDetectionSettings />);
-    await user.click(screen.getByRole('button', { name: 'Repair Android access' }));
+    await user.click(screen.getByRole('button', { name: 'Repair listener now' }));
 
-    expect(mocks.openNotificationAccessSettings).toHaveBeenCalledOnce();
+    expect(mocks.repairNotificationListener).toHaveBeenCalledOnce();
+    expect(mocks.openNotificationAccessSettings).not.toHaveBeenCalled();
+  });
+
+  it('requires a one-time V2 listener upgrade for legacy Android grants', async () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: true,
+      listenerAccessUpgradeRequired: true,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+    });
+    const user = userEvent.setup();
+
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('Access upgrade needed')).toBeInTheDocument();
+    expect(screen.getByText(/legacy Android listener/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Upgrade Android access' }));
+
+    expect(mocks.repairNotificationListener).toHaveBeenCalledOnce();
+  });
+
+  it('offers explicit repair even when Android still reports the V2 listener connected', async () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: true,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+    });
+    const user = userEvent.setup();
+
+    render(<PaymentDetectionSettings />);
+    await user.click(screen.getByRole('button', { name: 'Repair listener' }));
+
+    expect(mocks.repairNotificationListener).toHaveBeenCalledOnce();
   });
 
   it('keeps source selection as a separate affirmative control', async () => {
