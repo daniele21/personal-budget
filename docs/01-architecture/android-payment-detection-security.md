@@ -81,21 +81,39 @@ strings, Firebase/Google tokens, email, icons, images, actions and remote views.
 
 ## Listener Recovery And Missed-Notification Reconciliation
 
-Aura does not rely on the React/WebView lifecycle to keep the Android listener
-healthy. A native WorkManager watchdog runs only against metadata and asks
-Android to rebind the system listener when all of these are true: an owner
-exists, detection is user-enabled, notification-listener access is granted,
-and the listener is not currently connected.
+Aura does not treat the last `onListenerConnected` callback as proof of
+continued health. While detection remains enabled, a native WorkManager worker
+and foreground status refreshes call one recovery coordinator. The coordinator
+asks the effective listener endpoint to perform a bounded
+`getActiveNotifications()` snapshot. A successful snapshot both proves that
+the service can still talk to Android's notification manager and replays any
+selected active notification whose posted callback was missed. If the endpoint
+is absent or the snapshot fails, the coordinator deliberately cycles that exact
+component with `requestUnbind(ComponentName)` followed by
+`requestRebind(ComponentName)`.
 
-The owner-scoped settings store keeps a monotonic recovery watermark. Enabling
-detection or changing selected sources starts a new watermark at that user
-action, so an upgrade or newly selected source does not retroactively import
-older tray content. After a successful reconnect, the listener examines at most
-128 currently active notifications newer than the watermark and no older than
-the existing 14-day pending-candidate horizon. Package and user-selection gates
-execute before notification extras are read. Successful deterministic
-processing advances the watermark; failed processing does not. Existing
-technical fingerprints make replay idempotent.
+Recovery uses a stable owner-scoped window that starts at the latest
+enable/source-selection boundary and never advances merely because a callback
+was observed. This avoids skipping an older missed payment when a newer
+notification callback arrives first. Upgraded 1.0.15 installs may seed the new
+window once from the previous watermark because that timestamp already lies
+inside the user's enabled period. The effective floor is still capped to the
+existing 14-day pending-candidate horizon.
+
+The active snapshot is filtered by source package and explicit user selection
+before extras are read and before the 128-item cap is applied. Aura takes the
+newest selected notifications first, then processes them in posting order.
+Existing technical fingerprints make repeated health probes idempotent; raw
+notification strings remain parsing-only memory.
+
+Android's notification-listener filters are OS-owned and migration APIs are
+one-shot. To avoid inheriting the old alerting-only filter state, Aura declares
+a new `AuraNotificationListenerServiceV2` component whose manifest defaults
+include conversations, alerting, silent, and ongoing notifications. The
+original component remains only as a temporary fallback for installs that
+already granted it. The bridge exposes a one-time access-upgrade state; once V2
+has ever been granted on the device, Aura will not silently fall back to the
+legacy component if V2 is later revoked.
 
 The payment-alert notification channel is a separate delivery surface from
 listener access. Aura exposes whether that channel is blocked and can open the
