@@ -3,6 +3,7 @@ package com.staituned.aura.paymentdetection.listener
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 
@@ -71,6 +72,34 @@ internal class NotificationAccessController(
         effectiveGeneration()?.let(PaymentDetectionListenerRuntime::isConnected)
             ?: false
 
+    /**
+     * Keeps the migration component lifecycle aligned with the durable grant
+     * state. Legacy remains enabled only while it is the user's pre-V2 grant.
+     * As soon as V2 has ever been granted, legacy is disabled at PackageManager
+     * level so Android cannot keep or recreate a second live listener binding.
+     */
+    fun synchronizeComponentLifecycle(): NotificationListenerAccessState {
+        val access = state()
+        if (
+            access.currentGranted ||
+            access.currentGrantObservedBefore ||
+            !access.legacyGranted
+        ) {
+            retireLegacyComponent()
+        } else {
+            ensureLegacyComponentEnabled()
+        }
+        return state()
+    }
+
+    fun retireLegacyComponentIfCurrentOwned(): Boolean {
+        val access = state()
+        if (!access.currentGranted && !access.currentGrantObservedBefore) {
+            return false
+        }
+        return retireLegacyComponent()
+    }
+
     fun requestRebindIfGranted(): Boolean {
         val component = effectiveComponent() ?: return false
         return requestRebind(component)
@@ -92,16 +121,59 @@ internal class NotificationAccessController(
         }
     }
 
-    fun requestLegacyUnbindIfCurrentGranted(): Boolean {
-        val access = state()
-        if (!access.currentGranted || !access.legacyGranted) return false
-        return try {
+    /**
+     * Legacy retirement is stronger than requestUnbind alone. Android may keep
+     * an already-bound service instance alive after an unbind request, while a
+     * disabled component cannot be selected for a future binding. The runtime
+     * effective-generation gate remains a second defense until teardown lands.
+     */
+    private fun retireLegacyComponent(): Boolean {
+        var unbindRequested = false
+        try {
             NotificationListenerService.requestUnbind(legacyListenerComponent)
-            true
+            unbindRequested = true
+        } catch (_: RuntimeException) {
+            // Component disabling below is the canonical retirement mechanism.
+        }
+
+        return try {
+            context.packageManager.setComponentEnabledSetting(
+                legacyListenerComponent,
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP,
+            )
+            unbindRequested || !isLegacyComponentEnabled()
         } catch (_: RuntimeException) {
             false
         }
     }
+
+    private fun ensureLegacyComponentEnabled(): Boolean =
+        try {
+            if (!isLegacyComponentEnabled()) {
+                context.packageManager.setComponentEnabledSetting(
+                    legacyListenerComponent,
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP,
+                )
+            }
+            true
+        } catch (_: RuntimeException) {
+            false
+        }
+
+    private fun isLegacyComponentEnabled(): Boolean =
+        when (
+            context.packageManager.getComponentEnabledSetting(
+                legacyListenerComponent,
+            )
+        ) {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+            -> false
+            else -> true
+        }
 
     /**
      * Always opens the current V2 component. Existing installs that still have
