@@ -306,8 +306,11 @@ describe('Android security configuration', () => {
     expect(verification).toContain('Missed active payment reconciliation: PASS');
     expect(verification).toContain('AuraNotificationListenerServiceV2');
     expect(verification).toContain('liveListenerSection');
-    expect(verification).toContain('waitForComponentNotLive');
-    expect(verification).toContain('V2 exclusively owns the live listener path: PASS');
+    expect(verification).toContain('ownershipProbe.currentConnected');
+    expect(verification).toContain('ownershipProbe.legacyConnected');
+    expect(verification).toContain(
+      'V2 exclusively owns Aura runtime listener processing: PASS',
+    );
     expect(verification).toContain("'am', 'kill', auraPackage");
     expect(verification).not.toContain("'am', 'force-stop', auraPackage");
     expect(verification).toContain('ShellSyntheticNotificationActivity');
@@ -315,6 +318,8 @@ describe('Android security configuration', () => {
     expect(verification).toContain('disallow_listener');
     expect(verification).toContain('finally');
     expect(harness).toContain('MODE_PROBE');
+    expect(harness).toContain('currentConnected=');
+    expect(harness).toContain('legacyConnected=');
     expect(harness).not.toContain('rawNotification');
   });
 });
