@@ -17,6 +17,8 @@ import com.staituned.aura.paymentdetection.events.PaymentCandidateChange
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChangeReason
 import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryCoordinator
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryResult
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -51,6 +53,24 @@ abstract class BaseAuraNotificationListenerService :
     }
     private val gate by gateDelegate
 
+    private val healthHeartbeat = object : Runnable {
+        override fun run() {
+            if (!isEffectiveListener()) return
+            val result =
+                PaymentListenerRecoveryCoordinator(applicationContext).recoverNow()
+            when (result) {
+                PaymentListenerRecoveryResult.REBIND_REQUESTED,
+                PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
+                PaymentListenerRecoveryResult.NO_ACCESS,
+                PaymentListenerRecoveryResult.DISABLED,
+                PaymentListenerRecoveryResult.FAILED,
+                -> Unit
+                PaymentListenerRecoveryResult.RECONCILED ->
+                    mainHandler.postDelayed(this, HEALTH_HEARTBEAT_INTERVAL_MS)
+            }
+        }
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
 
@@ -83,9 +103,12 @@ abstract class BaseAuraNotificationListenerService :
             accessController.requestLegacyUnbindIfCurrentGranted()
         }
         reconcileActiveNotifications()
+        mainHandler.removeCallbacks(healthHeartbeat)
+        mainHandler.postDelayed(healthHeartbeat, HEALTH_HEARTBEAT_INTERVAL_MS)
     }
 
     override fun onListenerDisconnected() {
+        mainHandler.removeCallbacks(healthHeartbeat)
         PaymentDetectionListenerRuntime.unregister(generation, this)
         if (accessController.effectiveGeneration() == generation) {
             requestRebind(ComponentName(this, javaClass))
@@ -112,6 +135,7 @@ abstract class BaseAuraNotificationListenerService :
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(healthHeartbeat)
         PaymentDetectionListenerRuntime.unregister(generation, this)
         if (gateDelegate.isInitialized()) {
             gate.close()
@@ -214,6 +238,10 @@ abstract class BaseAuraNotificationListenerService :
                 is CandidatePersistenceResult.Duplicate -> Unit
             }
         }
+        PaymentDetectionListenerRuntime.markNotificationProcessed(
+            generation,
+            envelope.notificationKey,
+        )
     }
 
     private fun reconcileActiveNotifications(): PaymentListenerEndpointProbeResult {
@@ -238,6 +266,12 @@ abstract class BaseAuraNotificationListenerService :
         val selectedNotifications = notifications.asSequence()
             .filter { it.postTime in floor..(now + MAX_CLOCK_SKEW_MS) }
             .filter { settingsStore.isProcessingAllowed(it.packageName) }
+            .filter {
+                !PaymentDetectionListenerRuntime.wasNotificationProcessed(
+                    generation,
+                    it.key,
+                )
+            }
             .sortedByDescending { it.postTime }
             .take(MAX_RECOVERY_NOTIFICATIONS)
             .toList()
@@ -268,6 +302,7 @@ abstract class BaseAuraNotificationListenerService :
         private const val MAX_CLOCK_SKEW_MS = 5L * 60L * 1000L
         private const val MAX_RECOVERY_NOTIFICATIONS = 128
         private const val HEALTH_PROBE_TIMEOUT_SECONDS = 3L
+        private const val HEALTH_HEARTBEAT_INTERVAL_MS = 60_000L
     }
 }
 
