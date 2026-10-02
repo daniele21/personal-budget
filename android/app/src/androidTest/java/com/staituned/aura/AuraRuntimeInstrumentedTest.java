@@ -76,6 +76,7 @@ public class AuraRuntimeInstrumentedTest {
                 android.content.pm.PackageManager.GET_SERVICES
                     | android.content.pm.PackageManager.GET_RECEIVERS
                     | android.content.pm.PackageManager.GET_PROVIDERS
+                    | android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS
             )
         );
 
