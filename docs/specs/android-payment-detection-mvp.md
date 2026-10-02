@@ -120,7 +120,10 @@ Navigation away, back press, permission denial, or closing Aura does not count a
     treated as legacy. Aura keeps that component only as a temporary fallback
     and asks the user once to grant the V2 component, whose fresh Android
     component identity declares alerting, silent, conversation, and ongoing
-    notification types from first grant.
+    notification types from first grant. After V2 ownership is observed Aura
+    requests legacy unbind and disables the legacy component at PackageManager
+    level, while runtime generation gating keeps any late legacy callback inert
+    until Android finishes teardown.
 
 ### Review
 
@@ -363,8 +366,9 @@ The MVP is acceptable when:
 22. A forced repair cycles the current listener component and produces a fresh
     connection epoch.
 23. An install with only the legacy listener grant is surfaced as requiring a
-    one-time V2 access upgrade; after V2 has ever been granted, Aura never
-    silently falls back to the legacy component if V2 is later revoked.
+    one-time V2 access upgrade; after V2 has ever been granted, Aura disables
+    the legacy component, rejects late legacy callbacks, and never silently
+    falls back to it if V2 is later revoked.
 24. The UI distinguishes listener health, listener-access migration, and a
     blocked Aura payment-alert channel and offers the appropriate repair surface.
 25. Physical-device, accessibility, privacy, security, and Play release gates pass.

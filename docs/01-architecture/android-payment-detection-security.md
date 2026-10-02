@@ -119,8 +119,11 @@ a new `AuraNotificationListenerServiceV2` component whose manifest defaults
 include conversations, alerting, silent, and ongoing notifications. The
 original component remains only as a temporary fallback for installs that
 already granted it. The bridge exposes a one-time access-upgrade state; once V2
-has ever been granted on the device, Aura will not silently fall back to the
-legacy component if V2 is later revoked.
+has ever been granted on the device, Aura requests legacy unbind, disables the
+legacy component through PackageManager, and will not silently fall back to it
+if V2 is later revoked. Runtime generation gating remains authoritative during
+asynchronous Android teardown, so a late legacy callback cannot reach extras or
+candidate persistence.
 
 The payment-alert notification channel is a separate delivery surface from
 listener access. Aura exposes whether that channel is blocked and can open the
@@ -229,8 +232,10 @@ notification-listener binding surface. During the V2 migration there are two
 non-exported component identities, both protected by
 `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`: the original
 component is a temporary existing-grant fallback and V2 is the current
-component. No application intent action is exported, and both paths keep
-package/selection checks before extras. The catalog currently contains only the
+component. Once V2 ownership is established, the legacy component is disabled
+locally and any still-live legacy instance is inert until system teardown. No
+application intent action is exported, and both paths keep package/selection
+checks before extras. The catalog currently contains only the
 separate signature-protected synthetic test APK. M5 applies
 negative rules before exact/review rules, supports EUR only, and releases raw
 strings after evaluation. M6 persists only encrypted structured payload, keyed

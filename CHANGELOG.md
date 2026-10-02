@@ -250,7 +250,9 @@
   a stable recovery window so newer callbacks cannot skip older missed
   payments, applies the replay cap only after source selection, and introduces
   a V2 listener component with fresh all-notification filter defaults plus an
-  explicit one-time upgrade path for legacy grants.
+  explicit one-time upgrade path for legacy grants. After V2 ownership is
+  observed, Aura disables the legacy component and keeps late legacy callbacks
+  inert while Android completes asynchronous teardown.
 - Added a native self-healing path for Android payment detection: a periodic
   listener watchdog retries system binding without depending on the WebView,
   reconnects replay bounded active selected notifications from a monotonic

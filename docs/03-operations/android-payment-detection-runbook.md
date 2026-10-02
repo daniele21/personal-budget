@@ -133,8 +133,12 @@ If the UI shows **Access upgrade needed**, the install still has only the
 original listener component grant. Use **Upgrade Android access** and enable
 **Aura payment detection** (not the entry marked legacy) in Android settings.
 This is a one-time migration to a new component identity with fresh
-all-notification filter defaults. Once V2 has been granted, revoking it stops
-Aura rather than silently falling back to the old component.
+all-notification filter defaults. Once V2 has been granted, Aura requests
+legacy unbind and disables the legacy component locally; revoking V2 then stops
+Aura rather than silently falling back to the old component. Android teardown
+is asynchronous, so diagnostics must inspect the actual **Live notification
+listeners** section rather than treating any historical component mention in
+`dumpsys notification` as a live binding.
 
 If the UI shows **Active** but a real payment is missed, use **Repair listener**.
 That forces a V2 binding cycle even though Android still reports the grant.

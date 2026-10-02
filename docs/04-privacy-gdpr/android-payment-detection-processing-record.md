@@ -88,8 +88,10 @@ payment.
 Existing installs can temporarily retain the original Android listener grant.
 Aura exposes this as a one-time V2 access upgrade because Android owns listener
 filter state and may keep historical alerting-only defaults. Granting the V2
-component creates a fresh listener identity with all supported filter types;
-Aura does not transfer or broaden access silently.
+component creates a fresh listener identity with all supported filter types.
+After V2 ownership is observed, Aura disables the legacy component and rejects
+late legacy callbacks through the effective-generation gate; it does not
+transfer or broaden access silently.
 
 ## Data Categories
 
