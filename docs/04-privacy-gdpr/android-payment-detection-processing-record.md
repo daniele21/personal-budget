@@ -63,18 +63,24 @@ The possibility of incidental third-party data strengthens the requirement to ex
 ## Listener Recovery Processing
 
 Listener self-healing does not add a network recipient, analytics path, or
-remote processor. A native background worker reads owner/detection state,
-Android listener-grant metadata, and in-process listener-health metadata. When a
-live endpoint exists it asks Android for the currently active notification
-snapshot; otherwise it requests a system binding repair.
+remote processor. Native recovery reads owner/detection state, Android
+listener-grant metadata, and in-process listener-health metadata. Recovery runs
+from foreground refreshes, the WorkManager fallback, and a best-effort
+one-minute in-process heartbeat while the system-bound listener remains alive;
+the heartbeat holds no wake lock. When a live endpoint exists Aura asks Android
+for the currently active notification snapshot; otherwise it requests a system
+binding repair.
 
 Recovery may re-evaluate at most 128 of the newest currently active
 notifications from explicitly selected supported packages inside the existing
 14-day candidate horizon and the user's stable recovery window. Package and
 selection checks occur before title/text/bigText are accessed. Raw strings
 remain in memory for deterministic parsing only and are not persisted, logged,
-bridged, transmitted, or added to backup. Enabling detection or changing
-selected sources resets the recovery-window start to that affirmative action;
+bridged, transmitted, or added to backup. A bounded in-memory set of technical
+notification keys prevents repeated heartbeat probes from re-reading
+notifications that already completed processing during the same live binding;
+repository fingerprints preserve idempotency across process/rebind boundaries.
+Enabling detection or changing selected sources resets the recovery-window start to that affirmative action;
 observing newer callbacks does not advance it past a potentially missed older
 payment.
 
