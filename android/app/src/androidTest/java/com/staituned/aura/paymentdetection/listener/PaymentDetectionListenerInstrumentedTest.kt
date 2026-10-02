@@ -13,6 +13,8 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.data.SupportedPaymentAppCatalog
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryCoordinator
+import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -61,8 +63,8 @@ class PaymentDetectionListenerInstrumentedTest {
     }
 
     @Test
-    fun recoveryBaselineStartsAtEnableAndAdvancesMonotonically() {
-        val namespace = "payment_detection_recovery_baseline_instrumentation"
+    fun recoveryWindowStartsAtEnableAndDoesNotAdvancePastMissedCallbacks() {
+        val namespace = "payment_detection_recovery_window_instrumentation"
         var clock = 1_800_000_000_000L
         val privacyStore = PaymentDetectionPrivacyStore(
             context = context,
@@ -81,64 +83,53 @@ class PaymentDetectionListenerInstrumentedTest {
             requestedEnabled = true,
             selectedPackages = setOf(SYNTHETIC_PACKAGE),
         )
-        assertEquals(clock, settingsStore.recoveryBaselineAt())
+        assertEquals(clock, settingsStore.recoveryWindowStartedAt())
 
         clock += 500L
-        settingsStore.markNotificationObserved(clock)
-        assertEquals(clock, settingsStore.recoveryBaselineAt())
+        assertEquals(
+            1_800_000_000_000L,
+            settingsStore.recoveryWindowStartedAt(),
+        )
 
-        settingsStore.markNotificationObserved(clock - 250L)
-        assertEquals(clock, settingsStore.recoveryBaselineAt())
+        settingsStore.updateSettings(
+            requestedEnabled = true,
+            selectedPackages = emptySet(),
+        )
+        assertEquals(clock, settingsStore.recoveryWindowStartedAt())
 
         settingsStore.updateSettings(
             requestedEnabled = false,
-            selectedPackages = setOf(SYNTHETIC_PACKAGE),
+            selectedPackages = emptySet(),
         )
-        assertNull(settingsStore.recoveryBaselineAt())
+        assertNull(settingsStore.recoveryWindowStartedAt())
         privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
     }
 
     @Test
     fun reconnectReconcilesSelectedPaymentPostedDuringListenerBlackout() {
-        val component = ComponentName(
-            context,
-            AuraNotificationListenerService::class.java,
-        ).flattenToString()
+        val component = currentComponent()
         val privacyStore = PaymentDetectionPrivacyStore(context)
         val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
+        resetListenerGrants()
         privacyStore.purge(NativePurgeReason.LOCAL_RESET)
         privacyStore.registerOwner("synthetic-reconnect-owner")
         settingsStore.updateSettings(true, setOf(SYNTHETIC_PACKAGE))
         PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
 
         try {
-            shell(
-                "pm grant ${context.packageName} " +
-                    "android.permission.POST_NOTIFICATIONS",
-            )
-            shell(
-                "pm grant $SYNTHETIC_PACKAGE " +
-                    "android.permission.POST_NOTIFICATIONS",
-            )
+            grantNotificationPermissions()
             shell("cmd notification disallow_listener $component")
             Thread.sleep(300)
 
-            context.startActivity(
-                Intent()
-                    .setComponent(
-                        ComponentName(
-                            SYNTHETIC_PACKAGE,
-                            "com.staituned.aura.testsource.SyntheticNotificationActivity",
-                        ),
-                    )
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+            postSyntheticNotification()
             Thread.sleep(500)
             assertEquals(0, PaymentDetectionListenerRuntime.acceptedEnvelopeCount())
 
             shell("cmd notification allow_listener $component")
-            waitUntil("listener reconnect") {
-                PaymentDetectionListenerRuntime.isConnected()
+            waitUntil("V2 listener reconnect") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
             }
             waitUntil("reconciled exact match") {
                 PaymentDetectionListenerRuntime.detectedCount(
@@ -150,10 +141,125 @@ class PaymentDetectionListenerInstrumentedTest {
             }
             assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
         } finally {
-            shell("cmd notification disallow_listener $component")
+            resetListenerGrants()
             shell("am force-stop $SYNTHETIC_PACKAGE")
             PaymentCandidateNotifier(context).cancelAll()
             privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
+        }
+    }
+
+    @Test
+    fun healthProbeRecoversPaymentWhenConnectedCallbackIsMissed() {
+        val component = currentComponent()
+        val privacyStore = PaymentDetectionPrivacyStore(context)
+        val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
+        resetListenerGrants()
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("synthetic-zombie-owner")
+        settingsStore.updateSettings(true, setOf(SYNTHETIC_PACKAGE))
+        PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
+
+        try {
+            grantNotificationPermissions()
+            shell("cmd notification allow_listener $component")
+            waitUntil("V2 listener connection") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
+            }
+
+            PaymentDetectionListenerRuntime.suppressNextPostedCallbackForTest()
+            postSyntheticNotification()
+            Thread.sleep(500)
+
+            assertTrue(
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                ),
+            )
+            assertEquals(0, PaymentDetectionListenerRuntime.acceptedEnvelopeCount())
+
+            assertEquals(
+                PaymentListenerRecoveryResult.RECONCILED,
+                PaymentListenerRecoveryCoordinator(context).recoverNow(),
+            )
+            waitUntil("health-probe exact recovery") {
+                PaymentDetectionListenerRuntime.detectedCount(
+                    PaymentMatchTier.EXACT,
+                ) >= 1
+            }
+            waitUntil("health-probe candidate persistence") {
+                PaymentDetectionListenerRuntime.persistedCandidateCount() >= 1
+            }
+            assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
+        } finally {
+            resetListenerGrants()
+            shell("am force-stop $SYNTHETIC_PACKAGE")
+            PaymentCandidateNotifier(context).cancelAll()
+            privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
+        }
+    }
+
+    @Test
+    fun explicitRepairCyclesAStaleCurrentListenerBinding() {
+        val component = currentComponent()
+        resetListenerGrants()
+        try {
+            shell("cmd notification allow_listener $component")
+            waitUntil("V2 listener connection") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
+            }
+            val before = PaymentDetectionListenerRuntime.connectionEpoch(
+                PaymentListenerGeneration.CURRENT,
+            )
+
+            assertTrue(
+                NotificationAccessController(context).forceRebindIfGranted(),
+            )
+            waitUntil("V2 listener force-rebind") {
+                PaymentDetectionListenerRuntime.connectionEpoch(
+                    PaymentListenerGeneration.CURRENT,
+                ) > before
+            }
+        } finally {
+            resetListenerGrants()
+        }
+    }
+
+    @Test
+    fun legacyGrantIsDetectedUntilV2AccessIsGranted() {
+        val legacy = legacyComponent()
+        val current = currentComponent()
+        val controller = NotificationAccessController(context)
+        resetListenerGrants()
+
+        try {
+            shell("cmd notification allow_listener $legacy")
+            waitUntil("legacy grant") {
+                controller.state().legacyGranted
+            }
+            assertTrue(controller.isGranted())
+            assertTrue(controller.migrationRequired())
+            assertFalse(controller.state().currentGranted)
+
+            shell("cmd notification allow_listener $current")
+            waitUntil("V2 grant") {
+                controller.state().currentGranted
+            }
+            waitUntil("V2 connection") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
+            }
+            assertFalse(controller.migrationRequired())
+            assertEquals(
+                PaymentListenerGeneration.CURRENT,
+                controller.effectiveGeneration(),
+            )
+        } finally {
+            resetListenerGrants()
         }
     }
 
@@ -188,42 +294,25 @@ class PaymentDetectionListenerInstrumentedTest {
     }
 
     @Test
-    fun controlledTestAppReachesListenerWithoutLaunchingAuraUi() {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val component = ComponentName(
-            context,
-            AuraNotificationListenerService::class.java,
-        ).flattenToString()
+    fun controlledTestAppReachesV2ListenerWithoutLaunchingAuraUi() {
+        val component = currentComponent()
         val privacyStore = PaymentDetectionPrivacyStore(context)
         val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
+        resetListenerGrants()
         privacyStore.purge(NativePurgeReason.LOCAL_RESET)
         privacyStore.registerOwner("synthetic-end-to-end-owner")
         settingsStore.updateSettings(true, setOf(SYNTHETIC_PACKAGE))
         PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
 
         try {
-            shell(
-                "pm grant ${context.packageName} " +
-                    "android.permission.POST_NOTIFICATIONS",
-            )
+            grantNotificationPermissions()
             shell("cmd notification allow_listener $component")
-            waitUntil("listener connection") {
-                PaymentDetectionListenerRuntime.isConnected()
+            waitUntil("V2 listener connection") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
             }
-            shell(
-                "pm grant $SYNTHETIC_PACKAGE " +
-                    "android.permission.POST_NOTIFICATIONS",
-            )
-            context.startActivity(
-                Intent()
-                    .setComponent(
-                        ComponentName(
-                            SYNTHETIC_PACKAGE,
-                            "com.staituned.aura.testsource.SyntheticNotificationActivity",
-                        ),
-                    )
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+            postSyntheticNotification()
 
             waitUntil("synthetic notification callback") {
                 PaymentDetectionListenerRuntime.acceptedEnvelopeCount() == 1
@@ -252,10 +341,52 @@ class PaymentDetectionListenerInstrumentedTest {
                 PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.IGNORED),
             )
         } finally {
-            shell("cmd notification disallow_listener $component")
+            resetListenerGrants()
             PaymentCandidateNotifier(context).cancelAll()
             privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
         }
+    }
+
+    private fun grantNotificationPermissions() {
+        shell(
+            "pm grant ${context.packageName} " +
+                "android.permission.POST_NOTIFICATIONS",
+        )
+        shell(
+            "pm grant $SYNTHETIC_PACKAGE " +
+                "android.permission.POST_NOTIFICATIONS",
+        )
+    }
+
+    private fun postSyntheticNotification() {
+        context.startActivity(
+            Intent()
+                .setComponent(
+                    ComponentName(
+                        SYNTHETIC_PACKAGE,
+                        "com.staituned.aura.testsource.SyntheticNotificationActivity",
+                    ),
+                )
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+
+    private fun currentComponent(): String =
+        ComponentName(
+            context,
+            AuraNotificationListenerServiceV2::class.java,
+        ).flattenToString()
+
+    private fun legacyComponent(): String =
+        ComponentName(
+            context,
+            AuraNotificationListenerService::class.java,
+        ).flattenToString()
+
+    private fun resetListenerGrants() {
+        shell("cmd notification disallow_listener ${currentComponent()}")
+        shell("cmd notification disallow_listener ${legacyComponent()}")
+        Thread.sleep(150)
     }
 
     private fun shell(command: String) {
@@ -268,7 +399,7 @@ class PaymentDetectionListenerInstrumentedTest {
     }
 
     private fun waitUntil(label: String, predicate: () -> Boolean) {
-        repeat(50) {
+        repeat(80) {
             if (predicate()) return
             Thread.sleep(100)
         }
