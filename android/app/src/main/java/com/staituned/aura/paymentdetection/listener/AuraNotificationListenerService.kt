@@ -63,8 +63,7 @@ abstract class BaseAuraNotificationListenerService :
                 PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.NO_ACCESS,
                 PaymentListenerRecoveryResult.DISABLED,
-                PaymentListenerRecoveryResult.FAILED,
-                -> Unit
+                PaymentListenerRecoveryResult.FAILED -> Unit
                 PaymentListenerRecoveryResult.RECONCILED ->
                     mainHandler.postDelayed(this, HEALTH_HEARTBEAT_INTERVAL_MS)
             }
@@ -103,8 +102,7 @@ abstract class BaseAuraNotificationListenerService :
             accessController.requestLegacyUnbindIfCurrentGranted()
         }
         reconcileActiveNotifications()
-        mainHandler.removeCallbacks(healthHeartbeat)
-        mainHandler.postDelayed(healthHeartbeat, HEALTH_HEARTBEAT_INTERVAL_MS)
+        armHealthHeartbeat()
     }
 
     override fun onListenerDisconnected() {
@@ -141,6 +139,11 @@ abstract class BaseAuraNotificationListenerService :
             gate.close()
         }
         super.onDestroy()
+    }
+
+    override fun armHealthHeartbeat() {
+        mainHandler.removeCallbacks(healthHeartbeat)
+        mainHandler.postDelayed(healthHeartbeat, HEALTH_HEARTBEAT_INTERVAL_MS)
     }
 
     /**
