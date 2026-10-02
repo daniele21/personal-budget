@@ -83,15 +83,17 @@ strings, Firebase/Google tokens, email, icons, images, actions and remote views.
 ## Listener Recovery And Missed-Notification Reconciliation
 
 Aura does not treat the last `onListenerConnected` callback as proof of
-continued health. While detection remains enabled, a native WorkManager worker
-and foreground status refreshes call one recovery coordinator. The coordinator
-asks the effective listener endpoint to perform a bounded
-`getActiveNotifications()` snapshot. A successful snapshot both proves that
-the service can still talk to Android's notification manager and replays any
-selected active notification whose posted callback was missed. If the endpoint
-is absent or the snapshot fails, the coordinator deliberately cycles that exact
-component with `requestUnbind(ComponentName)` followed by
-`requestRebind(ComponentName)`.
+continued health. While detection remains enabled, one native recovery
+coordinator is driven by foreground status refreshes, the WorkManager fallback,
+and a best-effort one-minute in-process heartbeat while the system-bound
+listener process remains alive. The heartbeat holds no wake lock; WorkManager
+remains the process-recreation fallback. The coordinator asks the effective
+listener endpoint to perform a bounded `getActiveNotifications()` snapshot. A
+successful snapshot both proves that the service can still talk to Android's
+notification manager and replays any selected active notification whose posted
+callback was missed. If the endpoint is absent or the snapshot fails, the
+coordinator deliberately cycles that exact component with
+`requestUnbind(ComponentName)` followed by `requestRebind(ComponentName)`.
 
 Recovery uses a stable owner-scoped window that starts at the latest
 enable/source-selection boundary and never advances merely because a callback
@@ -104,8 +106,11 @@ existing 14-day pending-candidate horizon.
 The active snapshot is filtered by source package and explicit user selection
 before extras are read and before the 128-item cap is applied. Aura takes the
 newest selected notifications first, then processes them in posting order.
-Existing technical fingerprints make repeated health probes idempotent; raw
-notification strings remain parsing-only memory.
+During one live binding, a bounded in-memory set of 512 technical notification
+keys prevents the one-minute heartbeat from repeatedly re-reading content that
+already completed deterministic processing. Existing repository fingerprints
+remain the cross-process/rebind idempotency boundary; raw notification strings
+remain parsing-only memory.
 
 Android's notification-listener filters are OS-owned and migration APIs are
 one-shot. To avoid inheriting the old alerting-only filter state, Aura declares
