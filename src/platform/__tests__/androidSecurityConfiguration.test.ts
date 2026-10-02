@@ -188,6 +188,8 @@ describe('Android security configuration', () => {
     expect(listener).toContain('PaymentListenerGeneration.LEGACY');
     expect(listener).toContain('PaymentListenerGeneration.CURRENT');
     expect(listener).toContain('probeAndReconcile()');
+    expect(listener).toContain('override fun retireBinding()');
+    expect(listener).toContain('PaymentDetectionListenerRuntime.retireBinding');
     expect(listener).toContain('activeNotifications.toList()');
     expect(listener).toContain('recoveryWindowStartedAt()');
     expect(listener).toContain('.filter { settingsStore.isProcessingAllowed(it.packageName) }');
@@ -217,6 +219,7 @@ describe('Android security configuration', () => {
     expect(recoveryWorker).toContain('TimeUnit.MINUTES');
     expect(recoveryWorker).toContain('settings.requestedEnabled');
     expect(recoveryWorker).toContain('synchronizeComponentLifecycle');
+    expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.retireBinding');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.armHealthHeartbeat');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.probeAndReconcile');
     expect(recoveryWorker).toContain('forceRebindIfGranted()');
