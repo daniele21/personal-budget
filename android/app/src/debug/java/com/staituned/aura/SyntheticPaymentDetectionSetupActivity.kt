@@ -9,6 +9,7 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
+import com.staituned.aura.paymentdetection.listener.PaymentListenerGeneration
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 
 /**
@@ -66,6 +67,16 @@ class SyntheticPaymentDetectionSetupActivity : Activity() {
     private fun writeRedactedProbe() {
         val values = listOf(
             "connected=${PaymentDetectionListenerRuntime.isConnected()}",
+            "currentConnected=${
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
+            }",
+            "legacyConnected=${
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.LEGACY,
+                )
+            }",
             "accepted=${PaymentDetectionListenerRuntime.acceptedEnvelopeCount()}",
             "exact=${
                 PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.EXACT)
