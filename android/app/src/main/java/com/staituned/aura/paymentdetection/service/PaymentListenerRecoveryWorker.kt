@@ -12,6 +12,7 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
+import com.staituned.aura.paymentdetection.listener.PaymentListenerGeneration
 import com.staituned.aura.paymentdetection.listener.PaymentListenerProbeResult
 import java.util.concurrent.TimeUnit
 
@@ -54,7 +55,7 @@ internal class PaymentListenerRecoveryCoordinator(
             val access = accessController.synchronizeComponentLifecycle()
             if (access.currentGrantObservedBefore) {
                 PaymentDetectionListenerRuntime.retireBinding(
-                    com.staituned.aura.paymentdetection.listener.PaymentListenerGeneration.LEGACY,
+                    PaymentListenerGeneration.LEGACY,
                 )
             }
             val generation = access.effectiveGeneration
