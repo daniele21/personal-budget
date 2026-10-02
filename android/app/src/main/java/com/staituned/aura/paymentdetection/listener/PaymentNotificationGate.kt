@@ -29,6 +29,10 @@ internal class PaymentNotificationGate(
     }
 
     fun close() {
-        (executor as? ExecutorService)?.shutdownNow()
+        // Do not discard callbacks that already passed the package/user gate.
+        // A listener health repair may destroy the old service immediately
+        // after reconciliation enqueues work; graceful shutdown lets those
+        // bounded tasks finish while rejecting new work.
+        (executor as? ExecutorService)?.shutdown()
     }
 }
