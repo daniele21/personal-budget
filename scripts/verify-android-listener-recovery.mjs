@@ -169,14 +169,6 @@ async function waitForListenerNotLive(label, attempts = 60) {
   throw new Error(`${label} did not complete.`);
 }
 
-async function waitForComponentNotLive(component, label, attempts = 60) {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    if (!isListenerComponentLive(component)) return;
-    await delay(500);
-  }
-  throw new Error(`${label} did not complete.`);
-}
-
 async function waitForBoot() {
   runAdb(['wait-for-device'], { quiet: true });
   for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -239,12 +231,14 @@ async function main() {
     );
     console.log('Initial V2 listener detection: PASS');
 
-    await waitForComponentNotLive(
-      legacyListenerComponent,
-      'Legacy listener retirement after V2 activation',
-      20,
-    );
-    console.log('V2 exclusively owns the live listener path: PASS');
+    const ownershipProbe = readProbe();
+    if (
+      ownershipProbe.currentConnected !== 'true' ||
+      ownershipProbe.legacyConnected === 'true'
+    ) {
+      throw new Error('V2 did not exclusively own Aura runtime listener processing.');
+    }
+    console.log('V2 exclusively owns Aura runtime listener processing: PASS');
 
     const beforeBlackout = readProbe();
     runAdb([
