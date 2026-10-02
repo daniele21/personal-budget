@@ -1,6 +1,5 @@
 package com.staituned.aura.paymentdetection.listener
 
-import com.staituned.aura.BuildConfig
 import com.staituned.aura.paymentdetection.data.CandidatePersistenceResult
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
@@ -100,19 +99,16 @@ internal object PaymentDetectionListenerRuntime {
     }
 
     /**
-     * Debug instrumentation can emulate the real-device failure mode where the
+     * Instrumentation can emulate the real-device failure mode where the
      * listener remains connected but one posted callback is never delivered.
-     * BuildConfig.DEBUG is a compile-time false constant in release builds.
+     * This hook is internal, has no bridge/intent surface, and is unused by
+     * production code; release shrinking removes it when unreachable.
      */
     fun suppressNextPostedCallbackForTest() {
-        check(BuildConfig.DEBUG) {
-            "Listener callback suppression is debug-only."
-        }
         suppressedPostedCallbacksForTest.incrementAndGet()
     }
 
     fun consumeSuppressedPostedCallbackForTest(): Boolean {
-        if (!BuildConfig.DEBUG) return false
         while (true) {
             val current = suppressedPostedCallbacksForTest.get()
             if (current <= 0) return false
