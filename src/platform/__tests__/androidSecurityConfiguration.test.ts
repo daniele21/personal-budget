@@ -147,6 +147,9 @@ describe('Android security configuration', () => {
     const recoveryWorker = readProjectFile(
       'android/app/src/main/java/com/staituned/aura/paymentdetection/service/PaymentListenerRecoveryWorker.kt',
     );
+    const gate = readProjectFile(
+      'android/app/src/main/java/com/staituned/aura/paymentdetection/listener/PaymentNotificationGate.kt',
+    );
     const notifier = readProjectFile(
       'android/app/src/main/java/com/staituned/aura/paymentdetection/notification/PaymentCandidateNotifier.kt',
     );
@@ -190,6 +193,8 @@ describe('Android security configuration', () => {
     expect(listener).toContain('.filter { settingsStore.isProcessingAllowed(it.packageName) }');
     expect(listener).toContain('.sortedByDescending { it.postTime }');
     expect(listener).toContain('MAX_RECOVERY_NOTIFICATIONS');
+    expect(listener).toContain('hasEvidenceOfMissedSelectedCallback');
+    expect(listener).toContain('MISSED_CALLBACK_RECOVERED');
     expect(listener).not.toContain('markNotificationObserved');
     expect(accessController).toContain('forceRebindIfGranted');
     expect(accessController).toContain('NotificationListenerService.requestUnbind');
@@ -206,7 +211,11 @@ describe('Android security configuration', () => {
     expect(recoveryWorker).toContain('settings.requestedEnabled');
     expect(recoveryWorker).toContain('PaymentDetectionListenerRuntime.probeAndReconcile');
     expect(recoveryWorker).toContain('forceRebindIfGranted()');
+    expect(recoveryWorker).toContain('PaymentListenerProbeResult.MISSED_CALLBACK_RECOVERED');
+    expect(recoveryWorker).toContain('RECONCILED_AND_REBIND_REQUESTED');
     expect(recoveryWorker).not.toContain('PaymentDetectionListenerRuntime.isConnected()');
+    expect(gate).toContain('?.shutdown()');
+    expect(gate).not.toContain('shutdownNow()');
     expect(mainActivity).toContain('PaymentListenerRecoveryScheduler.sync(this)');
     expect(recoveryWorker).toContain('fun sync(context: Context)');
     expect(recoveryWorker).toContain('fun cancel(context: Context)');
