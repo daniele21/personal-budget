@@ -145,7 +145,10 @@ That forces a V2 binding cycle even though Android still reports the grant.
 Aura also performs a best-effort one-minute health heartbeat while the bound
 listener process is alive, plus foreground and WorkManager probes, so active
 selected notifications can be reconciled without waiting for a disconnect
-callback. A confirmed missed callback triggers a fresh binding automatically.
+callback. After every successful bind Aura also runs bounded follow-up
+reconciliations at 1, 3, and 7 seconds because Android can report the listener
+live before its active-notification snapshot has finished populating. A
+confirmed missed callback triggers a fresh binding automatically.
 
 The reconciliation window is capped to 14 days and 128 of the newest selected
 notifications. Package and user-selection checks run before title/text/bigText
