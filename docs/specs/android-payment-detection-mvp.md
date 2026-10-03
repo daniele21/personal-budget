@@ -305,8 +305,10 @@ No bank package, card information, account information, or raw bank text appears
   resume/worker health probe reconciles active selected notifications even
   without a new `onListenerConnected` callback.
 - Payment posted during a listener blackout: reconcile bounded active
-  notifications on the next successful connection without bypassing the
-  package/user-selection gate.
+  notifications on the next successful connection and at bounded 1/3/7-second
+  settling points, because Android may report the listener live before its
+  active-notification snapshot is populated; never bypass the package/user-
+  selection gate.
 - Legacy listener grant from an older Aura build: keep detection available as a
   temporary fallback, report `Access upgrade needed`, and require a one-time
   grant of the V2 listener component before the install is considered healthy.
@@ -359,7 +361,8 @@ The MVP is acceptable when:
 18. Lock screen is redacted by default.
 19. Network and logcat leakage checks pass.
 20. A selected synthetic payment posted while the listener is disconnected is
-    recovered after reconnect and is not duplicated if it was already observed.
+    recovered after reconnect even if Android's first active-notification
+    snapshot is transiently empty, and is not duplicated if already observed.
 21. A selected synthetic payment whose posted callback is deliberately dropped
     while the listener remains connected is recovered by a health probe without
     relaunching Aura.
