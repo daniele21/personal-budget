@@ -252,7 +252,9 @@
   a V2 listener component with fresh all-notification filter defaults plus an
   explicit one-time upgrade path for legacy grants. After V2 ownership is
   observed, Aura disables the legacy component and keeps late legacy callbacks
-  inert while Android completes asynchronous teardown.
+  inert while Android completes asynchronous teardown. Reconnect recovery now
+  repeats the active-notification snapshot at bounded 1/3/7-second settling
+  points so a transiently empty first snapshot cannot drop a blackout payment.
 - Added a native self-healing path for Android payment detection: a periodic
   listener watchdog retries system binding without depending on the WebView,
   reconnects replay bounded active selected notifications from a monotonic
