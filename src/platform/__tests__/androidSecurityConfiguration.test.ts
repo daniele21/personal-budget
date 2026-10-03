@@ -198,6 +198,12 @@ describe('Android security configuration', () => {
     expect(listener).toContain('hasEvidenceOfMissedSelectedCallback');
     expect(listener).toContain('MISSED_CALLBACK_RECOVERED');
     expect(listener).toContain('HEALTH_HEARTBEAT_INTERVAL_MS = 60_000L');
+    expect(listener).toContain('scheduleReconnectSettleReconciliations');
+    expect(listener).toContain('RECONNECT_SETTLE_DELAYS_MS');
+    expect(listener).toContain('longArrayOf(1_000L, 3_000L, 7_000L)');
+    expect(listener).toContain(
+      'mainHandler.removeCallbacks(reconnectSettleReconciliation)',
+    );
     expect(listener).toContain('wasNotificationProcessed');
     expect(listener).toContain('markNotificationProcessed');
     expect(listener).toContain('it.postTime');
