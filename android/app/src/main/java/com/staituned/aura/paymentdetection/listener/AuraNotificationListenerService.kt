@@ -70,6 +70,21 @@ abstract class BaseAuraNotificationListenerService :
         }
     }
 
+    /**
+     * Android can report a listener live before its active-notification snapshot
+     * is fully populated. Reconcile again at a few bounded settling points so a
+     * payment posted during the preceding blackout is not lost to that bind race.
+     *
+     * This remains process-local, acquires no wake lock, and uses the same
+     * selected-package gate plus technical fingerprint idempotency as every
+     * other recovery path.
+     */
+    private val reconnectSettleReconciliation = Runnable {
+        if (isEffectiveListener()) {
+            reconcileActiveNotifications()
+        }
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
 
@@ -106,11 +121,13 @@ abstract class BaseAuraNotificationListenerService :
             accessController.retireLegacyComponentIfCurrentOwned()
         }
         reconcileActiveNotifications()
+        scheduleReconnectSettleReconciliations()
         armHealthHeartbeat()
     }
 
     override fun onListenerDisconnected() {
         mainHandler.removeCallbacks(healthHeartbeat)
+        mainHandler.removeCallbacks(reconnectSettleReconciliation)
         PaymentDetectionListenerRuntime.unregister(generation, this)
         if (accessController.effectiveGeneration() == generation) {
             requestRebind(ComponentName(this, javaClass))
@@ -138,6 +155,7 @@ abstract class BaseAuraNotificationListenerService :
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(healthHeartbeat)
+        mainHandler.removeCallbacks(reconnectSettleReconciliation)
         PaymentDetectionListenerRuntime.unregister(generation, this)
         if (gateDelegate.isInitialized()) {
             gate.close()
@@ -150,9 +168,20 @@ abstract class BaseAuraNotificationListenerService :
         mainHandler.postDelayed(healthHeartbeat, HEALTH_HEARTBEAT_INTERVAL_MS)
     }
 
+    private fun scheduleReconnectSettleReconciliations() {
+        mainHandler.removeCallbacks(reconnectSettleReconciliation)
+        RECONNECT_SETTLE_DELAYS_MS.forEach { delayMillis ->
+            mainHandler.postDelayed(
+                reconnectSettleReconciliation,
+                delayMillis,
+            )
+        }
+    }
+
     override fun retireBinding() {
         val retire = Runnable {
             mainHandler.removeCallbacks(healthHeartbeat)
+            mainHandler.removeCallbacks(reconnectSettleReconciliation)
             PaymentDetectionListenerRuntime.unregister(generation, this)
             requestUnbind()
         }
@@ -325,6 +354,8 @@ abstract class BaseAuraNotificationListenerService :
         private const val MAX_RECOVERY_NOTIFICATIONS = 128
         private const val HEALTH_PROBE_TIMEOUT_SECONDS = 3L
         private const val HEALTH_HEARTBEAT_INTERVAL_MS = 60_000L
+        private val RECONNECT_SETTLE_DELAYS_MS =
+            longArrayOf(1_000L, 3_000L, 7_000L)
     }
 }
 
