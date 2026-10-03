@@ -94,6 +94,11 @@ notification manager and replays any selected active notification whose posted
 callback was missed. If the endpoint is absent or the snapshot fails, the
 coordinator deliberately cycles that exact component with
 `requestUnbind(ComponentName)` followed by `requestRebind(ComponentName)`.
+A newly connected endpoint also performs bounded follow-up snapshots at 1, 3,
+and 7 seconds. This covers the Android bind race where the service is already
+reported live but its active-notification snapshot is still temporarily empty.
+These settling probes are process-local, hold no wake lock, and reuse the same
+package gate and repository idempotency boundary.
 
 Recovery uses a stable owner-scoped window that starts at the latest
 enable/source-selection boundary and never advances merely because a callback
