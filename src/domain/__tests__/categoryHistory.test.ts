@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Transaction } from '../../types';
 import {
+  buildActiveCategorySet,
   buildCategoryHistoryIndex,
   resolveUnambiguousHistoricalCategory,
 } from '../categoryHistory';
@@ -35,7 +36,7 @@ describe('local category history', () => {
     expect(resolveUnambiguousHistoricalCategory(
       history,
       'merchant',
-      ['Groceries', 'Dining'],
+      buildActiveCategorySet(['Groceries', 'Dining']),
     )).toEqual({
       category: 'Groceries',
       matchCount: 2,
@@ -54,7 +55,7 @@ describe('local category history', () => {
     expect(resolveUnambiguousHistoricalCategory(
       history,
       'merchant',
-      ['Groceries', 'Dining'],
+      buildActiveCategorySet(['Groceries', 'Dining']),
     )).toBeNull();
   });
 
@@ -67,7 +68,7 @@ describe('local category history', () => {
     expect(resolveUnambiguousHistoricalCategory(
       history,
       'merchant',
-      ['Groceries'],
+      buildActiveCategorySet(['Groceries']),
     )).toBeNull();
   });
 });
