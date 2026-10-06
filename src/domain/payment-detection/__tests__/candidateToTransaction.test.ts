@@ -42,6 +42,26 @@ describe('payment candidate transaction mapping', () => {
     });
   });
 
+  it('prefills an unambiguous active category from local merchant history', () => {
+    const form = candidateToReviewForm(
+      candidate({ merchant: 'Local shop' }),
+      ['Groceries', 'Dining'],
+      [{
+        id: 'history-1',
+        amount: 9.5,
+        type: 'expense',
+        category: 'Groceries',
+        date: '2026-07-01',
+        title: 'LOCAL SHOP.',
+        description: '',
+        paymentMethod: 'Debit Card',
+        verified: true,
+      }],
+    );
+
+    expect(form.category).toBe('Groceries');
+  });
+
   it('creates only the canonical transaction shape with the reserved UUID', () => {
     const transaction = paymentCandidateToTransaction(
       '123e4567-e89b-42d3-a456-426614174000',
