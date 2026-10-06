@@ -59,7 +59,7 @@ export function CandidateReview() {
     setForm(candidateToReviewForm(selectedCandidate, categories, transactions));
     setErrors({});
     setDuplicateConfirmationOpen(false);
-  }, [categories, selectedCandidate, transactions]);
+  }, [categories, selectedCandidate]);
 
   const update = <K extends keyof PaymentCandidateReviewForm>(
     field: K,
