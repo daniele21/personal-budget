@@ -35,10 +35,18 @@ export function buildCategoryHistoryIndex(
   return history;
 }
 
+export function buildActiveCategorySet(
+  activeCategories: readonly string[],
+): Set<string> {
+  return new Set(
+    activeCategories.filter((candidate) => candidate !== 'Uncategorized'),
+  );
+}
+
 export function resolveUnambiguousHistoricalCategory(
   history: CategoryHistoryIndex,
   matchKey: string | null,
-  activeCategories: readonly string[],
+  activeCategories: ReadonlySet<string>,
 ): HistoricalCategorySuggestion | null {
   if (!matchKey) return null;
 
@@ -46,10 +54,7 @@ export function resolveUnambiguousHistoricalCategory(
   if (!categories || categories.size !== 1) return null;
 
   const [[category, matchCount]] = categories.entries();
-  const active = new Set(
-    activeCategories.filter((candidate) => candidate !== 'Uncategorized'),
-  );
 
-  if (!active.has(category)) return null;
+  if (!activeCategories.has(category)) return null;
   return { category, matchCount };
 }
