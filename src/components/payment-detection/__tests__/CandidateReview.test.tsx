@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Transaction } from '../../../types';
 import { CandidateReview } from '../CandidateReview';
 
 const candidate = {
@@ -24,7 +25,7 @@ const candidate = {
 
 const mocks = vi.hoisted(() => ({
   categories: ['Groceries', 'Dining'],
-  transactions: [] as any[],
+  transactions: [] as Transaction[],
   addCategory: vi.fn(),
   confirmCandidate: vi.fn(),
   ignoreCandidate: vi.fn(),
