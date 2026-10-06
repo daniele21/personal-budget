@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Transaction } from '../../../types';
 import { CandidateReview } from '../CandidateReview';
 
 const candidate = {
@@ -24,6 +25,7 @@ const candidate = {
 
 const mocks = vi.hoisted(() => ({
   categories: ['Groceries', 'Dining'],
+  transactions: [] as Transaction[],
   addCategory: vi.fn(),
   confirmCandidate: vi.fn(),
   ignoreCandidate: vi.fn(),
@@ -47,6 +49,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../context/AppContext', () => ({
   useApp: () => ({
     categories: mocks.categories,
+    transactions: mocks.transactions,
     addCategory: mocks.addCategory,
   }),
 }));
@@ -75,6 +78,7 @@ describe('CandidateReview', () => {
     mocks.duplicateAssessment.relatedCandidates = [];
     mocks.duplicateAssessment.ledgerTransactions = [];
     mocks.duplicateAssessment.hasPossibleDuplicate = false;
+    mocks.transactions.length = 0;
   });
 
   it('reuses the canonical transaction editor and saves edited fields', async () => {
@@ -97,7 +101,7 @@ describe('CandidateReview', () => {
     expect(screen.getByRole('button', {
       name: 'Category: not selected. Choose category. Required',
     })).toBeInTheDocument();
-    expect(screen.getByText(/Aura cannot infer the category/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aura can suggest it next time/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', {
       name: 'Edit amount, currently €12.34',
@@ -133,6 +137,39 @@ describe('CandidateReview', () => {
       paymentMethod: 'Credit Card',
       reportingClass: 'extra',
     });
+  });
+
+  it('prefills and explains a category learned from consistent local merchant history', async () => {
+    mocks.transactions.push({
+      id: 'history-1',
+      amount: 8.9,
+      type: 'expense',
+      category: 'Groceries',
+      date: '2026-07-20',
+      title: 'Lócal-shop.',
+      description: '',
+      paymentMethod: 'Debit Card',
+      verified: true,
+    });
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <CandidateReview />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', {
+      name: 'Category: Groceries. Choose category',
+    })).toBeInTheDocument();
+    expect(screen.getByText(
+      'Suggested from 1 previous transaction with this merchant. You can change it before saving.',
+    )).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save transaction' }));
+
+    expect(mocks.confirmCandidate).toHaveBeenCalledWith(candidate.id, expect.objectContaining({
+      category: 'Groceries',
+    }));
   });
 
   it('closes the full-screen editor without accepting the candidate', async () => {

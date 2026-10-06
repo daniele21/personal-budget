@@ -292,7 +292,7 @@ export function TransactionEditor({
                 {errors.category ?? errors.date}
               </p>
             )}
-            {!errors.category && categorySelectionRequired && !category && categoryHint && (
+            {!errors.category && categorySelectionRequired && categoryHint && (
               <p className="px-1 text-xs font-bold text-on-surface-variant">
                 {categoryHint}
               </p>

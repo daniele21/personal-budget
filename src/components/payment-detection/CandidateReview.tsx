@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, BellRing, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   candidateToReviewForm,
+  suggestPaymentCategory,
   validatePaymentCandidateReview,
   type PaymentCandidateReviewErrors,
   type PaymentCandidateReviewForm,
@@ -17,7 +18,7 @@ import { useToast } from '../Toast';
 
 export function CandidateReview() {
   const navigate = useNavigate();
-  const { categories, addCategory } = useApp();
+  const { categories, addCategory, transactions } = useApp();
   const {
     selectedCandidate,
     selectedCandidateDuplicateAssessment,
@@ -31,6 +32,12 @@ export function CandidateReview() {
   const [errors, setErrors] = useState<PaymentCandidateReviewErrors>({});
   const [duplicateConfirmationOpen, setDuplicateConfirmationOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const categorySuggestion = useMemo(
+    () => selectedCandidate
+      ? suggestPaymentCategory(selectedCandidate, transactions, categories)
+      : null,
+    [categories, selectedCandidate, transactions],
+  );
 
   const closeReview = () => selectCandidate(null);
   const closeReviewFromEscape = () => {
@@ -49,7 +56,7 @@ export function CandidateReview() {
       setDuplicateConfirmationOpen(false);
       return;
     }
-    setForm(candidateToReviewForm(selectedCandidate, categories));
+    setForm(candidateToReviewForm(selectedCandidate, categories, transactions));
     setErrors({});
     setDuplicateConfirmationOpen(false);
   }, [categories, selectedCandidate]);
@@ -78,7 +85,11 @@ export function CandidateReview() {
     form &&
     selectedCandidateDuplicateAssessment.hasPossibleDuplicate &&
     Math.round(Number(form.amount) * 100) === selectedCandidate.amountMinorUnits &&
-    form.date === candidateToReviewForm(selectedCandidate, categories).date,
+    form.date === candidateToReviewForm(
+      selectedCandidate,
+      categories,
+      transactions,
+    ).date,
   );
 
   const handleConfirm = async () => {
@@ -95,6 +106,13 @@ export function CandidateReview() {
 
   if (!selectedCandidate || !form) return null;
   const busy = busyCandidateId === selectedCandidate.id;
+  const categoryHint = categorySuggestion && form.category === categorySuggestion.category
+    ? `Suggested from ${categorySuggestion.matchingTransactions} previous ${categorySuggestion.matchingTransactions === 1 ? 'transaction' : 'transactions'} with this merchant. You can change it before saving.`
+    : !form.category
+      ? selectedCandidate.merchant
+        ? 'Choose a category. Aura can suggest it next time when this merchant has a consistent local history.'
+        : 'Choose a category before saving.'
+      : undefined;
 
   const review = (
     <div
@@ -154,7 +172,7 @@ export function CandidateReview() {
           categories={categories}
           onAddCategory={addCategory}
           categorySelectionRequired
-          categoryHint="Aura cannot infer the category from this notification. Choose one before saving."
+          categoryHint={categoryHint}
           onSubmit={handleConfirm}
           submitLabel="Save transaction"
           errors={errors}
