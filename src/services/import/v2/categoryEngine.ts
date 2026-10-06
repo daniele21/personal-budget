@@ -90,12 +90,8 @@ function categoryGroups(prepared: PreparedTransactionImport): CategoryGroup[] {
   });
 }
 
-function activeCategorySet(activeCategories: readonly string[]): Set<string> {
-  return new Set(activeCategories.filter((category) => category !== 'Uncategorized'));
-}
-
 function ephemeralCategories(activeCategories: readonly string[]): EphemeralCategory[] {
-  return [...activeCategorySet(activeCategories)].map((label, index) => ({
+  return [...buildActiveCategorySet(activeCategories)].map((label, index) => ({
     id: `category-${index + 1}`,
     label,
   }));
