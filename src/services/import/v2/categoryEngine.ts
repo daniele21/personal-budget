@@ -1,4 +1,8 @@
 import {
+  buildCategoryHistoryIndex,
+  resolveUnambiguousHistoricalCategory,
+} from '../../../domain/categoryHistory';
+import {
   createDescriptionMatchKey,
   groupPreparedRowsByDescription,
   normalizeImportDescription,
@@ -96,20 +100,6 @@ function ephemeralCategories(activeCategories: readonly string[]): EphemeralCate
   }));
 }
 
-function historicalCategories(
-  ledger: readonly Transaction[],
-): Map<DescriptionMatchKey, Set<string>> {
-  const result = new Map<DescriptionMatchKey, Set<string>>();
-  for (const transaction of ledger) {
-    if (!transaction.category || transaction.category === 'Uncategorized') continue;
-    const key = createDescriptionMatchKey(transaction.description, transaction.type);
-    const categories = result.get(key);
-    if (categories) categories.add(transaction.category);
-    else result.set(key, new Set([transaction.category]));
-  }
-  return result;
-}
-
 function resolveLocalHistory(
   groups: readonly CategoryGroup[],
   ledger: readonly Transaction[],
@@ -118,24 +108,30 @@ function resolveLocalHistory(
   suggestions: ImportV2CategorySuggestion[];
   unresolved: CategoryGroup[];
 } {
-  const history = historicalCategories(ledger);
-  const active = activeCategorySet(activeCategories);
+  const history = buildCategoryHistoryIndex(
+    ledger,
+    (transaction) => createDescriptionMatchKey(
+      transaction.description,
+      transaction.type,
+    ),
+  );
   const suggestions: ImportV2CategorySuggestion[] = [];
   const unresolved: CategoryGroup[] = [];
 
   for (const group of groups) {
-    const categories = history.get(group.matchKey);
-    if (categories?.size === 1) {
-      const category = [...categories][0]!;
-      if (active.has(category)) {
-        suggestions.push({
-          groupId: group.id,
-          rowIds: group.rowIds,
-          category,
-          source: 'local-history',
-        });
-        continue;
-      }
+    const resolved = resolveUnambiguousHistoricalCategory(
+      history,
+      group.matchKey,
+      activeCategories,
+    );
+    if (resolved) {
+      suggestions.push({
+        groupId: group.id,
+        rowIds: group.rowIds,
+        category: resolved.category,
+        source: 'local-history',
+      });
+      continue;
     }
     unresolved.push(group);
   }
