@@ -7,14 +7,14 @@ import {
 } from '../categorySuggestion';
 
 function candidate(
-  merchant: string | undefined = 'Caffè-Shop',
+  merchant: string | null = 'Caffè-Shop',
 ): PaymentCandidateReviewDto {
   return {
     id: 'AbCdEfGhIjKlMnOpQrStUvWx',
     operationType: 'card_payment',
     amountMinorUnits: 1234,
     currency: 'EUR',
-    merchant,
+    merchant: merchant ?? undefined,
     occurredAtEpochMillis: new Date(2026, 8, 1, 12).getTime(),
     detectedAtEpochMillis: new Date(2026, 8, 1, 12, 1).getTime(),
     matchTier: 'exact',
@@ -94,7 +94,7 @@ describe('payment category suggestion', () => {
     )).toBeNull();
 
     expect(suggestPaymentCategory(
-      candidate(undefined),
+      candidate(null),
       [transaction('tx-1', 'Caffe shop', 'Dining')],
       ['Dining'],
     )).toBeNull();
