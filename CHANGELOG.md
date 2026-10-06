@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added deterministic local-history category suggestions for detected payments:
+  matching merchants can prefill one consistently used active category while
+  conflicts, archived categories, and missing history remain explicitly
+  uncategorized; no merchant rule or suggestion metadata is persisted.
 - Added `android/version.properties` as the single Android application-version
   source, with fail-fast Gradle validation for invalid or missing values.
 - Added a deterministic two-step mobile first-run flow with a required positive
