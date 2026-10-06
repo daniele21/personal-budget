@@ -138,6 +138,39 @@ describe('CandidateReview', () => {
     });
   });
 
+  it('prefills and explains a category learned from consistent local merchant history', async () => {
+    mocks.transactions.push({
+      id: 'history-1',
+      amount: 8.9,
+      type: 'expense',
+      category: 'Groceries',
+      date: '2026-07-20',
+      title: 'Lócal-shop.',
+      description: '',
+      paymentMethod: 'Debit Card',
+      verified: true,
+    });
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <CandidateReview />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', {
+      name: 'Category: Groceries. Choose category',
+    })).toBeInTheDocument();
+    expect(screen.getByText(
+      'Suggested from 1 previous transaction with this merchant. You can change it before saving.',
+    )).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save transaction' }));
+
+    expect(mocks.confirmCandidate).toHaveBeenCalledWith(candidate.id, expect.objectContaining({
+      category: 'Groceries',
+    }));
+  });
+
   it('closes the full-screen editor without accepting the candidate', async () => {
     const user = userEvent.setup();
     render(
