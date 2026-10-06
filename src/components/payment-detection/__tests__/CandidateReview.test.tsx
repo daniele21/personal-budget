@@ -24,6 +24,7 @@ const candidate = {
 
 const mocks = vi.hoisted(() => ({
   categories: ['Groceries', 'Dining'],
+  transactions: [] as any[],
   addCategory: vi.fn(),
   confirmCandidate: vi.fn(),
   ignoreCandidate: vi.fn(),
@@ -47,6 +48,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../context/AppContext', () => ({
   useApp: () => ({
     categories: mocks.categories,
+    transactions: mocks.transactions,
     addCategory: mocks.addCategory,
   }),
 }));
@@ -75,6 +77,7 @@ describe('CandidateReview', () => {
     mocks.duplicateAssessment.relatedCandidates = [];
     mocks.duplicateAssessment.ledgerTransactions = [];
     mocks.duplicateAssessment.hasPossibleDuplicate = false;
+    mocks.transactions.length = 0;
   });
 
   it('reuses the canonical transaction editor and saves edited fields', async () => {
@@ -97,7 +100,7 @@ describe('CandidateReview', () => {
     expect(screen.getByRole('button', {
       name: 'Category: not selected. Choose category. Required',
     })).toBeInTheDocument();
-    expect(screen.getByText(/Aura cannot infer the category/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aura can suggest it next time/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', {
       name: 'Edit amount, currently €12.34',
