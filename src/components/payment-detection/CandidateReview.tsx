@@ -109,7 +109,9 @@ export function CandidateReview() {
   const categoryHint = categorySuggestion && form.category === categorySuggestion.category
     ? `Suggested from ${categorySuggestion.matchingTransactions} previous ${categorySuggestion.matchingTransactions === 1 ? 'transaction' : 'transactions'} with this merchant. You can change it before saving.`
     : !form.category
-      ? 'Choose a category. Aura can suggest it next time when this merchant has a consistent local history.'
+      ? selectedCandidate.merchant
+        ? 'Choose a category. Aura can suggest it next time when this merchant has a consistent local history.'
+        : 'Choose a category before saving.'
       : undefined;
 
   const review = (
