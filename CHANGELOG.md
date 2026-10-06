@@ -25,6 +25,10 @@
   normalization for exact cross-source suppression, transient warnings for
   same-amount nearby candidates and same-day ledger expenses, and an explicit
   `Create anyway` gate without adding ledger uniqueness or persisted provenance.
+- Added deterministic local-history category suggestions for detected payments:
+  matching merchants can prefill one consistently used active category while
+  conflicts, archived categories, and missing history remain explicitly
+  uncategorized; no merchant rule or suggestion metadata is persisted.
 - Added a PayPal engineering connector using the official finite package
   visibility entry, an anchored completed-purchase EUR template, review-only
   handling for collapsed titles, and a synthetic/redacted deterministic corpus.
