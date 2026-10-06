@@ -1,6 +1,7 @@
 import type { PaymentCandidateReviewDto } from '../../platform/paymentDetection';
 import type { Transaction } from '../../types';
 import {
+  buildActiveCategorySet,
   buildCategoryHistoryIndex,
   resolveUnambiguousHistoricalCategory,
 } from '../categoryHistory';
@@ -46,7 +47,7 @@ export function suggestPaymentCategory(
   const suggestion = resolveUnambiguousHistoricalCategory(
     history,
     candidateKey,
-    activeCategories,
+    buildActiveCategorySet(activeCategories),
   );
 
   return suggestion
