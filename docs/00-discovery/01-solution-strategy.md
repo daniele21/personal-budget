@@ -49,6 +49,13 @@ Payment-detection boundary:
 
 Native candidates, preferences, fingerprints, and tombstones are excluded from Aura cloud backup, portable archives, Android cloud backup, and device-to-device transfer. The structured candidate payload is authenticated and encrypted with a non-exportable Android Keystore key. Detection is suspended without an active owner, native data is partitioned by a hash of the Firebase UID, and logout, account change, local reset, and total deletion purge the native store.
 
+Candidate review may reuse canonical local transaction history to suggest a
+category for a recognized merchant. The shared history resolver only returns a
+category when all matching history agrees on one active category; otherwise the
+review remains uncategorized. This is an ephemeral deterministic suggestion,
+not a persisted merchant rule, and it does not change the canonical
+`Transaction` or `AppData` schema.
+
 Detailed progress and unresolved external gates are tracked in [`11-android-payment-detection-progress-plan.md`](./11-android-payment-detection-progress-plan.md). Runtime and acceptance decisions are fixed in [`ADR 0002`](../../adr/0002-aura-android-capacitor-runtime.md) and [`ADR 0003`](../../adr/0003-aura-payment-candidate-acceptance.md).
 
 Promotion of the complete Android product through Play internal testing,
@@ -165,9 +172,11 @@ amounts become expenses.
 The user reviews valid rows before commit. Rows begin as `Uncategorized` unless
 the user assigns an active category. A category may be applied to one row, a
 manual selection, or all included rows sharing the same conservatively
-normalized description and transaction type. Matching does not persist a rule
-or modify historical transactions. Permanent merchant-category rules remain
-out of scope until category identities and lifecycle semantics are stable.
+normalized description and transaction type. Matching does not persist a rule or modify historical transactions. A shared
+local-history resolver may make conservative, ephemeral category suggestions in
+review flows when all matching history agrees on one active category. Permanent
+merchant-category rules remain out of scope until category identities and
+lifecycle semantics are stable.
 
 Possible duplicates use a different key: calendar date, signed amount in cents,
 and normalized description. They are warnings only and are never removed
