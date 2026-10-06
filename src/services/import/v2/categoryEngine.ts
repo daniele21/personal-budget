@@ -1,4 +1,5 @@
 import {
+  buildActiveCategorySet,
   buildCategoryHistoryIndex,
   resolveUnambiguousHistoricalCategory,
 } from '../../../domain/categoryHistory';
@@ -115,6 +116,7 @@ function resolveLocalHistory(
       transaction.type,
     ),
   );
+  const active = buildActiveCategorySet(activeCategories);
   const suggestions: ImportV2CategorySuggestion[] = [];
   const unresolved: CategoryGroup[] = [];
 
@@ -122,7 +124,7 @@ function resolveLocalHistory(
     const resolved = resolveUnambiguousHistoricalCategory(
       history,
       group.matchKey,
-      activeCategories,
+      active,
     );
     if (resolved) {
       suggestions.push({
