@@ -25,6 +25,10 @@
   normalization for exact cross-source suppression, transient warnings for
   same-amount nearby candidates and same-day ledger expenses, and an explicit
   `Create anyway` gate without adding ledger uniqueness or persisted provenance.
+- Added deterministic local-history category suggestions for detected payments:
+  matching merchants can prefill one consistently used active category while
+  conflicts, archived categories, and missing history remain explicitly
+  uncategorized; no merchant rule or suggestion metadata is persisted.
 - Added a PayPal engineering connector using the official finite package
   visibility entry, an anchored completed-purchase EUR template, review-only
   handling for collapsed titles, and a synthetic/redacted deterministic corpus.
@@ -178,6 +182,11 @@
 
 ### Changed
 
+- Simplified Import V2 to a deterministic-first flow: Aura resolves familiar
+  bank-export schemas locally, presents a human-readable mapping preview, and
+  calls Harnex only when schema roles remain unresolved. Explicit debit/credit
+  columns are treated as one financial interpretation; Review and verified
+  commit remain mandatory.
 - Rebuilt the public Aura portal as a complete responsive product landing page
   with a branded hero, Android product preview, clear privacy narrative,
   dedicated support/privacy surfaces and accessible mobile navigation. Portal
@@ -243,14 +252,6 @@
 - Added Aura Portable Archive V1 under Data Management: one encrypted-by-default, self-verified `.aura` export; local-only unlock and preview; safety-protected replace restore; startup recovery; and clear separation from transaction CSV and AI-assisted bank-statement import. General release remains gated on physical-device/installed-PWA, manual screen-reader, and approximately 32 MiB mobile-memory QA.
 
 ### Fixed
-
-- Hardened Android payment-notification reliability: disconnected listeners now
-  request a system rebind when detection status is refreshed, existing installs
-  migrate to all notification filter types including silent notifications,
-  payment repositories reopen Room after logout/reset purge, and the UI no
-  longer reports detection as active while the listener is disconnected.
-- Strengthened the listener-recovery harness so process-kill and reboot checks
-  post the synthetic payment before restarting any Aura activity.
 
 - Made Safe to Spend consistently represent the configured monthly budget minus
   net monthly expenses. Recording a small income no longer replaces the monthly
