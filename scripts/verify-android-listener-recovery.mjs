@@ -9,6 +9,8 @@ const androidSdk =
 const adb = `${androidSdk}/platform-tools/adb`;
 const auraPackage = 'com.staituned.aura.debug';
 const sourcePackage = 'com.staituned.aura.syntheticnotifications';
+const sourceActivity =
+  `${sourcePackage}/com.staituned.aura.testsource.ShellSyntheticNotificationActivity`;
 const listenerClass =
   'com.staituned.aura.paymentdetection.listener.AuraNotificationListenerService';
 const listenerComponent = `${auraPackage}/${listenerClass}`;
@@ -88,7 +90,12 @@ function startHarness(mode) {
 }
 
 function postSyntheticNotification() {
-  startHarness('post');
+  // This debug-only source entrypoint belongs to the external test APK, not
+  // Aura. Starting it verifies listener recovery without first waking Aura UI.
+  runAdb(
+    ['shell', 'am', 'start', '-W', '-n', sourceActivity],
+    { quiet: true },
+  );
 }
 
 function readProbe() {
@@ -114,6 +121,32 @@ async function waitForProbe(predicate, label, attempts = 40) {
     const probe = readProbe();
     if (predicate(probe)) return probe;
     await delay(250);
+  }
+  throw new Error(`${label} did not complete.`);
+}
+
+function isListenerLive() {
+  const notificationDump = tryAdb(['shell', 'dumpsys', 'notification']);
+  const liveSectionStart = notificationDump.indexOf(
+    'Live notification listeners (',
+  );
+  if (liveSectionStart < 0) return false;
+
+  const snoozedSectionStart = notificationDump.indexOf(
+    'Snoozed notification listeners',
+    liveSectionStart,
+  );
+  const liveSection = notificationDump.slice(
+    liveSectionStart,
+    snoozedSectionStart >= 0 ? snoozedSectionStart : undefined,
+  );
+  return liveSection.includes(listenerComponent);
+}
+
+async function waitForListenerLive(label, attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (isListenerLive()) return;
+    await delay(500);
   }
   throw new Error(`${label} did not complete.`);
 }
@@ -179,33 +212,30 @@ async function main() {
     );
     console.log('Initial listener detection: PASS');
 
-    runAdb(['shell', 'am', 'force-stop', auraPackage], { quiet: true });
-    readProbe();
-    await waitForProbe(
-      (probe) => probe.connected === 'true',
-      'Listener reconnect after process recreation',
-    );
+    runAdb(['shell', 'am', 'kill', auraPackage], { quiet: true });
+    await delay(2000);
     postSyntheticNotification();
-    await waitForProbe(
-      (probe) => Number(probe.exact) >= 1,
-      'Detection after process recreation',
-    );
-    console.log('Process recreation and listener rebind: PASS');
+    await delay(1500);
+    const afterProcessRecreation = readProbe();
+    if (Number(afterProcessRecreation.exact) < 1) {
+      throw new Error(
+        'Detection after process recreation failed before Aura UI restart.',
+      );
+    }
+    console.log('Process recreation and background listener rebind: PASS');
 
     runAdb(['reboot'], { quiet: true });
     await waitForBoot();
-    await waitForProbe(
-      (probe) => probe.connected === 'true',
-      'Listener reconnect after emulator reboot',
-      120,
-    );
+    await waitForListenerLive('Listener system rebind after emulator reboot');
     postSyntheticNotification();
-    await waitForProbe(
-      (probe) => Number(probe.exact) >= 1,
-      'Detection after emulator reboot',
-      80,
-    );
-    console.log('API 36 emulator reboot recovery: PASS');
+    await delay(1500);
+    const afterReboot = readProbe();
+    if (Number(afterReboot.exact) < 1) {
+      throw new Error(
+        'Detection after emulator reboot failed before Aura UI restart.',
+      );
+    }
+    console.log('API 36 background reboot recovery: PASS');
 
     const beforeRevocation = readProbe();
     runAdb([

@@ -96,7 +96,7 @@ function HarnexReadinessPanel({
   const content = state.kind === 'approval-required'
     ? {
         title: 'Harnex approval required',
-        detail: 'This Aura build is blocked until its exact app identity is approved in Harnex. Open Harnex, review the package and signing identity, then allow Aura. This status refreshes when you return.',
+        detail: 'Harnex cannot assist this Aura build until its exact app identity is approved. Aura can still analyze familiar layouts locally and lets you continue manually when schema help is unavailable. Open Harnex to approve this identity if you want optional assistance.',
         canOpen: true,
       }
     : state.kind === 'host-missing'
@@ -108,7 +108,7 @@ function HarnexReadinessPanel({
       : state.kind === 'incompatible'
         ? {
             title: 'Harnex update required',
-            detail: 'Aura found Harnex, but the installed versions cannot use the same consumer protocol. Update the apps before retrying assistance.',
+            detail: 'Aura found Harnex, but the installed versions cannot use the same consumer protocol. Local analysis and manual import still work; update the apps before retrying optional assistance.',
             canOpen: true,
           }
         : {
@@ -258,7 +258,7 @@ export function FileUploadStep({
             onRefresh={() => void checkHarnexReadiness()}
           />
           <p className="px-1 text-xs leading-relaxed text-on-surface-variant">
-            File safety and Harnex availability are separate checks. Aura first verifies that the spreadsheet can be read safely. When the columns are not already canonical, Harnex can help identify them from a bounded on-device profile; Aura validates the chosen mapping before any import.
+            Aura analyzes the file locally first, including familiar custom column names. Harnex is used only when schema meaning is still unresolved, and Aura validates any suggested mapping before import.
           </p>
         </div>
       )}

@@ -34,7 +34,7 @@ test.describe('deterministic transaction import M6 quality', () => {
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       buffer,
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByText('Categorize and review')).toBeVisible();
     await wizard.getByRole('button', { name: 'Review 2 transactions' }).click();
     await wizard.getByRole('button', { name: 'Import with 2 Uncategorized' }).click();
@@ -119,7 +119,7 @@ test.describe('deterministic transaction import M6 quality', () => {
     await wizard.getByLabel('Choose transaction file').setInputFiles({
       name: 'boundary.csv', mimeType: 'text/csv', buffer: Buffer.from(csv),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByText('Categorize and review')).toBeVisible({ timeout: 90_000 });
     const durationMs = Date.now() - startedAt;
     expect(durationMs).toBeLessThan(90_000);

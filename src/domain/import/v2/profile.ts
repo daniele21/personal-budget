@@ -365,6 +365,17 @@ function addDebitCreditCandidates(result: AmountCandidate[], columns: ColumnProf
 function amountCandidates(columns: ColumnProfile[]): AmountCandidate[] {
   const result: AmountCandidate[] = [];
   const safeColumns = safeCandidateColumns(columns);
+
+  // Explicit outflow/inflow columns already encode the financial semantics.
+  // Do not also advertise each side as a standalone signed amount: that turns
+  // one clear bank-export shape into several contradictory user choices.
+  const explicitDebits = safeColumns.filter((column) => DEBIT_HEADER.test(column.header));
+  const explicitCredits = safeColumns.filter((column) => CREDIT_HEADER.test(column.header));
+  if (explicitDebits.length > 0 && explicitCredits.length > 0) {
+    addDebitCreditCandidates(result, safeColumns);
+    return result;
+  }
+
   const numeric = safeColumns.filter((column) => column.numericRatio > 0);
   const hinted = safeColumns.filter(looksAmountLike).slice(0, IMPORT_V2_PROFILE_LIMITS.discoveryColumnsPerRole);
   const amountColumns = numeric.length > 0 ? numeric : hinted;

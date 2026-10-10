@@ -14,19 +14,34 @@ function columnLabel(header: HeaderCandidate, columnId: string): string {
 }
 
 function context(sheetName: string, header: HeaderCandidate): string {
-  return `${sheetName} · header row ${header.rowNumber}`;
+  return sheetName === 'CSV' && header.rowNumber === 1
+    ? 'CSV'
+    : `${sheetName} · row ${header.rowNumber}`;
+}
+
+function dateFormatLabel(parser: HeaderCandidate['dateCandidates'][number]['parser']): string {
+  switch (parser) {
+    case 'iso-date':
+      return 'YYYY-MM-DD';
+    case 'dmy-slash':
+      return 'DD/MM/YYYY';
+    case 'dmy-dash':
+      return 'DD-MM-YYYY';
+    case 'excel-date':
+      return 'Spreadsheet date';
+  }
 }
 
 function amountLabel(header: HeaderCandidate, candidate: AmountCandidate): string {
   switch (candidate.strategy) {
     case 'signed-negative-expense':
-      return `${columnLabel(header, candidate.columnId)} · signed amount`;
+      return `${columnLabel(header, candidate.columnId)} · signs determine expense / income`;
     case 'signed-positive-expense':
-      return `${columnLabel(header, candidate.columnId)} · positive expenses`;
+      return `${columnLabel(header, candidate.columnId)} · positive values are expenses`;
     case 'debit-credit':
-      return `${columnLabel(header, candidate.debitColumnId)} / ${columnLabel(header, candidate.creditColumnId)} · debit / credit`;
+      return `${columnLabel(header, candidate.debitColumnId)} = expenses · ${columnLabel(header, candidate.creditColumnId)} = income`;
     case 'amount-direction':
-      return `${columnLabel(header, candidate.amountColumnId)} + ${columnLabel(header, candidate.directionColumnId)} · amount / direction`;
+      return `${columnLabel(header, candidate.amountColumnId)} + ${columnLabel(header, candidate.directionColumnId)} · direction determines expense / income`;
   }
 }
 
@@ -43,7 +58,7 @@ export function createImportV2MappingChoices(profile: SpreadsheetProfile): Impor
         dateOptions.push({
           id: candidate.id,
           label: columnLabel(header, candidate.columnId),
-          detail: `${candidate.parser} · ${detail}`,
+          detail: `${dateFormatLabel(candidate.parser)} · ${detail}`,
         });
       }
       for (const candidate of header.amountCandidates) {

@@ -182,6 +182,11 @@
 
 ### Changed
 
+- Simplified Import V2 to a deterministic-first flow: Aura resolves familiar
+  bank-export schemas locally, presents a human-readable mapping preview, and
+  calls Harnex only when schema roles remain unresolved. Explicit debit/credit
+  columns are treated as one financial interpretation; Review and verified
+  commit remain mandatory.
 - Rebuilt the public Aura portal as a complete responsive product landing page
   with a branded hero, Android product preview, clear privacy narrative,
   dedicated support/privacy surfaces and accessible mobile navigation. Portal

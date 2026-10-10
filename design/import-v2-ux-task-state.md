@@ -1,79 +1,65 @@
 # Import V2 UX task/state contract
 
-Status: ACTIVE — W5 isolated contract. Central wizard integration belongs to W6/W10.
+Status: ACTIVE — deterministic-first W12.3 contract. Canonical behavior is owned by the V2 spec and ADR 0010.
 
 ## User outcome
 
-A user can import a reasonably structured CSV/XLSX statement without knowing Aura's fixed column names. Aura explains what it understands, asks for confirmation when structure is ambiguous, and always preserves a manual path when optional assistance is unavailable.
+A user can import a safe CSV/XLSX statement without learning parser terminology. Aura resolves familiar schemas locally, asks Harnex only when schema meaning remains unresolved, and always preserves an editable manual path.
 
-Nothing in this contract changes canonical extraction, duplicate detection, review or ledger commit semantics.
+Nothing is written to the ledger before the existing Review and verified commit.
 
 ## Task model
 
-`Upload -> Understand file -> Check transactions -> Categorize -> Review -> Done`
+`Upload -> Check preview -> Review -> Done`
 
-The UI names the user's task. Binder, host lifecycle, model/runtime preparation, request batching and payload budgeting are implementation details and must not become the primary navigation or progress model.
+Local profiling, optional Harnex fallback, transaction checks and category assistance are processing states inside those four user concepts. Binder lifecycle, model preparation, candidate IDs, parser names and batch budgeting are implementation details, not navigation.
 
-## Critical journey and hierarchy
+## Critical journey
 
-1. **Upload** — user chooses CSV/XLSX.
-2. **Understand file** — Aura profiles sheets/headers/sample values locally. A suggested mapping is never silently authoritative; ambiguous mappings require explicit review and all mappings remain editable before confirmation.
-3. **Check transactions** — confirmed candidate IDs feed Aura-owned deterministic extraction/validation.
-4. **Categorize** — optional category assistance may make suggestions. Partial results remain reviewable.
-5. **Review** — existing Aura review/duplicate/verified-commit owner remains canonical.
-6. **Done** — success is reported only after the existing verified commit succeeds.
+1. **Upload** — choose CSV/XLSX.
+2. **Check preview** — Aura shows the complete date/description/money mapping it can safely use.
+   - Familiar high-signal schema: resolved locally.
+   - Missing semantic role: optional Harnex candidate selection.
+   - Ambiguous/unavailable assistance: editable manual mapping.
+   - User chooses **Continue** or **Edit**.
+3. **Review** — Aura deterministically extracts/checks rows, applies local-history/optional category suggestions, then shows the existing transaction Review surface.
+4. **Done** — only after verified commit succeeds.
 
-Primary action hierarchy:
+## Mapping hierarchy
 
-- mapping state: `Confirm mapping` only when date, amount and at least one description candidate are selected;
-- unavailable/partial state: `Continue manually` is primary and `Retry` is secondary;
-- long-running optional work: `Cancel` remains reachable;
-- no state may imply that optional assistance is required to finish the import.
+The summary uses human financial language:
 
-## State contract
+- Date
+- Description
+- Money, e.g. `Uscite = expenses · Entrate = income`
 
-The isolated implementation lives under `src/components/import/v2/` and is testable without a real Harnex host.
+Do not expose internal strategy identifiers such as `signed-negative-expense`, `debit-credit` or parser IDs as primary product copy.
 
-| State | User meaning | Required recovery |
+When explicit debit/outflow and credit/inflow columns exist, present their pair as one interpretation. Do not also present each side as an independent amount choice.
+
+The manual editor remains a recovery/advanced surface. It must still require a complete date + amount + description selection before continuing.
+
+## State and recovery contract
+
+| Runtime state | User meaning | Recovery |
 | --- | --- | --- |
-| `idle` | No file selected yet. | Choose a file. |
-| `local-analysis` | Aura is reading structure locally. | Cancel. |
-| `mapping-review/resolved` | Aura has a suggestion, but user confirmation is still required. | Edit or confirm; cancel. |
-| `mapping-review/ambiguous` | Multiple interpretations remain. | Explicitly edit/confirm; never auto-advance. |
-| `checking-transactions` | Aura is deterministically applying the confirmed mapping. | Cancel. |
-| `assistance-unavailable` | Optional assistance cannot currently help. Reasons include host missing/unreachable, unauthorized, task unready, runtime preparing, offline or generic unavailable. | Continue manually, retry, cancel. |
-| `classification-progress` | Optional category suggestions are in progress. | Cancel and continue without waiting. |
-| `classification-partial-failure` | Some suggestions completed and some failed. | Keep completed work reviewable; retry or continue manually. |
-| `cancelled` | Optional/current import work stopped before commit. | Retry or continue manually where meaningful. |
-| `review` | User must inspect canonical transaction data before commit. | Existing Review owner controls edits/commit. |
-| `success` | Existing verified commit completed. | None. |
+| upload/idle | No file chosen. | Choose file. |
+| local-analysis | Aura is checking the file locally. | Cancel. |
+| mapping resolved | A complete mapping is ready. | Continue, Edit, Cancel. |
+| mapping ambiguous | User input is required. | Edit/confirm, Cancel. |
+| assistance unavailable | Optional Harnex cannot resolve missing schema meaning. | Continue manually, Retry, Cancel. |
+| checking transactions | Aura is applying the chosen mapping deterministically. | Cancel/close without commit. |
+| category progress/partial failure | Suggestions are optional and may be incomplete. | Continue to Review, Retry where offered. |
+| review | Canonical transaction data is editable/reviewable. | Existing Review controls. |
+| success | Verified commit completed. | Done. |
 
-The state model uses Aura-generated candidate IDs (`dateCandidateId`, `amountCandidateId`, `descriptionColumnIds`, optional `typeColumnId`). It does not own parser strategies or Harnex response semantics; W2/W6/W7 remain the owners of those boundaries.
+No optional-assistance state may imply Harnex is required to finish an import.
 
-## Privacy and disclosure
+## Accessibility/adaptive
 
-- File profiling and mapping are described as on-device work.
-- Optional assistance failure never triggers a cloud fallback.
-- UI copy must not claim that a transaction is imported before Review/verified commit.
-- Diagnostic implementation details may be exposed only in secondary diagnostics where justified, not as the primary user task model.
-
-## Adaptive and accessibility contract
-
-- Critical meaning uses text plus icon/semantics, never color alone.
-- Loading/progress states expose `aria-busy`/live progress semantics; category progress uses a labelled progress element.
-- Ambiguous/unavailable/partial failures use alert semantics and actionable recovery.
-- Mapping inputs have programmatic labels; description columns use labelled checkboxes.
-- Primary/secondary/cancel actions remain reachable by keyboard and visible focus styles inherited from canonical controls.
-- Layout stacks on narrow/mobile widths and may use two-column grouping only when space allows.
-- Controls retain Android-friendly minimum hit targets through existing Aura controls.
-- Loading motion respects reduced-motion (`motion-reduce`).
-- Text must reflow rather than depend on fixed-height containers; packaged-app text-scaling/TalkBack qualification remains release evidence when the integrated journey is affected.
-
-## Validation boundary
-
-W5 evidence is component/state focused:
-
-- pure transition tests cover explicit mapping confirmation, incomplete mapping blocking, manual fallback, partial failure, retry and cancellation;
-- component tests cover editable ambiguous mapping, resolved-but-explicit confirmation, local-processing disclosure, unavailable recovery, progress semantics and partial failure;
-- real Harnex is not required for W5 tests;
-- full wizard FULL_MEDIA and packaged Android journey evidence belongs to G2/W10 unless the validation selector escalates this isolated lane.
+- Critical meaning uses text plus semantics, never color alone.
+- Processing uses labelled live/progress semantics and respects reduced motion.
+- Mapping controls remain programmatically labelled with Android-friendly hit targets.
+- Primary/secondary/destructive actions stay visually and semantically distinct.
+- Narrow layouts stack actions/fields; text reflows under scaling.
+- Material wizard changes require browser/Android `FULL_MEDIA` integration evidence; representative TalkBack/text-scaling remains release evidence when applicable.

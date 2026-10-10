@@ -43,9 +43,7 @@ describe('Import V2 spreadsheet profiler', () => {
     const header = profile.sheets[0]?.headerCandidates[0];
 
     expect(header?.dateCandidates.map(({ parser }) => parser)).toContain('dmy-slash');
-    expect(header?.amountCandidates.map(({ strategy }) => strategy)).toEqual(
-      expect.arrayContaining(['signed-negative-expense', 'signed-positive-expense', 'debit-credit']),
-    );
+    expect(header?.amountCandidates.map(({ strategy }) => strategy)).toEqual(['debit-credit']);
   });
 
   it('keeps multiple plausible numeric candidates instead of guessing Amount over Balance', () => {

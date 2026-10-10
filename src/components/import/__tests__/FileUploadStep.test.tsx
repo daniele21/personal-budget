@@ -76,8 +76,8 @@ describe('FileUploadStep', () => {
     render(<FileUploadStep onFileSelected={vi.fn()} isProcessing={false} />);
 
     expect(await screen.findByText('Harnex assistance ready')).toBeInTheDocument();
-    expect(screen.getByText(/File safety and Harnex availability are separate checks/)).toBeInTheDocument();
-    expect(screen.getByText(/Harnex can help identify them from a bounded on-device profile/)).toBeInTheDocument();
+    expect(screen.getByText(/Aura analyzes the file locally first/)).toBeInTheDocument();
+    expect(screen.getByText(/Harnex is used only when schema meaning is still unresolved/)).toBeInTheDocument();
     expect(mocks.connect).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledTimes(1));
   });
@@ -93,6 +93,7 @@ describe('FileUploadStep', () => {
 
     expect(await screen.findByText('Harnex approval required')).toBeInTheDocument();
     expect(screen.getByText(/exact app identity/)).toBeInTheDocument();
+    expect(screen.getByText(/Aura can still analyze familiar layouts locally/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open Harnex' }));
     await waitFor(() => expect(mocks.openHostApp).toHaveBeenCalledTimes(1));
     expect(mocks.disconnect).not.toHaveBeenCalled();

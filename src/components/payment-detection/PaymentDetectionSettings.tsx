@@ -31,8 +31,17 @@ export function PaymentDetectionSettings() {
   if (!status) return null;
 
   const installedApps = supportedApps.filter((app) => app.installed);
-  const accessReady = status.osPermissionGranted;
-  const enabled = status.requestedEnabled && accessReady;
+  const accessGranted = status.osPermissionGranted;
+  const listenerReady = status.listenerConnected;
+  const enabled =
+    status.requestedEnabled && accessGranted && listenerReady;
+  const detectionStateLabel = enabled
+    ? 'Active'
+    : status.requestedEnabled
+      ? accessGranted
+        ? 'Reconnecting'
+        : 'Access missing'
+      : 'Paused';
 
   const handleDisclosureAccepted = async () => {
     setBusy(true);
@@ -61,7 +70,7 @@ export function PaymentDetectionSettings() {
   };
 
   const handleToggleEnabled = async () => {
-    if (!accessReady) {
+    if (!accessGranted) {
       setShowDisclosure(true);
       return;
     }
@@ -106,7 +115,7 @@ export function PaymentDetectionSettings() {
               : 'bg-surface-container-high text-on-surface-variant'
           }`}
         >
-          {enabled ? 'Active' : status.requestedEnabled ? 'Access missing' : 'Paused'}
+          {detectionStateLabel}
         </span>
       </div>
 
@@ -120,13 +129,14 @@ export function PaymentDetectionSettings() {
               Android notification access
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
-              Android grants access to notifications generally. Aura filters
-              locally and reads content only from supported apps you select.
+              {accessGranted && !listenerReady
+                ? 'Android access is granted, but the listener is reconnecting. Aura retries the system binding when the app resumes.'
+                : 'Android grants access to notifications generally. Aura filters locally and reads content only from supported apps you select.'}
             </p>
           </div>
           <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-            accessReady ? 'bg-secondary' : 'bg-tertiary'
-          }`} aria-label={accessReady ? 'Granted' : 'Not granted'} />
+            accessGranted ? 'bg-secondary' : 'bg-tertiary'
+          }`} aria-label={accessGranted ? 'Granted' : 'Not granted'} />
         </div>
 
         <div className="p-4">
