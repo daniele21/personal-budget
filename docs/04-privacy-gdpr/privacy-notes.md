@@ -148,6 +148,12 @@ queue and editable form. Pending candidates remain outside `AppData`; after
 explicit confirmation only the reviewed normal transaction is persisted, with
 no source, candidate, rule, fingerprint or raw-notification metadata.
 
+During review, React may compare the already-minimized candidate merchant with
+canonical local expense transaction titles to prefill a category when local
+history is unambiguous and the category is still active. This comparison is
+computed in memory from data already held by Aura, creates no separate rule or
+suggestion store, adds no backup/archive field, and makes no network call.
+
 The approved engineering boundary is:
 
 - feature off by default;

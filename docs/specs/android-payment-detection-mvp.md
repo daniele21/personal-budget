@@ -120,11 +120,16 @@ The user can inspect and change:
 - payment method;
 - expense treatment.
 
-Payment method starts from the existing Add Transaction default. Category is
-intentionally empty and visibly required because the MVP does not infer or
-learn it from notification content. Both fields remain visible and editable
-before confirmation, and acceptance is blocked until the user explicitly
-chooses a category.
+Payment method starts from the existing Add Transaction default. Category
+remains visibly required. When the candidate has a merchant, React may prefill
+the category from canonical local ledger history only when the normalized
+merchant matches prior expense transaction titles and every matching historical
+transaction uses the same currently active category. Merchant normalization is
+conservative and mirrors the native semantic shape for case, accents,
+punctuation, and whitespace. Missing merchants, conflicting history, or
+inactive categories leave the field empty. The suggestion is always editable,
+is computed in memory, and does not persist a merchant-category rule, match
+metadata, or confidence score.
 
 The Android review is a full-screen, prefilled instance of the shared
 transaction editor used by Add Transaction. It therefore keeps the same amount
@@ -253,7 +258,7 @@ Never persisted:
 - balance;
 - card/account identifiers;
 - Firebase token or email.
-- possible-duplicate groups or ledger-match metadata.
+- possible-duplicate groups, category-suggestion matches, or ledger-match metadata.
 
 The final transaction contains no detection-specific metadata. Its normal UUID is reserved by the native acceptance workflow.
 

@@ -5,17 +5,25 @@ import type {
   PaymentCandidateReviewErrors,
   PaymentCandidateReviewForm,
 } from './contracts';
+import { suggestPaymentCategory } from './categorySuggestion';
 
 const DEFAULT_PAYMENT_METHOD = 'Debit Card';
 
 export function candidateToReviewForm(
   candidate: PaymentCandidateReviewDto,
-  _categories: string[],
+  categories: string[],
+  transactions: readonly Transaction[] = [],
 ): PaymentCandidateReviewForm {
+  const categorySuggestion = suggestPaymentCategory(
+    candidate,
+    transactions,
+    categories,
+  );
+
   return {
     amount: (candidate.amountMinorUnits / 100).toFixed(2),
     title: candidate.merchant?.trim() || 'Card payment',
-    category: '',
+    category: categorySuggestion?.category ?? '',
     date: getLocalDateInputValue(new Date(candidate.occurredAtEpochMillis)),
     paymentMethod: DEFAULT_PAYMENT_METHOD,
     reportingClass: undefined,
