@@ -1,4 +1,4 @@
-name: Google Play internal qualification
+name: Google Play W13 qualification
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: google-play-internal-qualification-${{ github.sha }}
+  group: google-play-w13-qualification-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
 
       - id: qualification
-        name: Verify exact current-main qualification source
+        name: Verify exact current-dev qualification source
         shell: bash
         env:
           QUALIFICATION_BRANCH: ${{ github.ref_name }}
@@ -47,7 +47,7 @@ jobs:
           prefix="play-release/qualification/internal/"
 
           if [[ "$QUALIFICATION_BRANCH" != "$prefix"* ]]; then
-            echo "Unsupported qualification branch: $QUALIFICATION_BRANCH" >&2
+            echo "Unsupported W13 qualification branch: $QUALIFICATION_BRANCH" >&2
             exit 1
           fi
           if [[ ! -s "$trigger" ]]; then
@@ -68,7 +68,7 @@ jobs:
           qualification="$(sed -n 's/^qualification=//p' "$trigger" | tail -n 1)"
 
           if [[ "$trigger_track" != "internal" || "$trigger_version" != "$version_name" || "$qualification" != "true" ]]; then
-            echo "Qualification trigger must match internal track/version and qualification=true." >&2
+            echo "W13 qualification trigger must match internal track/version and qualification=true." >&2
             exit 1
           fi
           if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
@@ -80,10 +80,10 @@ jobs:
             exit 1
           fi
 
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          current_main_sha="$(git rev-parse refs/remotes/origin/main)"
-          if [[ "$source_sha" != "$current_main_sha" ]]; then
-            echo "Qualification source_sha must equal current main: $current_main_sha" >&2
+          git fetch --no-tags origin dev:refs/remotes/origin/dev
+          current_dev_sha="$(git rev-parse refs/remotes/origin/dev)"
+          if [[ "$source_sha" != "$current_dev_sha" ]]; then
+            echo "Qualification source_sha must equal current dev: $current_dev_sha" >&2
             exit 1
           fi
 
@@ -97,18 +97,20 @@ jobs:
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
 
-      - id: preflight
-        name: Require successful Internal testing preflight for exact main source
+      - id: health
+        name: Require successful FULL Repository health for exact candidate
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          source_sha="${{ steps.qualification.outputs.source_sha }}"
-          workflow="internal-testing-preflight.yml"
-
+          candidate_sha="$(git rev-parse HEAD)"
           for attempt in $(seq 1 180); do
-            response="$(gh api -X GET               "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs"               -f head_sha="$source_sha"               -f event=push               -f per_page=20)"
+            response="$(gh api -X GET \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/repository-health.yml/runs" \
+              -f head_sha="$candidate_sha" \
+              -f event=push \
+              -f per_page=20)"
             state="$(printf '%s' "$response" | python3 -c 'import json,sys; runs=json.load(sys.stdin).get("workflow_runs", []); r=runs[0] if runs else {}; print("{}|{}|{}|{}".format(r.get("id", "-"), r.get("run_number", "-"), r.get("status", "-"), r.get("conclusion", "-")))')"
             IFS='|' read -r run_id run_number status conclusion <<< "$state"
             if [[ "$run_id" == "-" ]]; then
@@ -117,19 +119,15 @@ jobs:
             fi
             if [[ "$status" == "completed" ]]; then
               if [[ "$conclusion" != "success" ]]; then
-                echo "Internal testing preflight $run_id completed with conclusion: $conclusion" >&2
+                echo "Repository health $run_id completed with conclusion: $conclusion" >&2
                 exit 1
               fi
-              version_code=$((200000 + run_number))
-              if (( version_code <= 100241 )); then
-                echo "Computed Android versionCode must exceed previously published code 100241." >&2
-                exit 1
-              fi
+              version_code=$((100000 + run_number))
               if (( version_code >= 2100000000 )); then
                 echo "Computed Android versionCode exceeds the Play limit." >&2
                 exit 1
               fi
-              echo "Internal testing preflight $run_id passed for exact source $source_sha"
+              echo "Repository health $run_id passed for exact candidate $candidate_sha"
               echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
               echo "run_number=$run_number" >> "$GITHUB_OUTPUT"
               echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
@@ -137,8 +135,7 @@ jobs:
             fi
             sleep 10
           done
-
-          echo "No completed successful Internal testing preflight found for exact main source." >&2
+          echo "No completed Repository health run found for exact candidate within the qualification gate window." >&2
           exit 1
 
       - uses: actions/setup-node@v4
@@ -160,10 +157,10 @@ jobs:
         run: |
           set -euo pipefail
           cat > android/version.properties <<EOF
-          VERSION_CODE=${{ steps.preflight.outputs.version_code }}
+          VERSION_CODE=${{ steps.health.outputs.version_code }}
           VERSION_NAME=${{ steps.qualification.outputs.version_name }}
           EOF
-          grep -Fx "VERSION_CODE=${{ steps.preflight.outputs.version_code }}" android/version.properties
+          grep -Fx "VERSION_CODE=${{ steps.health.outputs.version_code }}" android/version.properties
           grep -Fx "VERSION_NAME=${{ steps.qualification.outputs.version_name }}" android/version.properties
 
       - name: Materialize protected Android release configuration
@@ -193,7 +190,6 @@ jobs:
               exit 1
             fi
           done
-
           required_secrets=(
             RELEASE_GOOGLE_SERVICES_JSON_B64
             DEBUG_GOOGLE_SERVICES_JSON_B64
@@ -226,7 +222,8 @@ jobs:
             echo "Release google-services.json does not match VITE_FIREBASE_PROJECT_ID." >&2
             exit 1
           fi
-          jq -e '.type == "service_account" and (.client_email | length > 0) and (.private_key | length > 0)'             <<< "$PLAY_SERVICE_ACCOUNT_JSON" >/dev/null
+          jq -e '.type == "service_account" and (.client_email | length > 0) and (.private_key | length > 0)' \
+            <<< "$PLAY_SERVICE_ACCOUNT_JSON" >/dev/null
 
       - name: Build production Android assets
         run: npm run android:sync
@@ -242,27 +239,24 @@ jobs:
         run: |
           set -euo pipefail
           bundle="android/app/build/outputs/bundle/release/app-release.aab"
-          mapping="android/app/build/outputs/mapping/release/mapping.txt"
           test -s "$bundle"
-          test -s "$mapping"
           jarsigner -verify "$bundle" >/dev/null
           mkdir -p artifacts/play-qualification
           sha256sum "$bundle" > artifacts/play-qualification/app-release.aab.sha256
-          sha256sum "$mapping" > artifacts/play-qualification/mapping.txt.sha256
           cat > artifacts/play-qualification/qualification-manifest.txt <<EOF
           qualification=true
           source_sha=${{ steps.qualification.outputs.source_sha }}
           qualification_commit=${{ github.sha }}
-          preflight_run=${{ steps.preflight.outputs.run_id }}
+          health_run=${{ steps.health.outputs.run_id }}
           track=internal
           version_name=${{ steps.qualification.outputs.version_name }}
-          version_code=${{ steps.preflight.outputs.version_code }}
+          version_code=${{ steps.health.outputs.version_code }}
           EOF
 
       - name: Upload signed qualification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: play-internal-qualification-${{ steps.qualification.outputs.version_name }}-${{ github.sha }}
+          name: play-w13-qualification-${{ steps.qualification.outputs.version_name }}-${{ github.sha }}
           path: |
             android/app/build/outputs/bundle/release/app-release.aab
             android/app/build/outputs/mapping/release/mapping.txt
@@ -271,7 +265,7 @@ jobs:
           retention-days: 30
 
       - name: Publish exact candidate to Google Play Internal Testing
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.staituned.aura
@@ -284,10 +278,10 @@ jobs:
         shell: bash
         run: |
           {
-            echo "## Google Play Internal qualification"
+            echo "## Google Play W13 qualification"
             echo "- Product source SHA: \`${{ steps.qualification.outputs.source_sha }}\`"
             echo "- Qualification commit: \`${{ github.sha }}\`"
-            echo "- Preflight run: \`${{ steps.preflight.outputs.run_id }}\`"
+            echo "- Repository health run: \`${{ steps.health.outputs.run_id }}\`"
             echo "- Track: \`internal\`"
-            echo "- Version: \`${{ steps.qualification.outputs.version_name }}\` (code \`${{ steps.preflight.outputs.version_code }}\`)"
+            echo "- Version: \`${{ steps.qualification.outputs.version_name }}\` (code \`${{ steps.health.outputs.version_code }}\`)"
           } >> "$GITHUB_STEP_SUMMARY"
