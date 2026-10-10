@@ -51,7 +51,7 @@ test.describe('deterministic transaction import M4', () => {
         '2026-08-03,Taxi,-18.00',
       ].join('\n')),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByText('Categorize and review')).toBeVisible();
 
     await wizard.getByRole('button', { name: 'Set category' }).first().click();
@@ -94,7 +94,7 @@ test.describe('deterministic transaction import M4', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from('description,amount\nCoffee,-2.50'),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
 
     await expect(wizard.getByRole('alert', { name: 'File validation results' })).toContainText(
       'The header must contain exactly three columns.',
@@ -110,7 +110,7 @@ test.describe('deterministic transaction import M4', () => {
     await wizard.getByLabel('Choose transaction file').setInputFiles({
       name: 'invalid-rows.csv', mimeType: 'text/csv', buffer: invalidRows,
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByRole('alert', { name: 'File validation results' })).toContainText('Use a real calendar date.');
 
     await wizard.getByLabel('Choose transaction file').setInputFiles({
@@ -118,7 +118,7 @@ test.describe('deterministic transaction import M4', () => {
       mimeType: 'text/csv',
       buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByRole('alert', { name: 'File validation results' })).toContainText('exceeds the supported size limit');
     expect(await page.evaluate(() => localStorage.getItem('aura_transactions'))).toBe('[]');
   });
@@ -141,7 +141,7 @@ test.describe('deterministic transaction import M4', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from('date,description,amount\n2026-08-01,Local market,-25.99'),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByText('Possible duplicate', { exact: true })).toBeVisible();
     await wizard.getByRole('button', { name: 'Exclude all possible duplicates' }).click();
     await expect(wizard.getByRole('button', { name: 'Review 0 transactions' })).toBeDisabled();
@@ -162,7 +162,7 @@ test.describe('deterministic transaction import M4', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from('date,description,amount\n2026-08-01,Synthetic failure,-10.00'),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await wizard.getByRole('button', { name: 'Review 1 transactions' }).click();
     await page.evaluate(() => {
       const original = Storage.prototype.setItem;
@@ -189,7 +189,7 @@ test.describe('deterministic transaction import M4', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from('AURAARC1synthetic-not-a-spreadsheet'),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByRole('alert')).toContainText('Complete Aura archive detected');
     expect(await page.evaluate(() => localStorage.getItem('aura_transactions'))).toBe('[]');
 
@@ -197,7 +197,7 @@ test.describe('deterministic transaction import M4', () => {
     await wizard.getByLabel('Choose transaction file').setInputFiles({
       name: 'aura-legacy.csv', mimeType: 'text/csv', buffer: legacy,
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
     await expect(wizard.getByText('Import complete')).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('aura_transactions') ?? '[]'))).toEqual([
       expect.objectContaining({ id: 'fixture-aura-1', category: 'Groceries', amount: 12.5 }),
