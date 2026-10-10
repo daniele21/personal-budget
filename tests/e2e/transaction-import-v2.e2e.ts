@@ -27,18 +27,18 @@ test.describe('Import V2 arbitrary spreadsheet journey', () => {
       name: 'localized-bank.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from([
-        'Booking Date,Details,Amount',
+        'Column A,Column B,Column C',
         '2026-09-01,Synthetic Grocery,-42.00',
         '2026-09-02,Synthetic Salary,2200.00',
       ].join('\n')),
     });
-    await wizard.getByRole('button', { name: 'Validate file' }).click();
+    await wizard.getByRole('button', { name: 'Analyze file' }).click();
 
     await expect(wizard.getByText('Check the columns Aura should use')).toBeVisible();
     await expect(wizard.getByRole('button', { name: 'Confirm mapping' })).toBeDisabled();
     await wizard.getByLabel('Transaction date').selectOption({ index: 1 });
     await wizard.getByLabel('Amount').selectOption({ index: 1 });
-    await wizard.getByRole('checkbox', { name: /Details/ }).check();
+    await wizard.getByRole('checkbox', { name: /Column B/ }).check();
     await wizard.getByRole('button', { name: 'Confirm mapping' }).click();
 
     await expect(wizard.getByText('Categorize and review')).toBeVisible();
