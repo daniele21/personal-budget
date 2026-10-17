@@ -17,6 +17,25 @@ enum class PaymentListenerEndpointProbeResult {
     FAILED,
 }
 
+/**
+ * Process-local, content-free counters. No package, merchant, payment amount,
+ * timestamp, notification key, or notification text crosses this bridge.
+ */
+internal data class PaymentListenerDiagnosticsSnapshot(
+    val selectedCallbacks: Int,
+    val activeNotificationReplays: Int,
+    val processedEnvelopes: Int,
+    val exactMatches: Int,
+    val reviewMatches: Int,
+    val ignoredMatches: Int,
+    val createdCandidates: Int,
+    val updatedCandidates: Int,
+    val suppressedDuplicates: Int,
+    val postedAlerts: Int,
+    val failedAlerts: Int,
+    val processingFailures: Int,
+)
+
 interface PaymentListenerHealthEndpoint {
     /**
      * Verifies that NotificationManager operations still work and replays a
@@ -48,6 +67,12 @@ internal object PaymentDetectionListenerRuntime {
         mutableMapOf<PaymentListenerGeneration, LinkedHashMap<String, Long>>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
+    private val selectedCallbacks = AtomicInteger(0)
+    private val activeNotificationReplays = AtomicInteger(0)
+    private val updatedCandidates = AtomicInteger(0)
+    private val suppressedDuplicates = AtomicInteger(0)
+    private val postedAlerts = AtomicInteger(0)
+    private val failedAlerts = AtomicInteger(0)
     private val acceptedEnvelopes = AtomicInteger(0)
     private val exactMatches = AtomicInteger(0)
     private val reviewMatches = AtomicInteger(0)
@@ -143,6 +168,7 @@ internal object PaymentDetectionListenerRuntime {
         generation: PaymentListenerGeneration,
         postedAtEpochMillis: Long,
     ) {
+        selectedCallbacks.incrementAndGet()
         val current = latestSelectedCallbackPostTime[generation] ?: 0L
         if (postedAtEpochMillis > current) {
             latestSelectedCallbackPostTime[generation] = postedAtEpochMillis
@@ -233,10 +259,35 @@ internal object PaymentDetectionListenerRuntime {
     }
 
     fun markPersistenceResult(result: CandidatePersistenceResult) {
-        if (result is CandidatePersistenceResult.Created) {
-            persistedCandidates.incrementAndGet()
+        when (result) {
+            is CandidatePersistenceResult.Created -> persistedCandidates.incrementAndGet()
+            is CandidatePersistenceResult.Updated -> updatedCandidates.incrementAndGet()
+            is CandidatePersistenceResult.Duplicate -> suppressedDuplicates.incrementAndGet()
         }
     }
+
+    fun markActiveNotificationReplays(count: Int) {
+        if (count > 0) activeNotificationReplays.addAndGet(count)
+    }
+
+    fun markAlertResult(posted: Boolean) {
+        if (posted) postedAlerts.incrementAndGet() else failedAlerts.incrementAndGet()
+    }
+
+    fun diagnosticsSnapshot() = PaymentListenerDiagnosticsSnapshot(
+        selectedCallbacks = selectedCallbacks.get(),
+        activeNotificationReplays = activeNotificationReplays.get(),
+        processedEnvelopes = acceptedEnvelopes.get(),
+        exactMatches = exactMatches.get(),
+        reviewMatches = reviewMatches.get(),
+        ignoredMatches = ignoredMatches.get(),
+        createdCandidates = persistedCandidates.get(),
+        updatedCandidates = updatedCandidates.get(),
+        suppressedDuplicates = suppressedDuplicates.get(),
+        postedAlerts = postedAlerts.get(),
+        failedAlerts = failedAlerts.get(),
+        processingFailures = persistenceFailures.get(),
+    )
 
     fun persistedCandidateCount(): Int = persistedCandidates.get()
 
@@ -246,13 +297,24 @@ internal object PaymentDetectionListenerRuntime {
 
     fun persistenceFailureCount(): Int = persistenceFailures.get()
 
-    fun resetAcceptedEnvelopeCount() {
+    /** Also called at account boundaries so counters cannot span two owners. */
+    fun resetDiagnostics() {
+        selectedCallbacks.set(0)
+        activeNotificationReplays.set(0)
         acceptedEnvelopes.set(0)
         exactMatches.set(0)
         reviewMatches.set(0)
         ignoredMatches.set(0)
         persistedCandidates.set(0)
+        updatedCandidates.set(0)
+        suppressedDuplicates.set(0)
+        postedAlerts.set(0)
+        failedAlerts.set(0)
         persistenceFailures.set(0)
+    }
+
+    fun resetAcceptedEnvelopeCount() {
+        resetDiagnostics()
         suppressedPostedCallbacksForTest.set(0)
     }
 

@@ -44,6 +44,24 @@ describe('TypeScript/Kotlin payment detection contract', () => {
       expect(mapper).toContain(`"${field}"`);
       expect(typescript).toContain(field);
     }
+    expect(plugin).toContain('put("diagnostics", diagnosticsJson())');
+    for (const field of [
+      'selectedCallbacks',
+      'activeNotificationReplays',
+      'processedEnvelopes',
+      'exactMatches',
+      'reviewMatches',
+      'ignoredMatches',
+      'createdCandidates',
+      'updatedCandidates',
+      'suppressedDuplicates',
+      'postedAlerts',
+      'failedAlerts',
+      'processingFailures',
+    ]) {
+      expect(plugin).toContain(`put("${field}",`);
+      expect(typescript).toContain(`${field}: number`);
+    }
     expect(mapper).not.toMatch(
       /put\("(?:title|text|bigText|matchedRuleId|ruleVersion|technicalFingerprint|semanticFingerprint)"/,
     );

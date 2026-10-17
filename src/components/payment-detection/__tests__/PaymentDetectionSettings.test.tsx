@@ -188,6 +188,58 @@ describe('PaymentDetectionSettings', () => {
     expect(mocks.repairNotificationListener).toHaveBeenCalledOnce();
   });
 
+  it('does not claim Active when no source is selected', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: [],
+      osPermissionGranted: true,
+      listenerConnected: true,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+    });
+
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('No apps selected')).toBeInTheDocument();
+    expect(screen.getByText(/No payment sources are selected/)).toBeInTheDocument();
+    expect(screen.queryByText('Connected')).not.toBeInTheDocument();
+  });
+
+  it('labels a bound listener Connected rather than claiming payment reception', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: true,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+      diagnostics: {
+        selectedCallbacks: 2,
+        activeNotificationReplays: 0,
+        processedEnvelopes: 2,
+        exactMatches: 1,
+        reviewMatches: 0,
+        ignoredMatches: 1,
+        createdCandidates: 1,
+        updatedCandidates: 0,
+        suppressedDuplicates: 0,
+        postedAlerts: 1,
+        failedAlerts: 0,
+        processingFailures: 0,
+      },
+    });
+
+    render(<PaymentDetectionSettings />);
+
+    expect(screen.getByText('Connected')).toBeInTheDocument();
+    expect(screen.getByText(/does not confirm/)).toBeInTheDocument();
+    expect(screen.getByText('Local detector diagnostics')).toBeInTheDocument();
+    expect(screen.getByText('Selected Android callbacks')).toBeInTheDocument();
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+  });
+
   it('offers explicit repair even when Android still reports the V2 listener connected', async () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,

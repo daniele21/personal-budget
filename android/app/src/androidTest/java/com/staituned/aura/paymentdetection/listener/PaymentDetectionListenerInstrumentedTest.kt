@@ -382,6 +382,11 @@ class PaymentDetectionListenerInstrumentedTest {
                 PaymentDetectionListenerRuntime.persistedCandidateCount() == 1
             }
             assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
+            val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertTrue(snapshot.selectedCallbacks >= 1)
+            assertTrue(snapshot.processedEnvelopes >= 1)
+            assertTrue(snapshot.createdCandidates >= 1)
+            assertTrue(snapshot.postedAlerts >= 1)
             waitUntil("private Aura candidate notification") {
                 context.getSystemService(NotificationManager::class.java)
                     .activeNotifications

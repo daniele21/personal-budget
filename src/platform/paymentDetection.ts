@@ -18,10 +18,27 @@ export interface NativeNotificationAccessStatus {
   candidateNotificationsEnabled: boolean;
 }
 
+export interface NativePaymentDetectionDiagnostics {
+  selectedCallbacks: number;
+  activeNotificationReplays: number;
+  processedEnvelopes: number;
+  exactMatches: number;
+  reviewMatches: number;
+  ignoredMatches: number;
+  createdCandidates: number;
+  updatedCandidates: number;
+  suppressedDuplicates: number;
+  postedAlerts: number;
+  failedAlerts: number;
+  processingFailures: number;
+}
+
 export interface NativePaymentDetectionStatus
   extends NativePaymentDetectionSettings,
     NativeNotificationAccessStatus {
   supported: boolean;
+  /** Process-local counters; optional to tolerate older native runtimes. */
+  diagnostics?: NativePaymentDetectionDiagnostics;
 }
 
 export interface NativeSupportedPaymentApp {
