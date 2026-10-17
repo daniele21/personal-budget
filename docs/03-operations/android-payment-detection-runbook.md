@@ -172,6 +172,34 @@ replay duplicates.
 Do not enable WebView debugging or dynamic native content logs in a release
 artifact. Do not export the candidate database.
 
+### Local listener diagnostics
+
+The Payment Detection settings now distinguish a bound listener (**Connected**)
+from a proven payment callback. **No apps selected** is shown if the user has
+enabled detection without selecting a payment source. Neither state is proof
+of payment receipt.
+
+The expandable **Local detector diagnostics** panel reports only aggregate
+counters since the current sign-in/process: callbacks from selected packages,
+active-notification replay attempts, processed envelopes, exact/review/ignored
+matches, created/updated/duplicate outcomes, alert posts/failures, and
+processing failures. No package name, source content, merchant, notification
+key, financial amount or event timestamp is persisted or exposed. Counters
+are deliberately reset on native account registration/logout and Android process
+restart; they are not a durable event history.
+
+Use **Refresh diagnostics** after a bank notification to fetch a new native
+snapshot; the counters do not update continuously while the panel is open.
+The refresh also uses Aura's existing safe listener-recovery check.
+
+If a real bank notification reaches Android but these callback counters do
+not increase, investigate the Android listener/OS delivery path. If callbacks
+increase without candidates, investigate rules and processing/duplicate
+counters. If candidates increase without alerts, check the alert counters
+and notification permission/channel. A successful active-notification snapshot
+does not prove Android delivered every historical callback; no recovery path
+can replay an already-removed notification.
+
 ## Incident Response
 
 For suspected package-gate, cross-account, backup, log or network leakage:

@@ -27,6 +27,7 @@ import com.staituned.aura.paymentdetection.events.PaymentCandidateChange
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChangeReason
 import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
+import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
 import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryCoordinator
 import com.staituned.aura.paymentdetection.service.PaymentListenerRecoveryScheduler
@@ -88,6 +89,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         try {
             candidateNotifier.cancelAll()
             privacyStore.registerOwner(firebaseUid)
+            PaymentDetectionListenerRuntime.resetDiagnostics()
             PaymentListenerRecoveryScheduler.sync(context)
             call.resolve()
         } catch (_: Exception) {
@@ -108,6 +110,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         try {
             candidateNotifier.cancelAll()
             privacyStore.purge(reason)
+            PaymentDetectionListenerRuntime.resetDiagnostics()
             PaymentListenerRecoveryScheduler.cancel(context)
             call.resolve()
         } catch (_: Exception) {
@@ -408,6 +411,24 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             )
         }
 
+    private fun diagnosticsJson(): JSObject {
+        val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        return JSObject().apply {
+            put("selectedCallbacks", snapshot.selectedCallbacks)
+            put("activeNotificationReplays", snapshot.activeNotificationReplays)
+            put("processedEnvelopes", snapshot.processedEnvelopes)
+            put("exactMatches", snapshot.exactMatches)
+            put("reviewMatches", snapshot.reviewMatches)
+            put("ignoredMatches", snapshot.ignoredMatches)
+            put("createdCandidates", snapshot.createdCandidates)
+            put("updatedCandidates", snapshot.updatedCandidates)
+            put("suppressedDuplicates", snapshot.suppressedDuplicates)
+            put("postedAlerts", snapshot.postedAlerts)
+            put("failedAlerts", snapshot.failedAlerts)
+            put("processingFailures", snapshot.processingFailures)
+        }
+    }
+
     private fun settingsJson(settings: PaymentDetectionSettings): JSObject =
         JSObject().apply {
             put("requestedEnabled", settings.requestedEnabled)
@@ -417,6 +438,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     private fun statusJson(settings: PaymentDetectionSettings): JSObject =
         settingsJson(settings).apply {
             put("supported", true)
+            put("diagnostics", diagnosticsJson())
             put("osPermissionGranted", accessController.isGranted())
             put(
                 "listenerConnected",

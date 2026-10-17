@@ -17,6 +17,7 @@ export function PaymentDetectionSettings() {
     status,
     supportedApps,
     candidates,
+    refresh,
     updateSelectedApps,
     setRequestedEnabled,
     requestNotificationPermission,
@@ -39,21 +40,24 @@ export function PaymentDetectionSettings() {
   const alertsReady =
     status.auraNotificationPermissionGranted &&
     status.candidateNotificationsEnabled;
+  const hasSelectedApps = status.selectedPackages.length > 0;
   const enabled =
-    status.requestedEnabled && accessGranted && listenerReady;
+    status.requestedEnabled && hasSelectedApps && accessGranted && listenerReady;
   const fullyOperational =
     enabled && !upgradeRequired && alertsReady;
   const detectionStateLabel = upgradeRequired && status.requestedEnabled
     ? 'Access upgrade needed'
-    : enabled
-      ? alertsReady
-        ? 'Active'
-        : 'Alerts blocked'
-      : status.requestedEnabled
-        ? accessGranted
-          ? 'Reconnecting'
-          : 'Access missing'
-        : 'Paused';
+    : status.requestedEnabled && !hasSelectedApps
+      ? 'No apps selected'
+      : enabled
+        ? alertsReady
+          ? 'Connected'
+          : 'Alerts blocked'
+        : status.requestedEnabled
+          ? accessGranted
+            ? 'Reconnecting'
+            : 'Access missing'
+          : 'Paused';
 
   const handleDisclosureAccepted = async () => {
     setBusy(true);
@@ -173,6 +177,19 @@ export function PaymentDetectionSettings() {
         </span>
       </div>
 
+      {status.requestedEnabled && !hasSelectedApps && (
+        <p role="status" className="rounded-2xl bg-surface-container-low p-3 text-xs text-on-surface-variant">
+          No payment sources are selected. Choose at least one installed payment app below.
+        </p>
+      )}
+      {enabled && (
+        <p className="px-1 text-xs text-on-surface-variant">
+          Connected means Android has bound the listener. It does not confirm
+          that payment callbacks are being delivered. Check local diagnostics
+          after receiving a bank notification.
+        </p>
+      )}
+
       <div className="divide-y divide-outline-variant/20 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest">
         <div className="flex items-start gap-3 p-4">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -281,6 +298,48 @@ export function PaymentDetectionSettings() {
           )}
         </div>
       </div>
+
+      {status.diagnostics && (
+        <details className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-4">
+          <summary className="cursor-pointer text-sm font-bold text-on-surface">
+            Local detector diagnostics
+          </summary>
+          <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">
+            Content-free counters for this sign-in and app process. They reset on
+            sign-in or Android process restart. Zero callbacks does not prove
+            that no payments occurred, and active notification recovery cannot
+            recover notifications already removed by Android.
+          </p>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10"
+          >
+            Refresh diagnostics
+          </button>
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            {([
+              ['Selected Android callbacks', status.diagnostics.selectedCallbacks],
+              ['Active-notification replay attempts', status.diagnostics.activeNotificationReplays],
+              ['Notifications processed', status.diagnostics.processedEnvelopes],
+              ['Exact payments', status.diagnostics.exactMatches],
+              ['Payments needing review', status.diagnostics.reviewMatches],
+              ['Ignored by rules', status.diagnostics.ignoredMatches],
+              ['Candidates created', status.diagnostics.createdCandidates],
+              ['Candidates updated', status.diagnostics.updatedCandidates],
+              ['Duplicates suppressed', status.diagnostics.suppressedDuplicates],
+              ['Aura alerts posted', status.diagnostics.postedAlerts],
+              ['Aura alerts not posted', status.diagnostics.failedAlerts],
+              ['Processing failures', status.diagnostics.processingFailures],
+            ] as const).map(([label, count]) => (
+              <div key={label} className="rounded-xl bg-surface-container-low px-3 py-2">
+                <dt className="text-on-surface-variant">{label}</dt>
+                <dd className="mt-1 text-base font-bold tabular-nums text-on-surface">{count}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button

@@ -271,8 +271,10 @@ abstract class BaseAuraNotificationListenerService :
                         ),
                     )
                     if (result.tier == PaymentMatchTier.EXACT) {
-                        candidateNotifier.notifyCandidate(
-                            persistenceResult.candidateId,
+                        PaymentDetectionListenerRuntime.markAlertResult(
+                            candidateNotifier.notifyCandidate(
+                                persistenceResult.candidateId,
+                            ),
                         )
                     }
                 }
@@ -326,6 +328,9 @@ abstract class BaseAuraNotificationListenerService :
             .sortedByDescending { it.postTime }
             .take(MAX_RECOVERY_NOTIFICATIONS)
             .toList()
+        PaymentDetectionListenerRuntime.markActiveNotificationReplays(
+            selectedNotifications.size,
+        )
 
         val newestSelectedPostTime =
             selectedNotifications.maxOfOrNull { it.postTime }
