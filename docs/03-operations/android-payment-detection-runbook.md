@@ -188,6 +188,10 @@ key, financial amount or event timestamp is persisted or exposed. Counters
 are deliberately reset on native account registration/logout and Android process
 restart; they are not a durable event history.
 
+Use **Refresh diagnostics** after a bank notification to fetch a new native
+snapshot; the counters do not update continuously while the panel is open.
+The refresh also uses Aura's existing safe listener-recovery check.
+
 If a real bank notification reaches Android but these callback counters do
 not increase, investigate the Android listener/OS delivery path. If callbacks
 increase without candidates, investigate rules and processing/duplicate

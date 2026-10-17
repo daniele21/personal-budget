@@ -17,6 +17,7 @@ export function PaymentDetectionSettings() {
     status,
     supportedApps,
     candidates,
+    refresh,
     updateSelectedApps,
     setRequestedEnabled,
     requestNotificationPermission,
@@ -309,6 +310,13 @@ export function PaymentDetectionSettings() {
             that no payments occurred, and active notification recovery cannot
             recover notifications already removed by Android.
           </p>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10"
+          >
+            Refresh diagnostics
+          </button>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
               ['Selected Android callbacks', status.diagnostics.selectedCallbacks],

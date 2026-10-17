@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     auraNotificationPermissionGranted: false,
     candidateNotificationsEnabled: false,
   },
+  refresh: vi.fn(),
   updateSelectedApps: vi.fn(),
   setRequestedEnabled: vi.fn(),
   requestNotificationPermission: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock('../../../state/PaymentDetectionProvider', () => ({
       },
     ],
     candidates: [{ id: 'candidate' }],
+    refresh: mocks.refresh,
     updateSelectedApps: mocks.updateSelectedApps,
     setRequestedEnabled: mocks.setRequestedEnabled,
     requestNotificationPermission: mocks.requestNotificationPermission,
@@ -86,6 +88,8 @@ describe('PaymentDetectionSettings', () => {
       auraNotificationPermissionGranted: false,
       candidateNotificationsEnabled: false,
     });
+    delete (mocks.status as typeof mocks.status & { diagnostics?: unknown }).diagnostics;
+    mocks.refresh.mockResolvedValue(undefined);
     mocks.requestNotificationPermission.mockResolvedValue(true);
     mocks.openNotificationAccessSettings.mockResolvedValue(undefined);
     mocks.repairNotificationListener.mockResolvedValue(undefined);
@@ -205,7 +209,7 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.queryByText('Connected')).not.toBeInTheDocument();
   });
 
-  it('labels a bound listener Connected rather than claiming payment reception', () => {
+  it('labels a bound listener Connected rather than claiming payment reception', async () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
       selectedPackages: ['com.google.android.apps.walletnfcrel'],
@@ -238,6 +242,10 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText('Selected Android callbacks')).toBeInTheDocument();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
     expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByText('Local detector diagnostics'));
+    await user.click(screen.getByRole('button', { name: 'Refresh diagnostics' }));
+    expect(mocks.refresh).toHaveBeenCalledOnce();
   });
 
   it('offers explicit repair even when Android still reports the V2 listener connected', async () => {
