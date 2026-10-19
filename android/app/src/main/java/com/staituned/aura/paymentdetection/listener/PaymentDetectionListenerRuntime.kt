@@ -22,6 +22,13 @@ enum class PaymentListenerEndpointProbeResult {
  * timestamp, notification key, or notification text crosses this bridge.
  */
 internal data class PaymentListenerDiagnosticsSnapshot(
+    val supportedCallbacksObserved: Int,
+    val callbacksRejectedWrongGeneration: Int,
+    val callbacksRejectedBySettings: Int,
+    val activeSnapshotReads: Int,
+    val activeSnapshotFailures: Int,
+    val activeSupportedNotifications: Int,
+    val activeSelectedNotifications: Int,
     val selectedCallbacks: Int,
     val activeNotificationReplays: Int,
     val processedEnvelopes: Int,
@@ -67,6 +74,13 @@ internal object PaymentDetectionListenerRuntime {
         mutableMapOf<PaymentListenerGeneration, LinkedHashMap<String, Long>>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
+    private val supportedCallbacksObserved = AtomicInteger(0)
+    private val callbacksRejectedWrongGeneration = AtomicInteger(0)
+    private val callbacksRejectedBySettings = AtomicInteger(0)
+    private val activeSnapshotReads = AtomicInteger(0)
+    private val activeSnapshotFailures = AtomicInteger(0)
+    private val activeSupportedNotifications = AtomicInteger(0)
+    private val activeSelectedNotifications = AtomicInteger(0)
     private val selectedCallbacks = AtomicInteger(0)
     private val activeNotificationReplays = AtomicInteger(0)
     private val updatedCandidates = AtomicInteger(0)
@@ -161,6 +175,30 @@ internal object PaymentDetectionListenerRuntime {
         } catch (_: RuntimeException) {
             PaymentListenerProbeResult.FAILED
         }
+    }
+
+    /** Count allowlisted app package metadata only; never access notification extras. */
+    fun markSupportedCallbackObserved() {
+        supportedCallbacksObserved.incrementAndGet()
+    }
+
+    fun markCallbackRejectedWrongGeneration() {
+        callbacksRejectedWrongGeneration.incrementAndGet()
+    }
+
+    fun markCallbackRejectedBySettings() {
+        callbacksRejectedBySettings.incrementAndGet()
+    }
+
+    /** Successful active snapshots cannot prove delivery of posted callbacks. */
+    fun markActiveSnapshotRead(supportedCount: Int, selectedCount: Int) {
+        activeSnapshotReads.incrementAndGet()
+        activeSupportedNotifications.addAndGet(supportedCount)
+        activeSelectedNotifications.addAndGet(selectedCount)
+    }
+
+    fun markActiveSnapshotFailure() {
+        activeSnapshotFailures.incrementAndGet()
     }
 
     @Synchronized
@@ -275,6 +313,13 @@ internal object PaymentDetectionListenerRuntime {
     }
 
     fun diagnosticsSnapshot() = PaymentListenerDiagnosticsSnapshot(
+        supportedCallbacksObserved = supportedCallbacksObserved.get(),
+        callbacksRejectedWrongGeneration = callbacksRejectedWrongGeneration.get(),
+        callbacksRejectedBySettings = callbacksRejectedBySettings.get(),
+        activeSnapshotReads = activeSnapshotReads.get(),
+        activeSnapshotFailures = activeSnapshotFailures.get(),
+        activeSupportedNotifications = activeSupportedNotifications.get(),
+        activeSelectedNotifications = activeSelectedNotifications.get(),
         selectedCallbacks = selectedCallbacks.get(),
         activeNotificationReplays = activeNotificationReplays.get(),
         processedEnvelopes = acceptedEnvelopes.get(),
@@ -299,6 +344,13 @@ internal object PaymentDetectionListenerRuntime {
 
     /** Also called at account boundaries so counters cannot span two owners. */
     fun resetDiagnostics() {
+        supportedCallbacksObserved.set(0)
+        callbacksRejectedWrongGeneration.set(0)
+        callbacksRejectedBySettings.set(0)
+        activeSnapshotReads.set(0)
+        activeSnapshotFailures.set(0)
+        activeSupportedNotifications.set(0)
+        activeSelectedNotifications.set(0)
         selectedCallbacks.set(0)
         activeNotificationReplays.set(0)
         acceptedEnvelopes.set(0)
