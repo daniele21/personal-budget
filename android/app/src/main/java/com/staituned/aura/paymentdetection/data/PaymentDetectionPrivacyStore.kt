@@ -43,7 +43,7 @@ internal class PaymentDetectionPrivacyStore(
     }
 
     /**
-     * The same Firebase owner can be registered repeatedly during auth refresh.
+     * The same native owner can be registered repeatedly during auth refresh.
      * Only actual owner transitions clear previous-owner alerts or diagnostics.
      */
     @Synchronized
