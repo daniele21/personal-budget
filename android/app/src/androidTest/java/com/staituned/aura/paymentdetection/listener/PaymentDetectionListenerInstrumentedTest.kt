@@ -352,6 +352,47 @@ class PaymentDetectionListenerInstrumentedTest {
     }
 
     @Test
+    fun supportedSourceCallbackRejectedBeforeSelectionNeverReadsCandidate() {
+        val component = currentComponent()
+        val privacyStore = PaymentDetectionPrivacyStore(context)
+        val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
+        resetListenerGrants()
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("synthetic-pre-gate-owner")
+        settingsStore.updateSettings(
+            requestedEnabled = true,
+            selectedPackages = emptySet(),
+        )
+        PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
+
+        try {
+            grantNotificationPermissions()
+            shell("cmd notification allow_listener $component")
+            waitUntil("V2 listener for pre-gate diagnostics") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
+            }
+            postSyntheticNotification()
+            waitUntil("supported source callback before Aura filters") {
+                PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+                    .callbacksRejectedBySettings >= 1
+            }
+            val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertTrue(snapshot.supportedCallbacksObserved >= 1)
+            assertTrue(snapshot.callbacksRejectedBySettings >= 1)
+            assertEquals(0, snapshot.selectedCallbacks)
+            assertEquals(0, snapshot.processedEnvelopes)
+            assertEquals(0, snapshot.createdCandidates)
+        } finally {
+            resetListenerGrants()
+            shell("am force-stop $SYNTHETIC_PACKAGE")
+            PaymentCandidateNotifier(context).cancelAll()
+            privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
+        }
+    }
+
+    @Test
     fun controlledTestAppReachesV2ListenerWithoutLaunchingAuraUi() {
         val component = currentComponent()
         val privacyStore = PaymentDetectionPrivacyStore(context)
@@ -394,6 +435,7 @@ class PaymentDetectionListenerInstrumentedTest {
                 PaymentDetectionListenerRuntime.diagnosticsSnapshot().postedAlerts >= 1
             }
             val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertTrue(snapshot.supportedCallbacksObserved >= 1)
             assertTrue(snapshot.selectedCallbacks >= 1)
             assertTrue(snapshot.processedEnvelopes >= 1)
             assertTrue(snapshot.createdCandidates >= 1)
