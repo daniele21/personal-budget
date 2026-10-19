@@ -305,10 +305,12 @@ export function PaymentDetectionSettings() {
             Local detector diagnostics
           </summary>
           <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">
-            Content-free counters for this sign-in and app process. They reset on
-            sign-in or Android process restart. Zero callbacks does not prove
-            that no payments occurred, and active notification recovery cannot
-            recover notifications already removed by Android.
+            Content-free counters for this Android process and account. They
+            reset on an account change or process restart, not repeat sign-in.
+            Before the selection gate Aura counts only supported-app package
+            metadata and never reads notification text. Successful snapshot
+            reads do not prove real-time callback delivery, and Android cannot
+            recover notifications already removed.
           </p>
           <button
             type="button"
@@ -319,6 +321,13 @@ export function PaymentDetectionSettings() {
           </button>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
+              ['Supported-app callbacks before Aura filters', status.diagnostics.supportedCallbacksObserved],
+              ['Rejected: inactive listener generation', status.diagnostics.callbacksRejectedWrongGeneration],
+              ['Rejected: account or source selection', status.diagnostics.callbacksRejectedBySettings],
+              ['Successful active-notification snapshots', status.diagnostics.activeSnapshotReads],
+              ['Failed active-notification snapshots', status.diagnostics.activeSnapshotFailures],
+              ['Supported notifications visible in snapshots', status.diagnostics.activeSupportedNotifications],
+              ['Selected notifications visible in snapshots', status.diagnostics.activeSelectedNotifications],
               ['Selected Android callbacks', status.diagnostics.selectedCallbacks],
               ['Active-notification replay attempts', status.diagnostics.activeNotificationReplays],
               ['Notifications processed', status.diagnostics.processedEnvelopes],

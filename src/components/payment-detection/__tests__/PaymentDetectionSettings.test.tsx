@@ -219,6 +219,13 @@ describe('PaymentDetectionSettings', () => {
       auraNotificationPermissionGranted: true,
       candidateNotificationsEnabled: true,
       diagnostics: {
+        supportedCallbacksObserved: 3,
+        callbacksRejectedWrongGeneration: 0,
+        callbacksRejectedBySettings: 1,
+        activeSnapshotReads: 2,
+        activeSnapshotFailures: 0,
+        activeSupportedNotifications: 2,
+        activeSelectedNotifications: 1,
         selectedCallbacks: 2,
         activeNotificationReplays: 0,
         processedEnvelopes: 2,
@@ -240,6 +247,9 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText(/does not confirm/)).toBeInTheDocument();
     expect(screen.getByText('Local detector diagnostics')).toBeInTheDocument();
     expect(screen.getByText('Selected Android callbacks')).toBeInTheDocument();
+    expect(screen.getByText('Supported-app callbacks before Aura filters')).toBeInTheDocument();
+    expect(screen.getByText('Rejected: account or source selection')).toBeInTheDocument();
+    expect(screen.getByText('Supported notifications visible in snapshots')).toBeInTheDocument();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
     expect(screen.queryByText('Active')).not.toBeInTheDocument();
     const user = userEvent.setup();

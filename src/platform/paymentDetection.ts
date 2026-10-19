@@ -19,6 +19,13 @@ export interface NativeNotificationAccessStatus {
 }
 
 export interface NativePaymentDetectionDiagnostics {
+  supportedCallbacksObserved: number;
+  callbacksRejectedWrongGeneration: number;
+  callbacksRejectedBySettings: number;
+  activeSnapshotReads: number;
+  activeSnapshotFailures: number;
+  activeSupportedNotifications: number;
+  activeSelectedNotifications: number;
   selectedCallbacks: number;
   activeNotificationReplays: number;
   processedEnvelopes: number;
