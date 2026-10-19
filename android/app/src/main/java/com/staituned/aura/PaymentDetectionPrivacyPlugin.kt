@@ -87,9 +87,12 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             return
         }
         try {
-            candidateNotifier.cancelAll()
-            privacyStore.registerOwner(firebaseUid)
-            PaymentDetectionListenerRuntime.resetDiagnostics()
+            val ownerChanged = privacyStore.registerOwner(firebaseUid) {
+                candidateNotifier.cancelAll()
+            }
+            if (ownerChanged) {
+                PaymentDetectionListenerRuntime.resetDiagnostics()
+            }
             PaymentListenerRecoveryScheduler.sync(context)
             call.resolve()
         } catch (_: Exception) {

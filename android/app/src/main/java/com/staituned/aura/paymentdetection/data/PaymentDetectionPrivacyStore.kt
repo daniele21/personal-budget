@@ -42,12 +42,23 @@ internal class PaymentDetectionPrivacyStore(
         completePurge(reason)
     }
 
+    /**
+     * The same Firebase owner can be registered repeatedly during auth refresh.
+     * Only actual owner transitions clear previous-owner alerts or diagnostics.
+     */
     @Synchronized
-    fun registerOwner(firebaseUid: String) {
+    fun registerOwner(
+        firebaseUid: String,
+        onOwnerTransition: () -> Unit = {},
+    ): Boolean {
         recoverInterruptedPurge()
         val ownerKeyHash = ownerKeyHasher.hashFirebaseUid(firebaseUid)
         val previousOwner = preferences.getString(ACTIVE_OWNER_KEY, null)
-        if (previousOwner != null && previousOwner != ownerKeyHash) {
+        if (previousOwner == ownerKeyHash) return false
+
+        // Clear Android alerts before deleting the previous owner's local state.
+        onOwnerTransition()
+        if (previousOwner != null) {
             purge(NativePurgeReason.ACCOUNT_CHANGE)
         }
         check(
@@ -57,6 +68,7 @@ internal class PaymentDetectionPrivacyStore(
         ) {
             "Unable to persist the native owner boundary."
         }
+        return true
     }
 
     @Synchronized
