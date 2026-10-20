@@ -136,8 +136,25 @@ abstract class BaseAuraNotificationListenerService :
     }
 
     override fun onNotificationPosted(notification: StatusBarNotification) {
-        if (!isEffectiveListener()) return
-        if (!settingsStore.isProcessingAllowed(notification.packageName)) return
+        // Observe only the allowlisted package name, before selection and
+        // generation checks. Never read the body of a rejected notification.
+        val supportedSource =
+            SupportedPaymentAppCatalog.findByPackageName(notification.packageName) != null
+        if (supportedSource) {
+            PaymentDetectionListenerRuntime.markSupportedCallbackObserved()
+        }
+        if (!isEffectiveListener()) {
+            if (supportedSource) {
+                PaymentDetectionListenerRuntime.markCallbackRejectedWrongGeneration()
+            }
+            return
+        }
+        if (!settingsStore.isProcessingAllowed(notification.packageName)) {
+            if (supportedSource) {
+                PaymentDetectionListenerRuntime.markCallbackRejectedBySettings()
+            }
+            return
+        }
         if (PaymentDetectionListenerRuntime.consumeSuppressedPostedCallbackForTest()) {
             return
         }
@@ -308,16 +325,28 @@ abstract class BaseAuraNotificationListenerService :
         val notifications = try {
             activeNotifications.toList()
         } catch (_: RuntimeException) {
+            PaymentDetectionListenerRuntime.markActiveSnapshotFailure()
             return PaymentListenerEndpointProbeResult.FAILED
         }
 
-        // Package and user-selection checks use only StatusBarNotification
-        // metadata and happen before the bounded cap and before extras access.
-        // Prefer the newest selected notifications so unrelated tray volume can
-        // never push a fresh payment out of the recovery window.
-        val selectedNotifications = notifications.asSequence()
+        // Only package metadata is inspected for unselected notifications.
+        // A supported source in the tray, a selected source in the lookback
+        // window, and a replayed event are different forms of evidence.
+        val supportedNotifications = notifications.filter {
+            SupportedPaymentAppCatalog.findByPackageName(it.packageName) != null
+        }
+        val eligibleNotifications = supportedNotifications.asSequence()
             .filter { it.postTime in floor..(now + MAX_CLOCK_SKEW_MS) }
             .filter { settingsStore.isProcessingAllowed(it.packageName) }
+            .toList()
+        PaymentDetectionListenerRuntime.markActiveSnapshotRead(
+            supportedNotifications.size,
+            eligibleNotifications.size,
+        )
+
+        // Prefer the newest eligible notifications, retaining the bounded cap
+        // and technical deduplication of the existing recovery path.
+        val selectedNotifications = eligibleNotifications.asSequence()
             .filter {
                 !PaymentDetectionListenerRuntime.wasNotificationProcessed(
                     generation,

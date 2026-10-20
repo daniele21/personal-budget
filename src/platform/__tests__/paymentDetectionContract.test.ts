@@ -46,6 +46,13 @@ describe('TypeScript/Kotlin payment detection contract', () => {
     }
     expect(plugin).toContain('put("diagnostics", diagnosticsJson())');
     for (const field of [
+      'supportedCallbacksObserved',
+      'callbacksRejectedWrongGeneration',
+      'callbacksRejectedBySettings',
+      'activeSnapshotReads',
+      'activeSnapshotFailures',
+      'activeSupportedNotifications',
+      'activeSelectedNotifications',
       'selectedCallbacks',
       'activeNotificationReplays',
       'processedEnvelopes',

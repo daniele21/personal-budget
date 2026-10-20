@@ -111,6 +111,24 @@ candidate fields or financial values into tickets or logs.
 
 ## Diagnostics
 
+The next internal detector-diagnostics update distinguishes allowlisted
+payment-source callbacks **before** Aura's generation/selection gates from
+selected callbacks actually processed. It also counts successful/failed active
+notification snapshots and supported/selected notifications seen therein,
+using only source-package metadata until the explicit source opt-in gate.
+
+Counters are aggregate and process-local: no package names, notification text,
+amounts, keys, or timestamps are persisted or sent. Native re-registration
+of the same Firebase owner must not reset diagnostics or cancel valid candidate
+alerts. A process restart or actual owner change still clears the counters.
+
+If a bank notification appears in Android but Aura misses it: check
+**Supported-app callbacks before Aura filters**, both **Rejected** counters,
+**Supported notifications visible in snapshots**, and **Selected notifications
+visible in snapshots**. Successful empty snapshots cannot prove delivery and
+all zeros cannot rule out an unrecognized runtime package or Android
+delivery/filtering behavior; device-side evidence remains necessary.
+
 Safe evidence includes:
 
 - app package and build variant;

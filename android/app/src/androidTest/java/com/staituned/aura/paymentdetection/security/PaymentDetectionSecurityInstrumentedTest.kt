@@ -148,11 +148,15 @@ class PaymentDetectionSecurityInstrumentedTest {
         )
 
         store.purge(NativePurgeReason.LOCAL_RESET)
-        store.registerOwner("firebase-user-a")
+        var ownerTransitions = 0
+        assertTrue(store.registerOwner("firebase-user-a") { ownerTransitions += 1 })
         assertTrue(store.hasActiveOwner())
+        assertFalse(store.registerOwner("firebase-user-a") { ownerTransitions += 1 })
+        assertEquals(1, ownerTransitions)
 
-        store.registerOwner("firebase-user-b")
+        assertTrue(store.registerOwner("firebase-user-b") { ownerTransitions += 1 })
         assertTrue(store.hasActiveOwner())
+        assertEquals(2, ownerTransitions)
 
         store.purge(NativePurgeReason.TOTAL_DELETION)
         assertFalse(store.hasActiveOwner())

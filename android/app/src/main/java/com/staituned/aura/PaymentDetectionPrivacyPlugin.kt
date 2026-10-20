@@ -87,9 +87,12 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             return
         }
         try {
-            candidateNotifier.cancelAll()
-            privacyStore.registerOwner(firebaseUid)
-            PaymentDetectionListenerRuntime.resetDiagnostics()
+            val ownerChanged = privacyStore.registerOwner(firebaseUid) {
+                candidateNotifier.cancelAll()
+            }
+            if (ownerChanged) {
+                PaymentDetectionListenerRuntime.resetDiagnostics()
+            }
             PaymentListenerRecoveryScheduler.sync(context)
             call.resolve()
         } catch (_: Exception) {
@@ -414,6 +417,13 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     private fun diagnosticsJson(): JSObject {
         val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
         return JSObject().apply {
+            put("supportedCallbacksObserved", snapshot.supportedCallbacksObserved)
+            put("callbacksRejectedWrongGeneration", snapshot.callbacksRejectedWrongGeneration)
+            put("callbacksRejectedBySettings", snapshot.callbacksRejectedBySettings)
+            put("activeSnapshotReads", snapshot.activeSnapshotReads)
+            put("activeSnapshotFailures", snapshot.activeSnapshotFailures)
+            put("activeSupportedNotifications", snapshot.activeSupportedNotifications)
+            put("activeSelectedNotifications", snapshot.activeSelectedNotifications)
             put("selectedCallbacks", snapshot.selectedCallbacks)
             put("activeNotificationReplays", snapshot.activeNotificationReplays)
             put("processedEnvelopes", snapshot.processedEnvelopes)
