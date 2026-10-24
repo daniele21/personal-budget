@@ -3,6 +3,12 @@
 card-standard|EXACT||💸 Hai pagato 24,50 € con la carta *0000 il 12.03 alle ore 14:25 da NEGOZIO DI PROVA, ROMA.|2450|NEGOZIO DI PROVA, ROMA|
 card-standard-dot-decimal|EXACT||Hai pagato 7.25 € con la carta *0000 il 03.12 alle ore 09:05 da SERVIZIO TEST*ONLINE.|725|SERVIZIO TEST*ONLINE|
 card-virtual|EXACT||💸 Hai pagato 3,10 € con la carta virtuale *0000 rif. carta *0000 il 05.04 alle ore 06:15 da PROVIDER TEST *PARKING.|310|PROVIDER TEST *PARKING|
+card-possessive|EXACT||Hai pagato 14,00 € con la tua carta *0000 il 24.10 alle ore 09:10 da NEGOZIO DI PROVA.|1400|NEGOZIO DI PROVA|
+card-slash-date-no-ore|EXACT||Hai pagato 20,00 € con la carta *0000 il 24/10 alle 18:05 da SERVIZIO TEST.|2000|SERVIZIO TEST|
+card-virtual-possessive|EXACT||Hai pagato 9,99 € con la tua carta virtuale *0000 rif. carta *0000 il 24/10/26 alle 08:05 da PROVA PARKING.|999|PROVA PARKING|
+card-no-merchant-remains-review|REVIEW||Hai pagato 8,00 € con la tua carta *0000 il 24/10 alle 09:05|800||
+card-no-card-remains-review|REVIEW||Hai pagato 6,00 € il 24/10 alle ore 09:05 da MARKET TEST.|600||
+card-no-time-remains-review|REVIEW||Hai pagato 6,00 € con la carta *0000 il 24/10 da MARKET TEST.|600||
 salary-credit|IGNORED||È stato accreditato lo stipendio/pensione di 2.500,00 euro sul conto xxx000 - 28.07.2026|||NEGATIVE_SIGNAL
 verification-code|IGNORED||Codice di verifica 000000 per autorizzare l’operazione|||NEGATIVE_SIGNAL
 available-balance|IGNORED||Saldo disponibile 1.000,00 euro|||NEGATIVE_SIGNAL

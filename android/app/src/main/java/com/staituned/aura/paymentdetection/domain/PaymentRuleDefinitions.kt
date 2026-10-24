@@ -66,7 +66,7 @@ internal object BundledPaymentRuleCatalog {
 
     private val intesaSanpaoloRuleSet = PaymentRuleSetDefinition(
         schemaVersion = CURRENT_SCHEMA_VERSION,
-        ruleVersion = "intesa-sanpaolo-card-v1",
+        ruleVersion = "intesa-sanpaolo-card-v2",
         sourceAppId = INTESA_SANPAOLO_SOURCE_APP_ID,
         negativeRules = negativeRules + listOf(
             negative(
@@ -76,13 +76,13 @@ internal object BundledPaymentRuleCatalog {
         ),
         exactRules = listOf(
             ExactPaymentRuleDefinition(
-                id = "intesa-card-payment-v1",
+                id = "intesa-card-payment-v2",
                 titlePattern = null,
                 bodyPattern =
                     """^(?:💸\s*)?hai\s+pagato\s+(?<amount>$AMOUNT)\s*€\s+""" +
-                        """con\s+la\s+carta(?:\s+virtuale\s+\*\d{4}\s+rif\.\s+carta)?""" +
-                        """\s+\*\d{4}\s+il\s+\d{2}[.]\d{2}(?:[.]\d{2,4})?\s+""" +
-                        """alle\s+ore\s+\d{2}:\d{2}\s+da\s+""" +
+                        """con\s+la\s+(?:tua\s+)?carta(?:\s+virtuale\s+\*\d{4}\s+rif\.\s+carta)?""" +
+                        """\s+\*\d{4}\s+il\s+\d{2}[./]\d{2}(?:[./]\d{2,4})?\s+""" +
+                        """alle\s+(?:ore\s+)?\d{2}:\d{2}\s+da\s+""" +
                         """(?<merchant>[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{0,119})\s*[.]?$""",
             ),
         ),

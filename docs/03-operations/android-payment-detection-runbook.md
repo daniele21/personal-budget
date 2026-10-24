@@ -111,6 +111,14 @@ candidate fields or financial values into tickets or logs.
 
 ## Diagnostics
 
+Intesa `EXACT` rule v2 accepts minor wording variations (`la tua carta`),
+slash or dot date separators, and optional `ore` before the time. It still
+requires a EUR amount, masked card suffix, dated and timed card-payment
+sentence, and a named merchant; negative signals retain priority. Near misses
+remain `REVIEW` (in-app queue only, no Aura alert). These synthetic fixtures do
+not establish that the live bank notification format is covered on a device.
+
+
 The next internal detector-diagnostics update distinguishes allowlisted
 payment-source callbacks **before** Aura's generation/selection gates from
 selected callbacks actually processed. It also counts successful/failed active

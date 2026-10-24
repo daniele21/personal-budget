@@ -75,6 +75,24 @@ class PaymentRuleEngineTest {
     }
 
     @Test
+    fun intesaMinorFormatVariantInExpandedTextRetainsExactMerchant() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "Intesa Sanpaolo",
+                text = "Hai pagato 11,50 €",
+                bigText = "Hai pagato 11,50 € con la tua carta *0000 il 24/10 " +
+                    "alle 10:05 da NEGOZIO DI PROVA.",
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+
+        assertEquals(PaymentMatchTier.EXACT, result.tier)
+        assertEquals(1150L, result.amountMinorUnits)
+        assertEquals("NEGOZIO DI PROVA", result.merchant)
+    }
+
+    @Test
     fun redactedGoogleWalletCorpusMatchesOnlyApprovedCardPayments() {
         corpus(
             resourceName = "/paymentdetection/google-wallet-card-v1.fixture",
