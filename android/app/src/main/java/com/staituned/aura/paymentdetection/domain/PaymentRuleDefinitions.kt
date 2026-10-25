@@ -66,23 +66,26 @@ internal object BundledPaymentRuleCatalog {
 
     private val intesaSanpaoloRuleSet = PaymentRuleSetDefinition(
         schemaVersion = CURRENT_SCHEMA_VERSION,
-        ruleVersion = "intesa-sanpaolo-card-v1",
+        ruleVersion = "intesa-sanpaolo-card-v3",
         sourceAppId = INTESA_SANPAOLO_SOURCE_APP_ID,
         negativeRules = negativeRules + listOf(
             negative(
                 "intesa-negative-income",
                 """accreditat[oa]|stipendio|pensione|emolumento""",
             ),
+            negative("intesa-negative-not-paid", """non\s+hai\s+pagato"""),
         ),
         exactRules = listOf(
             ExactPaymentRuleDefinition(
-                id = "intesa-card-payment-v1",
+                id = "intesa-card-payment-v3",
                 titlePattern = null,
                 bodyPattern =
-                    """^(?:💸\s*)?hai\s+pagato\s+(?<amount>$AMOUNT)\s*€\s+""" +
-                        """con\s+la\s+carta(?:\s+virtuale\s+\*\d{4}\s+rif\.\s+carta)?""" +
-                        """\s+\*\d{4}\s+il\s+\d{2}[.]\d{2}(?:[.]\d{2,4})?\s+""" +
-                        """alle\s+ore\s+\d{2}:\d{2}\s+da\s+""" +
+                    """^(?:💸\s*)?hai\s+pagato\s+(?<amount>$AMOUNT)\s*(?:€|EUR)""" +
+                        // Bank-specific payment, amount and merchant are the
+                        // necessary exact evidence. Card/date/time details vary
+                        // by device and notification layout, so never require them.
+                        // Keep the intervening text bounded and do not capture it.
+                        """(?:\s+\S{1,48}){0,24}?\s+(?:da|presso)\s+""" +
                         """(?<merchant>[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{0,119})\s*[.]?$""",
             ),
         ),

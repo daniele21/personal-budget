@@ -72,17 +72,26 @@ internal class PaymentRuleEngine(
             for (body in notification.bodyCandidates()) {
                 val match = rule.body.matchEntire(body) ?: continue
                 val amount = parseMinorUnits(match.groups["amount"]?.value) ?: continue
-                val merchant = optionalGroup(titleMatch, "merchant")
-                    ?: optionalGroup(match, "merchant")
+                val merchant = NotificationNormalizer.merchant(
+                    optionalGroup(titleMatch, "merchant")
+                        ?: optionalGroup(match, "merchant"),
+                )
+                // An Intesa exact match requires an identifiable, safe merchant.
+                // If it looks like card/account data, keep the payment in REVIEW
+                // instead of posting a misleading high-confidence alert.
+                if (
+                    rules.sourceAppId == BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID &&
+                    merchant == null
+                ) {
+                    continue
+                }
                 return PaymentDetectionResult.Candidate(
                     tier = PaymentMatchTier.EXACT,
                     sourceAppId = input.sourceAppId,
                     operationType = CARD_PAYMENT,
                     amountMinorUnits = amount,
                     currency = EUR,
-                    merchant = NotificationNormalizer.merchant(
-                        merchant,
-                    ),
+                    merchant = merchant,
                     occurredAtEpochMillis = input.postedAtEpochMillis,
                     matchedRuleId = rule.id,
                     ruleVersion = rules.ruleVersion,
