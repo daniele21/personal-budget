@@ -111,13 +111,14 @@ candidate fields or financial values into tickets or logs.
 
 ## Diagnostics
 
-Intesa `EXACT` rule v2 accepts minor wording variations (`la tua carta`),
-slash or dot date separators, and optional `ore` before the time. It still
-requires a EUR amount, masked card suffix, dated and timed card-payment
-sentence, and a named merchant; negative signals retain priority. Near misses
-remain `REVIEW` (in-app queue only, no Aura alert). These synthetic fixtures do
-not establish that the live bank notification format is covered on a device.
-
+Intesa `EXACT` rule v3 checks the bank-specific positive phrase
+`Hai pagato`, a EUR amount, and a bounded merchant introduced by `da`
+or `presso`. Card details, date and time are optional; variant text between
+the amount and merchant is bounded and never persisted. Negative signals
+(including `Non hai pagato`) take priority. If merchant is missing or
+looks like card/account data, the positive payment remains `REVIEW`
+(in-app queue only, no Aura alert). Synthetic examples cover variations
+and false positives; actual device notification layouts still need verification.
 
 The next internal detector-diagnostics update distinguishes allowlisted
 payment-source callbacks **before** Aura's generation/selection gates from

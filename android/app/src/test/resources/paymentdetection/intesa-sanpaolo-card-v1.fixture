@@ -7,8 +7,14 @@ card-possessive|EXACT||Hai pagato 14,00 € con la tua carta *0000 il 24.10 alle
 card-slash-date-no-ore|EXACT||Hai pagato 20,00 € con la carta *0000 il 24/10 alle 18:05 da SERVIZIO TEST.|2000|SERVIZIO TEST|
 card-virtual-possessive|EXACT||Hai pagato 9,99 € con la tua carta virtuale *0000 rif. carta *0000 il 24/10/26 alle 08:05 da PROVA PARKING.|999|PROVA PARKING|
 card-no-merchant-remains-review|REVIEW||Hai pagato 8,00 € con la tua carta *0000 il 24/10 alle 09:05|800||
-card-no-card-remains-review|REVIEW||Hai pagato 6,00 € il 24/10 alle ore 09:05 da MARKET TEST.|600||
-card-no-time-remains-review|REVIEW||Hai pagato 6,00 € con la carta *0000 il 24/10 da MARKET TEST.|600||
+short-with-merchant|EXACT||Hai pagato 3,50 € da BAR TEST.|350|BAR TEST|
+presso-merchant|EXACT||Hai pagato 19,99 EUR con carta ••0000 presso MARKET DI PROVA.|1999|MARKET DI PROVA|
+merchant-card-identifier-remains-review|REVIEW||Hai pagato 4,50 € con la carta *0000 da Carta 1234.|450||
+paid-phrase-without-merchant-remains-review|REVIEW||Hai pagato 7,50 € con carta.|750||
+not-paid-is-negative|IGNORED||Non hai pagato 7,50 € presso BAR TEST.|||NEGATIVE_SIGNAL
+missing-payment-verb-is-ignored|IGNORED||Totale 19,99 € presso MARKET DI PROVA.|||NO_APPROVED_PATTERN
+card-no-card-needed|EXACT||Hai pagato 6,00 € il 24/10 alle ore 09:05 da MARKET TEST.|600|MARKET TEST|
+card-no-time-needed|EXACT||Hai pagato 6,00 € con la carta *0000 il 24/10 da MARKET TEST.|600|MARKET TEST|
 salary-credit|IGNORED||È stato accreditato lo stipendio/pensione di 2.500,00 euro sul conto xxx000 - 28.07.2026|||NEGATIVE_SIGNAL
 verification-code|IGNORED||Codice di verifica 000000 per autorizzare l’operazione|||NEGATIVE_SIGNAL
 available-balance|IGNORED||Saldo disponibile 1.000,00 euro|||NEGATIVE_SIGNAL

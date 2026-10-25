@@ -93,6 +93,39 @@ class PaymentRuleEngineTest {
     }
 
     @Test
+    fun intesaExplicitPaymentWithMerchantDoesNotRequireCardDateOrTime() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "Intesa Sanpaolo",
+                text = "Hai pagato 3,50 € da BAR TEST.",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+
+        assertEquals(PaymentMatchTier.EXACT, result.tier)
+        assertEquals(350L, result.amountMinorUnits)
+        assertEquals("BAR TEST", result.merchant)
+    }
+
+    @Test
+    fun intesaCardLikeMerchantStaysReviewRatherThanExact() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = null,
+                text = "Hai pagato 4,50 € con la carta *0000 da Carta 1234.",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+
+        assertEquals(PaymentMatchTier.REVIEW, result.tier)
+        assertNull(result.merchant)
+    }
+
+    @Test
     fun redactedGoogleWalletCorpusMatchesOnlyApprovedCardPayments() {
         corpus(
             resourceName = "/paymentdetection/google-wallet-card-v1.fixture",
