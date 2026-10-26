@@ -110,6 +110,25 @@ class PaymentRuleEngineTest {
     }
 
     @Test
+    fun intesaMerchantExcludesRoutingReferenceAndAvailableBalanceFooter() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "NEGOZIO TEST",
+                text = "Hai pagato 65,08 EUR con la carta *0000 il 26.10 " +
+                    "alle ore 11:59 da NEGOZIO TEST, NLD_00000,Local. " +
+                    "Hai ancora a disposizione 1234,56€.",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+
+        assertEquals(PaymentMatchTier.EXACT, result.tier)
+        assertEquals(6508L, result.amountMinorUnits)
+        assertEquals("NEGOZIO TEST", result.merchant)
+    }
+
+    @Test
     fun intesaCardLikeMerchantStaysReviewRatherThanExact() {
         val result = engine.evaluate(
             PaymentDetectionInput(

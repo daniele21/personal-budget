@@ -15,6 +15,10 @@ not-paid-is-negative|IGNORED||Non hai pagato 7,50 € presso BAR TEST.|||NEGATIV
 missing-payment-verb-is-ignored|IGNORED||Totale 19,99 € presso MARKET DI PROVA.|||NO_APPROVED_PATTERN
 card-no-card-needed|EXACT||Hai pagato 6,00 € il 24/10 alle ore 09:05 da MARKET TEST.|600|MARKET TEST|
 card-no-time-needed|EXACT||Hai pagato 6,00 € con la carta *0000 il 24/10 da MARKET TEST.|600|MARKET TEST|
+intesa-reference-and-balance|EXACT||💸 Hai pagato 65,08 EUR con la carta *0000 il 26.10 alle ore 11:59 da NEGOZIO TEST, NLD_00000,Local. Hai ancora a disposizione 1234,56€.|6508|NEGOZIO TEST|
+intesa-balance-without-reference|EXACT||Hai pagato 5,50 EUR da BAR TEST. Hai ancora a disposizione 1234,56€.|550|BAR TEST|
+intesa-reference-without-balance|EXACT||Hai pagato 9,95 € presso SHOP TEST, NLD_1217GV,Local.|995|SHOP TEST|
+intesa-balance-no-merchant-review|REVIEW||Hai pagato 12,35 € con la carta *0000. Hai ancora a disposizione 1234,56€.|1235||
 salary-credit|IGNORED||È stato accreditato lo stipendio/pensione di 2.500,00 euro sul conto xxx000 - 28.07.2026|||NEGATIVE_SIGNAL
 verification-code|IGNORED||Codice di verifica 000000 per autorizzare l’operazione|||NEGATIVE_SIGNAL
 available-balance|IGNORED||Saldo disponibile 1.000,00 euro|||NEGATIVE_SIGNAL
