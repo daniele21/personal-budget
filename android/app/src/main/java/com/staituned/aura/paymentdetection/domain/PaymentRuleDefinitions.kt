@@ -92,7 +92,7 @@ internal object BundledPaymentRuleCatalog {
                         """(?:,\s*[\p{L}\p{N}]{2,12}_[\p{L}\p{N}]{2,24},\s*[\p{L}\p{N}]{1,24})?""" +
                         // An optional balance footer is not part of the payment
                         // and must not become a merchant or an extra amount.
-                        """[.]?(?:\s+hai\s+ancora\s+a\s+disposizione\s+(?:$AMOUNT)\s*(?:€|EUR)[.]?)?$""",
+                        """[.]?(?:\s+hai\s+ancora\s+a\s+disposizione\s+\d[\d.,\s]{0,18}\s*(?:€|EUR)[.]?)?$""",
             ),
         ),
         reviewContextPattern =
