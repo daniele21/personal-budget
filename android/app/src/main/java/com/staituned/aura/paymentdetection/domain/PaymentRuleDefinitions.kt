@@ -66,7 +66,7 @@ internal object BundledPaymentRuleCatalog {
 
     private val intesaSanpaoloRuleSet = PaymentRuleSetDefinition(
         schemaVersion = CURRENT_SCHEMA_VERSION,
-        ruleVersion = "intesa-sanpaolo-card-v3",
+        ruleVersion = "intesa-sanpaolo-card-v4",
         sourceAppId = INTESA_SANPAOLO_SOURCE_APP_ID,
         negativeRules = negativeRules + listOf(
             negative(
@@ -77,7 +77,7 @@ internal object BundledPaymentRuleCatalog {
         ),
         exactRules = listOf(
             ExactPaymentRuleDefinition(
-                id = "intesa-card-payment-v3",
+                id = "intesa-card-payment-v4",
                 titlePattern = null,
                 bodyPattern =
                     """^(?:💸\s*)?hai\s+pagato\s+(?<amount>$AMOUNT)\s*(?:€|EUR)""" +
@@ -86,7 +86,13 @@ internal object BundledPaymentRuleCatalog {
                         // by device and notification layout, so never require them.
                         // Keep the intervening text bounded and do not capture it.
                         """(?:\s+\S{1,48}){0,24}?\s+(?:da|presso)\s+""" +
-                        """(?<merchant>[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{0,119})\s*[.]?$""",
+                        """(?<merchant>[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{0,119}?)""" +
+                        // Intesa can append a non-merchant routing reference.
+                        // Do not persist it with the merchant.
+                        """(?:,\s*[\p{L}\p{N}]{2,12}_[\p{L}\p{N}]{2,24},\s*[\p{L}\p{N}]{1,24})?""" +
+                        // An optional balance footer is not part of the payment
+                        // and must not become a merchant or an extra amount.
+                        """[.]?(?:\s+hai\s+ancora\s+a\s+disposizione\s+(?:$AMOUNT)\s*(?:€|EUR)[.]?)?$""",
             ),
         ),
         reviewContextPattern =
