@@ -11,7 +11,6 @@ import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
 import com.staituned.aura.paymentdetection.data.SupportedPaymentAppCatalog
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionInput
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
-import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import com.staituned.aura.paymentdetection.domain.PaymentRuleEngine
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChange
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChangeReason
@@ -287,13 +286,14 @@ abstract class BaseAuraNotificationListenerService :
                             persistenceResult.candidateId,
                         ),
                     )
-                    if (result.tier == PaymentMatchTier.EXACT) {
-                        PaymentDetectionListenerRuntime.markAlertResult(
-                            candidateNotifier.notifyCandidate(
-                                persistenceResult.candidateId,
-                            ),
-                        )
-                    }
+                    // A REVIEW candidate is still a confirmed pending workflow record.
+                    // Silencing it makes a safely detected payment invisible to
+                    // the user until they manually open the review queue.
+                    PaymentDetectionListenerRuntime.markAlertResult(
+                        candidateNotifier.notifyCandidate(
+                            persistenceResult.candidateId,
+                        ),
+                    )
                 }
                 is CandidatePersistenceResult.Updated -> {
                     PaymentCandidateEventBus.publish(
