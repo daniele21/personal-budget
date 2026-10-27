@@ -25,12 +25,19 @@ public final class SyntheticNotificationActivity extends Activity {
                 NotificationManager.IMPORTANCE_DEFAULT
             )
         );
+        // The REVIEW variant exercises the real listener-to-alert path, not
+        // just the notifier in isolation. Synthetic data never leaves tests.
+        boolean review = getIntent().getBooleanExtra("aura_test_review", false);
         manager.notify(
             NOTIFICATION_ID,
             new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("Pagamento effettuato")
-                .setContentText("12,34 € presso Negozio di prova · Wallet simulato")
+                .setContentText(
+                    review
+                        ? "Pagamento di 12,34 € via Wallet simulato"
+                        : "12,34 € presso Negozio di prova · Wallet simulato"
+                )
                 .build()
         );
         finish();
