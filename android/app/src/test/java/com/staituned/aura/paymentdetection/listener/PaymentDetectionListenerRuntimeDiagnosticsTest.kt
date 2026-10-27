@@ -1,5 +1,7 @@
 package com.staituned.aura.paymentdetection.listener
 
+import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
+import com.staituned.aura.paymentdetection.domain.PaymentIgnoredReason
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -32,6 +34,34 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
         } finally {
             PaymentDetectionListenerRuntime.resetDiagnostics()
         }
+    }
+
+    @Test
+    fun ignoredPaymentReasonsRemainContentFreeAndResetAtOwnerBoundary() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        try {
+            listOf(
+                PaymentIgnoredReason.NEGATIVE_SIGNAL,
+                PaymentIgnoredReason.NO_APPROVED_PATTERN,
+                PaymentIgnoredReason.MISSING_AMOUNT,
+            ).forEach { reason ->
+                PaymentDetectionListenerRuntime.markDetectionResult(
+                    PaymentDetectionResult.Ignored(reason),
+                )
+            }
+            val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(3, snapshot.ignoredMatches)
+            assertEquals(1, snapshot.ignoredNegativeSignals)
+            assertEquals(1, snapshot.ignoredNoApprovedPattern)
+            assertEquals(1, snapshot.ignoredOtherReasons)
+        } finally {
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        val cleared = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        assertEquals(0, cleared.ignoredMatches)
+        assertEquals(0, cleared.ignoredNegativeSignals)
+        assertEquals(0, cleared.ignoredNoApprovedPattern)
+        assertEquals(0, cleared.ignoredOtherReasons)
     }
 
     @Test
