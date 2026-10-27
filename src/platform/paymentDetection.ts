@@ -19,6 +19,8 @@ export interface NativeNotificationAccessStatus {
 }
 
 export interface NativePaymentDetectionDiagnostics {
+  recoveryAttempts?: number;
+  lastRecoveryResult?: string;
   supportedCallbacksObserved: number;
   callbacksRejectedWrongGeneration: number;
   callbacksRejectedBySettings: number;
