@@ -23,6 +23,8 @@ enum class PaymentListenerEndpointProbeResult {
  * timestamp, notification key, or notification text crosses this bridge.
  */
 internal data class PaymentListenerDiagnosticsSnapshot(
+    val recoveryAttempts: Int,
+    val lastRecoveryResult: String,
     val supportedCallbacksObserved: Int,
     val callbacksRejectedWrongGeneration: Int,
     val callbacksRejectedBySettings: Int,
@@ -78,6 +80,8 @@ internal object PaymentDetectionListenerRuntime {
         mutableMapOf<PaymentListenerGeneration, LinkedHashMap<String, Long>>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
+    private val recoveryAttempts = AtomicInteger(0)
+    @Volatile private var lastRecoveryResult = "NOT_RUN"
     private val supportedCallbacksObserved = AtomicInteger(0)
     private val callbacksRejectedWrongGeneration = AtomicInteger(0)
     private val callbacksRejectedBySettings = AtomicInteger(0)
@@ -182,6 +186,12 @@ internal object PaymentDetectionListenerRuntime {
         } catch (_: RuntimeException) {
             PaymentListenerProbeResult.FAILED
         }
+    }
+
+    fun markRecoveryResult(result: String) {
+        // Only the finite coordinator outcome, never app/package/payment data.
+        lastRecoveryResult = result
+        recoveryAttempts.incrementAndGet()
     }
 
     /** Count allowlisted app package metadata only; never access notification extras. */
@@ -330,6 +340,8 @@ internal object PaymentDetectionListenerRuntime {
     }
 
     fun diagnosticsSnapshot() = PaymentListenerDiagnosticsSnapshot(
+        recoveryAttempts = recoveryAttempts.get(),
+        lastRecoveryResult = lastRecoveryResult,
         supportedCallbacksObserved = supportedCallbacksObserved.get(),
         callbacksRejectedWrongGeneration = callbacksRejectedWrongGeneration.get(),
         callbacksRejectedBySettings = callbacksRejectedBySettings.get(),
@@ -364,6 +376,8 @@ internal object PaymentDetectionListenerRuntime {
 
     /** Also called at account boundaries so counters cannot span two owners. */
     fun resetDiagnostics() {
+        lastRecoveryResult = "NOT_RUN"
+        recoveryAttempts.set(0)
         supportedCallbacksObserved.set(0)
         callbacksRejectedWrongGeneration.set(0)
         callbacksRejectedBySettings.set(0)
