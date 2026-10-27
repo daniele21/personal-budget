@@ -227,6 +227,15 @@ Use **Refresh diagnostics** after a bank notification to fetch a new native
 snapshot; the counters do not update continuously while the panel is open.
 The refresh also uses Aura's existing safe listener-recovery check.
 
+On versions with parser-reason counters, compare **Ignored: negative signal**,
+**Ignored: no approved payment pattern**, and **Ignored: other parser reasons**
+after a new selected-source notification. These are process-local aggregate
+counts, not a persistent forensic history; they do not contain amounts,
+merchant, package, card suffix, or notification content. A legitimate Intesa
+`Hai pagato` EUR message accompanied by a balance footer is eligible for
+REVIEW instead of being rejected solely for `saldo`/`disponibile`;
+declines and other negative payment signals continue to reject.
+
 If a real bank notification reaches Android but these callback counters do
 not increase, investigate the Android listener/OS delivery path. If callbacks
 increase without candidates, investigate rules and processing/duplicate
