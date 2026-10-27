@@ -65,6 +65,31 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
     }
 
     @Test
+    fun recoveryOutcomeDistinguishesNoAccessFromHealthyEmptySnapshot() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        try {
+            PaymentDetectionListenerRuntime.markRecoveryResult("NO_ACCESS")
+            var state = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(1, state.recoveryAttempts)
+            assertEquals("NO_ACCESS", state.lastRecoveryResult)
+            assertEquals(0, state.activeSnapshotReads)
+
+            PaymentDetectionListenerRuntime.markActiveSnapshotRead(0, 0)
+            PaymentDetectionListenerRuntime.markRecoveryResult("RECONCILED")
+            state = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(2, state.recoveryAttempts)
+            assertEquals("RECONCILED", state.lastRecoveryResult)
+            assertEquals(1, state.activeSnapshotReads)
+            assertEquals(0, state.selectedCallbacks)
+        } finally {
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        val cleared = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        assertEquals(0, cleared.recoveryAttempts)
+        assertEquals("NOT_RUN", cleared.lastRecoveryResult)
+    }
+
+    @Test
     fun nativeOwnerResetClearsAllPreGateCounters() {
         PaymentDetectionListenerRuntime.markSupportedCallbackObserved()
         PaymentDetectionListenerRuntime.markActiveSnapshotRead(1, 1)
