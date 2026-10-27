@@ -225,10 +225,10 @@ internal class PaymentRuleEngine(
         private const val CARD_PAYMENT = "card_payment"
         private const val EUR = "EUR"
         private val INTESA_TITLE_MERCHANT = Regex(
-            """^[\\p{L}\\p{N}][\\p{L}\\p{N} .,&*'’\\-]{1,119}$""",
+            """^[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{1,119}$""",
         )
         private val INTESA_GENERIC_TITLE = Regex(
-            """^(?:intesa|sanpaolo|xme|notifica|pagamento|movimento|operazione|avviso|saldo|hai pagato)(?:$|\\s)""",
+            """^(?:intesa|sanpaolo|xme|notifica|pagamento|movimento|operazione|avviso|saldo|hai pagato)(?:$|\s)""",
             RegexOption.IGNORE_CASE,
         )
         private val REGEX_OPTIONS = setOf(RegexOption.IGNORE_CASE)
