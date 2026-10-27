@@ -113,6 +113,8 @@ internal class PaymentRuleEngine(
     private fun intesaMerchantFromTitle(title: String?): String? {
         if (title == null || title.endsWith("...") || title.endsWith("…")) return null
         val merchant = NotificationNormalizer.merchant(title) ?: return null
+        // A card/account suffix presented as a bare number is not a merchant.
+        if (merchant.none(Char::isLetter)) return null
         return merchant.takeIf {
             INTESA_TITLE_MERCHANT.matches(it) &&
                 !INTESA_GENERIC_TITLE.containsMatchIn(it)
@@ -228,7 +230,7 @@ internal class PaymentRuleEngine(
             """^[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{1,119}$""",
         )
         private val INTESA_GENERIC_TITLE = Regex(
-            """^(?:intesa|sanpaolo|xme|notifica|pagamento|movimento|operazione|avviso|saldo|hai pagato)(?:$|\s)""",
+            """^(?:intesa|sanpaolo|xme|notifica|pagamento|movimento|operazione|avviso|saldo|hai pagato|visa|mastercard|maestro|american express|carta|card)(?:$|\s)""",
             RegexOption.IGNORE_CASE,
         )
         private val REGEX_OPTIONS = setOf(RegexOption.IGNORE_CASE)
