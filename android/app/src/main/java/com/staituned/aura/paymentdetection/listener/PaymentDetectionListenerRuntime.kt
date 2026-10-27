@@ -2,6 +2,7 @@ package com.staituned.aura.paymentdetection.listener
 
 import com.staituned.aura.paymentdetection.data.CandidatePersistenceResult
 import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
+import com.staituned.aura.paymentdetection.domain.PaymentIgnoredReason
 import com.staituned.aura.paymentdetection.domain.PaymentMatchTier
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
@@ -35,6 +36,9 @@ internal data class PaymentListenerDiagnosticsSnapshot(
     val exactMatches: Int,
     val reviewMatches: Int,
     val ignoredMatches: Int,
+    val ignoredNegativeSignals: Int,
+    val ignoredNoApprovedPattern: Int,
+    val ignoredOtherReasons: Int,
     val createdCandidates: Int,
     val updatedCandidates: Int,
     val suppressedDuplicates: Int,
@@ -91,6 +95,9 @@ internal object PaymentDetectionListenerRuntime {
     private val exactMatches = AtomicInteger(0)
     private val reviewMatches = AtomicInteger(0)
     private val ignoredMatches = AtomicInteger(0)
+    private val ignoredNegativeSignals = AtomicInteger(0)
+    private val ignoredNoApprovedPattern = AtomicInteger(0)
+    private val ignoredOtherReasons = AtomicInteger(0)
     private val persistedCandidates = AtomicInteger(0)
     private val persistenceFailures = AtomicInteger(0)
 
@@ -292,7 +299,17 @@ internal object PaymentDetectionListenerRuntime {
         when (result.tier) {
             PaymentMatchTier.EXACT -> exactMatches.incrementAndGet()
             PaymentMatchTier.REVIEW -> reviewMatches.incrementAndGet()
-            PaymentMatchTier.IGNORED -> ignoredMatches.incrementAndGet()
+            PaymentMatchTier.IGNORED -> {
+                ignoredMatches.incrementAndGet()
+                val reason = (result as PaymentDetectionResult.Ignored).reason
+                when (reason) {
+                    PaymentIgnoredReason.NEGATIVE_SIGNAL ->
+                        ignoredNegativeSignals.incrementAndGet()
+                    PaymentIgnoredReason.NO_APPROVED_PATTERN ->
+                        ignoredNoApprovedPattern.incrementAndGet()
+                    else -> ignoredOtherReasons.incrementAndGet()
+                }
+            }
         }
     }
 
@@ -326,6 +343,9 @@ internal object PaymentDetectionListenerRuntime {
         exactMatches = exactMatches.get(),
         reviewMatches = reviewMatches.get(),
         ignoredMatches = ignoredMatches.get(),
+        ignoredNegativeSignals = ignoredNegativeSignals.get(),
+        ignoredNoApprovedPattern = ignoredNoApprovedPattern.get(),
+        ignoredOtherReasons = ignoredOtherReasons.get(),
         createdCandidates = persistedCandidates.get(),
         updatedCandidates = updatedCandidates.get(),
         suppressedDuplicates = suppressedDuplicates.get(),
@@ -357,6 +377,9 @@ internal object PaymentDetectionListenerRuntime {
         exactMatches.set(0)
         reviewMatches.set(0)
         ignoredMatches.set(0)
+        ignoredNegativeSignals.set(0)
+        ignoredNoApprovedPattern.set(0)
+        ignoredOtherReasons.set(0)
         persistedCandidates.set(0)
         updatedCandidates.set(0)
         suppressedDuplicates.set(0)
