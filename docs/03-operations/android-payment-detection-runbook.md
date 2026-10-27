@@ -227,6 +227,17 @@ Use **Refresh diagnostics** after a bank notification to fetch a new native
 snapshot; the counters do not update continuously while the panel is open.
 The refresh also uses Aura's existing safe listener-recovery check.
 
+On versions with listener recovery counters, **Last listener recovery** identifies
+why aggregate counters can remain zero: `DISABLED` means detection is off
+or the native owner is missing; `NO_ACCESS` means Android has not granted the
+effective listener; `REBIND_REQUESTED` means the live endpoint is absent or
+unresponsive and a rebind was requested; `FAILED` means the recovery request
+failed; `RECONCILED` means the selected-notification snapshot completed
+successfully, not that any new callback was delivered. A recently restarted
+process may have zero callback counters even with a working listener. Compare
+these states **after Refresh diagnostics** before changing parser rules.
+All recovery diagnostics remain transient and content-free.
+
 On versions with parser-reason counters, compare **Ignored: negative signal**,
 **Ignored: no approved payment pattern**, and **Ignored: other parser reasons**
 after a new selected-source notification. These are process-local aggregate
