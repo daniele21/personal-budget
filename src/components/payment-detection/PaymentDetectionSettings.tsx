@@ -326,7 +326,9 @@ export function PaymentDetectionSettings() {
                 ? 'Listener recovery skipped: Android notification access is missing. Check Android access above.'
                 : status.diagnostics.lastRecoveryResult === 'REBIND_REQUESTED'
                   ? 'Listener is not responding. Android rebind was requested; verify the listener reconnects.'
-                  : status.diagnostics.lastRecoveryResult === 'FAILED'
+                  : status.diagnostics.lastRecoveryResult === 'RECONCILED_AND_REBIND_REQUESTED'
+                    ? 'A missed callback was recovered from active notifications and a listener rebind was requested.'
+                    : status.diagnostics.lastRecoveryResult === 'FAILED'
                     ? 'Listener recovery failed. Check Android access and retry listener repair.'
                     : status.diagnostics.lastRecoveryResult === 'RECONCILED' && status.diagnostics.selectedCallbacks === 0
                       ? 'Listener snapshot succeeded, but no selected payment callback has been observed in this process.'
