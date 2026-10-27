@@ -32,6 +32,9 @@ export interface NativePaymentDetectionDiagnostics {
   exactMatches: number;
   reviewMatches: number;
   ignoredMatches: number;
+  ignoredNegativeSignals: number;
+  ignoredNoApprovedPattern: number;
+  ignoredOtherReasons: number;
   createdCandidates: number;
   updatedCandidates: number;
   suppressedDuplicates: number;
