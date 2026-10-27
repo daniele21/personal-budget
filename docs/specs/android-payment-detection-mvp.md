@@ -106,8 +106,8 @@ Navigation away, back press, permission denial, or closing Aura does not count a
 7. Aura applies normalization and rules off the main thread.
 8. Aura releases raw text references.
 9. Aura persists only a structured candidate if the match tier permits it.
-10. Exact-tier candidates may trigger a private Aura notification.
-11. Review-tier candidates appear only in the in-app queue.
+10. Each newly persisted exact- or review-tier candidate may trigger the same redacted private Aura notification when Android permissions and channel settings allow it.
+11. Review-tier candidates remain outside the ledger until explicit user confirmation; candidate updates and technical/semantic duplicates do not trigger another alert.
 12. A native watchdog probes the effective listener while detection remains
     enabled instead of trusting only the last `onListenerConnected` callback.
 13. Every successful probe reconciles a bounded snapshot of the newest active
@@ -221,7 +221,7 @@ Match tiers:
 - `review`: supported financial pattern with required amount but insufficient exactness for a notification;
 - `ignored`: negative, incomplete, unsupported, invalid, duplicate, or expired.
 
-Only `exact` may create an Aura notification. `review` remains in the queue.
+Both `exact` and `review` may create an Aura notification **only on first candidate persistence**. `review` retains its lower trust tier and remains in the review queue, never in the ledger without confirmation. Clipped Intesa bodies can retain a safe merchant title as review-only context; generic, masked and truncated titles cannot become merchants.
 
 ### Duplicate handling
 

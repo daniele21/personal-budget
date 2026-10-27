@@ -455,6 +455,54 @@ class PaymentDetectionListenerInstrumentedTest {
         }
     }
 
+    @Test
+    fun reviewCandidateFromRealListenerAlsoPostsPrivateAuraAlert() {
+        val component = currentComponent()
+        val privacyStore = PaymentDetectionPrivacyStore(context)
+        val settingsStore = PaymentDetectionSettingsStore(context, privacyStore)
+        resetListenerGrants()
+        privacyStore.purge(NativePurgeReason.LOCAL_RESET)
+        privacyStore.registerOwner("synthetic-review-alert-owner")
+        settingsStore.updateSettings(true, setOf(SYNTHETIC_PACKAGE))
+        PaymentDetectionListenerRuntime.resetAcceptedEnvelopeCount()
+
+        try {
+            grantNotificationPermissions()
+            shell("cmd notification allow_listener $component")
+            waitUntil("V2 listener connection for review") {
+                PaymentDetectionListenerRuntime.isConnected(
+                    PaymentListenerGeneration.CURRENT,
+                )
+            }
+            postSyntheticNotification(review = true)
+            waitUntil("review payment matched") {
+                PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.REVIEW) >= 1
+            }
+            waitUntil("review candidate persisted") {
+                PaymentDetectionListenerRuntime.persistedCandidateCount() >= 1
+            }
+            waitUntil("review candidate alert posted") {
+                PaymentDetectionListenerRuntime.diagnosticsSnapshot().postedAlerts >= 1
+            }
+            assertEquals(
+                0,
+                PaymentDetectionListenerRuntime.detectedCount(PaymentMatchTier.EXACT),
+            )
+            assertTrue(
+                context.getSystemService(NotificationManager::class.java)
+                    .activeNotifications.any {
+                        it.notification.channelId == PaymentCandidateNotifier.CHANNEL_ID
+                    },
+            )
+            assertEquals(0, PaymentDetectionListenerRuntime.persistenceFailureCount())
+        } finally {
+            resetListenerGrants()
+            shell("am force-stop $SYNTHETIC_PACKAGE")
+            PaymentCandidateNotifier(context).cancelAll()
+            privacyStore.purge(NativePurgeReason.TOTAL_DELETION)
+        }
+    }
+
     private fun grantNotificationPermissions() {
         shell(
             "pm grant ${context.packageName} " +
@@ -466,7 +514,7 @@ class PaymentDetectionListenerInstrumentedTest {
         )
     }
 
-    private fun postSyntheticNotification() {
+    private fun postSyntheticNotification(review: Boolean = false) {
         context.startActivity(
             Intent()
                 .setComponent(
@@ -475,6 +523,7 @@ class PaymentDetectionListenerInstrumentedTest {
                         "com.staituned.aura.testsource.SyntheticNotificationActivity",
                     ),
                 )
+                .putExtra("aura_test_review", review)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }

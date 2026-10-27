@@ -52,7 +52,16 @@ internal class PaymentRuleEngine(
             operationType = CARD_PAYMENT,
             amountMinorUnits = amount,
             currency = EUR,
-            merchant = null,
+            // Intesa sometimes puts the full merchant in EXTRA_TITLE while its
+            // payment body is collapsed or truncated. Keep this as REVIEW:
+            // the title is useful context, but not strong enough for EXACT.
+            merchant = if (
+                rules.sourceAppId == BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID
+            ) {
+                intesaMerchantFromTitle(normalized.title)
+            } else {
+                null
+            },
             occurredAtEpochMillis = input.postedAtEpochMillis,
             matchedRuleId = null,
             ruleVersion = rules.ruleVersion,
@@ -81,7 +90,7 @@ internal class PaymentRuleEngine(
                 // instead of posting a misleading high-confidence alert.
                 if (
                     rules.sourceAppId == BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID &&
-                    merchant == null
+                    (merchant == null || body.endsWith("...") || body.endsWith("…"))
                 ) {
                     continue
                 }
@@ -99,6 +108,17 @@ internal class PaymentRuleEngine(
             }
         }
         return null
+    }
+
+    private fun intesaMerchantFromTitle(title: String?): String? {
+        if (title == null || title.endsWith("...") || title.endsWith("…")) return null
+        val merchant = NotificationNormalizer.merchant(title) ?: return null
+        // A card/account suffix presented as a bare number is not a merchant.
+        if (merchant.none(Char::isLetter)) return null
+        return merchant.takeIf {
+            INTESA_TITLE_MERCHANT.matches(it) &&
+                !INTESA_GENERIC_TITLE.containsMatchIn(it)
+        }
     }
 
     private fun optionalGroup(match: MatchResult?, name: String): String? =
@@ -206,6 +226,13 @@ internal class PaymentRuleEngine(
     companion object {
         private const val CARD_PAYMENT = "card_payment"
         private const val EUR = "EUR"
+        private val INTESA_TITLE_MERCHANT = Regex(
+            """^[\p{L}\p{N}][\p{L}\p{N} .,&*'’\-]{1,119}$""",
+        )
+        private val INTESA_GENERIC_TITLE = Regex(
+            """^(?:intesa|sanpaolo|xme|notifica|pagamento|movimento|operazione|avviso|saldo|hai pagato|visa|mastercard|maestro|american express|carta|card)(?:$|\s)""",
+            RegexOption.IGNORE_CASE,
+        )
         private val REGEX_OPTIONS = setOf(RegexOption.IGNORE_CASE)
         private val EUR_SUFFIX = Regex(
             """(?:^|[^\p{L}\p{N}])(?<amount>\d{1,3}(?:[.,\s]\d{3})*[,.]\d{2}|\d+[,.]\d{2})\s*(?:€|EUR)(?:$|[^\p{L}\p{N}])""",

@@ -25,3 +25,11 @@ available-balance|IGNORED||Saldo disponibile 1.000,00 euro|||NEGATIVE_SIGNAL
 bank-transfer|IGNORED||Bonifico di 20,00 euro eseguito correttamente|||NEGATIVE_SIGNAL
 declined-card|IGNORED||Hai pagato 24,50 € con la carta *0000: operazione non autorizzata|||NEGATIVE_SIGNAL
 unsupported-currency|IGNORED||Hai pagato 12.34 USD con la carta *0000|||UNSUPPORTED_CURRENCY
+# The bank can put a full merchant in title when payment body lacks it.
+title-merchant-collapsed-body|REVIEW|NEGOZIO DI PROVA|Hai pagato 18,40 € con la carta *0000 il 27.10 alle ore 08:49|1840|NEGOZIO DI PROVA|
+title-merchant-truncated-body|REVIEW|NEGOZIO DI PROVA|Hai pagato 18,40 € con la carta *0000 alle ore 08:49 da NEGOZIO DI...|1840|NEGOZIO DI PROVA|
+title-generic-intesa-not-merchant|REVIEW|Intesa Sanpaolo|Hai pagato 18,40 € con la carta *0000|1840||
+title-generic-notification-not-merchant|REVIEW|Pagamento con carta|Hai pagato 18,40 € con la carta *0000|1840||
+title-card-suffix-not-merchant|REVIEW|Carta *0000|Hai pagato 18,40 € con la carta *0000|1840||
+title-numeric-mask-not-merchant|REVIEW|8870|Hai pagato 18,40 € con la carta *0000|1840||
+title-card-brand-not-merchant|REVIEW|VISA 8870|Hai pagato 18,40 € con la carta *0000|1840||

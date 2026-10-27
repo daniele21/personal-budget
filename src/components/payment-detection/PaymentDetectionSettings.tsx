@@ -236,7 +236,7 @@ export function PaymentDetectionSettings() {
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-on-surface-variant">
               {alertsReady
-                ? 'Aura can show a local alert when an exact payment candidate is detected.'
+                ? 'Aura can show a local alert when a payment candidate is detected, including payments needing review.'
                 : 'Android is blocking Aura payment alerts. Detection can still create pending candidates, but no Aura alert will appear.'}
             </p>
             {!alertsReady && (
