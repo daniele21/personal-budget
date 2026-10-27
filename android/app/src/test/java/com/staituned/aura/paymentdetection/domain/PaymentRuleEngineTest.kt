@@ -129,6 +129,39 @@ class PaymentRuleEngineTest {
     }
 
     @Test
+    fun intesaIncompleteBodyRetainsFullMerchantTitleWithoutInventingExactMatch() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "NEGOZIO DI PROVA",
+                text = "Hai pagato 18,40 € con la carta *0000 alle 08:49",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+
+        assertEquals(PaymentMatchTier.REVIEW, result.tier)
+        assertEquals(1840L, result.amountMinorUnits)
+        assertEquals("NEGOZIO DI PROVA", result.merchant)
+        assertNull(result.matchedRuleId)
+    }
+
+    @Test
+    fun intesaNegativePaymentCannotUseMerchantTitleFallback() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "NEGOZIO DI PROVA",
+                text = "Hai pagato 18,40 €: operazione non autorizzata",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Ignored
+
+        assertEquals(PaymentIgnoredReason.NEGATIVE_SIGNAL, result.reason)
+    }
+
+    @Test
     fun intesaCardLikeMerchantStaysReviewRatherThanExact() {
         val result = engine.evaluate(
             PaymentDetectionInput(
