@@ -37,6 +37,16 @@ internal class PaymentListenerRecoveryCoordinator(
     private val appContext = context.applicationContext
 
     fun recoverNow(): PaymentListenerRecoveryResult {
+        val result = try {
+            recoverOnce()
+        } catch (_: RuntimeException) {
+            PaymentListenerRecoveryResult.FAILED
+        }
+        PaymentDetectionListenerRuntime.markRecoveryResult(result.name)
+        return result
+    }
+
+    private fun recoverOnce(): PaymentListenerRecoveryResult {
         val privacyStore = PaymentDetectionPrivacyStore(appContext)
         if (!privacyStore.hasActiveOwner()) {
             return PaymentListenerRecoveryResult.DISABLED
