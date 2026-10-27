@@ -319,8 +319,25 @@ export function PaymentDetectionSettings() {
           >
             Refresh diagnostics
           </button>
+          <p className="mt-2 text-xs leading-relaxed text-on-surface-variant" role="status">
+            {status.diagnostics.lastRecoveryResult === 'DISABLED'
+              ? 'Listener recovery skipped: payment detection is disabled or the native account is not registered.'
+              : status.diagnostics.lastRecoveryResult === 'NO_ACCESS'
+                ? 'Listener recovery skipped: Android notification access is missing. Check Android access above.'
+                : status.diagnostics.lastRecoveryResult === 'REBIND_REQUESTED'
+                  ? 'Listener is not responding. Android rebind was requested; verify the listener reconnects.'
+                  : status.diagnostics.lastRecoveryResult === 'FAILED'
+                    ? 'Listener recovery failed. Check Android access and retry listener repair.'
+                    : status.diagnostics.lastRecoveryResult === 'RECONCILED' && status.diagnostics.selectedCallbacks === 0
+                      ? 'Listener snapshot succeeded, but no selected payment callback has been observed in this process.'
+                      : status.diagnostics.lastRecoveryResult === undefined
+                        ? 'Recovery outcome is not available in this installed version.'
+                        : ''}
+          </p>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
+              ['Recovery attempts', status.diagnostics.recoveryAttempts ?? 0],
+              ['Last listener recovery', status.diagnostics.lastRecoveryResult ?? 'Unavailable'],
               ['Supported-app callbacks before Aura filters', status.diagnostics.supportedCallbacksObserved],
               ['Rejected: inactive listener generation', status.diagnostics.callbacksRejectedWrongGeneration],
               ['Rejected: account or source selection', status.diagnostics.callbacksRejectedBySettings],
