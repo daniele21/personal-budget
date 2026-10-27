@@ -120,8 +120,13 @@ routing reference (such as a code containing `_` and `,Local`) and
 excluded from the merchant and amount. Negative signals
 (including `Non hai pagato`) take priority. If merchant is missing or
 looks like card/account data, the positive payment remains `REVIEW`
-(in-app queue only, no Aura alert). Synthetic redacted fixtures cover these
-variants; actual device behavior still needs verification.
+and, for newly persisted candidates, posts the same private Aura alert as
+`EXACT` when the Android notification channel is enabled. Missing merchant
+text can be recovered conservatively from a plausible Intesa notification
+title as REVIEW-only context; generic, card-like or truncated titles remain
+blank. Existing pending candidates are not reparsed or re-alerted by
+installing an update. Synthetic redacted fixtures cover these variants;
+actual device behavior still needs verification.
 
 The next internal detector-diagnostics update distinguishes allowlisted
 payment-source callbacks **before** Aura's generation/selection gates from
