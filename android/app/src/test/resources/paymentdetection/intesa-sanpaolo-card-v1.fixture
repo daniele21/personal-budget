@@ -31,3 +31,5 @@ title-merchant-truncated-body|REVIEW|NEGOZIO DI PROVA|Hai pagato 18,40 € con l
 title-generic-intesa-not-merchant|REVIEW|Intesa Sanpaolo|Hai pagato 18,40 € con la carta *0000|1840||
 title-generic-notification-not-merchant|REVIEW|Pagamento con carta|Hai pagato 18,40 € con la carta *0000|1840||
 title-card-suffix-not-merchant|REVIEW|Carta *0000|Hai pagato 18,40 € con la carta *0000|1840||
+title-numeric-mask-not-merchant|REVIEW|8870|Hai pagato 18,40 € con la carta *0000|1840||
+title-card-brand-not-merchant|REVIEW|VISA 8870|Hai pagato 18,40 € con la carta *0000|1840||
