@@ -118,6 +118,24 @@ class PaymentListenerRecoveryWorker(
         }
 }
 
+/**
+ * Failure to read current settings is not equivalent to opting out.
+ * Existing worker instances must survive a transient storage failure;
+ * the worker itself still enforces owner/opt-in before processing data.
+ */
+internal enum class RecoverySchedulingDecision {
+    ENABLE,
+    DISABLE,
+    PRESERVE_EXISTING,
+}
+
+internal fun recoverySchedulingDecision(enabled: Boolean?): RecoverySchedulingDecision =
+    when (enabled) {
+        true -> RecoverySchedulingDecision.ENABLE
+        false -> RecoverySchedulingDecision.DISABLE
+        null -> RecoverySchedulingDecision.PRESERVE_EXISTING
+    }
+
 object PaymentListenerRecoveryScheduler {
     private const val PERIODIC_WORK =
         "aura-payment-listener-recovery-periodic-v2"
@@ -139,16 +157,24 @@ object PaymentListenerRecoveryScheduler {
                     privacyStore,
                 ).getSettings().requestedEnabled
         } catch (_: RuntimeException) {
-            false
+            // A read failure must not erase scheduled recovery: otherwise a
+            // temporary storage failure can leave the listener unmonitored
+            // until another explicit enable/foreground visit.
+            null
         }
-        cancelLegacy(appContext)
-        if (!enabled) {
-            cancel(appContext)
-            return
+        when (recoverySchedulingDecision(enabled)) {
+            RecoverySchedulingDecision.PRESERVE_EXISTING -> return
+            RecoverySchedulingDecision.DISABLE -> {
+                cancelLegacy(appContext)
+                cancel(appContext)
+            }
+            RecoverySchedulingDecision.ENABLE -> {
+                cancelLegacy(appContext)
+                schedule(appContext)
+                // Do not cancel a pending recovery on each getStatus().
+                enqueueImmediate(appContext, ExistingWorkPolicy.KEEP)
+            }
         }
-        schedule(appContext)
-        // Do not cancel a pending recovery every time getStatus() is called.
-        enqueueImmediate(appContext, ExistingWorkPolicy.KEEP)
     }
 
     @JvmStatic
