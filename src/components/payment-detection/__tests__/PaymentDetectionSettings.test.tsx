@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
     candidateNotificationsEnabled: false,
   },
   refresh: vi.fn(),
+  refreshDiagnostics: vi.fn(),
+  diagnosticsError: null as string | null,
   updateSelectedApps: vi.fn(),
   setRequestedEnabled: vi.fn(),
   requestNotificationPermission: vi.fn(),
@@ -61,6 +63,9 @@ vi.mock('../../../state/PaymentDetectionProvider', () => ({
     ],
     candidates: [{ id: 'candidate' }],
     refresh: mocks.refresh,
+    refreshDiagnostics: mocks.refreshDiagnostics,
+    diagnosticsUpdatedAt: Date.UTC(2026, 9, 28),
+    diagnosticsError: mocks.diagnosticsError,
     updateSelectedApps: mocks.updateSelectedApps,
     setRequestedEnabled: mocks.setRequestedEnabled,
     requestNotificationPermission: mocks.requestNotificationPermission,
@@ -90,6 +95,8 @@ describe('PaymentDetectionSettings', () => {
     });
     delete (mocks.status as typeof mocks.status & { diagnostics?: unknown }).diagnostics;
     mocks.refresh.mockResolvedValue(undefined);
+    mocks.refreshDiagnostics.mockResolvedValue(undefined);
+    mocks.diagnosticsError = null;
     mocks.requestNotificationPermission.mockResolvedValue(true);
     mocks.openNotificationAccessSettings.mockResolvedValue(undefined);
     mocks.repairNotificationListener.mockResolvedValue(undefined);
@@ -243,8 +250,8 @@ describe('PaymentDetectionSettings', () => {
 
     render(<PaymentDetectionSettings />);
 
-    expect(screen.getByText('Connected')).toBeInTheDocument();
-    expect(screen.getByText(/does not confirm/)).toBeInTheDocument();
+    expect(screen.getByText('Bound · unverified')).toBeInTheDocument();
+    expect(screen.getByText(/not delivery of new payment callbacks/i)).toBeInTheDocument();
     expect(screen.getByText('Local detector diagnostics')).toBeInTheDocument();
     expect(screen.getByText('Selected Android callbacks')).toBeInTheDocument();
     expect(screen.getByText('Supported-app callbacks before Aura filters')).toBeInTheDocument();
@@ -255,7 +262,41 @@ describe('PaymentDetectionSettings', () => {
     const user = userEvent.setup();
     await user.click(screen.getByText('Local detector diagnostics'));
     await user.click(screen.getByRole('button', { name: 'Refresh diagnostics' }));
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.refreshDiagnostics).toHaveBeenCalledOnce();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it('calls a verified snapshot a snapshot, not proof of callback delivery', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true, listenerConnected: true,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true, candidateNotificationsEnabled: true,
+      diagnostics: { activeSnapshotReads: 1, recoveryAttempts: 1, lastRecoveryResult: 'RECONCILED' },
+    });
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Snapshot verified')).toBeInTheDocument();
+    expect(screen.getByText(/but not delivery of new payment callbacks/i)).toBeInTheDocument();
+  });
+
+  it('marks a failed status refresh as stale rather than claiming connected', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: true,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+      diagnostics: {
+        supportedCallbacksObserved: 0, activeSnapshotReads: 0,
+        recoveryAttempts: 1, lastRecoveryResult: 'SETTINGS_FAILURE',
+      },
+    });
+    mocks.diagnosticsError = 'Native status unavailable';
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Status stale')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/counters below may be stale/i);
   });
 
   it('offers explicit repair even when Android still reports the V2 listener connected', async () => {

@@ -17,7 +17,9 @@ export function PaymentDetectionSettings() {
     status,
     supportedApps,
     candidates,
-    refresh,
+    refreshDiagnostics,
+    diagnosticsUpdatedAt,
+    diagnosticsError,
     updateSelectedApps,
     setRequestedEnabled,
     requestNotificationPermission,
@@ -43,15 +45,21 @@ export function PaymentDetectionSettings() {
   const hasSelectedApps = status.selectedPackages.length > 0;
   const enabled =
     status.requestedEnabled && hasSelectedApps && accessGranted && listenerReady;
+  // A live binding alone is not proof that NotificationManager was probed.
+  const snapshotVerified = status.diagnostics?.lastRecoveryResult === 'RECONCILED' &&
+    (status.diagnostics?.activeSnapshotReads ?? 0) > 0 &&
+    !diagnosticsError && diagnosticsUpdatedAt != null;
   const fullyOperational =
-    enabled && !upgradeRequired && alertsReady;
-  const detectionStateLabel = upgradeRequired && status.requestedEnabled
+    enabled && !upgradeRequired && alertsReady && snapshotVerified;
+  const detectionStateLabel = diagnosticsError
+    ? 'Status stale'
+    : upgradeRequired && status.requestedEnabled
     ? 'Access upgrade needed'
     : status.requestedEnabled && !hasSelectedApps
       ? 'No apps selected'
       : enabled
         ? alertsReady
-          ? 'Connected'
+          ? snapshotVerified ? 'Snapshot verified' : 'Bound · unverified'
           : 'Alerts blocked'
         : status.requestedEnabled
           ? accessGranted
@@ -184,9 +192,9 @@ export function PaymentDetectionSettings() {
       )}
       {enabled && (
         <p className="px-1 text-xs text-on-surface-variant">
-          Connected means Android has bound the listener. It does not confirm
-          that payment callbacks are being delivered. Check local diagnostics
-          after receiving a bank notification.
+          Bound means Android has connected the listener. A successful active
+          snapshot verifies one read, but not delivery of new payment callbacks.
+          Check local diagnostics after receiving a bank notification.
         </p>
       )}
 
@@ -314,13 +322,36 @@ export function PaymentDetectionSettings() {
           </p>
           <button
             type="button"
-            onClick={() => void refresh()}
+            onClick={() => void refreshDiagnostics().catch(() => undefined)}
             className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10"
           >
             Refresh diagnostics
           </button>
+          {diagnosticsError ? (
+            <p role="alert" className="mt-2 text-xs text-tertiary">
+              Diagnostics refresh failed. Counters below may be stale: {diagnosticsError}
+            </p>
+          ) : diagnosticsUpdatedAt != null ? (
+            <p role="status" className="mt-2 text-xs text-on-surface-variant">
+              Native status refreshed at {new Date(diagnosticsUpdatedAt).toLocaleTimeString()}.
+              This does not prove receipt of payment notifications.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-on-surface-variant">
+              No confirmed diagnostic refresh in this view.
+            </p>
+          )}
+          {status.diagnostics.lastRecoveryResult && (
+            <p className="mt-2 text-xs text-on-surface-variant">
+              Last recovery result: {status.diagnostics.lastRecoveryResult}.
+              {status.diagnostics.lastRecoveryResult === 'RECONCILED'
+                ? ' An active-notification snapshot was read.'
+                : ' The last recovery did not prove a healthy listener snapshot.'}
+            </p>
+          )}
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
+              ['Recovery attempts', status.diagnostics.recoveryAttempts ?? 'Unavailable'],
               ['Supported-app callbacks before Aura filters', status.diagnostics.supportedCallbacksObserved],
               ['Rejected: inactive listener generation', status.diagnostics.callbacksRejectedWrongGeneration],
               ['Rejected: account or source selection', status.diagnostics.callbacksRejectedBySettings],

@@ -47,6 +47,9 @@ interface PaymentDetectionContextValue {
   busyCandidateId: string | null;
   error: string | null;
   refresh: () => Promise<void>;
+  refreshDiagnostics: () => Promise<void>;
+  diagnosticsUpdatedAt: number | null;
+  diagnosticsError: string | null;
   selectCandidate: (candidateId: string | null) => void;
   ignoreCandidate: (candidateId: string) => Promise<void>;
   confirmCandidate: (
@@ -111,20 +114,36 @@ export function PaymentDetectionProvider({
     useState<string | null>(null);
   const [busyCandidateId, setBusyCandidateId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagnosticsUpdatedAt, setDiagnosticsUpdatedAt] = useState<number | null>(null);
+  const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
   const transactionIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
     transactionIdsRef.current = transactions.map((transaction) => transaction.id);
   }, [transactions]);
 
+  // Read health independently of candidate recovery and supported-app loading.
+  const refreshDiagnostics = useCallback(async () => {
+    try {
+      const nextStatus = await paymentDetection.getStatus();
+      setStatus(nextStatus);
+      setDiagnosticsUpdatedAt(Date.now());
+      setDiagnosticsError(null);
+    } catch (statusError) {
+      setDiagnosticsError(errorMessage(statusError));
+      throw statusError;
+    }
+  }, []);
+
   const refreshMetadata = useCallback(async () => {
-    const [nextStatus, apps] = await Promise.all([
-      paymentDetection.getStatus(),
+    const [statusResult, appsResult] = await Promise.allSettled([
+      refreshDiagnostics(),
       paymentDetection.listSupportedApps(),
     ]);
-    setStatus(nextStatus);
-    setSupportedApps(apps.apps);
-  }, []);
+    if (appsResult.status === 'fulfilled') setSupportedApps(appsResult.value.apps);
+    if (statusResult.status === 'rejected') throw statusResult.reason;
+    if (appsResult.status === 'rejected') throw appsResult.reason;
+  }, [refreshDiagnostics]);
 
   const recoverAcceptance = useCallback(async () => {
     await paymentDetection.recoverAcceptance(transactionIdsRef.current);
@@ -132,19 +151,26 @@ export function PaymentDetectionProvider({
 
   const refresh = useCallback(async () => {
     if (!active || !appDataHydrated) return;
-    try {
-      await recoverAcceptance();
-      const [nextCandidates] = await Promise.all([
-        paymentDetection.listCandidates(),
-        refreshMetadata(),
-      ]);
-      setCandidates(nextCandidates);
+    // Preserve recovery-before-list ordering, even when native health fails.
+    const [candidateResult, metadataResult] = await Promise.allSettled([
+      (async () => {
+        await recoverAcceptance();
+        return paymentDetection.listCandidates();
+      })(),
+      refreshMetadata(),
+    ]);
+    if (candidateResult.status === 'fulfilled') {
+      setCandidates(candidateResult.value);
       setAvailability('ready');
-      setError(null);
-    } catch (refreshError) {
+    } else {
       setAvailability('error');
-      setError(errorMessage(refreshError));
     }
+    const failure = candidateResult.status === 'rejected'
+      ? candidateResult.reason
+      : metadataResult.status === 'rejected'
+        ? metadataResult.reason
+        : null;
+    setError(failure == null ? null : errorMessage(failure));
   }, [active, appDataHydrated, recoverAcceptance, refreshMetadata]);
 
   useEffect(() => {
@@ -168,7 +194,15 @@ export function PaymentDetectionProvider({
           setAvailability('unsupported');
           return;
         }
-        await refreshMetadata();
+        // Catalog/status refresh must not block local pending candidates.
+        // Subscription still enforces the native owner and acceptance contract.
+        let metadataError: unknown = null;
+        try {
+          await refreshMetadata();
+        } catch (refreshError) {
+          metadataError = refreshError;
+        }
+        if (cancelled) return;
         candidateSubscription = await subscribeToPaymentCandidates(
           (nextCandidates) => {
             if (!cancelled) {
@@ -185,6 +219,9 @@ export function PaymentDetectionProvider({
           },
           recoverAcceptance,
         );
+        if (!cancelled && metadataError != null) {
+          setError(errorMessage(metadataError));
+        }
       } catch (startError) {
         if (!cancelled) {
           setAvailability('error');
@@ -386,6 +423,9 @@ export function PaymentDetectionProvider({
     busyCandidateId,
     error,
     refresh,
+    refreshDiagnostics,
+    diagnosticsUpdatedAt,
+    diagnosticsError,
     selectCandidate,
     ignoreCandidate,
     confirmCandidate,
@@ -407,6 +447,9 @@ export function PaymentDetectionProvider({
     busyCandidateId,
     error,
     refresh,
+    refreshDiagnostics,
+    diagnosticsUpdatedAt,
+    diagnosticsError,
     selectCandidate,
     ignoreCandidate,
     confirmCandidate,

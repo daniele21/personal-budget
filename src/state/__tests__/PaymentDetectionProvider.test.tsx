@@ -92,6 +92,12 @@ function Probe() {
     availability,
     candidates,
     selectedCandidate,
+    status,
+    error,
+    diagnosticsError,
+    diagnosticsUpdatedAt,
+    refresh,
+    refreshDiagnostics,
     confirmCandidate,
   } = usePaymentDetection();
   const location = useLocation();
@@ -101,6 +107,16 @@ function Probe() {
       <span>{candidates.length}</span>
       <span>{selectedCandidate?.id ?? 'none'}</span>
       <span>{location.pathname}</span>
+      <span data-testid="native-health">{status?.listenerConnected ? 'bound' : 'not-bound'}</span>
+      <span data-testid="native-error">{diagnosticsError ?? 'no diagnostic error'}</span>
+      <span data-testid="native-last-success">{diagnosticsUpdatedAt == null ? 'never' : 'refreshed'}</span>
+      <span data-testid="queue-error">{error ?? 'no queue error'}</span>
+      <button type="button" onClick={() => void refreshDiagnostics().catch(() => undefined)}>
+        Refresh status only
+      </button>
+      <button type="button" onClick={() => void refresh()}>
+        Refresh all
+      </button>
       <button
         type="button"
         onClick={() => void confirmCandidate(candidate.id, {
@@ -175,6 +191,60 @@ describe('PaymentDetectionProvider', () => {
     expect(await screen.findByText('ready')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(mocks.order).toEqual(['recover', 'list']);
+  });
+
+  it('loads the pending queue even when initial app catalog discovery fails', async () => {
+    mocks.listSupportedApps.mockRejectedValueOnce(new Error('Catalog unavailable at startup'));
+    renderProvider();
+    expect(await screen.findByText('ready')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByTestId('native-last-success')).toHaveTextContent('refreshed');
+    expect(screen.getByTestId('queue-error')).toHaveTextContent('Catalog unavailable at startup');
+  });
+
+  it('still fetches native health when candidate recovery fails', async () => {
+    renderProvider();
+    await screen.findByText('ready');
+    mocks.recoverAcceptance.mockRejectedValueOnce(new Error('Candidate recovery failed'));
+    const initialStatusCalls = mocks.getStatus.mock.calls.length;
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh all' }));
+    await vi.waitFor(() => {
+      expect(mocks.getStatus.mock.calls.length).toBeGreaterThan(initialStatusCalls);
+      expect(screen.getByTestId('queue-error')).toHaveTextContent('Candidate recovery failed');
+      expect(screen.getByTestId('native-last-success')).toHaveTextContent('refreshed');
+      expect(screen.getByTestId('native-error')).toHaveTextContent('no diagnostic error');
+    });
+  });
+
+  it('does not mask a successful native status when the app catalog fails', async () => {
+    renderProvider();
+    await screen.findByText('ready');
+    mocks.getStatus.mockResolvedValueOnce({
+      supported: true, requestedEnabled: true, selectedPackages: [],
+      osPermissionGranted: true, listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true, candidateNotificationsEnabled: true,
+    });
+    mocks.listSupportedApps.mockRejectedValueOnce(new Error('Catalog unavailable'));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh all' }));
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('native-health')).toHaveTextContent('not-bound');
+      expect(screen.getByTestId('native-error')).toHaveTextContent('no diagnostic error');
+      expect(screen.getByTestId('queue-error')).toHaveTextContent('Catalog unavailable');
+      expect(screen.getByText('1')).toBeInTheDocument();
+    });
+  });
+
+  it('preserves candidates but marks failed native diagnostic refresh as stale', async () => {
+    renderProvider();
+    await screen.findByText('ready');
+    mocks.getStatus.mockRejectedValueOnce(new Error('Native probe unavailable'));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh status only' }));
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('native-error')).toHaveTextContent('Native probe unavailable');
+      expect(screen.getByTestId('native-health')).toHaveTextContent('bound');
+      expect(screen.getByText('1')).toBeInTheDocument();
+    });
   });
 
   it('persists the reserved canonical transaction before completing native acceptance', async () => {

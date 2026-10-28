@@ -29,9 +29,10 @@ internal class PaymentNotificationGate(
                 }
             }
         } catch (_: RejectedExecutionException) {
-            // A system rebind can race one final callback with service teardown.
-            // New work is intentionally ignored after close; already accepted
-            // work continues through the graceful executor shutdown.
+            // A rebind can race the final callback with service teardown.
+            // Do not inspect any notification extras after executor shutdown,
+            // but account for the dropped selected event as a processing failure.
+            onFailure()
         }
     }
 

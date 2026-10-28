@@ -35,6 +35,36 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
     }
 
     @Test
+    fun recoveryOutcomeDoesNotInventSuccessfulSnapshotReads() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        try {
+            PaymentDetectionListenerRuntime.markRecoveryResult("SETTINGS_FAILURE")
+            var snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(1, snapshot.recoveryAttempts)
+            assertEquals("SETTINGS_FAILURE", snapshot.lastRecoveryResult)
+            assertEquals(0, snapshot.activeSnapshotReads)
+
+            PaymentDetectionListenerRuntime.markRecoveryResult("DISABLED")
+            snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(2, snapshot.recoveryAttempts)
+            assertEquals("DISABLED", snapshot.lastRecoveryResult)
+            assertEquals(0, snapshot.activeSnapshotReads)
+
+            PaymentDetectionListenerRuntime.markActiveSnapshotRead(0, 0)
+            PaymentDetectionListenerRuntime.markRecoveryResult("RECONCILED")
+            snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(3, snapshot.recoveryAttempts)
+            assertEquals("RECONCILED", snapshot.lastRecoveryResult)
+            assertEquals(1, snapshot.activeSnapshotReads)
+        } finally {
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        val reset = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        assertEquals(0, reset.recoveryAttempts)
+        assertEquals("NOT_RUN", reset.lastRecoveryResult)
+    }
+
+    @Test
     fun nativeOwnerResetClearsAllPreGateCounters() {
         PaymentDetectionListenerRuntime.markSupportedCallbackObserved()
         PaymentDetectionListenerRuntime.markActiveSnapshotRead(1, 1)

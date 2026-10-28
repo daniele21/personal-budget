@@ -81,6 +81,32 @@ class PaymentNotificationGateTest {
         assertEquals(1, failures)
     }
 
+    @Test
+    fun rejectedExecutionCountsFailureWithoutInspectingNotificationExtras() {
+        var extrasReads = 0
+        var failures = 0
+        val rejectingExecutor = Executor {
+            throw java.util.concurrent.RejectedExecutionException("listener retired")
+        }
+        val gate = PaymentNotificationGate(
+            isProcessingAllowed = { it == "com.staituned.aura.syntheticnotifications" },
+            executor = rejectingExecutor,
+            onFailure = { failures += 1 },
+        )
+
+        gate.onNotificationPosted("com.staituned.aura.syntheticnotifications") {
+            extrasReads += 1
+            envelope()
+        }
+        gate.onNotificationPosted("com.example.unselected") {
+            extrasReads += 1
+            envelope()
+        }
+
+        assertEquals(0, extrasReads)
+        assertEquals(1, failures)
+    }
+
     private fun envelope() = PaymentNotificationEnvelope(
         title = "Synthetic",
         text = "Synthetic",
