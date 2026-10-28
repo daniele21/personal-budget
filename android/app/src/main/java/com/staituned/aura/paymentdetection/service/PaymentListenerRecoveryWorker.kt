@@ -131,7 +131,9 @@ object PaymentListenerRecoveryScheduler {
             return
         }
         schedule(appContext)
-        runSoon(appContext)
+        // Repeated status refreshes must not cancel the previous immediate
+        // recovery worker just as it is about to probe the Android listener.
+        enqueueImmediate(appContext, ExistingWorkPolicy.KEEP)
     }
 
     @JvmStatic
@@ -147,12 +149,17 @@ object PaymentListenerRecoveryScheduler {
         )
     }
 
+    /** Explicit user repair may supersede a stale pending recovery attempt. */
     @JvmStatic
     fun runSoon(context: Context) {
+        enqueueImmediate(context, ExistingWorkPolicy.REPLACE)
+    }
+
+    private fun enqueueImmediate(context: Context, policy: ExistingWorkPolicy) {
         val work = OneTimeWorkRequestBuilder<PaymentListenerRecoveryWorker>().build()
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             IMMEDIATE_WORK,
-            ExistingWorkPolicy.REPLACE,
+            policy,
             work,
         )
     }
