@@ -251,7 +251,7 @@ describe('PaymentDetectionSettings', () => {
     render(<PaymentDetectionSettings />);
 
     expect(screen.getByText('Bound · unverified')).toBeInTheDocument();
-    expect(screen.getByText(/does not confirm/)).toBeInTheDocument();
+    expect(screen.getByText(/not delivery of new payment callbacks/i)).toBeInTheDocument();
     expect(screen.getByText('Local detector diagnostics')).toBeInTheDocument();
     expect(screen.getByText('Selected Android callbacks')).toBeInTheDocument();
     expect(screen.getByText('Supported-app callbacks before Aura filters')).toBeInTheDocument();
