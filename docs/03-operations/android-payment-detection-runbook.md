@@ -227,6 +227,14 @@ Use **Refresh diagnostics** after a bank notification to fetch a new native
 snapshot; the counters do not update continuously while the panel is open.
 The refresh also uses Aura's existing safe listener-recovery check.
 
+On builds with parser-reason counters, use **Ignored: negative signal**,
+**Ignored: no approved pattern** and **Ignored: other parser reason** to
+distinguish selected-source parser outcomes without collecting raw notifications.
+The Intesa paid-EUR positive statement can coexist with a trailing balance
+footer: this alone must not trigger `negative-balance`. Declines, OTP,
+cancellations, missing positive patterns and unsafe merchant data still use
+their existing conservative negative/review rules.
+
 If a real bank notification reaches Android but these callback counters do
 not increase, investigate the Android listener/OS delivery path. If callbacks
 increase without candidates, investigate rules and processing/duplicate
