@@ -66,7 +66,7 @@ internal object BundledPaymentRuleCatalog {
 
     private val intesaSanpaoloRuleSet = PaymentRuleSetDefinition(
         schemaVersion = CURRENT_SCHEMA_VERSION,
-        ruleVersion = "intesa-sanpaolo-card-v5",
+        ruleVersion = "intesa-sanpaolo-card-v6",
         sourceAppId = INTESA_SANPAOLO_SOURCE_APP_ID,
         negativeRules = negativeRules + listOf(
             negative(

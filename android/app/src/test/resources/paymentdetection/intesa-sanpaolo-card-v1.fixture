@@ -33,3 +33,7 @@ title-generic-notification-not-merchant|REVIEW|Pagamento con carta|Hai pagato 18
 title-card-suffix-not-merchant|REVIEW|Carta *0000|Hai pagato 18,40 € con la carta *0000|1840||
 title-numeric-mask-not-merchant|REVIEW|8870|Hai pagato 18,40 € con la carta *0000|1840||
 title-card-brand-not-merchant|REVIEW|VISA 8870|Hai pagato 18,40 € con la carta *0000|1840||
+# Legitimate paid notifications may append a balance footer, which must not reject payment.
+intesa-payment-with-saldo-footer|REVIEW|NEGOZIO TEST|Hai pagato 18,40 € con la carta *0000 il 27.10. Saldo disponibile 310,00€.|1840|NEGOZIO TEST|
+intesa-payment-saldo-with-negative-decline|IGNORED|NEGOZIO TEST|Hai pagato 18,40 € con la carta *0000. Saldo disponibile 310,00€. Operazione non autorizzata.|||NEGATIVE_SIGNAL
+intesa-balance-alone-stays-ignored|IGNORED|Intesa Sanpaolo|Saldo disponibile 310,00€|||NEGATIVE_SIGNAL

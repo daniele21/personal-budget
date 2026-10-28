@@ -1,5 +1,7 @@
 package com.staituned.aura.paymentdetection.listener
 
+import com.staituned.aura.paymentdetection.domain.PaymentDetectionResult
+import com.staituned.aura.paymentdetection.domain.PaymentIgnoredReason
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -62,6 +64,34 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
         val reset = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
         assertEquals(0, reset.recoveryAttempts)
         assertEquals("NOT_RUN", reset.lastRecoveryResult)
+    }
+
+    @Test
+    fun ignoredParserReasonCountersNeverContainContentAndReset() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        try {
+            listOf(
+                PaymentIgnoredReason.NEGATIVE_SIGNAL,
+                PaymentIgnoredReason.NO_APPROVED_PATTERN,
+                PaymentIgnoredReason.MISSING_AMOUNT,
+            ).forEach { reason ->
+                PaymentDetectionListenerRuntime.markDetectionResult(
+                    PaymentDetectionResult.Ignored(reason),
+                )
+            }
+            val state = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(3, state.ignoredMatches)
+            assertEquals(1, state.ignoredNegativeSignals)
+            assertEquals(1, state.ignoredNoApprovedPattern)
+            assertEquals(1, state.ignoredOtherReasons)
+        } finally {
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        val cleared = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        assertEquals(0, cleared.ignoredMatches)
+        assertEquals(0, cleared.ignoredNegativeSignals)
+        assertEquals(0, cleared.ignoredNoApprovedPattern)
+        assertEquals(0, cleared.ignoredOtherReasons)
     }
 
     @Test

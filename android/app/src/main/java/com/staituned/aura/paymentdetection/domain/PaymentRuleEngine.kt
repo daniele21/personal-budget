@@ -30,7 +30,19 @@ internal class PaymentRuleEngine(
         val searchable = normalized.searchableText()
             ?: return PaymentDetectionResult.Ignored(PaymentIgnoredReason.EMPTY_INPUT)
 
-        if (rules.negativeRules.any { it.containsMatchIn(searchable) }) {
+        // A real Intesa payment can contain a trailing balance summary.
+        // Balance words are negative evidence only when no explicit paid-EUR
+        // statement is present in the payment body. Declines, cancellations,
+        // transfers, OTPs and all other negative rules still take precedence.
+        val explicitIntesaPayment = (
+            rules.sourceAppId == BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID &&
+                normalized.bodyCandidates().any(INTESA_PAID_EUR::containsMatchIn)
+        )
+        if (rules.negativeRules.any { rule ->
+                !(explicitIntesaPayment && rule.id == "negative-balance") &&
+                    rule.pattern.containsMatchIn(searchable)
+            }
+        ) {
             return PaymentDetectionResult.Ignored(PaymentIgnoredReason.NEGATIVE_SIGNAL)
         }
 
@@ -133,7 +145,10 @@ internal class PaymentRuleEngine(
         if (!PaymentRegexSafety.isAllowed(definition.reviewContextPattern)) return null
         val negativeRules = definition.negativeRules.map { rule ->
             if (!PaymentRegexSafety.isAllowed(rule.pattern)) return null
-            runCatching { Regex(rule.pattern, REGEX_OPTIONS) }.getOrNull() ?: return null
+            val pattern = runCatching {
+                Regex(rule.pattern, REGEX_OPTIONS)
+            }.getOrNull() ?: return null
+            CompiledNegativePaymentRule(rule.id, pattern)
         }
         val exactRules = definition.exactRules.mapNotNull { rule ->
             if (
@@ -209,6 +224,11 @@ internal class PaymentRuleEngine(
         fun bodyCandidates(): List<String> = listOfNotNull(bigText, text).distinct()
     }
 
+    private data class CompiledNegativePaymentRule(
+        val id: String,
+        val pattern: Regex,
+    )
+
     private data class CompiledExactPaymentRule(
         val id: String,
         val title: Regex?,
@@ -218,7 +238,7 @@ internal class PaymentRuleEngine(
     private data class CompiledPaymentRuleSet(
         val sourceAppId: String,
         val ruleVersion: String,
-        val negativeRules: List<Regex>,
+        val negativeRules: List<CompiledNegativePaymentRule>,
         val exactRules: List<CompiledExactPaymentRule>,
         val reviewContext: Regex,
     )
@@ -234,6 +254,10 @@ internal class PaymentRuleEngine(
             RegexOption.IGNORE_CASE,
         )
         private val REGEX_OPTIONS = setOf(RegexOption.IGNORE_CASE)
+        private val INTESA_PAID_EUR = Regex(
+            """^(?:💸\s*)?hai\s+pagato\s+\d[\d.,\s]{0,18}\s*(?:€|EUR)(?:$|[^\p{L}\p{N}])""",
+            REGEX_OPTIONS,
+        )
         private val EUR_SUFFIX = Regex(
             """(?:^|[^\p{L}\p{N}])(?<amount>\d{1,3}(?:[.,\s]\d{3})*[,.]\d{2}|\d+[,.]\d{2})\s*(?:€|EUR)(?:$|[^\p{L}\p{N}])""",
             REGEX_OPTIONS,

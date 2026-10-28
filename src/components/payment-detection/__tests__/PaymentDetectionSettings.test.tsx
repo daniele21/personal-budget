@@ -239,6 +239,9 @@ describe('PaymentDetectionSettings', () => {
         exactMatches: 1,
         reviewMatches: 0,
         ignoredMatches: 1,
+        ignoredNegativeSignals: 1,
+        ignoredNoApprovedPattern: 0,
+        ignoredOtherReasons: 0,
         createdCandidates: 1,
         updatedCandidates: 0,
         suppressedDuplicates: 0,
@@ -254,6 +257,8 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText(/not delivery of new payment callbacks/i)).toBeInTheDocument();
     expect(screen.getByText('Local detector diagnostics')).toBeInTheDocument();
     expect(screen.getByText('Selected Android callbacks')).toBeInTheDocument();
+    expect(screen.getByText('Ignored: negative signal')).toBeInTheDocument();
+    expect(screen.getByText('Ignored: no approved pattern')).toBeInTheDocument();
     expect(screen.getByText('Supported-app callbacks before Aura filters')).toBeInTheDocument();
     expect(screen.getByText('Rejected: account or source selection')).toBeInTheDocument();
     expect(screen.getByText('Supported notifications visible in snapshots')).toBeInTheDocument();
