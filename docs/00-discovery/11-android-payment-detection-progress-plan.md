@@ -45,7 +45,32 @@ Un milestone non può essere marcato `Completato` solo perché il codice è stat
 
 ## Dashboard di avanzamento
 
-Ultimo aggiornamento: 2026-10-02
+Ultimo aggiornamento: 2026-10-28
+
+### Incidente affidabilità detector — aperto (P0)
+
+Il tester Internal Testing 1.0.22 segnala assenza di nuovi candidati in
+Review e di alert Aura, con badge **Connected** e **tutti i diagnostici a
+zero**, anche dopo **Repair listener** e **Refresh diagnostics**.
+Questo non determina da solo la causa: lo status può riferirsi a un endpoint
+bound, un refresh UI può mostrare dati precedenti e il probe può ritornare
+HEALTHY prima di leggere activeNotifications.
+
+**Piano di correzione e relativi exit gate:**
+[17-payment-detection-reliability-recovery-plan.md](./17-payment-detection-reliability-recovery-plan.md).
+Sono previste R0 (diagnostica verificabile), R1 (lifecycle),
+R2 (identità/deduplicazione), R3 (parser/alert), R4 (automazione e QA fisica).
+Le milestone M4–M8 completate qui descrivono la baseline
+**sintetica** pregressa, non un'acceptance positiva su un telefono reale.
+**Nuova promozione del detector: NO-GO proposto** finché non siano disponibili
+i gate specifici R0–R4 e le approvazioni degli owner competenti.
+La [PR #56](https://github.com/daniele21/personal-budget/pull/56) resta
+in bozza: il parser/counters non sono una soluzione dimostrata dell'incidente.
+
+**Disallineamento da riconciliare prima di promozioni:** alcuni gate storici
+del tracker richiedono ancora approvazioni di privacy/pilot mentre esiste già
+una pubblicazione su Internal Testing. Non interpretare la pubblicazione come
+approvazione automatica dei gate B-005/B-006 o della matrice M9.
 
 | Milestone | Stato | Nota di avanzamento |
 |---|---|---|
@@ -62,7 +87,10 @@ Ultimo aggiornamento: 2026-10-02
 | M10. Pilot, beta e release progressiva | Bloccato | Runbook e guardrail pronti; attende device fisici, sorgente approvata, signing/Play e privacy/security owner |
 | M11. Chiusura documentale e operativa | In corso | Documenti engineering principali e ADR esistono; approvazioni, regole real-source, release evidence e chiusura post-pilot restano aperte |
 
-Focus corrente: **M9 — hardening, QA fisica e chiusura dei gate privacy/release; le sorgenti reali restano vietate**.
+Focus corrente: **incidente P0 reliability del detector (R0 → R4)**,
+in coordinamento con M9 e i gate privacy/release esistenti.
+L'autorizzazione a trattare sorgenti reali resta governata dai gate del
+tracker: la build pubblicata non ne prova la chiusura.
 
 ## Direzione approvata
 
