@@ -22,6 +22,7 @@ internal enum class PaymentListenerRecoveryResult {
     RECONCILED,
     RECONCILED_AND_REBIND_REQUESTED,
     REBIND_REQUESTED,
+    SETTINGS_FAILURE,
     FAILED,
 }
 
@@ -37,6 +38,16 @@ internal class PaymentListenerRecoveryCoordinator(
     private val appContext = context.applicationContext
 
     fun recoverNow(): PaymentListenerRecoveryResult {
+        val result = try {
+            recoverOnce()
+        } catch (_: RuntimeException) {
+            PaymentListenerRecoveryResult.FAILED
+        }
+        PaymentDetectionListenerRuntime.markRecoveryResult(result.name)
+        return result
+    }
+
+    private fun recoverOnce(): PaymentListenerRecoveryResult {
         val privacyStore = PaymentDetectionPrivacyStore(appContext)
         if (!privacyStore.hasActiveOwner()) {
             return PaymentListenerRecoveryResult.DISABLED
@@ -67,6 +78,10 @@ internal class PaymentListenerRecoveryCoordinator(
             ) {
                 PaymentListenerProbeResult.HEALTHY ->
                     PaymentListenerRecoveryResult.RECONCILED
+                PaymentListenerProbeResult.SKIPPED_DISABLED ->
+                    PaymentListenerRecoveryResult.DISABLED
+                PaymentListenerProbeResult.SETTINGS_FAILURE ->
+                    PaymentListenerRecoveryResult.SETTINGS_FAILURE
                 PaymentListenerProbeResult.MISSED_CALLBACK_RECOVERED -> {
                     if (accessController.forceRebindIfGranted()) {
                         PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED
@@ -97,7 +112,8 @@ class PaymentListenerRecoveryWorker(
         when (
             PaymentListenerRecoveryCoordinator(applicationContext).recoverNow()
         ) {
-            PaymentListenerRecoveryResult.FAILED -> Result.retry()
+            PaymentListenerRecoveryResult.FAILED,
+            PaymentListenerRecoveryResult.SETTINGS_FAILURE -> Result.retry()
             else -> Result.success()
         }
 }
@@ -131,7 +147,8 @@ object PaymentListenerRecoveryScheduler {
             return
         }
         schedule(appContext)
-        runSoon(appContext)
+        // Do not cancel a pending recovery every time getStatus() is called.
+        enqueueImmediate(appContext, ExistingWorkPolicy.KEEP)
     }
 
     @JvmStatic
@@ -147,12 +164,17 @@ object PaymentListenerRecoveryScheduler {
         )
     }
 
+    /** Explicit user repair can supersede a pending recovery. */
     @JvmStatic
     fun runSoon(context: Context) {
+        enqueueImmediate(context, ExistingWorkPolicy.REPLACE)
+    }
+
+    private fun enqueueImmediate(context: Context, policy: ExistingWorkPolicy) {
         val work = OneTimeWorkRequestBuilder<PaymentListenerRecoveryWorker>().build()
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             IMMEDIATE_WORK,
-            ExistingWorkPolicy.REPLACE,
+            policy,
             work,
         )
     }
