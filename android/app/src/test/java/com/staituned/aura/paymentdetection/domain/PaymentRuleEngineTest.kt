@@ -162,6 +162,36 @@ class PaymentRuleEngineTest {
     }
 
     @Test
+    fun intesaPaidNotificationWithBalanceFooterIsReviewNotDiscarded() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "NEGOZIO TEST",
+                text = "Hai pagato 18,40 € con la carta *0000. Saldo disponibile 310,00€.",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Candidate
+        assertEquals(PaymentMatchTier.REVIEW, result.tier)
+        assertEquals(1840L, result.amountMinorUnits)
+        assertEquals("NEGOZIO TEST", result.merchant)
+    }
+
+    @Test
+    fun intesaPaidNotificationWithBalanceAndDeclineStillRejected() {
+        val result = engine.evaluate(
+            PaymentDetectionInput(
+                sourceAppId = BundledPaymentRuleCatalog.INTESA_SANPAOLO_SOURCE_APP_ID,
+                title = "NEGOZIO TEST",
+                text = "Hai pagato 18,40 €. Saldo disponibile 310,00€. Operazione non autorizzata.",
+                bigText = null,
+                postedAtEpochMillis = POSTED_AT,
+            ),
+        ) as PaymentDetectionResult.Ignored
+        assertEquals(PaymentIgnoredReason.NEGATIVE_SIGNAL, result.reason)
+    }
+
+    @Test
     fun intesaCardLikeMerchantStaysReviewRatherThanExact() {
         val result = engine.evaluate(
             PaymentDetectionInput(
