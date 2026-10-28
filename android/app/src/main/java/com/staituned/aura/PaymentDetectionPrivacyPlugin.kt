@@ -417,6 +417,8 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     private fun diagnosticsJson(): JSObject {
         val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
         return JSObject().apply {
+            put("recoveryAttempts", snapshot.recoveryAttempts)
+            put("lastRecoveryResult", snapshot.lastRecoveryResult)
             put("supportedCallbacksObserved", snapshot.supportedCallbacksObserved)
             put("callbacksRejectedWrongGeneration", snapshot.callbacksRejectedWrongGeneration)
             put("callbacksRejectedBySettings", snapshot.callbacksRejectedBySettings)
