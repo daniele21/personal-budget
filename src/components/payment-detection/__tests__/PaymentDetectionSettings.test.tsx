@@ -266,6 +266,20 @@ describe('PaymentDetectionSettings', () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
+  it('calls a verified snapshot a snapshot, not proof of callback delivery', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true, listenerConnected: true,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true, candidateNotificationsEnabled: true,
+      diagnostics: { activeSnapshotReads: 1, recoveryAttempts: 1, lastRecoveryResult: 'RECONCILED' },
+    });
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Snapshot verified')).toBeInTheDocument();
+    expect(screen.getByText(/but not delivery of new payment callbacks/i)).toBeInTheDocument();
+  });
+
   it('marks a failed status refresh as stale rather than claiming connected', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
