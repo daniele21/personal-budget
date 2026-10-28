@@ -62,6 +62,7 @@ abstract class BaseAuraNotificationListenerService :
                 PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.NO_ACCESS,
                 PaymentListenerRecoveryResult.DISABLED,
+                PaymentListenerRecoveryResult.SETTINGS_FAILURE,
                 PaymentListenerRecoveryResult.FAILED -> Unit
                 PaymentListenerRecoveryResult.RECONCILED ->
                     mainHandler.postDelayed(this, HEALTH_HEARTBEAT_INTERVAL_MS)
@@ -314,11 +315,13 @@ abstract class BaseAuraNotificationListenerService :
     }
 
     private fun reconcileActiveNotifications(): PaymentListenerEndpointProbeResult {
+        // A skipped snapshot is not a healthy listener probe. In particular, a
+        // settings-storage error must never masquerade as successful recovery.
         val windowStartedAt = try {
             settingsStore.recoveryWindowStartedAt()
         } catch (_: RuntimeException) {
-            null
-        } ?: return PaymentListenerEndpointProbeResult.HEALTHY
+            return PaymentListenerEndpointProbeResult.SETTINGS_FAILURE
+        } ?: return PaymentListenerEndpointProbeResult.SKIPPED_DISABLED
 
         val now = System.currentTimeMillis()
         val floor = maxOf(windowStartedAt, now - MAX_RECOVERY_LOOKBACK_MS)
