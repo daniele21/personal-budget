@@ -194,7 +194,15 @@ export function PaymentDetectionProvider({
           setAvailability('unsupported');
           return;
         }
-        await refreshMetadata();
+        // Catalog/status refresh must not block local pending candidates.
+        // Subscription still enforces the native owner and acceptance contract.
+        let metadataError: unknown = null;
+        try {
+          await refreshMetadata();
+        } catch (refreshError) {
+          metadataError = refreshError;
+        }
+        if (cancelled) return;
         candidateSubscription = await subscribeToPaymentCandidates(
           (nextCandidates) => {
             if (!cancelled) {
@@ -211,6 +219,9 @@ export function PaymentDetectionProvider({
           },
           recoverAcceptance,
         );
+        if (!cancelled && metadataError != null) {
+          setError(errorMessage(metadataError));
+        }
       } catch (startError) {
         if (!cancelled) {
           setAvailability('error');
