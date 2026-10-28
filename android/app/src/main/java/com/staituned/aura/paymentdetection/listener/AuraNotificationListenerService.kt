@@ -62,6 +62,7 @@ abstract class BaseAuraNotificationListenerService :
                 PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.NO_ACCESS,
                 PaymentListenerRecoveryResult.DISABLED,
+                PaymentListenerRecoveryResult.SETTINGS_FAILURE,
                 PaymentListenerRecoveryResult.FAILED -> Unit
                 PaymentListenerRecoveryResult.RECONCILED ->
                     mainHandler.postDelayed(this, HEALTH_HEARTBEAT_INTERVAL_MS)
