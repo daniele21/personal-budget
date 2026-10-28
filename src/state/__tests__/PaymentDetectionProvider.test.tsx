@@ -193,6 +193,15 @@ describe('PaymentDetectionProvider', () => {
     expect(mocks.order).toEqual(['recover', 'list']);
   });
 
+  it('loads the pending queue even when initial app catalog discovery fails', async () => {
+    mocks.listSupportedApps.mockRejectedValueOnce(new Error('Catalog unavailable at startup'));
+    renderProvider();
+    expect(await screen.findByText('ready')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByTestId('native-last-success')).toHaveTextContent('refreshed');
+    expect(screen.getByTestId('queue-error')).toHaveTextContent('Catalog unavailable at startup');
+  });
+
   it('still fetches native health when candidate recovery fails', async () => {
     renderProvider();
     await screen.findByText('ready');
