@@ -207,6 +207,25 @@ describe('PaymentDetectionProvider', () => {
     });
   });
 
+  it('does not mask a successful native status when the app catalog fails', async () => {
+    renderProvider();
+    await screen.findByText('ready');
+    mocks.getStatus.mockResolvedValueOnce({
+      supported: true, requestedEnabled: true, selectedPackages: [],
+      osPermissionGranted: true, listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true, candidateNotificationsEnabled: true,
+    });
+    mocks.listSupportedApps.mockRejectedValueOnce(new Error('Catalog unavailable'));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh all' }));
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('native-health')).toHaveTextContent('not-bound');
+      expect(screen.getByTestId('native-error')).toHaveTextContent('no diagnostic error');
+      expect(screen.getByTestId('queue-error')).toHaveTextContent('Catalog unavailable');
+      expect(screen.getByText('1')).toBeInTheDocument();
+    });
+  });
+
   it('preserves candidates but marks failed native diagnostic refresh as stale', async () => {
     renderProvider();
     await screen.findByText('ready');
