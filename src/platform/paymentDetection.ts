@@ -19,6 +19,9 @@ export interface NativeNotificationAccessStatus {
 }
 
 export interface NativePaymentDetectionDiagnostics {
+  /** Optional for older Android builds; never contains financial content. */
+  recoveryAttempts?: number;
+  lastRecoveryResult?: string;
   supportedCallbacksObserved: number;
   callbacksRejectedWrongGeneration: number;
   callbacksRejectedBySettings: number;
