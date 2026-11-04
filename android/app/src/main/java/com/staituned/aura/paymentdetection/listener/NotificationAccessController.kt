@@ -29,6 +29,15 @@ internal data class NotificationListenerAccessState(
         }
 }
 
+/** A missing listener can only be rebound; unbind requires a live endpoint. */
+internal enum class ListenerBindingAction {
+    REQUEST_BIND,
+    CYCLE_CONNECTED,
+}
+
+internal fun listenerBindingActionForRepair(connected: Boolean): ListenerBindingAction =
+    if (connected) ListenerBindingAction.CYCLE_CONNECTED else ListenerBindingAction.REQUEST_BIND
+
 internal class NotificationAccessController(
     private val context: Context,
     namespace: String = "payment_listener_access",
@@ -112,10 +121,13 @@ internal class NotificationAccessController(
      */
     fun repairListenerIfGranted(): Boolean {
         val generation = effectiveGeneration() ?: return false
-        return if (PaymentDetectionListenerRuntime.isConnected(generation)) {
-            forceRebindIfGranted()
-        } else {
-            requestRebindIfGranted()
+        return when (
+            listenerBindingActionForRepair(
+                PaymentDetectionListenerRuntime.isConnected(generation),
+            )
+        ) {
+            ListenerBindingAction.REQUEST_BIND -> requestRebindIfGranted()
+            ListenerBindingAction.CYCLE_CONNECTED -> forceRebindIfGranted()
         }
     }
 
