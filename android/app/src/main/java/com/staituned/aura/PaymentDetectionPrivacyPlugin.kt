@@ -218,7 +218,7 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
                 return
             }
 
-            if (!accessController.forceRebindIfGranted()) {
+            if (!accessController.repairListenerIfGranted()) {
                 call.reject("Notification listener repair failed.", "LISTENER_REPAIR_FAILED")
                 return
             }
