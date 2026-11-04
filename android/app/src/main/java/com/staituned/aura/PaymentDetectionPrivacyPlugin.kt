@@ -419,6 +419,8 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         return JSObject().apply {
             put("recoveryAttempts", snapshot.recoveryAttempts)
             put("lastRecoveryResult", snapshot.lastRecoveryResult)
+            put("currentListenerConnections", snapshot.currentListenerConnections)
+            put("legacyListenerConnections", snapshot.legacyListenerConnections)
             put("supportedCallbacksObserved", snapshot.supportedCallbacksObserved)
             put("callbacksRejectedWrongGeneration", snapshot.callbacksRejectedWrongGeneration)
             put("callbacksRejectedBySettings", snapshot.callbacksRejectedBySettings)
