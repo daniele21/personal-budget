@@ -349,7 +349,9 @@ export function PaymentDetectionSettings() {
                 : ' The last recovery did not prove a healthy listener snapshot.'}
             </p>
           )}
-          {status.diagnostics.lastRecoveryResult === 'REBIND_REQUESTED' && !listenerReady && !diagnosticsError && (
+          {(status.diagnostics.lastRecoveryResult === 'BIND_REQUESTED' ||
+            status.diagnostics.lastRecoveryResult === 'REBIND_REQUESTED') &&
+            !listenerReady && !diagnosticsError && (
             <p className="mt-2 text-xs text-on-surface-variant">
               Android has been asked to reconnect the payment listener but has not
               confirmed a live binding. Check Android notification access for
