@@ -89,8 +89,19 @@ internal class PaymentListenerRecoveryCoordinator(
                         PaymentListenerRecoveryResult.FAILED
                     }
                 }
-                PaymentListenerProbeResult.UNAVAILABLE,
+                PaymentListenerProbeResult.UNAVAILABLE -> {
+                    // A missing listener has nothing to unbind. A request to
+                    // bind is the only safe recovery action before Android
+                    // delivers onListenerConnected().
+                    if (accessController.requestRebindIfGranted()) {
+                        PaymentListenerRecoveryResult.REBIND_REQUESTED
+                    } else {
+                        PaymentListenerRecoveryResult.FAILED
+                    }
+                }
                 PaymentListenerProbeResult.FAILED -> {
+                    // A registered endpoint exists but failed its health
+                    // probe. Only this path may deliberately cycle its binding.
                     if (accessController.forceRebindIfGranted()) {
                         PaymentListenerRecoveryResult.REBIND_REQUESTED
                     } else {
