@@ -31,12 +31,6 @@ internal enum class PaymentListenerRecoveryResult {
 }
 
 /**
- * Single owner for listener health decisions. Unlike the 1.0.15 watchdog, a
- * "connected" bit is not enough: every recovery pass probes the live service
- * and reconciles a bounded active-notification snapshot. A missing/failed probe
- * triggers a deliberate unbind/rebind cycle.
- */
-/**
  * A missing endpoint is not an unresponsive bound endpoint. This selection is
  * intentionally unit-testable so a future recovery refactor cannot resume
  * unbinding a listener while Android is still trying to connect it.
@@ -49,6 +43,12 @@ internal fun listenerBindingActionForProbe(
     else -> null
 }
 
+/**
+ * Single owner for listener health decisions. Unlike the 1.0.15 watchdog, a
+ * "connected" bit is not enough: every recovery pass probes the live service
+ * and reconciles a bounded active-notification snapshot. A missing endpoint
+ * requests bind-only; a failed probe of an existing endpoint requests a cycle.
+ */
 internal class PaymentListenerRecoveryCoordinator(
     context: Context,
 ) {
