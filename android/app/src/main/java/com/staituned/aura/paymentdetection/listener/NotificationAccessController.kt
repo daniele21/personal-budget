@@ -137,7 +137,17 @@ internal class NotificationAccessController(
      * requestUnbind(ComponentName) is available.
      */
     fun forceRebindIfGranted(): Boolean {
-        val component = effectiveComponent() ?: return false
+        val access = state()
+        val generation = access.effectiveGeneration ?: return false
+        val component = when (generation) {
+            PaymentListenerGeneration.CURRENT -> currentListenerComponent
+            PaymentListenerGeneration.LEGACY -> legacyListenerComponent
+        }
+        // A listener may disconnect between a probe and the repair request.
+        // Never unbind an already-absent endpoint during that race.
+        if (!PaymentDetectionListenerRuntime.isConnected(generation)) {
+            return requestRebind(component)
+        }
         return try {
             NotificationListenerService.requestUnbind(component)
             NotificationListenerService.requestRebind(component)
