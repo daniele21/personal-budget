@@ -285,6 +285,34 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText(/but not delivery of new payment callbacks/i)).toBeInTheDocument();
   });
 
+  it('explains that a rebind request is not evidence of an Android listener connection', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+      diagnostics: {
+        recoveryAttempts: 6,
+        lastRecoveryResult: 'REBIND_REQUESTED',
+        currentListenerConnections: 0,
+        legacyListenerConnections: 0,
+        activeSnapshotReads: 0,
+        activeSnapshotFailures: 0,
+      },
+    });
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.getByText(/Android has been asked to reconnect the payment listener/i))
+      .toBeInTheDocument();
+    expect(screen.getByText('V2 listener connection callbacks')).toBeInTheDocument();
+    expect(screen.getByText('Legacy listener connection callbacks')).toBeInTheDocument();
+    expect(screen.getByText('Last recovery result: REBIND_REQUESTED. The last recovery did not prove a healthy listener snapshot.'))
+      .toBeInTheDocument();
+  });
+
   it('marks a failed status refresh as stale rather than claiming connected', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
