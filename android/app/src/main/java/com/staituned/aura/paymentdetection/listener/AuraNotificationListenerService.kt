@@ -58,6 +58,7 @@ abstract class BaseAuraNotificationListenerService :
             val result =
                 PaymentListenerRecoveryCoordinator(applicationContext).recoverNow()
             when (result) {
+                PaymentListenerRecoveryResult.BIND_REQUESTED,
                 PaymentListenerRecoveryResult.REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.NO_ACCESS,
