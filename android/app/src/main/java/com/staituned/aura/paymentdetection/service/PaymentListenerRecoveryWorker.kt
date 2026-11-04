@@ -21,6 +21,9 @@ internal enum class PaymentListenerRecoveryResult {
     NO_ACCESS,
     RECONCILED,
     RECONCILED_AND_REBIND_REQUESTED,
+    /** No listener endpoint exists. A bind was requested, not confirmed. */
+    BIND_REQUESTED,
+    /** An existing but unresponsive endpoint was explicitly cycled. */
     REBIND_REQUESTED,
     SETTINGS_FAILURE,
     FAILED,
@@ -94,7 +97,7 @@ internal class PaymentListenerRecoveryCoordinator(
                     // bind is the only safe recovery action before Android
                     // delivers onListenerConnected().
                     if (accessController.requestRebindIfGranted()) {
-                        PaymentListenerRecoveryResult.REBIND_REQUESTED
+                        PaymentListenerRecoveryResult.BIND_REQUESTED
                     } else {
                         PaymentListenerRecoveryResult.FAILED
                     }
