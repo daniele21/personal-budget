@@ -235,6 +235,40 @@ footer: this alone must not trigger `negative-balance`. Declines, OTP,
 cancellations, missing positive patterns and unsafe merchant data still use
 their existing conservative negative/review rules.
 
+### Missing listener binding (incident #68, 1.0.23 observations)
+
+If a fresh status shows `REBIND_REQUESTED` and **both successful and failed
+active-notification snapshots are zero**, the listener has not verified an
+active-notification read. Do not change parser rules or deduplication based on
+these counters. The rebind request is an asynchronous request to Android,
+not evidence that `onListenerConnected()` occurred.
+
+On builds exposing generation-specific connection counters:
+
+- `BIND_REQUESTED` means the effective listener endpoint was **absent** and Aura
+  requested binding **without a preceding unbind**.
+- `REBIND_REQUESTED` means a registered endpoint existed but its health probe
+  failed; the binding cycle was requested. An explicit user repair also
+  distinguishes already-bound from not-yet-bound services.
+- `V2 listener connection callbacks` and `Legacy listener connection
+  callbacks` record actual `onListenerConnected()` callbacks since process
+  startup or diagnostics reset. A zero does not prove access is revoked; it
+  means no such callback was observed during the counter lifetime.
+- `Successful active-notification snapshots` > 0 confirms a bounded read.
+  A read can succeed with zero eligible notifications and does **not** prove
+  that future callbacks or expired tray entries will be delivered.
+
+Check that the V2 **Aura payment detection** component is enabled under
+Android Notification access and that the detector shows a fresh native status
+(with no stale-refresh error); an access grant is not the same as a live binder.
+If the device still shows bind requested with zero connection callbacks, capture
+only redacted status and investigate live Android NotificationManager binding
+state, device/OEM notification-service restrictions and service lifecycle.
+Never demand a reinstall, erase candidate data, disable safety checks or log
+banking notification contents. Real-device verification is tracked in
+[incident #68](https://github.com/daniele21/personal-budget/issues/68) and
+[R4 issue #65](https://github.com/daniele21/personal-budget/issues/65).
+
 If a real bank notification reaches Android but these callback counters do
 not increase, investigate the Android listener/OS delivery path. If callbacks
 increase without candidates, investigate rules and processing/duplicate
