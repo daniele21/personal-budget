@@ -352,12 +352,12 @@ export function PaymentDetectionSettings() {
           {(status.diagnostics.lastRecoveryResult === 'BIND_REQUESTED' ||
             status.diagnostics.lastRecoveryResult === 'REBIND_REQUESTED') &&
             !listenerReady && !diagnosticsError && (
-            <p className="mt-2 text-xs text-on-surface-variant">
-              Android has been asked to reconnect the payment listener but has not
-              confirmed a live binding. Check Android notification access for
-              Aura payment detection (V2). A repair request is not proof of reconnection.
-            </p>
-          )}
+              <p className="mt-2 text-xs text-on-surface-variant">
+                Android has been asked to reconnect the payment listener but has not
+                confirmed a live binding. Check Android notification access for
+                Aura payment detection (V2). A repair request is not proof of reconnection.
+              </p>
+            )}
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
               ['Recovery attempts', status.diagnostics.recoveryAttempts ?? 'Unavailable'],
