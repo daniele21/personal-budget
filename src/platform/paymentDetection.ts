@@ -22,6 +22,9 @@ export interface NativePaymentDetectionDiagnostics {
   /** Optional for older Android builds; never contains financial content. */
   recoveryAttempts?: number;
   lastRecoveryResult?: string;
+  /** Process-local onListenerConnected callbacks, reset at owner boundary. */
+  currentListenerConnections?: number;
+  legacyListenerConnections?: number;
   supportedCallbacksObserved: number;
   callbacksRejectedWrongGeneration: number;
   callbacksRejectedBySettings: number;
