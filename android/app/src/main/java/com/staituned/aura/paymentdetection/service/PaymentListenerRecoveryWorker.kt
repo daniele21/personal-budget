@@ -10,6 +10,7 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.staituned.aura.paymentdetection.data.PaymentDetectionPrivacyStore
 import com.staituned.aura.paymentdetection.data.PaymentDetectionSettingsStore
+import com.staituned.aura.paymentdetection.listener.ListenerBindingAction
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
 import com.staituned.aura.paymentdetection.listener.PaymentListenerGeneration
@@ -35,6 +36,19 @@ internal enum class PaymentListenerRecoveryResult {
  * and reconciles a bounded active-notification snapshot. A missing/failed probe
  * triggers a deliberate unbind/rebind cycle.
  */
+/**
+ * A missing endpoint is not an unresponsive bound endpoint. This selection is
+ * intentionally unit-testable so a future recovery refactor cannot resume
+ * unbinding a listener while Android is still trying to connect it.
+ */
+internal fun listenerBindingActionForProbe(
+    probe: PaymentListenerProbeResult,
+): ListenerBindingAction? = when (probe) {
+    PaymentListenerProbeResult.UNAVAILABLE -> ListenerBindingAction.REQUEST_BIND
+    PaymentListenerProbeResult.FAILED -> ListenerBindingAction.CYCLE_CONNECTED
+    else -> null
+}
+
 internal class PaymentListenerRecoveryCoordinator(
     context: Context,
 ) {
@@ -76,9 +90,8 @@ internal class PaymentListenerRecoveryCoordinator(
                 ?: return PaymentListenerRecoveryResult.NO_ACCESS
 
             PaymentDetectionListenerRuntime.armHealthHeartbeat(generation)
-            when (
-                PaymentDetectionListenerRuntime.probeAndReconcile(generation)
-            ) {
+            val probe = PaymentDetectionListenerRuntime.probeAndReconcile(generation)
+            when (probe) {
                 PaymentListenerProbeResult.HEALTHY ->
                     PaymentListenerRecoveryResult.RECONCILED
                 PaymentListenerProbeResult.SKIPPED_DISABLED ->
@@ -92,23 +105,19 @@ internal class PaymentListenerRecoveryCoordinator(
                         PaymentListenerRecoveryResult.FAILED
                     }
                 }
-                PaymentListenerProbeResult.UNAVAILABLE -> {
-                    // A missing listener has nothing to unbind. A request to
-                    // bind is the only safe recovery action before Android
-                    // delivers onListenerConnected().
-                    if (accessController.requestRebindIfGranted()) {
-                        PaymentListenerRecoveryResult.BIND_REQUESTED
-                    } else {
-                        PaymentListenerRecoveryResult.FAILED
-                    }
-                }
+                PaymentListenerProbeResult.UNAVAILABLE,
                 PaymentListenerProbeResult.FAILED -> {
-                    // A registered endpoint exists but failed its health
-                    // probe. Only this path may deliberately cycle its binding.
-                    if (accessController.forceRebindIfGranted()) {
-                        PaymentListenerRecoveryResult.REBIND_REQUESTED
-                    } else {
-                        PaymentListenerRecoveryResult.FAILED
+                    val requested = when (checkNotNull(listenerBindingActionForProbe(probe))) {
+                        ListenerBindingAction.REQUEST_BIND ->
+                            accessController.requestRebindIfGranted()
+                        ListenerBindingAction.CYCLE_CONNECTED ->
+                            accessController.forceRebindIfGranted()
+                    }
+                    when {
+                        !requested -> PaymentListenerRecoveryResult.FAILED
+                        probe == PaymentListenerProbeResult.UNAVAILABLE ->
+                            PaymentListenerRecoveryResult.BIND_REQUESTED
+                        else -> PaymentListenerRecoveryResult.REBIND_REQUESTED
                     }
                 }
             }
