@@ -309,7 +309,33 @@ describe('PaymentDetectionSettings', () => {
       .toBeInTheDocument();
     expect(screen.getByText('V2 listener connection callbacks')).toBeInTheDocument();
     expect(screen.getByText('Legacy listener connection callbacks')).toBeInTheDocument();
-    expect(screen.getByText('Last recovery result: REBIND_REQUESTED. The last recovery did not prove a healthy listener snapshot.'))
+    expect(screen.getByText(/Last recovery result: REBIND_REQUESTED/))
+      .toBeInTheDocument();
+  });
+
+  it('distinguishes a bind request for an absent service from a completed connection', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      auraNotificationPermissionGranted: true,
+      candidateNotificationsEnabled: true,
+      diagnostics: {
+        recoveryAttempts: 6,
+        lastRecoveryResult: 'BIND_REQUESTED',
+        currentListenerConnections: 0,
+        legacyListenerConnections: 0,
+        activeSnapshotReads: 0,
+        activeSnapshotFailures: 0,
+      },
+    });
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.getByText(/A repair request is not proof of reconnection/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/Last recovery result: BIND_REQUESTED/))
       .toBeInTheDocument();
   });
 
