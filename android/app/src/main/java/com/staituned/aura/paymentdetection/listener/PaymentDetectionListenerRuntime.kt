@@ -27,6 +27,8 @@ enum class PaymentListenerEndpointProbeResult {
 internal data class PaymentListenerDiagnosticsSnapshot(
     val recoveryAttempts: Int,
     val lastRecoveryResult: String,
+    val currentListenerConnections: Int,
+    val legacyListenerConnections: Int,
     val supportedCallbacksObserved: Int,
     val callbacksRejectedWrongGeneration: Int,
     val callbacksRejectedBySettings: Int,
@@ -84,6 +86,8 @@ internal object PaymentDetectionListenerRuntime {
         mutableMapOf<PaymentListenerGeneration, LinkedHashMap<String, Long>>()
     private val suppressedPostedCallbacksForTest = AtomicInteger(0)
 
+    private val currentListenerConnections = AtomicInteger(0)
+    private val legacyListenerConnections = AtomicInteger(0)
     private val recoveryAttempts = AtomicInteger(0)
     @Volatile private var lastRecoveryResult = "NOT_RUN"
     private val supportedCallbacksObserved = AtomicInteger(0)
@@ -119,6 +123,10 @@ internal object PaymentDetectionListenerRuntime {
         latestSelectedCallbackPostTime[generation] = 0L
         processedNotificationVersions[generation] = linkedMapOf()
         connectionCounter(generation).incrementAndGet()
+        when (generation) {
+            PaymentListenerGeneration.CURRENT -> currentListenerConnections.incrementAndGet()
+            PaymentListenerGeneration.LEGACY -> legacyListenerConnections.incrementAndGet()
+        }
     }
 
     @Synchronized
@@ -349,6 +357,8 @@ internal object PaymentDetectionListenerRuntime {
     fun diagnosticsSnapshot() = PaymentListenerDiagnosticsSnapshot(
         recoveryAttempts = recoveryAttempts.get(),
         lastRecoveryResult = lastRecoveryResult,
+        currentListenerConnections = currentListenerConnections.get(),
+        legacyListenerConnections = legacyListenerConnections.get(),
         supportedCallbacksObserved = supportedCallbacksObserved.get(),
         callbacksRejectedWrongGeneration = callbacksRejectedWrongGeneration.get(),
         callbacksRejectedBySettings = callbacksRejectedBySettings.get(),
@@ -385,6 +395,8 @@ internal object PaymentDetectionListenerRuntime {
     fun resetDiagnostics() {
         recoveryAttempts.set(0)
         lastRecoveryResult = "NOT_RUN"
+        currentListenerConnections.set(0)
+        legacyListenerConnections.set(0)
         supportedCallbacksObserved.set(0)
         callbacksRejectedWrongGeneration.set(0)
         callbacksRejectedBySettings.set(0)
