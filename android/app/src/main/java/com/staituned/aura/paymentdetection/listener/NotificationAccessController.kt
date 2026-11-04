@@ -106,6 +106,20 @@ internal class NotificationAccessController(
     }
 
     /**
+     * Repair is allowed before Android has connected a listener. Do not call
+     * requestUnbind on a missing endpoint: Android may still be binding it.
+     * A real, currently connected listener can be deliberately cycled.
+     */
+    fun repairListenerIfGranted(): Boolean {
+        val generation = effectiveGeneration() ?: return false
+        return if (PaymentDetectionListenerRuntime.isConnected(generation)) {
+            forceRebindIfGranted()
+        } else {
+            requestRebindIfGranted()
+        }
+    }
+
+    /**
      * Repairs a stale "connected" listener by cycling the exact component that
      * owns the effective grant. Aura targets API 36, where static
      * requestUnbind(ComponentName) is available.
