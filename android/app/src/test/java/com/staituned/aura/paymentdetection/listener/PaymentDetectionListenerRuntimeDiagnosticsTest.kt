@@ -95,6 +95,42 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
     }
 
     @Test
+    fun listenerConnectionCallbacksAreDistinctFromRebindRequests() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        val current = object : PaymentListenerHealthEndpoint {
+            override fun probeAndReconcile() = PaymentListenerEndpointProbeResult.HEALTHY
+            override fun armHealthHeartbeat() = Unit
+            override fun retireBinding() = Unit
+        }
+        val legacy = object : PaymentListenerHealthEndpoint {
+            override fun probeAndReconcile() = PaymentListenerEndpointProbeResult.HEALTHY
+            override fun armHealthHeartbeat() = Unit
+            override fun retireBinding() = Unit
+        }
+        try {
+            PaymentDetectionListenerRuntime.markRecoveryResult("REBIND_REQUESTED")
+            var snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(1, snapshot.recoveryAttempts)
+            assertEquals(0, snapshot.currentListenerConnections)
+            assertEquals(0, snapshot.legacyListenerConnections)
+            assertEquals(0, snapshot.activeSnapshotReads)
+
+            PaymentDetectionListenerRuntime.register(PaymentListenerGeneration.CURRENT, current)
+            PaymentDetectionListenerRuntime.register(PaymentListenerGeneration.LEGACY, legacy)
+            snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(1, snapshot.currentListenerConnections)
+            assertEquals(1, snapshot.legacyListenerConnections)
+            assertEquals(0, snapshot.activeSnapshotReads)
+        } finally {
+            PaymentDetectionListenerRuntime.unregister(PaymentListenerGeneration.CURRENT, current)
+            PaymentDetectionListenerRuntime.unregister(PaymentListenerGeneration.LEGACY, legacy)
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        assertEquals(0, PaymentDetectionListenerRuntime.diagnosticsSnapshot().currentListenerConnections)
+        assertEquals(0, PaymentDetectionListenerRuntime.diagnosticsSnapshot().legacyListenerConnections)
+    }
+
+    @Test
     fun nativeOwnerResetClearsAllPreGateCounters() {
         PaymentDetectionListenerRuntime.markSupportedCallbackObserved()
         PaymentDetectionListenerRuntime.markActiveSnapshotRead(1, 1)

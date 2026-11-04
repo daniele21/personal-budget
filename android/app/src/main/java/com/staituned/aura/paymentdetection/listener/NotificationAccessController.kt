@@ -29,6 +29,15 @@ internal data class NotificationListenerAccessState(
         }
 }
 
+/** A missing listener can only be rebound; unbind requires a live endpoint. */
+internal enum class ListenerBindingAction {
+    REQUEST_BIND,
+    CYCLE_CONNECTED,
+}
+
+internal fun listenerBindingActionForRepair(connected: Boolean): ListenerBindingAction =
+    if (connected) ListenerBindingAction.CYCLE_CONNECTED else ListenerBindingAction.REQUEST_BIND
+
 internal class NotificationAccessController(
     private val context: Context,
     namespace: String = "payment_listener_access",
@@ -106,12 +115,39 @@ internal class NotificationAccessController(
     }
 
     /**
+     * Repair is allowed before Android has connected a listener. Do not call
+     * requestUnbind on a missing endpoint: Android may still be binding it.
+     * A real, currently connected listener can be deliberately cycled.
+     */
+    fun repairListenerIfGranted(): Boolean {
+        val generation = effectiveGeneration() ?: return false
+        return when (
+            listenerBindingActionForRepair(
+                PaymentDetectionListenerRuntime.isConnected(generation),
+            )
+        ) {
+            ListenerBindingAction.REQUEST_BIND -> requestRebindIfGranted()
+            ListenerBindingAction.CYCLE_CONNECTED -> forceRebindIfGranted()
+        }
+    }
+
+    /**
      * Repairs a stale "connected" listener by cycling the exact component that
      * owns the effective grant. Aura targets API 36, where static
      * requestUnbind(ComponentName) is available.
      */
     fun forceRebindIfGranted(): Boolean {
-        val component = effectiveComponent() ?: return false
+        val access = state()
+        val generation = access.effectiveGeneration ?: return false
+        val component = when (generation) {
+            PaymentListenerGeneration.CURRENT -> currentListenerComponent
+            PaymentListenerGeneration.LEGACY -> legacyListenerComponent
+        }
+        // A listener may disconnect between a probe and the repair request.
+        // Never unbind an already-absent endpoint during that race.
+        if (!PaymentDetectionListenerRuntime.isConnected(generation)) {
+            return requestRebind(component)
+        }
         return try {
             NotificationListenerService.requestUnbind(component)
             NotificationListenerService.requestRebind(component)
