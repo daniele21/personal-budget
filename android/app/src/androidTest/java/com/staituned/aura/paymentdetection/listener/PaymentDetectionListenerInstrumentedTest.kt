@@ -243,23 +243,40 @@ class PaymentDetectionListenerInstrumentedTest {
         val component = currentComponent()
         val controller = NotificationAccessController(context)
         resetListenerGrants()
+        // cmd notification disallow_listener is asynchronous. A prior test may
+        // have left an endpoint registered after the 150 ms reset sleep.
+        // Do not mistake that old endpoint for this test's new V2 binding.
+        waitUntil("previous V2 listener disconnect") {
+            !PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT)
+        }
         try {
             shell("cmd notification allow_listener $component")
-            waitUntil("V2 listener connection") {
+            waitUntil("current V2 permission grant") {
+                controller.state().currentGranted
+            }
+            waitUntil("new V2 listener connection") {
                 PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT)
             }
-            assertTrue(controller.synchronizeComponentLifecycle().currentGranted)
+            assertTrue(
+                "V2 grant must survive initial legacy retirement",
+                controller.synchronizeComponentLifecycle().currentGranted,
+            )
             val epoch = PaymentDetectionListenerRuntime.connectionEpoch(
                 PaymentListenerGeneration.CURRENT,
             )
             repeat(8) {
-                assertTrue(controller.synchronizeComponentLifecycle().currentGranted)
+                assertTrue(
+                    "V2 grant must survive repeated legacy retirement",
+                    controller.synchronizeComponentLifecycle().currentGranted,
+                )
             }
             Thread.sleep(750)
             assertTrue(
+                "V2 endpoint must remain connected after repeated retirement",
                 PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT),
             )
             assertEquals(
+                "Repeated legacy retirement must not rebind the V2 listener",
                 epoch,
                 PaymentDetectionListenerRuntime.connectionEpoch(PaymentListenerGeneration.CURRENT),
             )
