@@ -246,10 +246,10 @@ class PaymentDetectionListenerInstrumentedTest {
         // cmd notification disallow_listener is asynchronous. A prior test may
         // have left an endpoint registered after the 150 ms reset sleep.
         // Do not mistake that old endpoint for this test's new V2 binding.
-        waitUntil("previous V2 listener disconnect") {
-            !PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT)
-        }
         try {
+            waitUntil("previous V2 listener disconnect") {
+                !PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT)
+            }
             shell("cmd notification allow_listener $component")
             waitUntil("current V2 permission grant") {
                 controller.state().currentGranted
