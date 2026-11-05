@@ -29,6 +29,10 @@ internal data class PaymentListenerDiagnosticsSnapshot(
     val lastRecoveryResult: String,
     val currentListenerConnections: Int,
     val legacyListenerConnections: Int,
+    val currentListenerServiceStarts: Int,
+    val legacyListenerServiceStarts: Int,
+    val currentListenerServiceStops: Int,
+    val legacyListenerServiceStops: Int,
     val supportedCallbacksObserved: Int,
     val callbacksRejectedWrongGeneration: Int,
     val callbacksRejectedBySettings: Int,
@@ -88,6 +92,10 @@ internal object PaymentDetectionListenerRuntime {
 
     private val currentListenerConnections = AtomicInteger(0)
     private val legacyListenerConnections = AtomicInteger(0)
+    private val currentListenerServiceStarts = AtomicInteger(0)
+    private val legacyListenerServiceStarts = AtomicInteger(0)
+    private val currentListenerServiceStops = AtomicInteger(0)
+    private val legacyListenerServiceStops = AtomicInteger(0)
     private val recoveryAttempts = AtomicInteger(0)
     @Volatile private var lastRecoveryResult = "NOT_RUN"
     private val supportedCallbacksObserved = AtomicInteger(0)
@@ -112,6 +120,21 @@ internal object PaymentDetectionListenerRuntime {
     private val ignoredOtherReasons = AtomicInteger(0)
     private val persistedCandidates = AtomicInteger(0)
     private val persistenceFailures = AtomicInteger(0)
+
+    /** Service creation does not prove completion of the listener binding. */
+    fun markServiceCreated(generation: PaymentListenerGeneration) {
+        when (generation) {
+            PaymentListenerGeneration.CURRENT -> currentListenerServiceStarts.incrementAndGet()
+            PaymentListenerGeneration.LEGACY -> legacyListenerServiceStarts.incrementAndGet()
+        }
+    }
+
+    fun markServiceDestroyed(generation: PaymentListenerGeneration) {
+        when (generation) {
+            PaymentListenerGeneration.CURRENT -> currentListenerServiceStops.incrementAndGet()
+            PaymentListenerGeneration.LEGACY -> legacyListenerServiceStops.incrementAndGet()
+        }
+    }
 
     @Synchronized
     fun register(
@@ -359,6 +382,10 @@ internal object PaymentDetectionListenerRuntime {
         lastRecoveryResult = lastRecoveryResult,
         currentListenerConnections = currentListenerConnections.get(),
         legacyListenerConnections = legacyListenerConnections.get(),
+        currentListenerServiceStarts = currentListenerServiceStarts.get(),
+        legacyListenerServiceStarts = legacyListenerServiceStarts.get(),
+        currentListenerServiceStops = currentListenerServiceStops.get(),
+        legacyListenerServiceStops = legacyListenerServiceStops.get(),
         supportedCallbacksObserved = supportedCallbacksObserved.get(),
         callbacksRejectedWrongGeneration = callbacksRejectedWrongGeneration.get(),
         callbacksRejectedBySettings = callbacksRejectedBySettings.get(),
@@ -397,6 +424,10 @@ internal object PaymentDetectionListenerRuntime {
         lastRecoveryResult = "NOT_RUN"
         currentListenerConnections.set(0)
         legacyListenerConnections.set(0)
+        currentListenerServiceStarts.set(0)
+        legacyListenerServiceStarts.set(0)
+        currentListenerServiceStops.set(0)
+        legacyListenerServiceStops.set(0)
         supportedCallbacksObserved.set(0)
         callbacksRejectedWrongGeneration.set(0)
         callbacksRejectedBySettings.set(0)
