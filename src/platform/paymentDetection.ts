@@ -25,6 +25,11 @@ export interface NativePaymentDetectionDiagnostics {
   /** Process-local onListenerConnected callbacks, reset at owner boundary. */
   currentListenerConnections?: number;
   legacyListenerConnections?: number;
+  /** Service lifecycle does not imply a successful OS listener connection. */
+  currentListenerServiceStarts?: number;
+  legacyListenerServiceStarts?: number;
+  currentListenerServiceStops?: number;
+  legacyListenerServiceStops?: number;
   supportedCallbacksObserved: number;
   callbacksRejectedWrongGeneration: number;
   callbacksRejectedBySettings: number;

@@ -131,6 +131,30 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
     }
 
     @Test
+    fun serviceCreationAndDestructionDoNotInventListenerConnections() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        try {
+            PaymentDetectionListenerRuntime.markServiceCreated(PaymentListenerGeneration.CURRENT)
+            PaymentDetectionListenerRuntime.markServiceCreated(PaymentListenerGeneration.LEGACY)
+            PaymentDetectionListenerRuntime.markServiceDestroyed(PaymentListenerGeneration.LEGACY)
+            val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(1, snapshot.currentListenerServiceStarts)
+            assertEquals(1, snapshot.legacyListenerServiceStarts)
+            assertEquals(0, snapshot.currentListenerServiceStops)
+            assertEquals(1, snapshot.legacyListenerServiceStops)
+            assertEquals(0, snapshot.currentListenerConnections)
+            assertEquals(0, snapshot.legacyListenerConnections)
+            assertEquals(0, snapshot.activeSnapshotReads)
+        } finally {
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        assertEquals(
+            0,
+            PaymentDetectionListenerRuntime.diagnosticsSnapshot().currentListenerServiceStarts,
+        )
+    }
+
+    @Test
     fun nativeOwnerResetClearsAllPreGateCounters() {
         PaymentDetectionListenerRuntime.markSupportedCallbackObserved()
         PaymentDetectionListenerRuntime.markActiveSnapshotRead(1, 1)

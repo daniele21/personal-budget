@@ -164,21 +164,24 @@ internal class NotificationAccessController(
      * effective-generation gate remains a second defense until teardown lands.
      */
     private fun retireLegacyComponent(): Boolean {
-        var unbindRequested = false
-        try {
-            NotificationListenerService.requestUnbind(legacyListenerComponent)
-            unbindRequested = true
-        } catch (_: RuntimeException) {
-            // Component disabling below is the canonical retirement mechanism.
+        // Recovery and status refresh may call this repeatedly. Never unbind
+        // an absent legacy endpoint or rewrite an already-disabled component:
+        // neither operation should churn the effective V2 listener.
+        if (PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.LEGACY)) {
+            try {
+                NotificationListenerService.requestUnbind(legacyListenerComponent)
+            } catch (_: RuntimeException) {
+                // Disabling the legacy component remains the durable safety gate.
+            }
         }
-
+        if (!isLegacyComponentEnabled()) return true
         return try {
             context.packageManager.setComponentEnabledSetting(
                 legacyListenerComponent,
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                 PackageManager.DONT_KILL_APP,
             )
-            unbindRequested || !isLegacyComponentEnabled()
+            !isLegacyComponentEnabled()
         } catch (_: RuntimeException) {
             false
         }

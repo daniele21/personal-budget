@@ -239,6 +239,36 @@ class PaymentDetectionListenerInstrumentedTest {
     }
 
     @Test
+    fun repeatedLegacyRetirementPreservesCurrentListenerConnection() {
+        val component = currentComponent()
+        val controller = NotificationAccessController(context)
+        resetListenerGrants()
+        try {
+            shell("cmd notification allow_listener $component")
+            waitUntil("V2 listener connection") {
+                PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT)
+            }
+            assertTrue(controller.synchronizeComponentLifecycle().currentGranted)
+            val epoch = PaymentDetectionListenerRuntime.connectionEpoch(
+                PaymentListenerGeneration.CURRENT,
+            )
+            repeat(8) {
+                assertTrue(controller.synchronizeComponentLifecycle().currentGranted)
+            }
+            Thread.sleep(750)
+            assertTrue(
+                PaymentDetectionListenerRuntime.isConnected(PaymentListenerGeneration.CURRENT),
+            )
+            assertEquals(
+                epoch,
+                PaymentDetectionListenerRuntime.connectionEpoch(PaymentListenerGeneration.CURRENT),
+            )
+        } finally {
+            resetListenerGrants()
+        }
+    }
+
+    @Test
     fun legacyGrantIsDetectedUntilV2AccessIsGranted() {
         val legacy = legacyComponent()
         val current = currentComponent()

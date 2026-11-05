@@ -254,6 +254,12 @@ On builds exposing generation-specific connection counters:
   callbacks` record actual `onListenerConnected()` callbacks since process
   startup or diagnostics reset. A zero does not prove access is revoked; it
   means no such callback was observed during the counter lifetime.
+- `V2/Legacy listener service starts/stops` record Android `onCreate`/
+  `onDestroy` events before/after the OS listener handshake. A service start
+  without `onListenerConnected` narrows the failure to binding/lifecycle in
+  that process; all-zero values might also reflect a process or owner reset.
+  These counters cannot establish an OS root cause by themselves and contain
+  no notification data.
 - `Successful active-notification snapshots` > 0 confirms a bounded read.
   A read can succeed with zero eligible notifications and does **not** prove
   that future callbacks or expired tray entries will be delivered.

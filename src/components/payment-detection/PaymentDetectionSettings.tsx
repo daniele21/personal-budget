@@ -358,11 +358,20 @@ export function PaymentDetectionSettings() {
                 Aura payment detection (V2). A repair request is not proof of reconnection.
               </p>
             )}
+          <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">
+            Service starts show that Android created the component, not that it
+            connected. Connection callbacks prove a later binding stage; neither
+            proves payment delivery. Counts reset on process or owner change.
+          </p>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
               ['Recovery attempts', status.diagnostics.recoveryAttempts ?? 'Unavailable'],
               ['V2 listener connection callbacks', status.diagnostics.currentListenerConnections ?? 'Unavailable'],
               ['Legacy listener connection callbacks', status.diagnostics.legacyListenerConnections ?? 'Unavailable'],
+              ['V2 listener service starts', status.diagnostics.currentListenerServiceStarts ?? 'Unavailable'],
+              ['Legacy listener service starts', status.diagnostics.legacyListenerServiceStarts ?? 'Unavailable'],
+              ['V2 listener service stops', status.diagnostics.currentListenerServiceStops ?? 'Unavailable'],
+              ['Legacy listener service stops', status.diagnostics.legacyListenerServiceStops ?? 'Unavailable'],
               ['Supported-app callbacks before Aura filters', status.diagnostics.supportedCallbacksObserved],
               ['Rejected: inactive listener generation', status.diagnostics.callbacksRejectedWrongGeneration],
               ['Rejected: account or source selection', status.diagnostics.callbacksRejectedBySettings],
