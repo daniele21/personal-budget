@@ -86,6 +86,11 @@ abstract class BaseAuraNotificationListenerService :
         }
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        PaymentDetectionListenerRuntime.markServiceCreated(generation)
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
 
@@ -172,6 +177,7 @@ abstract class BaseAuraNotificationListenerService :
     }
 
     override fun onDestroy() {
+        PaymentDetectionListenerRuntime.markServiceDestroyed(generation)
         mainHandler.removeCallbacks(healthHeartbeat)
         mainHandler.removeCallbacks(reconnectSettleReconciliation)
         PaymentDetectionListenerRuntime.unregister(generation, this)
