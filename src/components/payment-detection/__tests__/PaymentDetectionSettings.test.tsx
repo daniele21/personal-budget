@@ -299,6 +299,10 @@ describe('PaymentDetectionSettings', () => {
         lastRecoveryResult: 'REBIND_REQUESTED',
         currentListenerConnections: 0,
         legacyListenerConnections: 0,
+        currentListenerServiceStarts: 0,
+        legacyListenerServiceStarts: 0,
+        currentListenerServiceStops: 0,
+        legacyListenerServiceStops: 0,
         activeSnapshotReads: 0,
         activeSnapshotFailures: 0,
       },
@@ -309,6 +313,10 @@ describe('PaymentDetectionSettings', () => {
       .toBeInTheDocument();
     expect(screen.getByText('V2 listener connection callbacks')).toBeInTheDocument();
     expect(screen.getByText('Legacy listener connection callbacks')).toBeInTheDocument();
+    expect(screen.getByText('V2 listener service starts')).toBeInTheDocument();
+    expect(screen.getByText('Legacy listener service starts')).toBeInTheDocument();
+    expect(screen.getByText('V2 listener service stops')).toBeInTheDocument();
+    expect(screen.getByText(/Service starts show that Android created the component/)).toBeInTheDocument();
     expect(screen.getByText(/Last recovery result: REBIND_REQUESTED/))
       .toBeInTheDocument();
   });
