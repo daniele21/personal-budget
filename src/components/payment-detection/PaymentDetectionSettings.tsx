@@ -43,6 +43,13 @@ export function PaymentDetectionSettings() {
     status.auraNotificationPermissionGranted &&
     status.candidateNotificationsEnabled;
   const hasSelectedApps = status.selectedPackages.length > 0;
+  const systemGrantMismatch = accessGranted && status.androidFrameworkV2Approved === false;
+  const v2ServiceDisabled = status.androidV2ComponentEnabled === false;
+  const noV2StartupEvidence =
+    (status.diagnostics?.recoveryAttempts ?? 0) > 0 &&
+    status.diagnostics?.currentListenerServiceStarts === 0;
+  const systemCheckLabel = (value: boolean | null | undefined) =>
+    value == null ? 'Unavailable' : value ? 'Yes' : 'No';
   const enabled =
     status.requestedEnabled && hasSelectedApps && accessGranted && listenerReady;
   // A live binding alone is not proof that NotificationManager was probed.
@@ -62,9 +69,13 @@ export function PaymentDetectionSettings() {
           ? snapshotVerified ? 'Snapshot verified' : 'Bound · unverified'
           : 'Alerts blocked'
         : status.requestedEnabled
-          ? accessGranted
-            ? 'Reconnecting'
-            : 'Access missing'
+          ? systemGrantMismatch
+            ? 'Android access mismatch'
+            : v2ServiceDisabled
+              ? 'V2 service disabled'
+              : accessGranted
+                ? 'Reconnecting'
+                : 'Access missing'
           : 'Paused';
 
   const handleDisclosureAccepted = async () => {
@@ -190,6 +201,31 @@ export function PaymentDetectionSettings() {
           No payment sources are selected. Choose at least one installed payment app below.
         </p>
       )}
+      {status.requestedEnabled && accessGranted && !listenerReady &&
+        !upgradeRequired && (
+          <div role="status" className="space-y-1 px-1 text-xs text-on-surface-variant">
+            <p>
+              {noV2StartupEvidence
+                ? 'Android has not started the V2 listener during this diagnostic session, despite a recovery request.'
+                : 'Android has not confirmed a live V2 listener connection.'}
+              {' '}A requested rebind is not a successful connection.
+            </p>
+            <p>
+              Android framework V2 approval: {systemCheckLabel(status.androidFrameworkV2Approved)}.
+              {' '}V2 service enabled: {systemCheckLabel(status.androidV2ComponentEnabled)}.
+              {' '}Android background restricted: {systemCheckLabel(status.androidBackgroundRestricted)}.
+            </p>
+            <p>
+              {systemGrantMismatch
+                ? 'Android does not confirm V2 approval even though the access list contains Aura. Open Android access and verify Aura payment detection (V2).'
+                : v2ServiceDisabled
+                  ? 'The V2 service is disabled in Android package settings and cannot bind.'
+                  : status.androidBackgroundRestricted === true
+                    ? 'Android reports background restriction. Review Aura app battery/background settings; this alone does not prove the cause.'
+                    : 'If this persists, open Android access and re-enable Aura payment detection (V2). No app data reset is required. This does not guarantee Android will rebind.'}
+            </p>
+          </div>
+        )}
       {enabled && (
         <p className="px-1 text-xs text-on-surface-variant">
           Bound means Android has connected the listener. A successful active
