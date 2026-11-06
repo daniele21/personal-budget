@@ -283,6 +283,46 @@ and notification permission/channel. A successful active-notification snapshot
 does not prove Android delivered every historical callback; no recovery path
 can replay an already-removed notification.
 
+### Android grants access but V2 never starts (1.0.25 physical recurrence)
+
+A device can display banking/Wallet notifications and show Aura's notification-access
+toggle as granted while Aura reports `Reconnecting`, zero V2 service starts,
+zero listener connection callbacks and zero active snapshots in the *current
+diagnostic interval*. Connection and startup counters are process-local and
+reset after process restart/owner change. They do not reconstruct whether a
+prior session worked.
+
+The diagnosis must distinguish the following independent, **content-free** facts:
+
+- **Android secure-setting access list:** Aura's existing access indicator; it
+  is not evidence of a bound service.
+- **Android framework V2 approval:** `NotificationManager.isNotificationListenerAccessGranted`
+  for Aura's exact V2 component, not the legacy component.
+- **V2 component enabled:** PackageManager's effective enabled state for the
+  declared service; a disabled component cannot bind.
+- **Android background restricted:** ActivityManager signal; `Yes` is a reason
+  to inspect device restrictions, but `No` cannot rule out vendor-specific
+  power management or service binding faults.
+- **Service start, connection callback, successful snapshot:** independent
+  process-local milestones. A positive approval does not imply any of them.
+
+If the secure setting indicates access but framework approval is false, open
+Android notification access and confirm the **V2** component (not Aura alert
+permission or the legacy entry). If approval and component enablement are true,
+but no V2 start/connection occurs, an explicit **user-controlled** revoke and
+regrant in Android notification-access settings may trigger the system to
+reevaluate the binding. Never claim that this always fixes the issue; capture
+the before/after diagnostic states. Do not automatically revoke OS access,
+start a substitute accessibility or foreground service, erase data, or weaken
+the account/source gate.
+
+If still blocked, inspect Android's **live notification-listener service**
+registration/binding state and device/OEM background restriction outside the
+app. An Android `dumpsys notification` report contains sensitive third-party
+notification content: do not upload or paste the raw dump. Preserve only
+sanitized V2 component/lifecycle status, no notification bodies, keys, or
+payment metadata. Treat this as REAL_ENVIRONMENT evidence in #68/#65.
+
 ## Incident Response
 
 For suspected package-gate, cross-account, backup, log or network leakage:
