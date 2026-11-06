@@ -167,6 +167,28 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.queryByText('Snapshot verified')).not.toBeInTheDocument();
   });
 
+  it('stops repeating repair requests when V2 never starts and opens Android access', async () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.latuabancaperandroid'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: true,
+      androidV2ComponentEnabled: true,
+      androidBackgroundRestricted: false,
+      diagnostics: { recoveryAttempts: 6, currentListenerServiceStarts: 0 },
+    });
+    const user = userEvent.setup();
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Listener not binding')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', {
+      name: 'Review Android listener access',
+    }));
+    expect(mocks.openNotificationAccessSettings).toHaveBeenCalledOnce();
+    expect(mocks.repairNotificationListener).not.toHaveBeenCalled();
+  });
+
   it('distinguishes disabled V2 service from background restrictions', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
