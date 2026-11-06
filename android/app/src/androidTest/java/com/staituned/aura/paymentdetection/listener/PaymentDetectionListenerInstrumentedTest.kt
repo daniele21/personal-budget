@@ -107,6 +107,36 @@ class PaymentDetectionListenerInstrumentedTest {
     }
 
     @Test
+    fun frameworkV2ApprovalIsIndependentOfServiceConnection() {
+        val component = currentComponent()
+        val access = NotificationAccessController(context)
+        resetListenerGrants()
+        try {
+            // Android can remove a grant without synchronously destroying a
+            // prior listener. Query the framework independently of endpoints.
+            waitUntil("framework V2 approval revoked") {
+                access.systemEvidence().frameworkV2Approved == false
+            }
+            assertEquals(
+                true,
+                access.systemEvidence().v2ComponentEnabled,
+            )
+            shell("cmd notification allow_listener $component")
+            waitUntil("framework V2 approval granted") {
+                access.systemEvidence().frameworkV2Approved == true
+            }
+            assertEquals(
+                true,
+                access.systemEvidence().v2ComponentEnabled,
+            )
+            // Grant alone is intentionally not asserted as a live binding.
+            // The other instrumentation tests exercise onListenerConnected.
+        } finally {
+            resetListenerGrants()
+        }
+    }
+
+    @Test
     fun reconnectReconcilesSelectedPaymentPostedDuringListenerBlackout() {
         val component = currentComponent()
         val privacyStore = PaymentDetectionPrivacyStore(context)
