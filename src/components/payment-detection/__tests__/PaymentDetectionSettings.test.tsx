@@ -358,7 +358,7 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText(/but not delivery of new payment callbacks/i)).toBeInTheDocument();
   });
 
-  it('explains that a rebind request is not evidence of an Android listener connection', () => {
+  it('explains that repeated unconfirmed rebinds require Android access review', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
       selectedPackages: ['com.google.android.apps.walletnfcrel'],
@@ -381,7 +381,10 @@ describe('PaymentDetectionSettings', () => {
       },
     });
     render(<PaymentDetectionSettings />);
-    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.getByText('Listener not binding')).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: 'Review Android listener access',
+    })).toBeInTheDocument();
     expect(screen.getByText(/Android has been asked to reconnect the payment listener/i))
       .toBeInTheDocument();
     expect(screen.getByText('V2 listener connection callbacks')).toBeInTheDocument();
