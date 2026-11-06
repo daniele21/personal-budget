@@ -311,8 +311,11 @@ Android notification access and confirm the **V2** component (not Aura alert
 permission or the legacy entry). If approval and component enablement are true,
 but no V2 start/connection occurs, an explicit **user-controlled** revoke and
 regrant in Android notification-access settings may trigger the system to
-reevaluate the binding. Never claim that this always fixes the issue; capture
-the before/after diagnostic states. Do not automatically revoke OS access,
+reevaluate the binding. The UI routes to **Review Android listener access**
+after at least three recovery requests with no V2 service start in the current
+process; it must not claim those requests were successful. Never claim that
+a manual access regrant always fixes the issue; capture the before/after
+diagnostic states. Do not automatically revoke OS access,
 start a substitute accessibility or foreground service, erase data, or weaken
 the account/source gate.
 
