@@ -395,6 +395,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
     private fun notificationAccessJson(): JSObject =
         JSObject().apply {
             put("osPermissionGranted", accessController.isGranted())
+            val systemEvidence = accessController.systemEvidence()
+            put("androidFrameworkV2Approved", systemEvidence.frameworkV2Approved)
+            put("androidV2ComponentEnabled", systemEvidence.v2ComponentEnabled)
+            put("androidBackgroundRestricted", systemEvidence.backgroundRestricted)
             put(
                 "listenerConnected",
                 accessController.isEffectiveListenerConnected(),
@@ -461,6 +465,10 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
             put("supported", true)
             put("diagnostics", diagnosticsJson())
             put("osPermissionGranted", accessController.isGranted())
+            val systemEvidence = accessController.systemEvidence()
+            put("androidFrameworkV2Approved", systemEvidence.frameworkV2Approved)
+            put("androidV2ComponentEnabled", systemEvidence.v2ComponentEnabled)
+            put("androidBackgroundRestricted", systemEvidence.backgroundRestricted)
             put(
                 "listenerConnected",
                 accessController.isEffectiveListenerConnected(),

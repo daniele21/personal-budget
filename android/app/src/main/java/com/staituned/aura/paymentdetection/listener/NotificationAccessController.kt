@@ -1,5 +1,7 @@
 package com.staituned.aura.paymentdetection.listener
 
+import android.app.ActivityManager
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -28,6 +30,17 @@ internal data class NotificationListenerAccessState(
             else -> null
         }
 }
+
+/**
+ * Content-free platform evidence. Approval, component availability and Android
+ * background policy are distinct from a successful listener binder callback.
+ * Null means the platform query itself was unavailable; it is never a denial.
+ */
+internal data class NotificationListenerSystemEvidence(
+    val frameworkV2Approved: Boolean?,
+    val v2ComponentEnabled: Boolean?,
+    val backgroundRestricted: Boolean?,
+)
 
 /** A missing listener can only be rebound; unbind requires a live endpoint. */
 internal enum class ListenerBindingAction {
@@ -65,6 +78,42 @@ internal class NotificationAccessController(
             currentGranted = currentGranted,
             legacyGranted = legacyListenerComponent in enabled,
             currentGrantObservedBefore = observedBefore || currentGranted,
+        )
+    }
+
+    fun systemEvidence(): NotificationListenerSystemEvidence {
+        val frameworkApproved = try {
+            context.getSystemService(NotificationManager::class.java)
+                ?.isNotificationListenerAccessGranted(currentListenerComponent)
+        } catch (_: RuntimeException) {
+            null
+        }
+        val componentEnabled = try {
+            when (
+                context.packageManager.getComponentEnabledSetting(currentListenerComponent)
+            ) {
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> true
+                PackageManager.COMPONENT_ENABLED_STATE_DEFAULT ->
+                    context.packageManager.getServiceInfo(
+                        currentListenerComponent,
+                        PackageManager.ComponentInfoFlags.of(
+                            PackageManager.MATCH_DISABLED_COMPONENTS.toLong(),
+                        ),
+                    ).enabled
+                else -> false
+            }
+        } catch (_: RuntimeException) {
+            null
+        }
+        val backgroundRestricted = try {
+            context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted
+        } catch (_: RuntimeException) {
+            null
+        }
+        return NotificationListenerSystemEvidence(
+            frameworkV2Approved = frameworkApproved,
+            v2ComponentEnabled = componentEnabled,
+            backgroundRestricted = backgroundRestricted,
         )
     }
 

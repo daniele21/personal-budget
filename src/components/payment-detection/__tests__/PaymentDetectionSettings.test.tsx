@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
     osPermissionGranted: false,
     listenerConnected: false,
     listenerAccessUpgradeRequired: false,
+    androidFrameworkV2Approved: undefined as boolean | null | undefined,
+    androidV2ComponentEnabled: undefined as boolean | null | undefined,
+    androidBackgroundRestricted: undefined as boolean | null | undefined,
     auraNotificationPermissionGranted: false,
     candidateNotificationsEnabled: false,
   },
@@ -90,6 +93,9 @@ describe('PaymentDetectionSettings', () => {
       osPermissionGranted: false,
       listenerConnected: false,
       listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: undefined,
+      androidV2ComponentEnabled: undefined,
+      androidBackgroundRestricted: undefined,
       auraNotificationPermissionGranted: false,
       candidateNotificationsEnabled: false,
     });
@@ -139,6 +145,73 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText('Reconnecting')).toBeInTheDocument();
     expect(screen.queryByText('Active')).not.toBeInTheDocument();
     expect(screen.getByText(/listener is reconnecting/i)).toBeInTheDocument();
+  });
+
+  it('separates Android framework approval mismatch from a missing listener binding', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.google.android.apps.walletnfcrel'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: false,
+      androidV2ComponentEnabled: true,
+      androidBackgroundRestricted: false,
+      diagnostics: { recoveryAttempts: 6, currentListenerServiceStarts: 0 },
+    });
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Android access mismatch')).toBeInTheDocument();
+    expect(screen.getByText(/Android has not started the V2 listener/)).toBeInTheDocument();
+    expect(screen.getByText(/Android framework V2 approval: No/)).toBeInTheDocument();
+    expect(screen.getByText(/Android does not confirm V2 approval/)).toBeInTheDocument();
+    expect(screen.queryByText('Snapshot verified')).not.toBeInTheDocument();
+  });
+
+  it('stops repeating repair requests when V2 never starts and opens Android access', async () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.latuabancaperandroid'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: true,
+      androidV2ComponentEnabled: true,
+      androidBackgroundRestricted: false,
+      diagnostics: { recoveryAttempts: 6, currentListenerServiceStarts: 0 },
+    });
+    const user = userEvent.setup();
+    render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Listener not binding')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', {
+      name: 'Review Android listener access',
+    }));
+    expect(mocks.openNotificationAccessSettings).toHaveBeenCalledOnce();
+    expect(mocks.repairNotificationListener).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes disabled V2 service from background restrictions', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.latuabancaperandroid'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: true,
+      androidV2ComponentEnabled: false,
+      androidBackgroundRestricted: false,
+      diagnostics: { recoveryAttempts: 2, currentListenerServiceStarts: 0 },
+    });
+    const { rerender } = render(<PaymentDetectionSettings />);
+    expect(screen.getByText('V2 service disabled')).toBeInTheDocument();
+    expect(screen.getByText(/V2 service is disabled in Android package settings/)).toBeInTheDocument();
+
+    Object.assign(mocks.status, {
+      androidV2ComponentEnabled: true,
+      androidBackgroundRestricted: true,
+    });
+    rerender(<PaymentDetectionSettings />);
+    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.getByText(/Android reports background restriction/)).toBeInTheDocument();
   });
 
   it('surfaces a blocked Aura payment-alert channel separately from listener health', async () => {
@@ -285,7 +358,7 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText(/but not delivery of new payment callbacks/i)).toBeInTheDocument();
   });
 
-  it('explains that a rebind request is not evidence of an Android listener connection', () => {
+  it('explains that repeated unconfirmed rebinds require Android access review', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
       selectedPackages: ['com.google.android.apps.walletnfcrel'],
@@ -308,7 +381,10 @@ describe('PaymentDetectionSettings', () => {
       },
     });
     render(<PaymentDetectionSettings />);
-    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.getByText('Listener not binding')).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: 'Review Android listener access',
+    })).toBeInTheDocument();
     expect(screen.getByText(/Android has been asked to reconnect the payment listener/i))
       .toBeInTheDocument();
     expect(screen.getByText('V2 listener connection callbacks')).toBeInTheDocument();

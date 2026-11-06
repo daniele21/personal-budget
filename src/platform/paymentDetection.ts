@@ -12,6 +12,12 @@ export interface NativePaymentDetectionSettings {
 
 export interface NativeNotificationAccessStatus {
   osPermissionGranted: boolean;
+  /** Separate Android NotificationManager approval for the exact V2 component. */
+  androidFrameworkV2Approved?: boolean | null;
+  /** Whether the Android package manager considers the V2 service enabled. */
+  androidV2ComponentEnabled?: boolean | null;
+  /** OS background restriction indicator (not a diagnosis of OEM policies). */
+  androidBackgroundRestricted?: boolean | null;
   listenerConnected: boolean;
   listenerAccessUpgradeRequired: boolean;
   auraNotificationPermissionGranted: boolean;
