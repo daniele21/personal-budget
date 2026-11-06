@@ -48,6 +48,12 @@ export function PaymentDetectionSettings() {
   const noV2StartupEvidence =
     (status.diagnostics?.recoveryAttempts ?? 0) > 0 &&
     status.diagnostics?.currentListenerServiceStarts === 0;
+  const bindingStalledWithoutStartup =
+    status.requestedEnabled && accessGranted && !listenerReady &&
+    !upgradeRequired && noV2StartupEvidence &&
+    (status.diagnostics?.recoveryAttempts ?? 0) >= 3;
+  const shouldReviewAndroidAccess =
+    systemGrantMismatch || bindingStalledWithoutStartup;
   const systemCheckLabel = (value: boolean | null | undefined) =>
     value == null ? 'Unavailable' : value ? 'Yes' : 'No';
   const enabled =
@@ -73,9 +79,11 @@ export function PaymentDetectionSettings() {
             ? 'Android access mismatch'
             : v2ServiceDisabled
               ? 'V2 service disabled'
-              : accessGranted
-                ? 'Reconnecting'
-                : 'Access missing'
+              : bindingStalledWithoutStartup
+                ? 'Listener not binding'
+                : accessGranted
+                  ? 'Reconnecting'
+                  : 'Access missing'
           : 'Paused';
 
   const handleDisclosureAccepted = async () => {
@@ -253,15 +261,21 @@ export function PaymentDetectionSettings() {
             {status.requestedEnabled && accessGranted && (
               <button
                 type="button"
-                onClick={() => void handleRepairListener()}
+                onClick={() => void (
+                  shouldReviewAndroidAccess
+                    ? handleRepairAccess()
+                    : handleRepairListener()
+                )}
                 disabled={busy}
                 className="mt-2 min-h-10 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 {upgradeRequired
                   ? 'Upgrade Android access'
-                  : listenerReady
-                    ? 'Repair listener'
-                    : 'Repair listener now'}
+                  : shouldReviewAndroidAccess
+                    ? 'Review Android listener access'
+                    : listenerReady
+                      ? 'Repair listener'
+                      : 'Repair listener now'}
               </button>
             )}
           </div>
