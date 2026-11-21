@@ -133,8 +133,16 @@ internal class PaymentListenerRecoveryCoordinator(
                             ListenerBindingAction.CYCLE_CONNECTED ->
                                 accessController.forceRebindIfGranted()
                         }
-                        if (requested && action == ListenerBindingAction.REQUEST_BIND) {
-                            PaymentDetectionListenerRuntime.markRecoveryBindSubmitted()
+                        if (action == ListenerBindingAction.REQUEST_BIND) {
+                            if (requested) {
+                                PaymentDetectionListenerRuntime.markRecoveryBindSubmitted()
+                            } else {
+                                // A rejected request is not pending. Preserve
+                                // the worker's normal retry/backoff path.
+                                PaymentDetectionListenerRuntime.clearFailedMissingEndpointBind(
+                                    generation,
+                                )
+                            }
                         }
                         when {
                             !requested -> PaymentListenerRecoveryResult.FAILED
