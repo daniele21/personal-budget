@@ -242,6 +242,11 @@ internal object PaymentDetectionListenerRuntime {
         missingEndpointBindLimiter.clearAll()
     }
 
+    /** A rejected OS bind request must remain eligible for WorkManager retry. */
+    fun clearFailedMissingEndpointBind(generation: PaymentListenerGeneration) {
+        missingEndpointBindLimiter.clear(generation)
+    }
+
     fun markRecoveryBindSubmitted() {
         recoveryBindRequestsSubmitted.incrementAndGet()
     }
