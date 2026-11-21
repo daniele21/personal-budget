@@ -59,6 +59,7 @@ abstract class BaseAuraNotificationListenerService :
                 PaymentListenerRecoveryCoordinator(applicationContext).recoverNow()
             when (result) {
                 PaymentListenerRecoveryResult.BIND_REQUESTED,
+                PaymentListenerRecoveryResult.BIND_WAITING,
                 PaymentListenerRecoveryResult.REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.RECONCILED_AND_REBIND_REQUESTED,
                 PaymentListenerRecoveryResult.NO_ACCESS,
