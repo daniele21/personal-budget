@@ -26,6 +26,8 @@ enum class PaymentListenerEndpointProbeResult {
  */
 internal data class PaymentListenerDiagnosticsSnapshot(
     val recoveryAttempts: Int,
+    val recoveryBindRequestsSubmitted: Int,
+    val recoveryBindRequestsDeferred: Int,
     val lastRecoveryResult: String,
     val currentListenerConnections: Int,
     val legacyListenerConnections: Int,
@@ -97,6 +99,9 @@ internal object PaymentDetectionListenerRuntime {
     private val currentListenerServiceStops = AtomicInteger(0)
     private val legacyListenerServiceStops = AtomicInteger(0)
     private val recoveryAttempts = AtomicInteger(0)
+    private val recoveryBindRequestsSubmitted = AtomicInteger(0)
+    private val recoveryBindRequestsDeferred = AtomicInteger(0)
+    private val missingEndpointBindLimiter = ListenerBindRequestLimiter()
     @Volatile private var lastRecoveryResult = "NOT_RUN"
     private val supportedCallbacksObserved = AtomicInteger(0)
     private val callbacksRejectedWrongGeneration = AtomicInteger(0)
@@ -142,6 +147,8 @@ internal object PaymentDetectionListenerRuntime {
         endpoint: PaymentListenerHealthEndpoint,
     ) {
         endpoints[generation] = WeakReference(endpoint)
+        // An observed OS binding completes the pending-request phase.
+        missingEndpointBindLimiter.clear(generation)
         connectionStartedAt[generation] = System.currentTimeMillis()
         latestSelectedCallbackPostTime[generation] = 0L
         processedNotificationVersions[generation] = linkedMapOf()
@@ -225,6 +232,22 @@ internal object PaymentDetectionListenerRuntime {
         } catch (_: RuntimeException) {
             PaymentListenerProbeResult.FAILED
         }
+    }
+
+    /** Only coordinator requests for a missing endpoint use this limiter. */
+    fun reserveMissingEndpointBind(generation: PaymentListenerGeneration): Boolean =
+        missingEndpointBindLimiter.reserve(generation)
+
+    fun resetMissingEndpointBindAttempts() {
+        missingEndpointBindLimiter.clearAll()
+    }
+
+    fun markRecoveryBindSubmitted() {
+        recoveryBindRequestsSubmitted.incrementAndGet()
+    }
+
+    fun markRecoveryBindDeferred() {
+        recoveryBindRequestsDeferred.incrementAndGet()
     }
 
     fun markRecoveryResult(result: String) {
@@ -379,6 +402,8 @@ internal object PaymentDetectionListenerRuntime {
 
     fun diagnosticsSnapshot() = PaymentListenerDiagnosticsSnapshot(
         recoveryAttempts = recoveryAttempts.get(),
+        recoveryBindRequestsSubmitted = recoveryBindRequestsSubmitted.get(),
+        recoveryBindRequestsDeferred = recoveryBindRequestsDeferred.get(),
         lastRecoveryResult = lastRecoveryResult,
         currentListenerConnections = currentListenerConnections.get(),
         legacyListenerConnections = legacyListenerConnections.get(),
@@ -420,6 +445,10 @@ internal object PaymentDetectionListenerRuntime {
 
     /** Also called at account boundaries so counters cannot span two owners. */
     fun resetDiagnostics() {
+        // Owner/process diagnostic boundaries cannot inherit a pending bind.
+        missingEndpointBindLimiter.clearAll()
+        recoveryBindRequestsSubmitted.set(0)
+        recoveryBindRequestsDeferred.set(0)
         recoveryAttempts.set(0)
         lastRecoveryResult = "NOT_RUN"
         currentListenerConnections.set(0)
