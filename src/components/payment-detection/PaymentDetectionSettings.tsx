@@ -45,13 +45,16 @@ export function PaymentDetectionSettings() {
   const hasSelectedApps = status.selectedPackages.length > 0;
   const systemGrantMismatch = accessGranted && status.androidFrameworkV2Approved === false;
   const v2ServiceDisabled = status.androidV2ComponentEnabled === false;
+  const submittedBindRequests =
+    status.diagnostics?.recoveryBindRequestsSubmitted ??
+    status.diagnostics?.recoveryAttempts ?? 0;
   const noV2StartupEvidence =
-    (status.diagnostics?.recoveryAttempts ?? 0) > 0 &&
+    submittedBindRequests > 0 &&
     status.diagnostics?.currentListenerServiceStarts === 0;
   const bindingStalledWithoutStartup =
     status.requestedEnabled && accessGranted && !listenerReady &&
     !upgradeRequired && noV2StartupEvidence &&
-    (status.diagnostics?.recoveryAttempts ?? 0) >= 3;
+    submittedBindRequests >= 3;
   const shouldReviewAndroidAccess =
     systemGrantMismatch || bindingStalledWithoutStartup;
   const systemCheckLabel = (value: boolean | null | undefined) =>
@@ -400,12 +403,14 @@ export function PaymentDetectionSettings() {
             </p>
           )}
           {(status.diagnostics.lastRecoveryResult === 'BIND_REQUESTED' ||
+            status.diagnostics.lastRecoveryResult === 'BIND_WAITING' ||
             status.diagnostics.lastRecoveryResult === 'REBIND_REQUESTED') &&
             !listenerReady && !diagnosticsError && (
               <p className="mt-2 text-xs text-on-surface-variant">
-                Android has been asked to reconnect the payment listener but has not
-                confirmed a live binding. Check Android notification access for
-                Aura payment detection (V2). A repair request is not proof of reconnection.
+                {status.diagnostics.lastRecoveryResult === 'BIND_WAITING'
+                  ? 'Aura deferred another binding request while the previous attempt settles. Android still has not confirmed a listener connection.'
+                  : 'Android has been asked to reconnect the payment listener but has not confirmed a live binding. A repair request is not proof of reconnection.'}
+                {' '}Check Android notification access for Aura payment detection (V2) if this persists.
               </p>
             )}
           <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">
@@ -416,6 +421,8 @@ export function PaymentDetectionSettings() {
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
               ['Recovery attempts', status.diagnostics.recoveryAttempts ?? 'Unavailable'],
+              ['Recovery bind requests submitted', status.diagnostics.recoveryBindRequestsSubmitted ?? 'Unavailable'],
+              ['Recovery bind requests deferred', status.diagnostics.recoveryBindRequestsDeferred ?? 'Unavailable'],
               ['V2 listener connection callbacks', status.diagnostics.currentListenerConnections ?? 'Unavailable'],
               ['Legacy listener connection callbacks', status.diagnostics.legacyListenerConnections ?? 'Unavailable'],
               ['V2 listener service starts', status.diagnostics.currentListenerServiceStarts ?? 'Unavailable'],
