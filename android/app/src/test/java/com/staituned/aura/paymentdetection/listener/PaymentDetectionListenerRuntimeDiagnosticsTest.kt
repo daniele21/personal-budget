@@ -67,6 +67,31 @@ class PaymentDetectionListenerRuntimeDiagnosticsTest {
     }
 
     @Test
+    fun submittedAndDeferredBindingsAreIndependentOfRecoveryPollsAndConnections() {
+        PaymentDetectionListenerRuntime.resetDiagnostics()
+        try {
+            PaymentDetectionListenerRuntime.markRecoveryBindSubmitted()
+            repeat(24) {
+                PaymentDetectionListenerRuntime.markRecoveryBindDeferred()
+                PaymentDetectionListenerRuntime.markRecoveryResult("BIND_WAITING")
+            }
+            val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+            assertEquals(1, snapshot.recoveryBindRequestsSubmitted)
+            assertEquals(24, snapshot.recoveryBindRequestsDeferred)
+            assertEquals(24, snapshot.recoveryAttempts)
+            assertEquals("BIND_WAITING", snapshot.lastRecoveryResult)
+            assertEquals(0, snapshot.currentListenerServiceStarts)
+            assertEquals(0, snapshot.currentListenerConnections)
+            assertEquals(0, snapshot.activeSnapshotReads)
+        } finally {
+            PaymentDetectionListenerRuntime.resetDiagnostics()
+        }
+        val reset = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        assertEquals(0, reset.recoveryBindRequestsSubmitted)
+        assertEquals(0, reset.recoveryBindRequestsDeferred)
+    }
+
+    @Test
     fun ignoredParserReasonCountersNeverContainContentAndReset() {
         PaymentDetectionListenerRuntime.resetDiagnostics()
         try {

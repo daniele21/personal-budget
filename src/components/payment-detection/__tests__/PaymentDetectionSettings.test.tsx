@@ -423,6 +423,49 @@ describe('PaymentDetectionSettings', () => {
       .toBeInTheDocument();
   });
 
+  it('treats deferred missing-listener checks as pending, not new bind submissions', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.latuabancaperandroid'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: true,
+      androidV2ComponentEnabled: true,
+      androidBackgroundRestricted: false,
+      diagnostics: {
+        recoveryAttempts: 25,
+        recoveryBindRequestsSubmitted: 1,
+        recoveryBindRequestsDeferred: 24,
+        lastRecoveryResult: 'BIND_WAITING',
+        currentListenerConnections: 0,
+        currentListenerServiceStarts: 0,
+        activeSnapshotReads: 0,
+      },
+    });
+    const { rerender } = render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.queryByText('Listener not binding')).not.toBeInTheDocument();
+    expect(screen.getByText(/Aura deferred another binding request/))
+      .toBeInTheDocument();
+    expect(screen.getByText('Recovery bind requests submitted')).toBeInTheDocument();
+    expect(screen.getByText('Recovery bind requests deferred')).toBeInTheDocument();
+
+    Object.assign(mocks.status, {
+      diagnostics: {
+        recoveryAttempts: 25,
+        recoveryBindRequestsSubmitted: 3,
+        recoveryBindRequestsDeferred: 22,
+        lastRecoveryResult: 'BIND_WAITING',
+        currentListenerConnections: 0,
+        currentListenerServiceStarts: 0,
+        activeSnapshotReads: 0,
+      },
+    });
+    rerender(<PaymentDetectionSettings />);
+    expect(screen.getByText('Listener not binding')).toBeInTheDocument();
+  });
+
   it('marks a failed status refresh as stale rather than claiming connected', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,

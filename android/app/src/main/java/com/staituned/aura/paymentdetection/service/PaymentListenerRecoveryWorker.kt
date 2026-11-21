@@ -24,6 +24,8 @@ internal enum class PaymentListenerRecoveryResult {
     RECONCILED_AND_REBIND_REQUESTED,
     /** No listener endpoint exists. A bind was requested, not confirmed. */
     BIND_REQUESTED,
+    /** No new OS request was sent: a recent missing-endpoint request is settling. */
+    BIND_WAITING,
     /** An existing but unresponsive endpoint was explicitly cycled. */
     REBIND_REQUESTED,
     SETTINGS_FAILURE,
@@ -67,6 +69,7 @@ internal class PaymentListenerRecoveryCoordinator(
     private fun recoverOnce(): PaymentListenerRecoveryResult {
         val privacyStore = PaymentDetectionPrivacyStore(appContext)
         if (!privacyStore.hasActiveOwner()) {
+            PaymentDetectionListenerRuntime.resetMissingEndpointBindAttempts()
             return PaymentListenerRecoveryResult.DISABLED
         }
 
@@ -76,6 +79,7 @@ internal class PaymentListenerRecoveryCoordinator(
                 privacyStore,
             ).getSettings()
             if (!settings.requestedEnabled) {
+                PaymentDetectionListenerRuntime.resetMissingEndpointBindAttempts()
                 return PaymentListenerRecoveryResult.DISABLED
             }
 
@@ -86,16 +90,22 @@ internal class PaymentListenerRecoveryCoordinator(
                     PaymentListenerGeneration.LEGACY,
                 )
             }
-            val generation = access.effectiveGeneration
-                ?: return PaymentListenerRecoveryResult.NO_ACCESS
+            val generation = access.effectiveGeneration ?: run {
+                PaymentDetectionListenerRuntime.resetMissingEndpointBindAttempts()
+                return PaymentListenerRecoveryResult.NO_ACCESS
+            }
 
             PaymentDetectionListenerRuntime.armHealthHeartbeat(generation)
             val probe = PaymentDetectionListenerRuntime.probeAndReconcile(generation)
             when (probe) {
-                PaymentListenerProbeResult.HEALTHY ->
+                PaymentListenerProbeResult.HEALTHY -> {
+                    PaymentDetectionListenerRuntime.resetMissingEndpointBindAttempts()
                     PaymentListenerRecoveryResult.RECONCILED
-                PaymentListenerProbeResult.SKIPPED_DISABLED ->
+                }
+                PaymentListenerProbeResult.SKIPPED_DISABLED -> {
+                    PaymentDetectionListenerRuntime.resetMissingEndpointBindAttempts()
                     PaymentListenerRecoveryResult.DISABLED
+                }
                 PaymentListenerProbeResult.SETTINGS_FAILURE ->
                     PaymentListenerRecoveryResult.SETTINGS_FAILURE
                 PaymentListenerProbeResult.MISSED_CALLBACK_RECOVERED -> {
@@ -107,17 +117,39 @@ internal class PaymentListenerRecoveryCoordinator(
                 }
                 PaymentListenerProbeResult.UNAVAILABLE,
                 PaymentListenerProbeResult.FAILED -> {
-                    val requested = when (checkNotNull(listenerBindingActionForProbe(probe))) {
-                        ListenerBindingAction.REQUEST_BIND ->
-                            accessController.requestRebindIfGranted()
-                        ListenerBindingAction.CYCLE_CONNECTED ->
-                            accessController.forceRebindIfGranted()
-                    }
-                    when {
-                        !requested -> PaymentListenerRecoveryResult.FAILED
-                        probe == PaymentListenerProbeResult.UNAVAILABLE ->
-                            PaymentListenerRecoveryResult.BIND_REQUESTED
-                        else -> PaymentListenerRecoveryResult.REBIND_REQUESTED
+                    val action = checkNotNull(listenerBindingActionForProbe(probe))
+                    if (
+                        action == ListenerBindingAction.REQUEST_BIND &&
+                        !PaymentDetectionListenerRuntime.reserveMissingEndpointBind(generation)
+                    ) {
+                        // WorkManager and foreground/status reads can overlap
+                        // while Android has not yet delivered onListenerConnected.
+                        PaymentDetectionListenerRuntime.markRecoveryBindDeferred()
+                        PaymentListenerRecoveryResult.BIND_WAITING
+                    } else {
+                        val requested = when (action) {
+                            ListenerBindingAction.REQUEST_BIND ->
+                                accessController.requestRebindIfGranted()
+                            ListenerBindingAction.CYCLE_CONNECTED ->
+                                accessController.forceRebindIfGranted()
+                        }
+                        if (action == ListenerBindingAction.REQUEST_BIND) {
+                            if (requested) {
+                                PaymentDetectionListenerRuntime.markRecoveryBindSubmitted()
+                            } else {
+                                // A rejected request is not pending. Preserve
+                                // the worker's normal retry/backoff path.
+                                PaymentDetectionListenerRuntime.clearFailedMissingEndpointBind(
+                                    generation,
+                                )
+                            }
+                        }
+                        when {
+                            !requested -> PaymentListenerRecoveryResult.FAILED
+                            action == ListenerBindingAction.REQUEST_BIND ->
+                                PaymentListenerRecoveryResult.BIND_REQUESTED
+                            else -> PaymentListenerRecoveryResult.REBIND_REQUESTED
+                        }
                     }
                 }
             }

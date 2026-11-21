@@ -246,7 +246,19 @@ not evidence that `onListenerConnected()` occurred.
 On builds exposing generation-specific connection counters:
 
 - `BIND_REQUESTED` means the effective listener endpoint was **absent** and Aura
-  requested binding **without a preceding unbind**.
+  requested binding **without a preceding unbind**. It does not confirm an
+  Android service start or callback.
+- `BIND_WAITING` means a recovery probe saw the endpoint still absent but
+  **did not send another bind request**: the previous process-local request is
+  within a bounded 30s → 60s → 2m → 4m → 5m retry interval. The interval is
+  not a promise of OS delivery or a continuously running background timer;
+  WorkManager and foreground checks remain best-effort.
+- `Recovery bind requests submitted` counts successful API submissions from
+  the missing-endpoint recovery coordinator, while `Recovery bind requests
+  deferred` counts checks suppressed by the rate limiter. Neither proves
+  that the OS connected. Existing `Recovery attempts` counts every coordinator
+  pass, not actual rebind requests. These counters reset on owner/process
+  boundaries and the bound-listener callback clears the retry window.
 - `REBIND_REQUESTED` means a registered endpoint existed but its health probe
   failed; the binding cycle was requested. An explicit user repair also
   distinguishes already-bound from not-yet-bound services.
@@ -312,8 +324,9 @@ permission or the legacy entry). If approval and component enablement are true,
 but no V2 start/connection occurs, an explicit **user-controlled** revoke and
 regrant in Android notification-access settings may trigger the system to
 reevaluate the binding. The UI routes to **Review Android listener access**
-after at least three recovery requests with no V2 service start in the current
-process; it must not claim those requests were successful. Never claim that
+after at least three **submitted** recovery bind requests with no V2 service
+start in the current process (older builds fall back to recovery-pass counts);
+it must not claim those requests were successful bindings. Never claim that
 a manual access regrant always fixes the issue; capture the before/after
 diagnostic states. Do not automatically revoke OS access,
 start a substitute accessibility or foreground service, erase data, or weaken
