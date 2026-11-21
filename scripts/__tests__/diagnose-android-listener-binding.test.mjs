@@ -1,5 +1,9 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test, expect } from 'vitest';
+
+const assert = {
+  equal(actual, expected) { expect(actual).toBe(expected); },
+  deepEqual(actual, expected) { expect(actual).toEqual(expected); },
+};
 import {
   readRedactedSecureGrant,
   readRedactedLiveListener,
