@@ -422,6 +422,8 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
         val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
         return JSObject().apply {
             put("recoveryAttempts", snapshot.recoveryAttempts)
+            put("recoveryBindRequestsSubmitted", snapshot.recoveryBindRequestsSubmitted)
+            put("recoveryBindRequestsDeferred", snapshot.recoveryBindRequestsDeferred)
             put("lastRecoveryResult", snapshot.lastRecoveryResult)
             put("currentListenerConnections", snapshot.currentListenerConnections)
             put("legacyListenerConnections", snapshot.legacyListenerConnections)
