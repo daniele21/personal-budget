@@ -27,6 +27,10 @@ export interface NativeNotificationAccessStatus {
 export interface NativePaymentDetectionDiagnostics {
   /** Optional for older Android builds; never contains financial content. */
   recoveryAttempts?: number;
+  /** Actual missing-endpoint rebind requests, not listener connections. */
+  recoveryBindRequestsSubmitted?: number;
+  /** Recovery probes coalesced while a prior bind request settles. */
+  recoveryBindRequestsDeferred?: number;
   lastRecoveryResult?: string;
   /** Process-local onListenerConnected callbacks, reset at owner boundary. */
   currentListenerConnections?: number;
