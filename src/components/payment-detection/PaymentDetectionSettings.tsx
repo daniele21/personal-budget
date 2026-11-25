@@ -418,8 +418,44 @@ export function PaymentDetectionSettings() {
             connected. Connection callbacks prove a later binding stage; neither
             proves payment delivery. Counts reset on process or owner change.
           </p>
+          <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">
+            Process history comes from Android and may describe an earlier app
+            update or unrelated process exit. It does not reveal whether
+            NotificationManager bound this listener; a missing record does not
+            prove the process stayed alive. No crash trace or notification text
+            is collected.
+          </p>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
             {([
+              ['Current Aura process age', ({
+                UNDER_15_MIN: 'Under 15 min',
+                '15_TO_60_MIN': '15–60 min',
+                '1_TO_24_H': '1–24 hours',
+                '1_TO_7_D': '1–7 days',
+                OVER_7_D: 'Over 7 days',
+              } as Record<string, string>)[status.diagnostics.currentProcessAge ?? ''] ?? 'Unavailable'],
+              ['Previous Aura process exit', ({
+                NO_RECORD: 'No OS record',
+                CRASH: 'App crash',
+                NATIVE_CRASH: 'Native crash',
+                ANR: 'App not responding',
+                LOW_MEMORY: 'Low memory',
+                SIGNALED: 'Terminated by signal',
+                USER_REQUESTED: 'User/system request',
+                PACKAGE_UPDATED: 'App updated',
+                PACKAGE_STATE_CHANGE: 'Component changed',
+                PERMISSION_CHANGE: 'Permission changed',
+                EXIT_SELF: 'App exited',
+                DEPENDENCY_DIED: 'Dependency ended',
+                OTHER_OR_UNRECOGNIZED: 'Other / unknown',
+              } as Record<string, string>)[status.diagnostics.previousProcessExitReason ?? ''] ?? 'Unavailable'],
+              ['Time since previous exit', ({
+                UNDER_15_MIN: 'Under 15 min',
+                '15_TO_60_MIN': '15–60 min',
+                '1_TO_24_H': '1–24 hours',
+                '1_TO_7_D': '1–7 days',
+                OVER_7_D: 'Over 7 days',
+              } as Record<string, string>)[status.diagnostics.previousProcessExitAge ?? ''] ?? 'Unavailable'],
               ['Recovery attempts', status.diagnostics.recoveryAttempts ?? 'Unavailable'],
               ['Recovery bind requests submitted', status.diagnostics.recoveryBindRequestsSubmitted ?? 'Unavailable'],
               ['Recovery bind requests deferred', status.diagnostics.recoveryBindRequestsDeferred ?? 'Unavailable'],
