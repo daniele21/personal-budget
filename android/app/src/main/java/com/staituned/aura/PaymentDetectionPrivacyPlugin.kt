@@ -26,6 +26,7 @@ import com.staituned.aura.paymentdetection.bridge.PaymentDetectionBridgeValidato
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChange
 import com.staituned.aura.paymentdetection.events.PaymentCandidateChangeReason
 import com.staituned.aura.paymentdetection.events.PaymentCandidateEventBus
+import com.staituned.aura.paymentdetection.listener.AppProcessLifecycleDiagnostics
 import com.staituned.aura.paymentdetection.listener.NotificationAccessController
 import com.staituned.aura.paymentdetection.listener.PaymentDetectionListenerRuntime
 import com.staituned.aura.paymentdetection.notification.PaymentCandidateNotifier
@@ -420,7 +421,11 @@ class PaymentDetectionPrivacyPlugin : Plugin() {
 
     private fun diagnosticsJson(): JSObject {
         val snapshot = PaymentDetectionListenerRuntime.diagnosticsSnapshot()
+        val process = AppProcessLifecycleDiagnostics.read(context)
         return JSObject().apply {
+            put("currentProcessAge", process.currentProcessAge)
+            put("previousProcessExitReason", process.previousProcessExitReason)
+            put("previousProcessExitAge", process.previousProcessExitAge)
             put("recoveryAttempts", snapshot.recoveryAttempts)
             put("recoveryBindRequestsSubmitted", snapshot.recoveryBindRequestsSubmitted)
             put("recoveryBindRequestsDeferred", snapshot.recoveryBindRequestsDeferred)
