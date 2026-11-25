@@ -34,7 +34,8 @@ internal object AppProcessLifecycleDiagnostics {
         )
         val lastExit = try {
             val manager = context.getSystemService(ActivityManager::class.java)
-            manager?.getHistoricalProcessExitReasons(
+                ?: return AppProcessLifecycleEvidence(processAge, "UNAVAILABLE", "UNAVAILABLE")
+            manager.getHistoricalProcessExitReasons(
                 context.packageName,
                 0,
                 MAX_OS_EXIT_RECORDS,
