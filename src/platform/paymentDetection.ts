@@ -25,6 +25,12 @@ export interface NativeNotificationAccessStatus {
 }
 
 export interface NativePaymentDetectionDiagnostics {
+  /** Current Aura process age, coarse and content-free; not listener uptime. */
+  currentProcessAge?: string;
+  /** OS history of the previous Aura app-process exit, not a binder status. */
+  previousProcessExitReason?: string;
+  /** Coarse age of that OS exit record; not the time of listener disconnection. */
+  previousProcessExitAge?: string;
   /** Optional for older Android builds; never contains financial content. */
   recoveryAttempts?: number;
   /** Actual missing-endpoint rebind requests, not listener connections. */
