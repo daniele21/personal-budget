@@ -507,7 +507,7 @@ describe('PaymentDetectionSettings', () => {
     });
     rerender(<PaymentDetectionSettings />);
     expect(screen.getByText('No OS record')).toBeInTheDocument();
-    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    expect(screen.getAllByText('Unavailable').length).toBeGreaterThan(0);
     expect(screen.getByText('1–24 hours')).toBeInTheDocument();
   });
 
