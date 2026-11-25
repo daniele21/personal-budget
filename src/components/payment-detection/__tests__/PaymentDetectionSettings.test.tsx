@@ -466,6 +466,51 @@ describe('PaymentDetectionSettings', () => {
     expect(screen.getByText('Listener not binding')).toBeInTheDocument();
   });
 
+  it('shows a previous Aura process exit without confusing it with listener binding', () => {
+    Object.assign(mocks.status, {
+      requestedEnabled: true,
+      selectedPackages: ['com.latuabancaperandroid'],
+      osPermissionGranted: true,
+      listenerConnected: false,
+      listenerAccessUpgradeRequired: false,
+      androidFrameworkV2Approved: true,
+      androidV2ComponentEnabled: true,
+      diagnostics: {
+        currentProcessAge: 'UNDER_15_MIN',
+        previousProcessExitReason: 'LOW_MEMORY',
+        previousProcessExitAge: '15_TO_60_MIN',
+        recoveryAttempts: 3,
+        recoveryBindRequestsSubmitted: 2,
+        recoveryBindRequestsDeferred: 1,
+        lastRecoveryResult: 'BIND_WAITING',
+        currentListenerServiceStarts: 0,
+        currentListenerConnections: 0,
+      },
+    });
+    const { rerender } = render(<PaymentDetectionSettings />);
+    expect(screen.getByText('Current Aura process age')).toBeInTheDocument();
+    expect(screen.getByText('Under 15 min')).toBeInTheDocument();
+    expect(screen.getByText('Previous Aura process exit')).toBeInTheDocument();
+    expect(screen.getByText('Low memory')).toBeInTheDocument();
+    expect(screen.getByText('15–60 min')).toBeInTheDocument();
+    expect(screen.getByText(/does not reveal whether/)).toBeInTheDocument();
+    expect(screen.getByText('Reconnecting')).toBeInTheDocument();
+    expect(screen.queryByText('Snapshot verified')).not.toBeInTheDocument();
+
+    Object.assign(mocks.status, {
+      diagnostics: {
+        currentProcessAge: '1_TO_24_H',
+        previousProcessExitReason: 'NO_RECORD',
+        previousProcessExitAge: 'UNAVAILABLE',
+        recoveryAttempts: 1,
+      },
+    });
+    rerender(<PaymentDetectionSettings />);
+    expect(screen.getByText('No OS record')).toBeInTheDocument();
+    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('1–24 hours')).toBeInTheDocument();
+  });
+
   it('marks a failed status refresh as stale rather than claiming connected', () => {
     Object.assign(mocks.status, {
       requestedEnabled: true,
