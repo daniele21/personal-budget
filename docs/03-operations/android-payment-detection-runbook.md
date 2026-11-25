@@ -235,6 +235,39 @@ footer: this alone must not trigger `negative-balance`. Declines, OTP,
 cancellations, missing positive patterns and unsafe merchant data still use
 their existing conservative negative/review rules.
 
+### On-device Android process lifecycle evidence (without ADB)
+
+On compatible Android builds, **Local detector diagnostics** additionally show:
+
+- **Current Aura process age**: a coarse duration since this Android app
+  process began. A short age alongside recently reset in-memory listener
+  counters supports investigating a recent process restart; it does not prove
+  the listener was bound or that a foreground update caused the restart.
+- **Previous Aura process exit**: a strict label derived on demand from
+  Android `ActivityManager.getHistoricalProcessExitReasons` for Aura's
+  default package process only. Reasons include app/native crash, ANR, low
+  memory, signal, app update, component change and user/system request.
+  This record may concern an earlier update or another unrelated app session;
+  Android can omit or age out records.
+- **Time since previous exit**: a coarse age bucket for that OS record, never
+  an exact timestamp. `No OS record` means the platform returned no matching
+  record, **not** that no process died. `Unavailable` means the query or
+  timestamp could not be used reliably.
+
+Android's exit-history API does **not** report the current live
+NotificationManager binder, and process life does not prove notification
+delivery. If the process is old while V2 starts/connections remain zero, it
+supports further investigation of a service-binding failure, but cannot
+attribute the fault to Samsung without platform evidence.
+
+These are read-only, foreground-requested, **content-free fields** in the
+existing bridge. They are not persisted or uploaded; no exit descriptions,
+trace streams, signals, PIDs, memory stats, notification text or device
+identifiers are read or exported. No new permission, background service, alarm
+or force restart is involved. The existing redacted ADB procedure remains the
+optional stronger OS binding investigation if a computer later becomes
+available.
+
 ### Missing listener binding (incident #68, 1.0.23 observations)
 
 If a fresh status shows `REBIND_REQUESTED` and **both successful and failed
